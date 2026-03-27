@@ -9,7 +9,7 @@ class HomeRepository extends FluxRepository<String> {
 
   @override
   Future<String> fetchLocal() async => "Offline Cache Ready";
-  
+
   @override
   Future<void> saveLocal(String data) async {}
 }
