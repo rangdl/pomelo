@@ -1,6 +1,9 @@
 {
   "cSpell.words": [
-    "Fluxy"
+    "Cupertino",
+    "Fluxy",
+    "riverpod",
+    "sqflite"
   ],
   "dart.flutterSdkPath": ".fvm/versions/3.41.5"
 }

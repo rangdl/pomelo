@@ -1,40 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:fluxy/fluxy.dart';
-import 'package:pomelo/features/example/ex.routes.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/routers/router.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/helper.dart';
-import 'core/registry/fluxy_registry.dart';
 import 'core/theme/app_theme.dart';
-import 'features/home/home.routes.dart';
 
 void main() async {
-  // 1. Initialize Framework & Stability Policy
-  // strictMode: true throws errors on layout violations (perfect for Dev)
-  // strictMode: false (Relaxed) auto-fixes violations (perfect for Prod)
-  await Fluxy.init(strictMode: false);
-
-  // 2. Boot Modular Plugins (Auto-generated registry)
-  registerFluxyPlugins();
-  Fluxy.autoRegister();
-
-  // 3. Setup Global Error Pipeline
-  Fluxy.onError((error, stack) {
-    debugPrint("Fluxy Global Error: $error");
-  });
+  WidgetsFlutterBinding.ensureInitialized();
 
   await _runPlatformSpecificCode();
-  runApp(
-    Fluxy.debug(
-      child: FluxyApp(
-        title: 'Fluxy App',
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        initialRoute: homeRoutes.first.path,
-        routes: [...homeRoutes, ...exRoutes],
-      ),
-    ),
-  );
+
+  await _runPlatformSpecificCode();
+  runApp(ProviderScope(child: const MyApp()));
 }
 
 Future<void> _runPlatformSpecificCode() async {
@@ -52,4 +30,21 @@ Future<void> _runPlatformSpecificCode() async {
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.setPreventClose(true);
   });
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  // This widget is the root of your application.
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp.router(
+      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
+      routerConfig: routerConfig,
+    );
+  }
 }

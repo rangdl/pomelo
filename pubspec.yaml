@@ -36,8 +36,20 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  fluxy: ^1.2.3
+  # 状态管理核心
+  flutter_hooks: ^0.21.3+1
+  hooks_riverpod: ^3.3.1  # 或 riverpod: ^2.5.1
+  # 响应式状态
+  flutter_riverpod: ^3.3.1
+  riverpod_annotation: ^4.0.2
   
+  go_router: ^14.2.0  # 声明式路由，类型安全
+
+  hive_ce: ^2.19.3  # 高性能 NoSQL
+  # shared_preferences: ^2.2.3  # 简单键值对
+  # sqflite: ^2.3.3  # SQLite 数据库
+  # drift: ^2.14.2  # 类型安全的 SQLite ORM
+
   # 桌面
   window_manager: ^0.5.1 # 窗口管理
 
