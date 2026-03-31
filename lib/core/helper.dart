@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 class Helper {
   static bool get isAndroid => !kIsWeb && Platform.isAndroid;
@@ -20,4 +21,11 @@ class Helper {
 
   static bool get isWeb => kIsWeb;
   static String get operatingSystem => Platform.operatingSystem;
+
+  // 深色模式
+  static bool isDark(BuildContext context) {
+    return MediaQuery.of(context).platformBrightness == Brightness.dark;
+  }
+
+  static bool get isDebug => kDebugMode;
 }

@@ -36,6 +36,9 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  # fluxy: ^1.2.3
+  bot_toast: ^4.1.0 #null safety
+
   # 状态管理核心
   flutter_hooks: ^0.21.3+1
   hooks_riverpod: ^3.3.1  # 或 riverpod: ^2.5.1

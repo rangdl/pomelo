@@ -4,6 +4,23 @@ part of 'router.dart';
 
 class Routes {
   static const home = _SimpleRoute(pathName: '', name: 'home');
+  static const favorite = _SimpleRoute(pathName: 'favorite', name: 'favorite');
+  static const statistics = _SimpleRoute(
+    pathName: 'statistics',
+    name: 'statistics',
+  );
+  static const my = _SimpleRoute(pathName: 'my', name: 'my');
+  static const ex = _SimpleRoute(pathName: 'ex', name: 'ex');
+  static const ex1 = _SimpleRoute(
+    pathName: 'ex1',
+    name: 'ex1',
+    parentRoute: ex,
+  );
+  static const ex2 = _SimpleRoute(
+    pathName: 'ex2',
+    name: 'ex2',
+    parentRoute: ex,
+  );
 }
 
 // a class to store path
