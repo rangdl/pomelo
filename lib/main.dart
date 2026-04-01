@@ -1,7 +1,6 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/app/app.model.dart';
 import 'package:pomelo/core/app/app.provider.dart';
 import 'package:pomelo/core/routers/router.dart';
 import 'package:window_manager/window_manager.dart';

@@ -64,6 +64,7 @@ dependencies:
 
   # 动态色彩方案
   dynamic_color: ^1.7.0
+  flutter_settings_ui: ^3.0.0 # 设置页面
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1

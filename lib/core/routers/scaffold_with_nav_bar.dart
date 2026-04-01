@@ -78,6 +78,7 @@ final tabs = [
   RxTabItem(label: "收藏", icon: Icons.favorite_outline),
   RxTabItem(label: "统计", icon: Icons.bar_chart_outlined),
   RxTabItem(label: "我的", icon: Icons.person_outline),
+  RxTabItem(label: "设置", icon: Icons.settings_outlined),
   if (Helper.isDebug) RxTabItem(label: "测试", icon: Icons.support_outlined),
 ];
 

@@ -63,6 +63,15 @@ final routerConfig = GoRouter(
         StatefulShellBranch(
           routes: <RouteBase>[
             GoRoute(
+              path: Routes.settings.localPath,
+              name: Routes.settings.name,
+              builder: (context, state) => const Text('设置'),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: <RouteBase>[
+            GoRoute(
               path: Routes.ex.localPath,
               name: Routes.ex.name,
               builder: (context, state) => const ExView(),

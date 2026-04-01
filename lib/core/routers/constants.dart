@@ -10,6 +10,8 @@ class Routes {
     name: 'statistics',
   );
   static const my = _SimpleRoute(pathName: 'my', name: 'my');
+  static const settings = _SimpleRoute(pathName: 'settings', name: 'settings');
+
   static const ex = _SimpleRoute(pathName: 'ex', name: 'ex');
   static const ex1 = _SimpleRoute(
     pathName: 'ex1',
