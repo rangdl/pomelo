@@ -1,10 +1,25 @@
 import 'dart:ui';
 
 import 'package:bot_toast/bot_toast.dart';
+import 'package:flutter/material.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class Rx {
   Rx._();
   static RxToast get toast => RxToast();
+
+  static R load<R, T>(
+    AsyncValue<T> asyncValue, {
+    required R Function(T state) builder,
+  }) {
+    return asyncValue.when(
+      data: (value) => builder(value),
+      error: (error, stackTrace) {
+        return Text('Error: $error') as R;
+      },
+      loading: () => const CircularProgressIndicator() as R,
+    );
+  }
 }
 
 // 文档 https://github.com/MMMzq/bot_toast/blob/master/API_zh.md

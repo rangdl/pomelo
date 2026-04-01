@@ -1,23 +1,39 @@
 import 'dart:io';
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 
 class AppTheme {
   static ThemeData get light => ThemeData(
     useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+    colorScheme: lightColorScheme.harmonized(),
     fontFamily: fontFamilyPlatform,
   );
 
   static ThemeData get dark => ThemeData(
     useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
-      brightness: Brightness.dark,
-      seedColor: Colors.blue,
-    ),
+    colorScheme: darkColorScheme.harmonized(),
     fontFamily: fontFamilyPlatform,
+    brightness: Brightness.dark,
+    // TODO bottom sheet theme is not working
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: darkColorScheme.surface,
+    ),
   );
 }
+
+const brandColor = Color(0xFF311B92);
+const brandColorLight = Color(0xFF604CEC);
+
+final lightColorScheme = ColorScheme.fromSeed(
+  seedColor: brandColor,
+  brightness: Brightness.light,
+);
+
+final darkColorScheme = ColorScheme.fromSeed(
+  seedColor: brandColorLight,
+  brightness: Brightness.dark,
+);
 
 /// 系统字体（跨平台）
 String get fontFamilyPlatform {
