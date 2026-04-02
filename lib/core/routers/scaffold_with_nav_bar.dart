@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/routers/router.dart';
 
 import '../helper.dart';
 import '../widgets/glass.dart';
+import 'router.provider.dart';
 
 // stack to track changes in navigationShell.currentIndex
 // home is always at index 0 and at the start and should be the last before popping
@@ -23,13 +25,16 @@ class ScaffoldWithNavBar extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final navs = ref.watch(navsSortProvider);
     final size = MediaQuery.of(context).size;
     // 竖屏
     final isVertical = size.height > size.width;
-    return Scaffold(body: isVertical ? buildVertical() : buildHorizontal());
+    return Scaffold(
+      body: isVertical ? buildVertical(navs) : buildHorizontal(navs),
+    );
   }
 
-  Widget buildVertical() {
+  Widget buildVertical(List<Nav> navs) {
     return Stack(
       alignment: AlignmentGeometry.bottomCenter,
       children: [
@@ -37,20 +42,20 @@ class ScaffoldWithNavBar extends HookConsumerWidget {
         RxBottomBar(
           currentIndex: navigationShell.currentIndex,
           onTap: _onTap,
-          tabs: tabs,
+          tabs: navs,
         ),
       ],
     );
   }
 
-  Widget buildHorizontal() {
+  Widget buildHorizontal(List<Nav> navs) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RxSideBar(
           currentIndex: navigationShell.currentIndex,
           onTap: _onTap,
-          tabs: tabs,
+          tabs: navs,
         ),
         VerticalDivider(width: 0.5, thickness: 0.5),
         Expanded(
@@ -73,26 +78,10 @@ class ScaffoldWithNavBar extends HookConsumerWidget {
   }
 }
 
-final tabs = [
-  RxTabItem(label: "首页", icon: Icons.home_outlined),
-  RxTabItem(label: "收藏", icon: Icons.favorite_outline),
-  RxTabItem(label: "统计", icon: Icons.bar_chart_outlined),
-  RxTabItem(label: "我的", icon: Icons.person_outline),
-  RxTabItem(label: "设置", icon: Icons.settings_outlined),
-  if (Helper.isDebug) RxTabItem(label: "测试", icon: Icons.support_outlined),
-];
-
-class RxTabItem {
-  final String label;
-  final IconData icon;
-
-  RxTabItem({required this.label, required this.icon});
-}
-
 class RxBottomBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final List<RxTabItem> tabs;
+  final List<Nav> tabs;
   final bool animate;
   final Color? activeColor;
   final Color? baseColor;
@@ -178,7 +167,7 @@ class RxBottomBar extends StatelessWidget {
 class RxSideBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
-  final List<RxTabItem> tabs;
+  final List<Nav> tabs;
   final Widget? header;
   final Widget? footer;
   final double width;

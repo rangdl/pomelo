@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/example/ex.view.dart';
 import '../../features/home/home.view.dart';
+import '../../features/settings/settings.view.dart';
 import '../../global.dart';
 import 'scaffold_with_nav_bar.dart';
 
@@ -65,7 +66,7 @@ final routerConfig = GoRouter(
             GoRoute(
               path: Routes.settings.localPath,
               name: Routes.settings.name,
-              builder: (context, state) => const Text('设置'),
+              builder: (context, state) => const SettingsView(),
             ),
           ],
         ),

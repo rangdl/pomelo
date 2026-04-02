@@ -2,7 +2,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/app/app.provider.dart';
-import 'package:pomelo/core/routers/router.dart';
+import 'package:pomelo/core/routers/router.provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/helper.dart';
@@ -15,12 +15,13 @@ void main() async {
 
   await _runPlatformSpecificCode();
 
-  final container = ProviderContainer();
+  container = ProviderContainer();
 
   // Configure the App Metadata
   await initialize();
 
   await container.read(appSettingsProvider.future);
+  await container.read(settingsNavsAsyncProvider.future);
 
   runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
 }
@@ -59,7 +60,7 @@ class MyApp extends HookConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
-      routerConfig: routerConfig,
+      routerConfig: ref.watch(routerProvider),
       builder: BotToastInit(), //1.调用BotToastInit
     );
   }

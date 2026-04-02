@@ -1,5 +1,7 @@
 // to store names of routes
 
+// ignore_for_file: unused_element_parameter
+
 part of 'router.dart';
 
 class Routes {
@@ -11,6 +13,11 @@ class Routes {
   );
   static const my = _SimpleRoute(pathName: 'my', name: 'my');
   static const settings = _SimpleRoute(pathName: 'settings', name: 'settings');
+  static const settingsHome = _SimpleRoute(
+    pathName: 'home',
+    name: 'settingsHome',
+    parentRoute: settings,
+  );
 
   static const ex = _SimpleRoute(pathName: 'ex', name: 'ex');
   static const ex1 = _SimpleRoute(
@@ -48,4 +55,26 @@ class _SimpleRoute {
   /// the local path of the route
   String get localPath =>
       '/$pathName${pathParamName != null ? '/:$pathParamName' : ''}';
+
+  // 带参数跳转路径
+  String paramPath(String param) =>
+      '/$pathName${pathParamName != null ? '/:$param' : ''}';
+}
+
+class Nav {
+  final String id;
+  final num sort;
+  final bool visible;
+  final String label;
+  final IconData icon;
+  final StatefulShellBranch route;
+
+  Nav({
+    required this.id,
+    required this.sort,
+    required this.label,
+    required this.icon,
+    required this.route,
+    this.visible = true,
+  });
 }
