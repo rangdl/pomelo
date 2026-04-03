@@ -4,11 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/experimental/persist.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart';
-import 'package:pomelo/core/helper.dart';
-import 'package:pomelo/global.dart';
 import 'package:riverpod_sqflite/riverpod_sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../../global.dart';
+import '../helper.dart';
 import 'app.model.dart';
 
 // 创建 Storage 实例，全局共享
@@ -20,7 +20,7 @@ final storageProvider = FutureProvider<JsonSqFliteStorage>((ref) async {
   return JsonSqFliteStorage.open(join(appDocumentsDir.path, 'riverpod.db'));
 });
 
-class _AppSettingsNotifier extends AsyncNotifier<AppSettings> {
+class _AppSettingsAsyncNotifier extends AsyncNotifier<AppSettings> {
   @override
   Future<AppSettings> build() async {
     await persist(
@@ -42,7 +42,11 @@ class _AppSettingsNotifier extends AsyncNotifier<AppSettings> {
   }
 }
 
-final appSettingsProvider =
-    AsyncNotifierProvider<_AppSettingsNotifier, AppSettings>(
-      () => _AppSettingsNotifier(),
+final appSettingsAsyncProvider =
+    AsyncNotifierProvider<_AppSettingsAsyncNotifier, AppSettings>(
+      () => _AppSettingsAsyncNotifier(),
     );
+
+final appSettingsProvider = Provider<AppSettings>(
+  (ref) => ref.watch(appSettingsAsyncProvider).value!,
+);

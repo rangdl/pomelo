@@ -20,8 +20,8 @@ void main() async {
   // Configure the App Metadata
   await initialize();
 
-  await container.read(appSettingsProvider.future);
-  await container.read(settingsNavsAsyncProvider.future);
+  // 持久化的provider 等待初始化完毕
+  await initializeProvider();
 
   runApp(UncontrolledProviderScope(container: container, child: const MyApp()));
 }
@@ -49,9 +49,7 @@ class MyApp extends HookConsumerWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(
-      appSettingsProvider.select((v) => v.value!.themeMode),
-    );
+    final themeMode = ref.watch(appSettingsProvider.select((v) => v.themeMode));
 
     return MaterialApp.router(
       title: 'Pomelo',

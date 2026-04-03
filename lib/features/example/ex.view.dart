@@ -2,18 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../../core/app/app.provider.dart';
-import '../../core/routers/router.dart';
+import '../../core/routers/constants.dart';
 import '../../core/rx.dart';
 
 class ExView extends HookConsumerWidget {
   const ExView({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(
-      appSettingsProvider.select((v) => v.value!.themeMode),
-    );
-    // return Fx.box().bg.black.child(Fx.text('page: $name'));
     return Scaffold(
       appBar: AppBar(
         title: Text('示例'),
@@ -25,40 +20,6 @@ class ExView extends HookConsumerWidget {
       ),
       body: ListView(
         children: [
-          ListTile(
-            title: Text('外观'),
-            trailing: SizedBox(
-              width: 330,
-              child: SegmentedButton(
-                expandedInsets: const EdgeInsets.only(top: 8.0),
-                showSelectedIcon: true,
-                selectedIcon: const Icon(Icons.check),
-                selected: {themeMode},
-                onSelectionChanged: (newSelection) {
-                  ref
-                      .read(appSettingsProvider.notifier)
-                      .setThemeMode(newSelection.first);
-                },
-                segments: [
-                  ButtonSegment(
-                    value: ThemeMode.light,
-                    icon: Icon(Icons.light_mode),
-                    label: Text('浅色'),
-                  ),
-                  ButtonSegment(
-                    value: ThemeMode.system,
-                    icon: Icon(Icons.auto_awesome),
-                    label: Text('自动'),
-                  ),
-                  ButtonSegment(
-                    value: ThemeMode.dark,
-                    icon: Icon(Icons.dark_mode),
-                    label: Text('深色'),
-                  ),
-                ],
-              ),
-            ),
-          ),
           ListTile(
             title: Text('示例1'),
             onTap: () => GoRouter.of(context).pushNamed(Routes.ex1.name),
@@ -83,20 +44,6 @@ class Ex1View extends HookConsumerWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextButton(
-            onPressed: () {
-              final notifier = ref.read(appSettingsProvider.notifier);
-              final themeMode = ref.watch(
-                appSettingsProvider.select((v) => v.value!.themeMode),
-              );
-              if (themeMode == ThemeMode.dark) {
-                notifier.setThemeMode(ThemeMode.light);
-              } else {
-                notifier.setThemeMode(ThemeMode.dark);
-              }
-            },
-            child: Text('切换'),
-          ),
           TextButton(
             onPressed: () {
               Rx.toast.success("Welcome back!");

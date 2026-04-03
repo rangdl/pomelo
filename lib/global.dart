@@ -6,6 +6,9 @@ import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/helper.dart';
 
+import 'core/app/app.provider.dart';
+import 'core/routers/router.provider.dart';
+
 final navigatorKey = GlobalKey<NavigatorState>();
 
 late String appName;
@@ -19,4 +22,9 @@ Future<void> initialize() async {
     appDocumentsDir = Directory(join(appDocumentsDir.path, appName));
   }
   await appDocumentsDir.create(recursive: true);
+}
+
+Future<void> initializeProvider() async {
+  await container.read(appSettingsAsyncProvider.future);
+  await container.read(settingsNavsAsyncProvider.future);
 }

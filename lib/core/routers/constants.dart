@@ -2,7 +2,8 @@
 
 // ignore_for_file: unused_element_parameter
 
-part of 'router.dart';
+import 'package:flutter/widgets.dart';
+import 'package:go_router/go_router.dart';
 
 class Routes {
   static const home = _SimpleRoute(pathName: '', name: 'home');

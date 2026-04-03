@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/routers/router.dart';
 
 import '../helper.dart';
 import '../widgets/glass.dart';
+import 'constants.dart';
 import 'router.provider.dart';
 
 // stack to track changes in navigationShell.currentIndex
