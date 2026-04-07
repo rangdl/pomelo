@@ -4,9 +4,12 @@
     "Fluxy",
     "navs",
     "riverpod",
+    "shadcn",
+    "smtc",
+    "Spotube",
     "sqflite"
   ],
-  "dart.flutterSdkPath": ".fvm/versions/3.41.5",
+  "dart.flutterSdkPath": ".fvm/versions/3.35.7",
   "explorer.fileNesting.enabled": true,
   "explorer.fileNesting.expand": false,
   "explorer.fileNesting.patterns": {
@@ -14,9 +17,7 @@
     "README.md": "LICENSE,CODE_OF_CONDUCT.md,CONTRIBUTING.md,SECURITY.md,CONTRIBUTION.md,CHANGELOG.md,PRIVACY_POLICY.md",
     "*.dart": "${capture}.g.dart,${capture}.freezed.dart"
   },
-    "workbench.colorCustomizations": {
-    // "activityBar.background": "#3c3f41",
-    // "titleBar.activeBackground": "#3c3f41",
+  "workbench.colorCustomizations": {
     "titleBar.activeForeground": "#bbbbbb",
     "editor.background": "#2b2b2b"
   }
