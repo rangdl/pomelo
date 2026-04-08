@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   dynamic_color
   media_kit_libs_windows_audio
   screen_retriever_windows
+  sqlite3_flutter_libs
   window_manager
 )
 

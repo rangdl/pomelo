@@ -16,6 +16,8 @@ import 'services/logger/logger.dart';
 import 'utils/platform.dart';
 
 void main() async {
+  // Configure the App Metadata
+  await initialize();
   AppLogger.initialize(false);
 
   AppLogger.runZoned(() async {
@@ -27,8 +29,6 @@ void main() async {
     if (kIsWindows) {
       await SMTCWindows.initialize();
     }
-    // Configure the App Metadata
-    await initialize();
     // 持久化的provider 等待初始化完毕
     await initializeProvider();
     await _runPlatformSpecificCode();

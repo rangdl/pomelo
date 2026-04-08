@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
+import 'package:pomelo/global.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide join;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:logger/logger.dart';
@@ -96,10 +97,14 @@ class AppLogger {
     }
 
     if (kIsLinux) {
-      dir = join(_getXdgStateHome(), "spotube");
+      dir = join(_getXdgStateHome(), appName);
     }
 
-    final file = File(join(dir, ".spotube_logs"));
+    if (kIsWindows) {
+      dir = join(dir, appName);
+    }
+
+    final file = File(join(dir, ".logs"));
     if (!await file.exists()) {
       await file.create(recursive: true);
     }

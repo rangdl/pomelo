@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../../provider/audio_player/audio_player.dart';
 
-// import '../../collections/env.dart';
 import '../../models/metadata/metadata.dart';
 import '../../utils/platform.dart';
 import '..//audio_services/windows_audio_service.dart';
@@ -25,20 +24,12 @@ class AudioServices with WidgetsBindingObserver {
     final mobile = kIsMobile || kIsMacOS || kIsLinux
         ? await AudioService.init(
             builder: () => MobileAudioService(playback),
-            config: AudioServiceConfig(
-              androidNotificationChannelId: 'oss.krtirtho.spotube',
-              // androidNotificationChannelId: switch ((
-              //   kIsLinux,
-              //   Env.releaseChannel,
-              // )) {
-              //   (true, _) => "spotube",
-              //   (_, ReleaseChannel.stable) => "oss.krtirtho.spotube",
-              //   (_, ReleaseChannel.nightly) => "oss.krtirtho.spotube.nightly",
-              // },
-              androidNotificationChannelName: 'Spotube',
+            config: const AudioServiceConfig(
+              androidNotificationChannelId: 'oss.rang.pomelo',
+              androidNotificationChannelName: 'Pomelo',
               androidNotificationOngoing: false,
               androidStopForegroundOnPause: false,
-              androidNotificationChannelDescription: "Spotube Media Controls",
+              androidNotificationChannelDescription: "Pomelo Media Controls",
             ),
           )
         : null;

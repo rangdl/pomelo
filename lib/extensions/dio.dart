@@ -22,7 +22,7 @@ extension ChunkDownloaderDioExtension on Dio {
     final tempSaveDir = Directory(
       join(
         tempRootDir.path,
-        'Spotube',
+        'Pomelo',
         '.chunk_dl_${targetFile.uri.pathSegments.last}',
       ),
     );
@@ -55,15 +55,14 @@ extension ChunkDownloaderDioExtension on Dio {
         }
       }
 
-      supportsRange = headResp?.statusCode == 206 ||
+      supportsRange =
+          headResp?.statusCode == 206 ||
           headResp?.headers.value(HttpHeaders.acceptRangesHeader) == 'bytes';
 
       if (totalLength == null || totalLength <= 1) {
         final resp = await get<ResponseBody>(
           urlPath,
-          options: Options(
-            responseType: ResponseType.stream,
-          ),
+          options: Options(responseType: ResponseType.stream),
           queryParameters: queryParameters,
           cancelToken: cancelToken,
         );
@@ -86,7 +85,7 @@ extension ChunkDownloaderDioExtension on Dio {
         totalLength = len;
         supportsRange =
             resp.headers.value(HttpHeaders.acceptRangesHeader)?.toLowerCase() ==
-                'bytes';
+            'bytes';
       }
 
       if (!supportsRange || connections <= 1) {

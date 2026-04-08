@@ -6,8 +6,8 @@ part of 'app.model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_AppSettingsImpl _$AppSettingsImplFromJson(Map<String, dynamic> json) =>
-    _AppSettingsImpl(
+_$AppSettingsImplImpl _$$AppSettingsImplImplFromJson(Map json) =>
+    _$AppSettingsImplImpl(
       themeMode: json['themeMode'] == null
           ? ThemeMode.system
           : const ThemeModeConverter().fromJson(json['themeMode'] as String),
@@ -15,9 +15,10 @@ _AppSettingsImpl _$AppSettingsImplFromJson(Map<String, dynamic> json) =>
       notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
     );
 
-Map<String, dynamic> _$AppSettingsImplToJson(_AppSettingsImpl instance) =>
-    <String, dynamic>{
-      'themeMode': const ThemeModeConverter().toJson(instance.themeMode),
-      'language': instance.language,
-      'notificationsEnabled': instance.notificationsEnabled,
-    };
+Map<String, dynamic> _$$AppSettingsImplImplToJson(
+  _$AppSettingsImplImpl instance,
+) => <String, dynamic>{
+  'themeMode': const ThemeModeConverter().toJson(instance.themeMode),
+  'language': instance.language,
+  'notificationsEnabled': instance.notificationsEnabled,
+};
