@@ -8,7 +8,7 @@
 PRODUCT_NAME = pomelo
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.pomelo
+PRODUCT_BUNDLE_IDENTIFIER = cn.rang.pomelo
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 cn.rang. All rights reserved.

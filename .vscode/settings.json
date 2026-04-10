@@ -1,6 +1,8 @@
 {
   "cSpell.words": [
+    "configurators",
     "Cupertino",
+    "fluentui",
     "Fluxy",
     "navs",
     "riverpod",
@@ -8,6 +10,7 @@
     "smtc",
     "Spotube",
     "sqflite",
+    "titlebar",
     "typeconverters"
   ],
   "dart.flutterSdkPath": ".fvm/versions/3.35.7",

@@ -3,6 +3,773 @@
 part of 'database.dart';
 
 // ignore_for_file: type=lint
+class $PreferencesTableTable extends PreferencesTable
+    with TableInfo<$PreferencesTableTable, PreferencesTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PreferencesTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _checkUpdateMeta = const VerificationMeta(
+    'checkUpdate',
+  );
+  @override
+  late final GeneratedColumn<bool> checkUpdate = GeneratedColumn<bool>(
+    'check_update',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("check_update" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _normalizeAudioMeta = const VerificationMeta(
+    'normalizeAudio',
+  );
+  @override
+  late final GeneratedColumn<bool> normalizeAudio = GeneratedColumn<bool>(
+    'normalize_audio',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("normalize_audio" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _showSystemTrayIconMeta =
+      const VerificationMeta('showSystemTrayIcon');
+  @override
+  late final GeneratedColumn<bool> showSystemTrayIcon = GeneratedColumn<bool>(
+    'show_system_tray_icon',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("show_system_tray_icon" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _systemTitleBarMeta = const VerificationMeta(
+    'systemTitleBar',
+  );
+  @override
+  late final GeneratedColumn<bool> systemTitleBar = GeneratedColumn<bool>(
+    'system_title_bar',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("system_title_bar" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<CloseBehavior, String>
+  closeBehavior =
+      GeneratedColumn<String>(
+        'close_behavior',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(CloseBehavior.close.name),
+      ).withConverter<CloseBehavior>(
+        $PreferencesTableTable.$convertercloseBehavior,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<SpotubeColor, String>
+  accentColorScheme =
+      GeneratedColumn<String>(
+        'accent_color_scheme',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant("Slate:0xff64748b"),
+      ).withConverter<SpotubeColor>(
+        $PreferencesTableTable.$converteraccentColorScheme,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<LayoutMode, String> layoutMode =
+      GeneratedColumn<String>(
+        'layout_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(LayoutMode.adaptive.name),
+      ).withConverter<LayoutMode>($PreferencesTableTable.$converterlayoutMode);
+  @override
+  late final GeneratedColumnWithTypeConverter<Locale, String> locale =
+      GeneratedColumn<String>(
+        'locale',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(
+          '{"languageCode":"system","countryCode":"system"}',
+        ),
+      ).withConverter<Locale>($PreferencesTableTable.$converterlocale);
+  static const VerificationMeta _downloadLocationMeta = const VerificationMeta(
+    'downloadLocation',
+  );
+  @override
+  late final GeneratedColumn<String> downloadLocation = GeneratedColumn<String>(
+    'download_location',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(""),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<ThemeMode, String> themeMode =
+      GeneratedColumn<String>(
+        'theme_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(ThemeMode.system.name),
+      ).withConverter<ThemeMode>($PreferencesTableTable.$converterthemeMode);
+  static const VerificationMeta _discordPresenceMeta = const VerificationMeta(
+    'discordPresence',
+  );
+  @override
+  late final GeneratedColumn<bool> discordPresence = GeneratedColumn<bool>(
+    'discord_presence',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("discord_presence" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    checkUpdate,
+    normalizeAudio,
+    showSystemTrayIcon,
+    systemTitleBar,
+    closeBehavior,
+    accentColorScheme,
+    layoutMode,
+    locale,
+    downloadLocation,
+    themeMode,
+    discordPresence,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'preferences_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PreferencesTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('check_update')) {
+      context.handle(
+        _checkUpdateMeta,
+        checkUpdate.isAcceptableOrUnknown(
+          data['check_update']!,
+          _checkUpdateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('normalize_audio')) {
+      context.handle(
+        _normalizeAudioMeta,
+        normalizeAudio.isAcceptableOrUnknown(
+          data['normalize_audio']!,
+          _normalizeAudioMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_system_tray_icon')) {
+      context.handle(
+        _showSystemTrayIconMeta,
+        showSystemTrayIcon.isAcceptableOrUnknown(
+          data['show_system_tray_icon']!,
+          _showSystemTrayIconMeta,
+        ),
+      );
+    }
+    if (data.containsKey('system_title_bar')) {
+      context.handle(
+        _systemTitleBarMeta,
+        systemTitleBar.isAcceptableOrUnknown(
+          data['system_title_bar']!,
+          _systemTitleBarMeta,
+        ),
+      );
+    }
+    if (data.containsKey('download_location')) {
+      context.handle(
+        _downloadLocationMeta,
+        downloadLocation.isAcceptableOrUnknown(
+          data['download_location']!,
+          _downloadLocationMeta,
+        ),
+      );
+    }
+    if (data.containsKey('discord_presence')) {
+      context.handle(
+        _discordPresenceMeta,
+        discordPresence.isAcceptableOrUnknown(
+          data['discord_presence']!,
+          _discordPresenceMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PreferencesTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PreferencesTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      checkUpdate: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}check_update'],
+      )!,
+      normalizeAudio: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}normalize_audio'],
+      )!,
+      showSystemTrayIcon: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_system_tray_icon'],
+      )!,
+      systemTitleBar: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}system_title_bar'],
+      )!,
+      closeBehavior: $PreferencesTableTable.$convertercloseBehavior.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}close_behavior'],
+        )!,
+      ),
+      accentColorScheme: $PreferencesTableTable.$converteraccentColorScheme
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}accent_color_scheme'],
+            )!,
+          ),
+      layoutMode: $PreferencesTableTable.$converterlayoutMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}layout_mode'],
+        )!,
+      ),
+      locale: $PreferencesTableTable.$converterlocale.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}locale'],
+        )!,
+      ),
+      downloadLocation: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}download_location'],
+      )!,
+      themeMode: $PreferencesTableTable.$converterthemeMode.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}theme_mode'],
+        )!,
+      ),
+      discordPresence: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}discord_presence'],
+      )!,
+    );
+  }
+
+  @override
+  $PreferencesTableTable createAlias(String alias) {
+    return $PreferencesTableTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<CloseBehavior, String, String>
+  $convertercloseBehavior = const EnumNameConverter<CloseBehavior>(
+    CloseBehavior.values,
+  );
+  static TypeConverter<SpotubeColor, String> $converteraccentColorScheme =
+      const SpotubeColorConverter();
+  static JsonTypeConverter2<LayoutMode, String, String> $converterlayoutMode =
+      const EnumNameConverter<LayoutMode>(LayoutMode.values);
+  static TypeConverter<Locale, String> $converterlocale =
+      const LocaleConverter();
+  static JsonTypeConverter2<ThemeMode, String, String> $converterthemeMode =
+      const EnumNameConverter<ThemeMode>(ThemeMode.values);
+}
+
+class PreferencesTableData extends DataClass
+    implements Insertable<PreferencesTableData> {
+  final int id;
+  final bool checkUpdate;
+  final bool normalizeAudio;
+  final bool showSystemTrayIcon;
+  final bool systemTitleBar;
+  final CloseBehavior closeBehavior;
+  final SpotubeColor accentColorScheme;
+  final LayoutMode layoutMode;
+  final Locale locale;
+  final String downloadLocation;
+  final ThemeMode themeMode;
+  final bool discordPresence;
+  const PreferencesTableData({
+    required this.id,
+    required this.checkUpdate,
+    required this.normalizeAudio,
+    required this.showSystemTrayIcon,
+    required this.systemTitleBar,
+    required this.closeBehavior,
+    required this.accentColorScheme,
+    required this.layoutMode,
+    required this.locale,
+    required this.downloadLocation,
+    required this.themeMode,
+    required this.discordPresence,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['check_update'] = Variable<bool>(checkUpdate);
+    map['normalize_audio'] = Variable<bool>(normalizeAudio);
+    map['show_system_tray_icon'] = Variable<bool>(showSystemTrayIcon);
+    map['system_title_bar'] = Variable<bool>(systemTitleBar);
+    {
+      map['close_behavior'] = Variable<String>(
+        $PreferencesTableTable.$convertercloseBehavior.toSql(closeBehavior),
+      );
+    }
+    {
+      map['accent_color_scheme'] = Variable<String>(
+        $PreferencesTableTable.$converteraccentColorScheme.toSql(
+          accentColorScheme,
+        ),
+      );
+    }
+    {
+      map['layout_mode'] = Variable<String>(
+        $PreferencesTableTable.$converterlayoutMode.toSql(layoutMode),
+      );
+    }
+    {
+      map['locale'] = Variable<String>(
+        $PreferencesTableTable.$converterlocale.toSql(locale),
+      );
+    }
+    map['download_location'] = Variable<String>(downloadLocation);
+    {
+      map['theme_mode'] = Variable<String>(
+        $PreferencesTableTable.$converterthemeMode.toSql(themeMode),
+      );
+    }
+    map['discord_presence'] = Variable<bool>(discordPresence);
+    return map;
+  }
+
+  PreferencesTableCompanion toCompanion(bool nullToAbsent) {
+    return PreferencesTableCompanion(
+      id: Value(id),
+      checkUpdate: Value(checkUpdate),
+      normalizeAudio: Value(normalizeAudio),
+      showSystemTrayIcon: Value(showSystemTrayIcon),
+      systemTitleBar: Value(systemTitleBar),
+      closeBehavior: Value(closeBehavior),
+      accentColorScheme: Value(accentColorScheme),
+      layoutMode: Value(layoutMode),
+      locale: Value(locale),
+      downloadLocation: Value(downloadLocation),
+      themeMode: Value(themeMode),
+      discordPresence: Value(discordPresence),
+    );
+  }
+
+  factory PreferencesTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PreferencesTableData(
+      id: serializer.fromJson<int>(json['id']),
+      checkUpdate: serializer.fromJson<bool>(json['checkUpdate']),
+      normalizeAudio: serializer.fromJson<bool>(json['normalizeAudio']),
+      showSystemTrayIcon: serializer.fromJson<bool>(json['showSystemTrayIcon']),
+      systemTitleBar: serializer.fromJson<bool>(json['systemTitleBar']),
+      closeBehavior: $PreferencesTableTable.$convertercloseBehavior.fromJson(
+        serializer.fromJson<String>(json['closeBehavior']),
+      ),
+      accentColorScheme: serializer.fromJson<SpotubeColor>(
+        json['accentColorScheme'],
+      ),
+      layoutMode: $PreferencesTableTable.$converterlayoutMode.fromJson(
+        serializer.fromJson<String>(json['layoutMode']),
+      ),
+      locale: serializer.fromJson<Locale>(json['locale']),
+      downloadLocation: serializer.fromJson<String>(json['downloadLocation']),
+      themeMode: $PreferencesTableTable.$converterthemeMode.fromJson(
+        serializer.fromJson<String>(json['themeMode']),
+      ),
+      discordPresence: serializer.fromJson<bool>(json['discordPresence']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'checkUpdate': serializer.toJson<bool>(checkUpdate),
+      'normalizeAudio': serializer.toJson<bool>(normalizeAudio),
+      'showSystemTrayIcon': serializer.toJson<bool>(showSystemTrayIcon),
+      'systemTitleBar': serializer.toJson<bool>(systemTitleBar),
+      'closeBehavior': serializer.toJson<String>(
+        $PreferencesTableTable.$convertercloseBehavior.toJson(closeBehavior),
+      ),
+      'accentColorScheme': serializer.toJson<SpotubeColor>(accentColorScheme),
+      'layoutMode': serializer.toJson<String>(
+        $PreferencesTableTable.$converterlayoutMode.toJson(layoutMode),
+      ),
+      'locale': serializer.toJson<Locale>(locale),
+      'downloadLocation': serializer.toJson<String>(downloadLocation),
+      'themeMode': serializer.toJson<String>(
+        $PreferencesTableTable.$converterthemeMode.toJson(themeMode),
+      ),
+      'discordPresence': serializer.toJson<bool>(discordPresence),
+    };
+  }
+
+  PreferencesTableData copyWith({
+    int? id,
+    bool? checkUpdate,
+    bool? normalizeAudio,
+    bool? showSystemTrayIcon,
+    bool? systemTitleBar,
+    CloseBehavior? closeBehavior,
+    SpotubeColor? accentColorScheme,
+    LayoutMode? layoutMode,
+    Locale? locale,
+    String? downloadLocation,
+    ThemeMode? themeMode,
+    bool? discordPresence,
+  }) => PreferencesTableData(
+    id: id ?? this.id,
+    checkUpdate: checkUpdate ?? this.checkUpdate,
+    normalizeAudio: normalizeAudio ?? this.normalizeAudio,
+    showSystemTrayIcon: showSystemTrayIcon ?? this.showSystemTrayIcon,
+    systemTitleBar: systemTitleBar ?? this.systemTitleBar,
+    closeBehavior: closeBehavior ?? this.closeBehavior,
+    accentColorScheme: accentColorScheme ?? this.accentColorScheme,
+    layoutMode: layoutMode ?? this.layoutMode,
+    locale: locale ?? this.locale,
+    downloadLocation: downloadLocation ?? this.downloadLocation,
+    themeMode: themeMode ?? this.themeMode,
+    discordPresence: discordPresence ?? this.discordPresence,
+  );
+  PreferencesTableData copyWithCompanion(PreferencesTableCompanion data) {
+    return PreferencesTableData(
+      id: data.id.present ? data.id.value : this.id,
+      checkUpdate: data.checkUpdate.present
+          ? data.checkUpdate.value
+          : this.checkUpdate,
+      normalizeAudio: data.normalizeAudio.present
+          ? data.normalizeAudio.value
+          : this.normalizeAudio,
+      showSystemTrayIcon: data.showSystemTrayIcon.present
+          ? data.showSystemTrayIcon.value
+          : this.showSystemTrayIcon,
+      systemTitleBar: data.systemTitleBar.present
+          ? data.systemTitleBar.value
+          : this.systemTitleBar,
+      closeBehavior: data.closeBehavior.present
+          ? data.closeBehavior.value
+          : this.closeBehavior,
+      accentColorScheme: data.accentColorScheme.present
+          ? data.accentColorScheme.value
+          : this.accentColorScheme,
+      layoutMode: data.layoutMode.present
+          ? data.layoutMode.value
+          : this.layoutMode,
+      locale: data.locale.present ? data.locale.value : this.locale,
+      downloadLocation: data.downloadLocation.present
+          ? data.downloadLocation.value
+          : this.downloadLocation,
+      themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
+      discordPresence: data.discordPresence.present
+          ? data.discordPresence.value
+          : this.discordPresence,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PreferencesTableData(')
+          ..write('id: $id, ')
+          ..write('checkUpdate: $checkUpdate, ')
+          ..write('normalizeAudio: $normalizeAudio, ')
+          ..write('showSystemTrayIcon: $showSystemTrayIcon, ')
+          ..write('systemTitleBar: $systemTitleBar, ')
+          ..write('closeBehavior: $closeBehavior, ')
+          ..write('accentColorScheme: $accentColorScheme, ')
+          ..write('layoutMode: $layoutMode, ')
+          ..write('locale: $locale, ')
+          ..write('downloadLocation: $downloadLocation, ')
+          ..write('themeMode: $themeMode, ')
+          ..write('discordPresence: $discordPresence')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    checkUpdate,
+    normalizeAudio,
+    showSystemTrayIcon,
+    systemTitleBar,
+    closeBehavior,
+    accentColorScheme,
+    layoutMode,
+    locale,
+    downloadLocation,
+    themeMode,
+    discordPresence,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PreferencesTableData &&
+          other.id == this.id &&
+          other.checkUpdate == this.checkUpdate &&
+          other.normalizeAudio == this.normalizeAudio &&
+          other.showSystemTrayIcon == this.showSystemTrayIcon &&
+          other.systemTitleBar == this.systemTitleBar &&
+          other.closeBehavior == this.closeBehavior &&
+          other.accentColorScheme == this.accentColorScheme &&
+          other.layoutMode == this.layoutMode &&
+          other.locale == this.locale &&
+          other.downloadLocation == this.downloadLocation &&
+          other.themeMode == this.themeMode &&
+          other.discordPresence == this.discordPresence);
+}
+
+class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
+  final Value<int> id;
+  final Value<bool> checkUpdate;
+  final Value<bool> normalizeAudio;
+  final Value<bool> showSystemTrayIcon;
+  final Value<bool> systemTitleBar;
+  final Value<CloseBehavior> closeBehavior;
+  final Value<SpotubeColor> accentColorScheme;
+  final Value<LayoutMode> layoutMode;
+  final Value<Locale> locale;
+  final Value<String> downloadLocation;
+  final Value<ThemeMode> themeMode;
+  final Value<bool> discordPresence;
+  const PreferencesTableCompanion({
+    this.id = const Value.absent(),
+    this.checkUpdate = const Value.absent(),
+    this.normalizeAudio = const Value.absent(),
+    this.showSystemTrayIcon = const Value.absent(),
+    this.systemTitleBar = const Value.absent(),
+    this.closeBehavior = const Value.absent(),
+    this.accentColorScheme = const Value.absent(),
+    this.layoutMode = const Value.absent(),
+    this.locale = const Value.absent(),
+    this.downloadLocation = const Value.absent(),
+    this.themeMode = const Value.absent(),
+    this.discordPresence = const Value.absent(),
+  });
+  PreferencesTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.checkUpdate = const Value.absent(),
+    this.normalizeAudio = const Value.absent(),
+    this.showSystemTrayIcon = const Value.absent(),
+    this.systemTitleBar = const Value.absent(),
+    this.closeBehavior = const Value.absent(),
+    this.accentColorScheme = const Value.absent(),
+    this.layoutMode = const Value.absent(),
+    this.locale = const Value.absent(),
+    this.downloadLocation = const Value.absent(),
+    this.themeMode = const Value.absent(),
+    this.discordPresence = const Value.absent(),
+  });
+  static Insertable<PreferencesTableData> custom({
+    Expression<int>? id,
+    Expression<bool>? checkUpdate,
+    Expression<bool>? normalizeAudio,
+    Expression<bool>? showSystemTrayIcon,
+    Expression<bool>? systemTitleBar,
+    Expression<String>? closeBehavior,
+    Expression<String>? accentColorScheme,
+    Expression<String>? layoutMode,
+    Expression<String>? locale,
+    Expression<String>? downloadLocation,
+    Expression<String>? themeMode,
+    Expression<bool>? discordPresence,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (checkUpdate != null) 'check_update': checkUpdate,
+      if (normalizeAudio != null) 'normalize_audio': normalizeAudio,
+      if (showSystemTrayIcon != null)
+        'show_system_tray_icon': showSystemTrayIcon,
+      if (systemTitleBar != null) 'system_title_bar': systemTitleBar,
+      if (closeBehavior != null) 'close_behavior': closeBehavior,
+      if (accentColorScheme != null) 'accent_color_scheme': accentColorScheme,
+      if (layoutMode != null) 'layout_mode': layoutMode,
+      if (locale != null) 'locale': locale,
+      if (downloadLocation != null) 'download_location': downloadLocation,
+      if (themeMode != null) 'theme_mode': themeMode,
+      if (discordPresence != null) 'discord_presence': discordPresence,
+    });
+  }
+
+  PreferencesTableCompanion copyWith({
+    Value<int>? id,
+    Value<bool>? checkUpdate,
+    Value<bool>? normalizeAudio,
+    Value<bool>? showSystemTrayIcon,
+    Value<bool>? systemTitleBar,
+    Value<CloseBehavior>? closeBehavior,
+    Value<SpotubeColor>? accentColorScheme,
+    Value<LayoutMode>? layoutMode,
+    Value<Locale>? locale,
+    Value<String>? downloadLocation,
+    Value<ThemeMode>? themeMode,
+    Value<bool>? discordPresence,
+  }) {
+    return PreferencesTableCompanion(
+      id: id ?? this.id,
+      checkUpdate: checkUpdate ?? this.checkUpdate,
+      normalizeAudio: normalizeAudio ?? this.normalizeAudio,
+      showSystemTrayIcon: showSystemTrayIcon ?? this.showSystemTrayIcon,
+      systemTitleBar: systemTitleBar ?? this.systemTitleBar,
+      closeBehavior: closeBehavior ?? this.closeBehavior,
+      accentColorScheme: accentColorScheme ?? this.accentColorScheme,
+      layoutMode: layoutMode ?? this.layoutMode,
+      locale: locale ?? this.locale,
+      downloadLocation: downloadLocation ?? this.downloadLocation,
+      themeMode: themeMode ?? this.themeMode,
+      discordPresence: discordPresence ?? this.discordPresence,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (checkUpdate.present) {
+      map['check_update'] = Variable<bool>(checkUpdate.value);
+    }
+    if (normalizeAudio.present) {
+      map['normalize_audio'] = Variable<bool>(normalizeAudio.value);
+    }
+    if (showSystemTrayIcon.present) {
+      map['show_system_tray_icon'] = Variable<bool>(showSystemTrayIcon.value);
+    }
+    if (systemTitleBar.present) {
+      map['system_title_bar'] = Variable<bool>(systemTitleBar.value);
+    }
+    if (closeBehavior.present) {
+      map['close_behavior'] = Variable<String>(
+        $PreferencesTableTable.$convertercloseBehavior.toSql(
+          closeBehavior.value,
+        ),
+      );
+    }
+    if (accentColorScheme.present) {
+      map['accent_color_scheme'] = Variable<String>(
+        $PreferencesTableTable.$converteraccentColorScheme.toSql(
+          accentColorScheme.value,
+        ),
+      );
+    }
+    if (layoutMode.present) {
+      map['layout_mode'] = Variable<String>(
+        $PreferencesTableTable.$converterlayoutMode.toSql(layoutMode.value),
+      );
+    }
+    if (locale.present) {
+      map['locale'] = Variable<String>(
+        $PreferencesTableTable.$converterlocale.toSql(locale.value),
+      );
+    }
+    if (downloadLocation.present) {
+      map['download_location'] = Variable<String>(downloadLocation.value);
+    }
+    if (themeMode.present) {
+      map['theme_mode'] = Variable<String>(
+        $PreferencesTableTable.$converterthemeMode.toSql(themeMode.value),
+      );
+    }
+    if (discordPresence.present) {
+      map['discord_presence'] = Variable<bool>(discordPresence.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PreferencesTableCompanion(')
+          ..write('id: $id, ')
+          ..write('checkUpdate: $checkUpdate, ')
+          ..write('normalizeAudio: $normalizeAudio, ')
+          ..write('showSystemTrayIcon: $showSystemTrayIcon, ')
+          ..write('systemTitleBar: $systemTitleBar, ')
+          ..write('closeBehavior: $closeBehavior, ')
+          ..write('accentColorScheme: $accentColorScheme, ')
+          ..write('layoutMode: $layoutMode, ')
+          ..write('locale: $locale, ')
+          ..write('downloadLocation: $downloadLocation, ')
+          ..write('themeMode: $themeMode, ')
+          ..write('discordPresence: $discordPresence')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AudioPlayerStateTableTable extends AudioPlayerStateTable
     with TableInfo<$AudioPlayerStateTableTable, AudioPlayerStateTableData> {
   @override
@@ -493,15 +1260,384 @@ class AudioPlayerStateTableCompanion
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
+  late final $PreferencesTableTable preferencesTable = $PreferencesTableTable(
+    this,
+  );
   late final $AudioPlayerStateTableTable audioPlayerStateTable =
       $AudioPlayerStateTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [audioPlayerStateTable];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+    preferencesTable,
+    audioPlayerStateTable,
+  ];
 }
 
+typedef $$PreferencesTableTableCreateCompanionBuilder =
+    PreferencesTableCompanion Function({
+      Value<int> id,
+      Value<bool> checkUpdate,
+      Value<bool> normalizeAudio,
+      Value<bool> showSystemTrayIcon,
+      Value<bool> systemTitleBar,
+      Value<CloseBehavior> closeBehavior,
+      Value<SpotubeColor> accentColorScheme,
+      Value<LayoutMode> layoutMode,
+      Value<Locale> locale,
+      Value<String> downloadLocation,
+      Value<ThemeMode> themeMode,
+      Value<bool> discordPresence,
+    });
+typedef $$PreferencesTableTableUpdateCompanionBuilder =
+    PreferencesTableCompanion Function({
+      Value<int> id,
+      Value<bool> checkUpdate,
+      Value<bool> normalizeAudio,
+      Value<bool> showSystemTrayIcon,
+      Value<bool> systemTitleBar,
+      Value<CloseBehavior> closeBehavior,
+      Value<SpotubeColor> accentColorScheme,
+      Value<LayoutMode> layoutMode,
+      Value<Locale> locale,
+      Value<String> downloadLocation,
+      Value<ThemeMode> themeMode,
+      Value<bool> discordPresence,
+    });
+
+class $$PreferencesTableTableFilterComposer
+    extends Composer<_$AppDatabase, $PreferencesTableTable> {
+  $$PreferencesTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get checkUpdate => $composableBuilder(
+    column: $table.checkUpdate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get normalizeAudio => $composableBuilder(
+    column: $table.normalizeAudio,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showSystemTrayIcon => $composableBuilder(
+    column: $table.showSystemTrayIcon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get systemTitleBar => $composableBuilder(
+    column: $table.systemTitleBar,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<CloseBehavior, CloseBehavior, String>
+  get closeBehavior => $composableBuilder(
+    column: $table.closeBehavior,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<SpotubeColor, SpotubeColor, String>
+  get accentColorScheme => $composableBuilder(
+    column: $table.accentColorScheme,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<LayoutMode, LayoutMode, String>
+  get layoutMode => $composableBuilder(
+    column: $table.layoutMode,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Locale, Locale, String> get locale =>
+      $composableBuilder(
+        column: $table.locale,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get downloadLocation => $composableBuilder(
+    column: $table.downloadLocation,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<ThemeMode, ThemeMode, String> get themeMode =>
+      $composableBuilder(
+        column: $table.themeMode,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<bool> get discordPresence => $composableBuilder(
+    column: $table.discordPresence,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PreferencesTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $PreferencesTableTable> {
+  $$PreferencesTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get checkUpdate => $composableBuilder(
+    column: $table.checkUpdate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get normalizeAudio => $composableBuilder(
+    column: $table.normalizeAudio,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showSystemTrayIcon => $composableBuilder(
+    column: $table.showSystemTrayIcon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get systemTitleBar => $composableBuilder(
+    column: $table.systemTitleBar,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get closeBehavior => $composableBuilder(
+    column: $table.closeBehavior,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accentColorScheme => $composableBuilder(
+    column: $table.accentColorScheme,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get layoutMode => $composableBuilder(
+    column: $table.layoutMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get locale => $composableBuilder(
+    column: $table.locale,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get downloadLocation => $composableBuilder(
+    column: $table.downloadLocation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get themeMode => $composableBuilder(
+    column: $table.themeMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get discordPresence => $composableBuilder(
+    column: $table.discordPresence,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PreferencesTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PreferencesTableTable> {
+  $$PreferencesTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get checkUpdate => $composableBuilder(
+    column: $table.checkUpdate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get normalizeAudio => $composableBuilder(
+    column: $table.normalizeAudio,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showSystemTrayIcon => $composableBuilder(
+    column: $table.showSystemTrayIcon,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get systemTitleBar => $composableBuilder(
+    column: $table.systemTitleBar,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<CloseBehavior, String> get closeBehavior =>
+      $composableBuilder(
+        column: $table.closeBehavior,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<SpotubeColor, String>
+  get accentColorScheme => $composableBuilder(
+    column: $table.accentColorScheme,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<LayoutMode, String> get layoutMode =>
+      $composableBuilder(
+        column: $table.layoutMode,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<Locale, String> get locale =>
+      $composableBuilder(column: $table.locale, builder: (column) => column);
+
+  GeneratedColumn<String> get downloadLocation => $composableBuilder(
+    column: $table.downloadLocation,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<ThemeMode, String> get themeMode =>
+      $composableBuilder(column: $table.themeMode, builder: (column) => column);
+
+  GeneratedColumn<bool> get discordPresence => $composableBuilder(
+    column: $table.discordPresence,
+    builder: (column) => column,
+  );
+}
+
+class $$PreferencesTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PreferencesTableTable,
+          PreferencesTableData,
+          $$PreferencesTableTableFilterComposer,
+          $$PreferencesTableTableOrderingComposer,
+          $$PreferencesTableTableAnnotationComposer,
+          $$PreferencesTableTableCreateCompanionBuilder,
+          $$PreferencesTableTableUpdateCompanionBuilder,
+          (
+            PreferencesTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $PreferencesTableTable,
+              PreferencesTableData
+            >,
+          ),
+          PreferencesTableData,
+          PrefetchHooks Function()
+        > {
+  $$PreferencesTableTableTableManager(
+    _$AppDatabase db,
+    $PreferencesTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PreferencesTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PreferencesTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PreferencesTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<bool> checkUpdate = const Value.absent(),
+                Value<bool> normalizeAudio = const Value.absent(),
+                Value<bool> showSystemTrayIcon = const Value.absent(),
+                Value<bool> systemTitleBar = const Value.absent(),
+                Value<CloseBehavior> closeBehavior = const Value.absent(),
+                Value<SpotubeColor> accentColorScheme = const Value.absent(),
+                Value<LayoutMode> layoutMode = const Value.absent(),
+                Value<Locale> locale = const Value.absent(),
+                Value<String> downloadLocation = const Value.absent(),
+                Value<ThemeMode> themeMode = const Value.absent(),
+                Value<bool> discordPresence = const Value.absent(),
+              }) => PreferencesTableCompanion(
+                id: id,
+                checkUpdate: checkUpdate,
+                normalizeAudio: normalizeAudio,
+                showSystemTrayIcon: showSystemTrayIcon,
+                systemTitleBar: systemTitleBar,
+                closeBehavior: closeBehavior,
+                accentColorScheme: accentColorScheme,
+                layoutMode: layoutMode,
+                locale: locale,
+                downloadLocation: downloadLocation,
+                themeMode: themeMode,
+                discordPresence: discordPresence,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<bool> checkUpdate = const Value.absent(),
+                Value<bool> normalizeAudio = const Value.absent(),
+                Value<bool> showSystemTrayIcon = const Value.absent(),
+                Value<bool> systemTitleBar = const Value.absent(),
+                Value<CloseBehavior> closeBehavior = const Value.absent(),
+                Value<SpotubeColor> accentColorScheme = const Value.absent(),
+                Value<LayoutMode> layoutMode = const Value.absent(),
+                Value<Locale> locale = const Value.absent(),
+                Value<String> downloadLocation = const Value.absent(),
+                Value<ThemeMode> themeMode = const Value.absent(),
+                Value<bool> discordPresence = const Value.absent(),
+              }) => PreferencesTableCompanion.insert(
+                id: id,
+                checkUpdate: checkUpdate,
+                normalizeAudio: normalizeAudio,
+                showSystemTrayIcon: showSystemTrayIcon,
+                systemTitleBar: systemTitleBar,
+                closeBehavior: closeBehavior,
+                accentColorScheme: accentColorScheme,
+                layoutMode: layoutMode,
+                locale: locale,
+                downloadLocation: downloadLocation,
+                themeMode: themeMode,
+                discordPresence: discordPresence,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PreferencesTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PreferencesTableTable,
+      PreferencesTableData,
+      $$PreferencesTableTableFilterComposer,
+      $$PreferencesTableTableOrderingComposer,
+      $$PreferencesTableTableAnnotationComposer,
+      $$PreferencesTableTableCreateCompanionBuilder,
+      $$PreferencesTableTableUpdateCompanionBuilder,
+      (
+        PreferencesTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $PreferencesTableTable,
+          PreferencesTableData
+        >,
+      ),
+      PreferencesTableData,
+      PrefetchHooks Function()
+    >;
 typedef $$AudioPlayerStateTableTableCreateCompanionBuilder =
     AudioPlayerStateTableCompanion Function({
       Value<int> id,
@@ -770,6 +1906,8 @@ typedef $$AudioPlayerStateTableTableProcessedTableManager =
 class $AppDatabaseManager {
   final _$AppDatabase _db;
   $AppDatabaseManager(this._db);
+  $$PreferencesTableTableTableManager get preferencesTable =>
+      $$PreferencesTableTableTableManager(_db, _db.preferencesTable);
   $$AudioPlayerStateTableTableTableManager get audioPlayerStateTable =>
       $$AudioPlayerStateTableTableTableManager(_db, _db.audioPlayerStateTable);
 }

@@ -25,7 +25,7 @@ class AudioServices with WidgetsBindingObserver {
         ? await AudioService.init(
             builder: () => MobileAudioService(playback),
             config: const AudioServiceConfig(
-              androidNotificationChannelId: 'oss.rang.pomelo',
+              androidNotificationChannelId: 'cn.rang.pomelo',
               androidNotificationChannelName: 'Pomelo',
               androidNotificationOngoing: false,
               androidStopForegroundOnPause: false,
