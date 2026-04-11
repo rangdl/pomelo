@@ -152,12 +152,12 @@ class UserPreferencesNotifier extends Notifier<PreferencesTableData> {
     setData(PreferencesTableCompanion(downloadLocation: Value(downloadDir)));
   }
 
-  // void setLocalLibraryLocation(List<String> localLibraryDirs) {
-  //   //if (localLibraryDir.isEmpty) return;
-  //   setData(
-  //     PreferencesTableCompanion(localLibraryLocation: Value(localLibraryDirs)),
-  //   );
-  // }
+  void setLocalLibraryLocation(List<String> localLibraryDirs) {
+    //if (localLibraryDir.isEmpty) return;
+    setData(
+      PreferencesTableCompanion(localLibraryLocation: Value(localLibraryDirs)),
+    );
+  }
 
   void setLayoutMode(LayoutMode mode) {
     setData(PreferencesTableCompanion(layoutMode: Value(mode)));

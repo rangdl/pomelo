@@ -39,10 +39,19 @@ class AppRouter extends RootStackRouter {
           //   ),
           // ],
         ),
+        AutoRoute(path: "artist/:id", page: ArtistRoute.page),
         AutoRoute(path: "settings", page: SettingsRoute.page),
+        if (!kIsWeb) AutoRoute(path: "settings/logs", page: LogsRoute.page),
 
         AutoRoute(path: "test", page: TestRoute.page),
       ],
+    ),
+    CustomRoute(
+      transitionsBuilder: TransitionsBuilders.slideBottom,
+      durationInMilliseconds: 200,
+      reverseDurationInMilliseconds: 200,
+      path: "/player/queue",
+      page: PlayerQueueRoute.page,
     ),
   ];
 }

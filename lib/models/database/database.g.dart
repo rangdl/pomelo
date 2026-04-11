@@ -142,6 +142,19 @@ class $PreferencesTableTable extends PreferencesTable
     defaultValue: const Constant(""),
   );
   @override
+  late final GeneratedColumnWithTypeConverter<List<String>, String>
+  localLibraryLocation =
+      GeneratedColumn<String>(
+        'local_library_location',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(""),
+      ).withConverter<List<String>>(
+        $PreferencesTableTable.$converterlocalLibraryLocation,
+      );
+  @override
   late final GeneratedColumnWithTypeConverter<ThemeMode, String> themeMode =
       GeneratedColumn<String>(
         'theme_mode',
@@ -178,6 +191,7 @@ class $PreferencesTableTable extends PreferencesTable
     layoutMode,
     locale,
     downloadLocation,
+    localLibraryLocation,
     themeMode,
     discordPresence,
   ];
@@ -308,6 +322,14 @@ class $PreferencesTableTable extends PreferencesTable
         DriftSqlType.string,
         data['${effectivePrefix}download_location'],
       )!,
+      localLibraryLocation: $PreferencesTableTable
+          .$converterlocalLibraryLocation
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}local_library_location'],
+            )!,
+          ),
       themeMode: $PreferencesTableTable.$converterthemeMode.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -336,6 +358,8 @@ class $PreferencesTableTable extends PreferencesTable
       const EnumNameConverter<LayoutMode>(LayoutMode.values);
   static TypeConverter<Locale, String> $converterlocale =
       const LocaleConverter();
+  static TypeConverter<List<String>, String> $converterlocalLibraryLocation =
+      const StringListConverter();
   static JsonTypeConverter2<ThemeMode, String, String> $converterthemeMode =
       const EnumNameConverter<ThemeMode>(ThemeMode.values);
 }
@@ -352,6 +376,7 @@ class PreferencesTableData extends DataClass
   final LayoutMode layoutMode;
   final Locale locale;
   final String downloadLocation;
+  final List<String> localLibraryLocation;
   final ThemeMode themeMode;
   final bool discordPresence;
   const PreferencesTableData({
@@ -365,6 +390,7 @@ class PreferencesTableData extends DataClass
     required this.layoutMode,
     required this.locale,
     required this.downloadLocation,
+    required this.localLibraryLocation,
     required this.themeMode,
     required this.discordPresence,
   });
@@ -400,6 +426,13 @@ class PreferencesTableData extends DataClass
     }
     map['download_location'] = Variable<String>(downloadLocation);
     {
+      map['local_library_location'] = Variable<String>(
+        $PreferencesTableTable.$converterlocalLibraryLocation.toSql(
+          localLibraryLocation,
+        ),
+      );
+    }
+    {
       map['theme_mode'] = Variable<String>(
         $PreferencesTableTable.$converterthemeMode.toSql(themeMode),
       );
@@ -420,6 +453,7 @@ class PreferencesTableData extends DataClass
       layoutMode: Value(layoutMode),
       locale: Value(locale),
       downloadLocation: Value(downloadLocation),
+      localLibraryLocation: Value(localLibraryLocation),
       themeMode: Value(themeMode),
       discordPresence: Value(discordPresence),
     );
@@ -447,6 +481,9 @@ class PreferencesTableData extends DataClass
       ),
       locale: serializer.fromJson<Locale>(json['locale']),
       downloadLocation: serializer.fromJson<String>(json['downloadLocation']),
+      localLibraryLocation: serializer.fromJson<List<String>>(
+        json['localLibraryLocation'],
+      ),
       themeMode: $PreferencesTableTable.$converterthemeMode.fromJson(
         serializer.fromJson<String>(json['themeMode']),
       ),
@@ -471,6 +508,9 @@ class PreferencesTableData extends DataClass
       ),
       'locale': serializer.toJson<Locale>(locale),
       'downloadLocation': serializer.toJson<String>(downloadLocation),
+      'localLibraryLocation': serializer.toJson<List<String>>(
+        localLibraryLocation,
+      ),
       'themeMode': serializer.toJson<String>(
         $PreferencesTableTable.$converterthemeMode.toJson(themeMode),
       ),
@@ -489,6 +529,7 @@ class PreferencesTableData extends DataClass
     LayoutMode? layoutMode,
     Locale? locale,
     String? downloadLocation,
+    List<String>? localLibraryLocation,
     ThemeMode? themeMode,
     bool? discordPresence,
   }) => PreferencesTableData(
@@ -502,6 +543,7 @@ class PreferencesTableData extends DataClass
     layoutMode: layoutMode ?? this.layoutMode,
     locale: locale ?? this.locale,
     downloadLocation: downloadLocation ?? this.downloadLocation,
+    localLibraryLocation: localLibraryLocation ?? this.localLibraryLocation,
     themeMode: themeMode ?? this.themeMode,
     discordPresence: discordPresence ?? this.discordPresence,
   );
@@ -533,6 +575,9 @@ class PreferencesTableData extends DataClass
       downloadLocation: data.downloadLocation.present
           ? data.downloadLocation.value
           : this.downloadLocation,
+      localLibraryLocation: data.localLibraryLocation.present
+          ? data.localLibraryLocation.value
+          : this.localLibraryLocation,
       themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
       discordPresence: data.discordPresence.present
           ? data.discordPresence.value
@@ -553,6 +598,7 @@ class PreferencesTableData extends DataClass
           ..write('layoutMode: $layoutMode, ')
           ..write('locale: $locale, ')
           ..write('downloadLocation: $downloadLocation, ')
+          ..write('localLibraryLocation: $localLibraryLocation, ')
           ..write('themeMode: $themeMode, ')
           ..write('discordPresence: $discordPresence')
           ..write(')'))
@@ -571,6 +617,7 @@ class PreferencesTableData extends DataClass
     layoutMode,
     locale,
     downloadLocation,
+    localLibraryLocation,
     themeMode,
     discordPresence,
   );
@@ -588,6 +635,7 @@ class PreferencesTableData extends DataClass
           other.layoutMode == this.layoutMode &&
           other.locale == this.locale &&
           other.downloadLocation == this.downloadLocation &&
+          other.localLibraryLocation == this.localLibraryLocation &&
           other.themeMode == this.themeMode &&
           other.discordPresence == this.discordPresence);
 }
@@ -603,6 +651,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
   final Value<LayoutMode> layoutMode;
   final Value<Locale> locale;
   final Value<String> downloadLocation;
+  final Value<List<String>> localLibraryLocation;
   final Value<ThemeMode> themeMode;
   final Value<bool> discordPresence;
   const PreferencesTableCompanion({
@@ -616,6 +665,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     this.layoutMode = const Value.absent(),
     this.locale = const Value.absent(),
     this.downloadLocation = const Value.absent(),
+    this.localLibraryLocation = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.discordPresence = const Value.absent(),
   });
@@ -630,6 +680,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     this.layoutMode = const Value.absent(),
     this.locale = const Value.absent(),
     this.downloadLocation = const Value.absent(),
+    this.localLibraryLocation = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.discordPresence = const Value.absent(),
   });
@@ -644,6 +695,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     Expression<String>? layoutMode,
     Expression<String>? locale,
     Expression<String>? downloadLocation,
+    Expression<String>? localLibraryLocation,
     Expression<String>? themeMode,
     Expression<bool>? discordPresence,
   }) {
@@ -659,6 +711,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
       if (layoutMode != null) 'layout_mode': layoutMode,
       if (locale != null) 'locale': locale,
       if (downloadLocation != null) 'download_location': downloadLocation,
+      if (localLibraryLocation != null)
+        'local_library_location': localLibraryLocation,
       if (themeMode != null) 'theme_mode': themeMode,
       if (discordPresence != null) 'discord_presence': discordPresence,
     });
@@ -675,6 +729,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     Value<LayoutMode>? layoutMode,
     Value<Locale>? locale,
     Value<String>? downloadLocation,
+    Value<List<String>>? localLibraryLocation,
     Value<ThemeMode>? themeMode,
     Value<bool>? discordPresence,
   }) {
@@ -689,6 +744,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
       layoutMode: layoutMode ?? this.layoutMode,
       locale: locale ?? this.locale,
       downloadLocation: downloadLocation ?? this.downloadLocation,
+      localLibraryLocation: localLibraryLocation ?? this.localLibraryLocation,
       themeMode: themeMode ?? this.themeMode,
       discordPresence: discordPresence ?? this.discordPresence,
     );
@@ -739,6 +795,13 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     if (downloadLocation.present) {
       map['download_location'] = Variable<String>(downloadLocation.value);
     }
+    if (localLibraryLocation.present) {
+      map['local_library_location'] = Variable<String>(
+        $PreferencesTableTable.$converterlocalLibraryLocation.toSql(
+          localLibraryLocation.value,
+        ),
+      );
+    }
     if (themeMode.present) {
       map['theme_mode'] = Variable<String>(
         $PreferencesTableTable.$converterthemeMode.toSql(themeMode.value),
@@ -763,6 +826,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
           ..write('layoutMode: $layoutMode, ')
           ..write('locale: $locale, ')
           ..write('downloadLocation: $downloadLocation, ')
+          ..write('localLibraryLocation: $localLibraryLocation, ')
           ..write('themeMode: $themeMode, ')
           ..write('discordPresence: $discordPresence')
           ..write(')'))
@@ -1257,6 +1321,354 @@ class AudioPlayerStateTableCompanion
   }
 }
 
+class $HistoryTableTable extends HistoryTable
+    with TableInfo<$HistoryTableTable, HistoryTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HistoryTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<HistoryEntryType, String> type =
+      GeneratedColumn<String>(
+        'type',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<HistoryEntryType>($HistoryTableTable.$convertertype);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<Map<String, dynamic>, String>
+  data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  ).withConverter<Map<String, dynamic>>($HistoryTableTable.$converterdata);
+  @override
+  List<GeneratedColumn> get $columns => [id, createdAt, type, itemId, data];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'history_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HistoryTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HistoryTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HistoryTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      type: $HistoryTableTable.$convertertype.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}type'],
+        )!,
+      ),
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      )!,
+      data: $HistoryTableTable.$converterdata.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}data'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $HistoryTableTable createAlias(String alias) {
+    return $HistoryTableTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<HistoryEntryType, String, String> $convertertype =
+      const EnumNameConverter<HistoryEntryType>(HistoryEntryType.values);
+  static TypeConverter<Map<String, dynamic>, String> $converterdata =
+      const MapTypeConverter<String, dynamic>();
+}
+
+class HistoryTableData extends DataClass
+    implements Insertable<HistoryTableData> {
+  final int id;
+  final DateTime createdAt;
+  final HistoryEntryType type;
+  final String itemId;
+  final Map<String, dynamic> data;
+  const HistoryTableData({
+    required this.id,
+    required this.createdAt,
+    required this.type,
+    required this.itemId,
+    required this.data,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    {
+      map['type'] = Variable<String>(
+        $HistoryTableTable.$convertertype.toSql(type),
+      );
+    }
+    map['item_id'] = Variable<String>(itemId);
+    {
+      map['data'] = Variable<String>(
+        $HistoryTableTable.$converterdata.toSql(data),
+      );
+    }
+    return map;
+  }
+
+  HistoryTableCompanion toCompanion(bool nullToAbsent) {
+    return HistoryTableCompanion(
+      id: Value(id),
+      createdAt: Value(createdAt),
+      type: Value(type),
+      itemId: Value(itemId),
+      data: Value(data),
+    );
+  }
+
+  factory HistoryTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HistoryTableData(
+      id: serializer.fromJson<int>(json['id']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      type: $HistoryTableTable.$convertertype.fromJson(
+        serializer.fromJson<String>(json['type']),
+      ),
+      itemId: serializer.fromJson<String>(json['itemId']),
+      data: serializer.fromJson<Map<String, dynamic>>(json['data']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'type': serializer.toJson<String>(
+        $HistoryTableTable.$convertertype.toJson(type),
+      ),
+      'itemId': serializer.toJson<String>(itemId),
+      'data': serializer.toJson<Map<String, dynamic>>(data),
+    };
+  }
+
+  HistoryTableData copyWith({
+    int? id,
+    DateTime? createdAt,
+    HistoryEntryType? type,
+    String? itemId,
+    Map<String, dynamic>? data,
+  }) => HistoryTableData(
+    id: id ?? this.id,
+    createdAt: createdAt ?? this.createdAt,
+    type: type ?? this.type,
+    itemId: itemId ?? this.itemId,
+    data: data ?? this.data,
+  );
+  HistoryTableData copyWithCompanion(HistoryTableCompanion data) {
+    return HistoryTableData(
+      id: data.id.present ? data.id.value : this.id,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      type: data.type.present ? data.type.value : this.type,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      data: data.data.present ? data.data.value : this.data,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryTableData(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('type: $type, ')
+          ..write('itemId: $itemId, ')
+          ..write('data: $data')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, createdAt, type, itemId, data);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HistoryTableData &&
+          other.id == this.id &&
+          other.createdAt == this.createdAt &&
+          other.type == this.type &&
+          other.itemId == this.itemId &&
+          other.data == this.data);
+}
+
+class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
+  final Value<int> id;
+  final Value<DateTime> createdAt;
+  final Value<HistoryEntryType> type;
+  final Value<String> itemId;
+  final Value<Map<String, dynamic>> data;
+  const HistoryTableCompanion({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.type = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.data = const Value.absent(),
+  });
+  HistoryTableCompanion.insert({
+    this.id = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    required HistoryEntryType type,
+    required String itemId,
+    required Map<String, dynamic> data,
+  }) : type = Value(type),
+       itemId = Value(itemId),
+       data = Value(data);
+  static Insertable<HistoryTableData> custom({
+    Expression<int>? id,
+    Expression<DateTime>? createdAt,
+    Expression<String>? type,
+    Expression<String>? itemId,
+    Expression<String>? data,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (createdAt != null) 'created_at': createdAt,
+      if (type != null) 'type': type,
+      if (itemId != null) 'item_id': itemId,
+      if (data != null) 'data': data,
+    });
+  }
+
+  HistoryTableCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? createdAt,
+    Value<HistoryEntryType>? type,
+    Value<String>? itemId,
+    Value<Map<String, dynamic>>? data,
+  }) {
+    return HistoryTableCompanion(
+      id: id ?? this.id,
+      createdAt: createdAt ?? this.createdAt,
+      type: type ?? this.type,
+      itemId: itemId ?? this.itemId,
+      data: data ?? this.data,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(
+        $HistoryTableTable.$convertertype.toSql(type.value),
+      );
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(
+        $HistoryTableTable.$converterdata.toSql(data.value),
+      );
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryTableCompanion(')
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('type: $type, ')
+          ..write('itemId: $itemId, ')
+          ..write('data: $data')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1265,6 +1677,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $AudioPlayerStateTableTable audioPlayerStateTable =
       $AudioPlayerStateTableTable(this);
+  late final $HistoryTableTable historyTable = $HistoryTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1272,6 +1685,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     preferencesTable,
     audioPlayerStateTable,
+    historyTable,
   ];
 }
 
@@ -1287,6 +1701,7 @@ typedef $$PreferencesTableTableCreateCompanionBuilder =
       Value<LayoutMode> layoutMode,
       Value<Locale> locale,
       Value<String> downloadLocation,
+      Value<List<String>> localLibraryLocation,
       Value<ThemeMode> themeMode,
       Value<bool> discordPresence,
     });
@@ -1302,6 +1717,7 @@ typedef $$PreferencesTableTableUpdateCompanionBuilder =
       Value<LayoutMode> layoutMode,
       Value<Locale> locale,
       Value<String> downloadLocation,
+      Value<List<String>> localLibraryLocation,
       Value<ThemeMode> themeMode,
       Value<bool> discordPresence,
     });
@@ -1367,6 +1783,12 @@ class $$PreferencesTableTableFilterComposer
   ColumnFilters<String> get downloadLocation => $composableBuilder(
     column: $table.downloadLocation,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<List<String>, List<String>, String>
+  get localLibraryLocation => $composableBuilder(
+    column: $table.localLibraryLocation,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   ColumnWithTypeConverterFilters<ThemeMode, ThemeMode, String> get themeMode =>
@@ -1440,6 +1862,11 @@ class $$PreferencesTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get localLibraryLocation => $composableBuilder(
+    column: $table.localLibraryLocation,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get themeMode => $composableBuilder(
     column: $table.themeMode,
     builder: (column) => ColumnOrderings(column),
@@ -1509,6 +1936,12 @@ class $$PreferencesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumnWithTypeConverter<List<String>, String>
+  get localLibraryLocation => $composableBuilder(
+    column: $table.localLibraryLocation,
+    builder: (column) => column,
+  );
+
   GeneratedColumnWithTypeConverter<ThemeMode, String> get themeMode =>
       $composableBuilder(column: $table.themeMode, builder: (column) => column);
 
@@ -1565,6 +1998,7 @@ class $$PreferencesTableTableTableManager
                 Value<LayoutMode> layoutMode = const Value.absent(),
                 Value<Locale> locale = const Value.absent(),
                 Value<String> downloadLocation = const Value.absent(),
+                Value<List<String>> localLibraryLocation = const Value.absent(),
                 Value<ThemeMode> themeMode = const Value.absent(),
                 Value<bool> discordPresence = const Value.absent(),
               }) => PreferencesTableCompanion(
@@ -1578,6 +2012,7 @@ class $$PreferencesTableTableTableManager
                 layoutMode: layoutMode,
                 locale: locale,
                 downloadLocation: downloadLocation,
+                localLibraryLocation: localLibraryLocation,
                 themeMode: themeMode,
                 discordPresence: discordPresence,
               ),
@@ -1593,6 +2028,7 @@ class $$PreferencesTableTableTableManager
                 Value<LayoutMode> layoutMode = const Value.absent(),
                 Value<Locale> locale = const Value.absent(),
                 Value<String> downloadLocation = const Value.absent(),
+                Value<List<String>> localLibraryLocation = const Value.absent(),
                 Value<ThemeMode> themeMode = const Value.absent(),
                 Value<bool> discordPresence = const Value.absent(),
               }) => PreferencesTableCompanion.insert(
@@ -1606,6 +2042,7 @@ class $$PreferencesTableTableTableManager
                 layoutMode: layoutMode,
                 locale: locale,
                 downloadLocation: downloadLocation,
+                localLibraryLocation: localLibraryLocation,
                 themeMode: themeMode,
                 discordPresence: discordPresence,
               ),
@@ -1902,6 +2339,206 @@ typedef $$AudioPlayerStateTableTableProcessedTableManager =
       AudioPlayerStateTableData,
       PrefetchHooks Function()
     >;
+typedef $$HistoryTableTableCreateCompanionBuilder =
+    HistoryTableCompanion Function({
+      Value<int> id,
+      Value<DateTime> createdAt,
+      required HistoryEntryType type,
+      required String itemId,
+      required Map<String, dynamic> data,
+    });
+typedef $$HistoryTableTableUpdateCompanionBuilder =
+    HistoryTableCompanion Function({
+      Value<int> id,
+      Value<DateTime> createdAt,
+      Value<HistoryEntryType> type,
+      Value<String> itemId,
+      Value<Map<String, dynamic>> data,
+    });
+
+class $$HistoryTableTableFilterComposer
+    extends Composer<_$AppDatabase, $HistoryTableTable> {
+  $$HistoryTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<HistoryEntryType, HistoryEntryType, String>
+  get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    Map<String, dynamic>,
+    Map<String, dynamic>,
+    String
+  >
+  get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+}
+
+class $$HistoryTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $HistoryTableTable> {
+  $$HistoryTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HistoryTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HistoryTableTable> {
+  $$HistoryTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<HistoryEntryType, String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<Map<String, dynamic>, String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+}
+
+class $$HistoryTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HistoryTableTable,
+          HistoryTableData,
+          $$HistoryTableTableFilterComposer,
+          $$HistoryTableTableOrderingComposer,
+          $$HistoryTableTableAnnotationComposer,
+          $$HistoryTableTableCreateCompanionBuilder,
+          $$HistoryTableTableUpdateCompanionBuilder,
+          (
+            HistoryTableData,
+            BaseReferences<_$AppDatabase, $HistoryTableTable, HistoryTableData>,
+          ),
+          HistoryTableData,
+          PrefetchHooks Function()
+        > {
+  $$HistoryTableTableTableManager(_$AppDatabase db, $HistoryTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HistoryTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HistoryTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HistoryTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<HistoryEntryType> type = const Value.absent(),
+                Value<String> itemId = const Value.absent(),
+                Value<Map<String, dynamic>> data = const Value.absent(),
+              }) => HistoryTableCompanion(
+                id: id,
+                createdAt: createdAt,
+                type: type,
+                itemId: itemId,
+                data: data,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                required HistoryEntryType type,
+                required String itemId,
+                required Map<String, dynamic> data,
+              }) => HistoryTableCompanion.insert(
+                id: id,
+                createdAt: createdAt,
+                type: type,
+                itemId: itemId,
+                data: data,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HistoryTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HistoryTableTable,
+      HistoryTableData,
+      $$HistoryTableTableFilterComposer,
+      $$HistoryTableTableOrderingComposer,
+      $$HistoryTableTableAnnotationComposer,
+      $$HistoryTableTableCreateCompanionBuilder,
+      $$HistoryTableTableUpdateCompanionBuilder,
+      (
+        HistoryTableData,
+        BaseReferences<_$AppDatabase, $HistoryTableTable, HistoryTableData>,
+      ),
+      HistoryTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -1910,4 +2547,6 @@ class $AppDatabaseManager {
       $$PreferencesTableTableTableManager(_db, _db.preferencesTable);
   $$AudioPlayerStateTableTableTableManager get audioPlayerStateTable =>
       $$AudioPlayerStateTableTableTableManager(_db, _db.audioPlayerStateTable);
+  $$HistoryTableTableTableManager get historyTable =>
+      $$HistoryTableTableTableManager(_db, _db.historyTable);
 }

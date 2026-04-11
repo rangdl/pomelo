@@ -264,7 +264,7 @@ class Pomelo extends HookConsumerWidget {
 
       actions: {
         ...WidgetsApp.defaultActions,
-        // PlayPauseIntent: PlayPauseAction(),
+        PlayPauseIntent: PlayPauseAction(),
         NavigationIntent: NavigationAction(),
         HomeTabIntent: HomeTabAction(),
         CloseAppIntent: CloseAppAction(),

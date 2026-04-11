@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/collections/routes.dart';
 import 'package:pomelo/collections/routes.gr.dart';
-// import 'package:pomelo/modules/player/player_controls.dart';
+import 'package:pomelo/modules/player/player_controls.dart';
 // import 'package:pomelo/provider/audio_player/querying_track_info.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/utils/platform.dart';
@@ -15,21 +15,21 @@ class PlayPauseIntent extends Intent {
   const PlayPauseIntent(this.ref);
 }
 
-// class PlayPauseAction extends Action<PlayPauseIntent> {
-//   @override
-//   invoke(intent) async {
-//     if (PlayerControls.focusNode.canRequestFocus) {
-//       PlayerControls.focusNode.requestFocus();
-//     }
+class PlayPauseAction extends Action<PlayPauseIntent> {
+  @override
+  invoke(intent) async {
+    if (PlayerControls.focusNode.canRequestFocus) {
+      PlayerControls.focusNode.requestFocus();
+    }
 
-//     if (!audioPlayer.isPlaying) {
-//       await audioPlayer.resume();
-//     } else {
-//       await audioPlayer.pause();
-//     }
-//     return null;
-//   }
-// }
+    if (!audioPlayer.isPlaying) {
+      await audioPlayer.resume();
+    } else {
+      await audioPlayer.pause();
+    }
+    return null;
+  }
+}
 
 class NavigationIntent extends Intent {
   final AppRouter router;
@@ -106,25 +106,25 @@ class SeekIntent extends Intent {
   const SeekIntent(this.ref, this.forward);
 }
 
-// class SeekAction extends Action<SeekIntent> {
-//   @override
-//   invoke(intent) async {
-//     final isFetchingActiveTrack = intent.ref.read(queryingTrackInfoProvider);
-//     if (isFetchingActiveTrack) {
-//       DirectionalFocusAction().invoke(
-//         DirectionalFocusIntent(
-//           intent.forward ? TraversalDirection.right : TraversalDirection.left,
-//         ),
-//       );
-//       return null;
-//     }
-//     final position = audioPlayer.position.inSeconds;
-//     await audioPlayer.seek(
-//       Duration(seconds: intent.forward ? position + 5 : position - 5),
-//     );
-//     return null;
-//   }
-// }
+class SeekAction extends Action<SeekIntent> {
+  @override
+  invoke(intent) async {
+    // final isFetchingActiveTrack = intent.ref.read(queryingTrackInfoProvider);
+    // if (isFetchingActiveTrack) {
+    //   DirectionalFocusAction().invoke(
+    //     DirectionalFocusIntent(
+    //       intent.forward ? TraversalDirection.right : TraversalDirection.left,
+    //     ),
+    //   );
+    //   return null;
+    // }
+    final position = audioPlayer.position.inSeconds;
+    await audioPlayer.seek(
+      Duration(seconds: intent.forward ? position + 5 : position - 5),
+    );
+    return null;
+  }
+}
 
 class CloseAppIntent extends Intent {}
 

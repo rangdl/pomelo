@@ -97,33 +97,33 @@ class SidebarFooter extends HookConsumerWidget implements NavigationBarItem {
               // if (authenticated.asData?.value == true && data == null)
               //   const CircularProgressIndicator()
               // else if (data != null)
-              Flexible(
-                child: GestureDetector(
-                  onTap: () {
-                    // context.navigateTo(const ProfileRoute());
-                  },
-                  child: Row(
-                    children: [
-                      // Avatar(
-                      //   initials: Avatar.getInitials(data.name),
-                      //   provider: UniversalImage.imageProvider(avatarImg),
-                      // ),
-                      // const SizedBox(width: 10),
-                      // Flexible(
-                      //   child: Text(
-                      //     data.name,
-                      //     maxLines: 1,
-                      //     softWrap: false,
-                      //     overflow: TextOverflow.fade,
-                      //     style: theme.typography.normal.copyWith(
-                      //       fontWeight: FontWeight.bold,
-                      //     ),
-                      //   ),
-                      // ),
-                    ],
-                  ),
-                ),
-              ),
+              // Flexible(
+              //   child: GestureDetector(
+              //     onTap: () {
+              //       // context.navigateTo(const ProfileRoute());
+              //     },
+              //     child: Row(
+              //       children: [
+              //         // Avatar(
+              //         //   initials: Avatar.getInitials(data.name),
+              //         //   provider: UniversalImage.imageProvider(avatarImg),
+              //         // ),
+              //         // const SizedBox(width: 10),
+              //         // Flexible(
+              //         //   child: Text(
+              //         //     data.name,
+              //         //     maxLines: 1,
+              //         //     softWrap: false,
+              //         //     overflow: TextOverflow.fade,
+              //         //     style: theme.typography.normal.copyWith(
+              //         //       fontWeight: FontWeight.bold,
+              //         //     ),
+              //         //   ),
+              //         // ),
+              //       ],
+              //     ),
+              //   ),
+              // ),
               IconButton(
                 variance: ButtonVariance.ghost,
                 icon: const Icon(SpotubeIcons.settings),

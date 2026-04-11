@@ -68,8 +68,8 @@ class PreferencesTable extends Table {
   // TextColumn get searchMode =>
   //     textEnum<SearchMode>().withDefault(Constant(SearchMode.youtube.name))();
   TextColumn get downloadLocation => text().withDefault(const Constant(""))();
-  // TextColumn get localLibraryLocation =>
-  //     text().withDefault(const Constant("")).map(const StringListConverter())();
+  TextColumn get localLibraryLocation =>
+      text().withDefault(const Constant("")).map(const StringListConverter())();
   TextColumn get themeMode =>
       textEnum<ThemeMode>().withDefault(Constant(ThemeMode.system.name))();
   // TextColumn get audioSourceId => text().nullable()();
@@ -102,7 +102,7 @@ class PreferencesTable extends Table {
       // market: Market.US,
       // searchMode: SearchMode.youtube,
       downloadLocation: "",
-      // localLibraryLocation: [],
+      localLibraryLocation: [],
       themeMode: ThemeMode.system,
       // audioSourceId: null,
       // youtubeClientEngine: kIsIOS

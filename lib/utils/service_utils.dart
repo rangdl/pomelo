@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import 'package:html/dom.dart' hide Text;
+import 'package:pomelo/pages/library/user_local_tracks/user_local_tracks.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Element;
 import 'package:pomelo/models/metadata/metadata.dart';
 // import 'package:pomelo/pages/library/user_local_tracks/user_local_tracks.dart';
@@ -25,17 +26,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 // import 'package:pomelo/collections/env.dart';
 
 import 'package:version/version.dart';
-
-enum SortBy {
-  none,
-  ascending,
-  descending,
-  newest,
-  oldest,
-  duration,
-  artist,
-  album,
-}
 
 enum UserAgentDevice { desktop, mobile }
 
