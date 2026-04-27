@@ -12,14 +12,14 @@
 import 'package:auto_route/auto_route.dart' as _i9;
 import 'package:flutter/material.dart' as _i10;
 import 'package:pomelo/pages/artist/artist.dart' as _i1;
-import 'package:pomelo/pages/home/home.dart' as _i2;
+import 'package:pomelo/pages/home/home.dart' as _i3;
 import 'package:pomelo/pages/library/user_local_tracks/user_local_tracks.dart'
     as _i8;
-import 'package:pomelo/pages/player/queue.dart' as _i4;
-import 'package:pomelo/pages/root/root_app.dart' as _i5;
-import 'package:pomelo/pages/settings/logs.dart' as _i3;
-import 'package:pomelo/pages/settings/settings.dart' as _i6;
-import 'package:pomelo/pages/test/test.dart' as _i7;
+import 'package:pomelo/pages/player/queue.dart' as _i5;
+import 'package:pomelo/pages/root/root_app.dart' as _i6;
+import 'package:pomelo/pages/settings/logs.dart' as _i4;
+import 'package:pomelo/pages/settings/settings.dart' as _i7;
+import 'package:pomelo/pages/test/test.dart' as _i2;
 
 /// generated route for
 /// [_i1.ArtistPage]
@@ -63,7 +63,23 @@ class ArtistRouteArgs {
 }
 
 /// generated route for
-/// [_i2.HomePage]
+/// [_i2.CupertinoSliverRefreshDemoPage]
+class CupertinoSliverRefreshDemoRoute extends _i9.PageRouteInfo<void> {
+  const CupertinoSliverRefreshDemoRoute({List<_i9.PageRouteInfo>? children})
+    : super(CupertinoSliverRefreshDemoRoute.name, initialChildren: children);
+
+  static const String name = 'CupertinoSliverRefreshDemoRoute';
+
+  static _i9.PageInfo page = _i9.PageInfo(
+    name,
+    builder: (data) {
+      return const _i2.CupertinoSliverRefreshDemoPage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i3.HomePage]
 class HomeRoute extends _i9.PageRouteInfo<void> {
   const HomeRoute({List<_i9.PageRouteInfo>? children})
     : super(HomeRoute.name, initialChildren: children);
@@ -73,13 +89,13 @@ class HomeRoute extends _i9.PageRouteInfo<void> {
   static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i2.HomePage();
+      return const _i3.HomePage();
     },
   );
 }
 
 /// generated route for
-/// [_i3.LogsPage]
+/// [_i4.LogsPage]
 class LogsRoute extends _i9.PageRouteInfo<void> {
   const LogsRoute({List<_i9.PageRouteInfo>? children})
     : super(LogsRoute.name, initialChildren: children);
@@ -89,13 +105,13 @@ class LogsRoute extends _i9.PageRouteInfo<void> {
   static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i3.LogsPage();
+      return const _i4.LogsPage();
     },
   );
 }
 
 /// generated route for
-/// [_i4.PlayerQueuePage]
+/// [_i5.PlayerQueuePage]
 class PlayerQueueRoute extends _i9.PageRouteInfo<void> {
   const PlayerQueueRoute({List<_i9.PageRouteInfo>? children})
     : super(PlayerQueueRoute.name, initialChildren: children);
@@ -105,13 +121,13 @@ class PlayerQueueRoute extends _i9.PageRouteInfo<void> {
   static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i4.PlayerQueuePage();
+      return const _i5.PlayerQueuePage();
     },
   );
 }
 
 /// generated route for
-/// [_i5.RootAppPage]
+/// [_i6.RootAppPage]
 class RootAppRoute extends _i9.PageRouteInfo<void> {
   const RootAppRoute({List<_i9.PageRouteInfo>? children})
     : super(RootAppRoute.name, initialChildren: children);
@@ -121,13 +137,13 @@ class RootAppRoute extends _i9.PageRouteInfo<void> {
   static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i5.RootAppPage();
+      return const _i6.RootAppPage();
     },
   );
 }
 
 /// generated route for
-/// [_i6.SettingsPage]
+/// [_i7.SettingsPage]
 class SettingsRoute extends _i9.PageRouteInfo<void> {
   const SettingsRoute({List<_i9.PageRouteInfo>? children})
     : super(SettingsRoute.name, initialChildren: children);
@@ -137,13 +153,13 @@ class SettingsRoute extends _i9.PageRouteInfo<void> {
   static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i6.SettingsPage();
+      return const _i7.SettingsPage();
     },
   );
 }
 
 /// generated route for
-/// [_i7.TestPage]
+/// [_i2.TestPage]
 class TestRoute extends _i9.PageRouteInfo<void> {
   const TestRoute({List<_i9.PageRouteInfo>? children})
     : super(TestRoute.name, initialChildren: children);
@@ -153,7 +169,7 @@ class TestRoute extends _i9.PageRouteInfo<void> {
   static _i9.PageInfo page = _i9.PageInfo(
     name,
     builder: (data) {
-      return const _i7.TestPage();
+      return const _i2.TestPage();
     },
   );
 }

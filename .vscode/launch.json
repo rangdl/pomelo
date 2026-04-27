@@ -20,6 +20,22 @@
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"
+        },
+        {
+            "name": "test-with-flutterjs",
+            "type": "dart",
+            "program": "test/flutter_js_test.dart",
+            "windows": {
+                "env": {
+                    "PATH": "${env:Path};${workspaceFolder}\\build\\windows\\x64\\runner\\Debug"
+                }
+            },
+            "linux": {
+                "env": {
+                    "LIBQUICKJSC_TEST_PATH": "${workspaceFolder}/build/linux/debug/bundle/lib/libquickjs_c_bridge_plugin.so"
+                }
+            },
+            "request": "launch"
         }
     ]
 }

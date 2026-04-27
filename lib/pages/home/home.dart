@@ -5,7 +5,6 @@ import 'package:pomelo/collections/routes.gr.dart';
 import 'package:pomelo/collections/spotube_icons.dart';
 import 'package:pomelo/components/titlebar/titlebar.dart';
 import 'package:pomelo/extensions/constrains.dart';
-import 'package:pomelo/extensions/context.dart';
 import 'package:pomelo/models/database/database.dart';
 import 'package:pomelo/provider/user_preferences/user_preferences_provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';

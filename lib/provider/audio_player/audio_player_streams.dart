@@ -6,13 +6,13 @@ import '../../models/metadata/metadata.dart';
 import '../../provider/audio_player/audio_player.dart';
 import '../../provider/audio_player/state.dart';
 // import 'package:spotube/provider/discord_provider.dart';
-// import 'package:spotube/provider/history/history.dart';
+import '../history/history.dart';
 // import 'package:spotube/provider/metadata_plugin/core/scrobble.dart';
 // import 'package:spotube/provider/metadata_plugin/metadata_plugin_provider.dart';
 // import 'package:spotube/provider/server/sourced_track_provider.dart';
 // import 'package:spotube/provider/skip_segments/skip_segments.dart';
 // import 'package:spotube/provider/scrobbler/scrobbler.dart';
-// import 'package:spotube/provider/user_preferences/user_preferences_provider.dart';
+import '../user_preferences/user_preferences_provider.dart';
 import '../../services/audio_player/audio_player.dart';
 import '../../services/audio_services/audio_services.dart';
 import '../../services/logger/logger.dart';
@@ -42,11 +42,11 @@ class AudioPlayerStreamListeners {
   }
 
   // ScrobblerNotifier get scrobbler => ref.read(scrobblerProvider.notifier);
-  // UserPreferences get preferences => ref.read(userPreferencesProvider);
+  UserPreferences get preferences => ref.read(userPreferencesProvider);
   // DiscordNotifier get discord => ref.read(discordProvider.notifier);
   AudioPlayerState get audioPlayerState => ref.read(audioPlayerProvider);
-  // PlaybackHistoryActions get history =>
-  //     ref.read(playbackHistoryActionsProvider);
+  PlaybackHistoryActions get history =>
+      ref.read(playbackHistoryActionsProvider);
 
   StreamSubscription subscribeToPlaylist() {
     return audioPlayer.playlistStream.listen((mpvPlaylist) {
@@ -112,7 +112,7 @@ class AudioPlayerStreamListeners {
 
         // /// The [Track] from Playlist.getTracks doesn't contain artist images
         // /// so we need to fetch them from the API
-        // var activeTrack = audioPlayerState.activeTrack!;
+        var activeTrack = audioPlayerState.activeTrack!;
         // if (activeTrack.artists.any((a) => a.images == null)) {
         //   final metadataPlugin = await ref.read(metadataPluginProvider.future);
         //   final artists = await Future.wait(
@@ -126,7 +126,7 @@ class AudioPlayerStreamListeners {
         //   );
         // }
 
-        // await history.addTrack(activeTrack);
+        await history.addTrack(activeTrack);
       } catch (e, stack) {
         AppLogger.reportError(e, stack);
       }

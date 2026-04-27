@@ -1,11 +1,14 @@
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart' show Material, MaterialType;
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Material, MaterialType, ListTile;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_god/metadata_god.dart';
+import 'package:pomelo/collections/routes.gr.dart';
 import 'package:pomelo/components/titlebar/titlebar.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
@@ -64,6 +67,14 @@ class TestPage extends HookConsumerWidget {
                       },
                       child: const Text('继续播放'),
                     ),
+                    TextButton(
+                      onPressed: () async {
+                        context.router.push(
+                          const CupertinoSliverRefreshDemoRoute(),
+                        );
+                      },
+                      child: const Text('刷新demo'),
+                    ),
                   ],
                 ),
               ),
@@ -71,6 +82,39 @@ class TestPage extends HookConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+@RoutePage()
+class CupertinoSliverRefreshDemoPage extends StatelessWidget {
+  static const name = "testSliverRefresh";
+  const CupertinoSliverRefreshDemoPage({super.key});
+
+  Future<void> _onRefresh() async {
+    await Future.delayed(const Duration(seconds: 2));
+    // 更新数据逻辑
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: [
+        const SliverAppBar(title: Text('My App'), floating: true),
+        // iOS 风格的下拉刷新，直接作为第一个 sliver
+        CupertinoSliverRefreshControl(
+          onRefresh: _onRefresh,
+          refreshTriggerPullDistance: 100.0,
+          refreshIndicatorExtent: 60.0,
+        ),
+
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => ListTile(title: Text('Item $index')),
+            childCount: 100,
+          ),
+        ),
+      ],
     );
   }
 }

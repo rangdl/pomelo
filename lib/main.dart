@@ -130,6 +130,7 @@ class Pomelo extends HookConsumerWidget {
           behavior: ScrollConfiguration.of(context).copyWith(
             dragDevices: hasTouchSupport
                 ? {
+                    PointerDeviceKind.mouse,
                     PointerDeviceKind.touch,
                     PointerDeviceKind.stylus,
                     PointerDeviceKind.invertedStylus,

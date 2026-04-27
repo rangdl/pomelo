@@ -10,6 +10,7 @@ bool useHasTouch() {
     void globalRoute(PointerEvent event) {
       if (hasTouch.value) return;
       hasTouch.value =
+          event.kind == PointerDeviceKind.mouse ||
           event.kind == PointerDeviceKind.touch ||
           event.kind == PointerDeviceKind.stylus ||
           event.kind == PointerDeviceKind.invertedStylus;

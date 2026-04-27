@@ -44,6 +44,10 @@ class AppRouter extends RootStackRouter {
         if (!kIsWeb) AutoRoute(path: "settings/logs", page: LogsRoute.page),
 
         AutoRoute(path: "test", page: TestRoute.page),
+        AutoRoute(
+          path: "CupertinoSliverRefreshDemoRoute",
+          page: CupertinoSliverRefreshDemoRoute.page,
+        ),
       ],
     ),
     CustomRoute(
