@@ -1,6 +1,36 @@
 {
   "cSpell.words": [
-    "Fluxy"
+    "configurators",
+    "Cupertino",
+    "Encrypter",
+    "fluentui",
+    "Fluxy",
+    "fuzzywuzzy",
+    "navs",
+    "riverpod",
+    "shadcn",
+    "smtc",
+    "Spotube",
+    "sqflite",
+    "titlebar",
+    "typeconverters"
   ],
-  "dart.flutterSdkPath": ".fvm/versions/3.41.5"
+  "dart.flutterSdkPath": ".fvm/versions/3.35.7",
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "pubspec.yaml": "pubspec.lock,analysis_options.yaml,.packages,.flutter-plugins,.flutter-plugins-dependencies,flutter_launcher_icons*.yaml,flutter_native_splash*.yaml,distribute_options.yaml",
+    "README.md": "LICENSE,CODE_OF_CONDUCT.md,CONTRIBUTING.md,SECURITY.md,CONTRIBUTION.md,CHANGELOG.md,PRIVACY_POLICY.md",
+    "*.dart": "${capture}.g.dart,${capture}.freezed.dart"
+  },
+  "workbench.colorCustomizations": {
+    "titleBar.activeForeground": "#bbbbbb",
+    "editor.background": "#2b2b2b"
+  },
+  "terminal.integrated.env.windows": { 
+    "CHANNEL": "stable",
+    "DOTENV": "window",
+    "GITHUB_RUN_NUMBER": "1",
+    "FLUTTER_VERSION": "3.35.7"
+  }
 }

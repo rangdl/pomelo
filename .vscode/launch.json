@@ -1,0 +1,41 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "pomelo",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "pomelo (profile mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "pomelo (release mode)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        },
+        {
+            "name": "test-with-flutterjs",
+            "type": "dart",
+            "program": "test/flutter_js_test.dart",
+            "windows": {
+                "env": {
+                    "PATH": "${env:Path};${workspaceFolder}\\build\\windows\\x64\\runner\\Debug"
+                }
+            },
+            "linux": {
+                "env": {
+                    "LIBQUICKJSC_TEST_PATH": "${workspaceFolder}/build/linux/debug/bundle/lib/libquickjs_c_bridge_plugin.so"
+                }
+            },
+            "request": "launch"
+        }
+    ]
+}

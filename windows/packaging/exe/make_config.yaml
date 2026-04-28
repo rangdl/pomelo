@@ -1,0 +1,10 @@
+app_id: 54055B29-203D-14CB-43B4-2B84DE8DA6E4
+publisher: rang
+publisher_url: https://github.com/rangdl/pomelo
+display_name: Pomelo
+create_desktop_icon: true
+install_dir_name: Pomelo
+script_template: inno_setup.iss
+locales:
+  - zh
+  - en
