@@ -56,8 +56,8 @@ jobs:
             platform: windows
             arch: x86
             files: |
-              dist/Spotube-windows-x86_64.nupkg
-              dist/Spotube-windows-x86_64-setup.exe
+              dist/Pomelo-windows-x86_64.nupkg
+              dist/Pomelo-windows-x86_64-setup.exe
           # - os: macos-14
           #   platform: ios
           #   arch: all
