@@ -1,11 +1,9 @@
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
 import 'package:flutter/material.dart' show Material, MaterialType, ListTile;
-import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:pomelo/collections/routes.gr.dart';
@@ -87,27 +85,29 @@ class TestPage extends HookConsumerWidget {
 }
 
 @RoutePage()
-class CupertinoSliverRefreshDemoPage extends StatelessWidget {
+class CupertinoSliverRefreshDemoPage extends HookConsumerWidget {
   static const name = "testSliverRefresh";
   const CupertinoSliverRefreshDemoPage({super.key});
 
-  Future<void> _onRefresh() async {
-    await Future.delayed(const Duration(seconds: 2));
-    // 更新数据逻辑
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, ref) {
     return CustomScrollView(
+      // CupertinoSliverRefreshControl 默认需要 BouncingScrollPhysics 才能工作。
+      // 在 Android 上需要手动配置
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       slivers: [
         const SliverAppBar(title: Text('My App'), floating: true),
         // iOS 风格的下拉刷新，直接作为第一个 sliver
         CupertinoSliverRefreshControl(
-          onRefresh: _onRefresh,
+          onRefresh: () async {
+            await Future.delayed(const Duration(seconds: 2));
+            // 更新数据逻辑
+          },
           refreshTriggerPullDistance: 100.0,
           refreshIndicatorExtent: 60.0,
         ),
-
         SliverList(
           delegate: SliverChildBuilderDelegate(
             (context, index) => ListTile(title: Text('Item $index')),

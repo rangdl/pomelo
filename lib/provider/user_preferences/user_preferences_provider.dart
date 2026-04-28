@@ -143,9 +143,9 @@ class UserPreferencesNotifier extends Notifier<PreferencesTableData> {
   //   // }
   // }
 
-  // void setCheckUpdate(bool check) {
-  //   setData(PreferencesTableCompanion(checkUpdate: Value(check)));
-  // }
+  void setCheckUpdate(bool check) {
+    setData(PreferencesTableCompanion(checkUpdate: Value(check)));
+  }
 
   void setDownloadLocation(String downloadDir) {
     if (downloadDir.isEmpty) return;
@@ -220,9 +220,9 @@ class UserPreferencesNotifier extends Notifier<PreferencesTableData> {
   //   setData(PreferencesTableCompanion(connectPort: Value(port)));
   // }
 
-  // void setCacheMusic(bool cache) {
-  //   setData(PreferencesTableCompanion(cacheMusic: Value(cache)));
-  // }
+  void setCacheMusic(bool cache) {
+    setData(PreferencesTableCompanion(cacheMusic: Value(cache)));
+  }
 }
 
 final userPreferencesProvider =

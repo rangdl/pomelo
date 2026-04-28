@@ -82,7 +82,7 @@ class PreferencesTable extends Table {
   // BoolColumn get enableConnect =>
   //     boolean().withDefault(const Constant(false))();
   // IntColumn get connectPort => integer().withDefault(const Constant(-1))();
-  // BoolColumn get cacheMusic => boolean().withDefault(const Constant(true))();
+  BoolColumn get cacheMusic => boolean().withDefault(const Constant(true))();
 
   // Default values as PreferencesTableData
   static PreferencesTableData defaults() {
@@ -111,7 +111,7 @@ class PreferencesTable extends Table {
       discordPresence: true,
       // endlessPlayback: true,
       // enableConnect: false,
-      // cacheMusic: true,
+      cacheMusic: true,
       // connectPort: -1,
     );
   }

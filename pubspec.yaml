@@ -141,6 +141,10 @@ dev_dependencies:
   drift_dev: ^2.21.0
   auto_route_generator: ^9.0.0
 
+  # 打包
+  process_run: ^0.14.2
+  pub_api_client: ^3.0.0
+
 dependency_overrides:
   flutter_svg: ^2.0.17
   # smtc_windows:

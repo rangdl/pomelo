@@ -179,6 +179,21 @@ class $PreferencesTableTable extends PreferencesTable
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _cacheMusicMeta = const VerificationMeta(
+    'cacheMusic',
+  );
+  @override
+  late final GeneratedColumn<bool> cacheMusic = GeneratedColumn<bool>(
+    'cache_music',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("cache_music" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -194,6 +209,7 @@ class $PreferencesTableTable extends PreferencesTable
     localLibraryLocation,
     themeMode,
     discordPresence,
+    cacheMusic,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -262,6 +278,12 @@ class $PreferencesTableTable extends PreferencesTable
           data['discord_presence']!,
           _discordPresenceMeta,
         ),
+      );
+    }
+    if (data.containsKey('cache_music')) {
+      context.handle(
+        _cacheMusicMeta,
+        cacheMusic.isAcceptableOrUnknown(data['cache_music']!, _cacheMusicMeta),
       );
     }
     return context;
@@ -340,6 +362,10 @@ class $PreferencesTableTable extends PreferencesTable
         DriftSqlType.bool,
         data['${effectivePrefix}discord_presence'],
       )!,
+      cacheMusic: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}cache_music'],
+      )!,
     );
   }
 
@@ -379,6 +405,7 @@ class PreferencesTableData extends DataClass
   final List<String> localLibraryLocation;
   final ThemeMode themeMode;
   final bool discordPresence;
+  final bool cacheMusic;
   const PreferencesTableData({
     required this.id,
     required this.checkUpdate,
@@ -393,6 +420,7 @@ class PreferencesTableData extends DataClass
     required this.localLibraryLocation,
     required this.themeMode,
     required this.discordPresence,
+    required this.cacheMusic,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -438,6 +466,7 @@ class PreferencesTableData extends DataClass
       );
     }
     map['discord_presence'] = Variable<bool>(discordPresence);
+    map['cache_music'] = Variable<bool>(cacheMusic);
     return map;
   }
 
@@ -456,6 +485,7 @@ class PreferencesTableData extends DataClass
       localLibraryLocation: Value(localLibraryLocation),
       themeMode: Value(themeMode),
       discordPresence: Value(discordPresence),
+      cacheMusic: Value(cacheMusic),
     );
   }
 
@@ -488,6 +518,7 @@ class PreferencesTableData extends DataClass
         serializer.fromJson<String>(json['themeMode']),
       ),
       discordPresence: serializer.fromJson<bool>(json['discordPresence']),
+      cacheMusic: serializer.fromJson<bool>(json['cacheMusic']),
     );
   }
   @override
@@ -515,6 +546,7 @@ class PreferencesTableData extends DataClass
         $PreferencesTableTable.$converterthemeMode.toJson(themeMode),
       ),
       'discordPresence': serializer.toJson<bool>(discordPresence),
+      'cacheMusic': serializer.toJson<bool>(cacheMusic),
     };
   }
 
@@ -532,6 +564,7 @@ class PreferencesTableData extends DataClass
     List<String>? localLibraryLocation,
     ThemeMode? themeMode,
     bool? discordPresence,
+    bool? cacheMusic,
   }) => PreferencesTableData(
     id: id ?? this.id,
     checkUpdate: checkUpdate ?? this.checkUpdate,
@@ -546,6 +579,7 @@ class PreferencesTableData extends DataClass
     localLibraryLocation: localLibraryLocation ?? this.localLibraryLocation,
     themeMode: themeMode ?? this.themeMode,
     discordPresence: discordPresence ?? this.discordPresence,
+    cacheMusic: cacheMusic ?? this.cacheMusic,
   );
   PreferencesTableData copyWithCompanion(PreferencesTableCompanion data) {
     return PreferencesTableData(
@@ -582,6 +616,9 @@ class PreferencesTableData extends DataClass
       discordPresence: data.discordPresence.present
           ? data.discordPresence.value
           : this.discordPresence,
+      cacheMusic: data.cacheMusic.present
+          ? data.cacheMusic.value
+          : this.cacheMusic,
     );
   }
 
@@ -600,7 +637,8 @@ class PreferencesTableData extends DataClass
           ..write('downloadLocation: $downloadLocation, ')
           ..write('localLibraryLocation: $localLibraryLocation, ')
           ..write('themeMode: $themeMode, ')
-          ..write('discordPresence: $discordPresence')
+          ..write('discordPresence: $discordPresence, ')
+          ..write('cacheMusic: $cacheMusic')
           ..write(')'))
         .toString();
   }
@@ -620,6 +658,7 @@ class PreferencesTableData extends DataClass
     localLibraryLocation,
     themeMode,
     discordPresence,
+    cacheMusic,
   );
   @override
   bool operator ==(Object other) =>
@@ -637,7 +676,8 @@ class PreferencesTableData extends DataClass
           other.downloadLocation == this.downloadLocation &&
           other.localLibraryLocation == this.localLibraryLocation &&
           other.themeMode == this.themeMode &&
-          other.discordPresence == this.discordPresence);
+          other.discordPresence == this.discordPresence &&
+          other.cacheMusic == this.cacheMusic);
 }
 
 class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
@@ -654,6 +694,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
   final Value<List<String>> localLibraryLocation;
   final Value<ThemeMode> themeMode;
   final Value<bool> discordPresence;
+  final Value<bool> cacheMusic;
   const PreferencesTableCompanion({
     this.id = const Value.absent(),
     this.checkUpdate = const Value.absent(),
@@ -668,6 +709,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     this.localLibraryLocation = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.discordPresence = const Value.absent(),
+    this.cacheMusic = const Value.absent(),
   });
   PreferencesTableCompanion.insert({
     this.id = const Value.absent(),
@@ -683,6 +725,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     this.localLibraryLocation = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.discordPresence = const Value.absent(),
+    this.cacheMusic = const Value.absent(),
   });
   static Insertable<PreferencesTableData> custom({
     Expression<int>? id,
@@ -698,6 +741,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     Expression<String>? localLibraryLocation,
     Expression<String>? themeMode,
     Expression<bool>? discordPresence,
+    Expression<bool>? cacheMusic,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -715,6 +759,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
         'local_library_location': localLibraryLocation,
       if (themeMode != null) 'theme_mode': themeMode,
       if (discordPresence != null) 'discord_presence': discordPresence,
+      if (cacheMusic != null) 'cache_music': cacheMusic,
     });
   }
 
@@ -732,6 +777,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     Value<List<String>>? localLibraryLocation,
     Value<ThemeMode>? themeMode,
     Value<bool>? discordPresence,
+    Value<bool>? cacheMusic,
   }) {
     return PreferencesTableCompanion(
       id: id ?? this.id,
@@ -747,6 +793,7 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
       localLibraryLocation: localLibraryLocation ?? this.localLibraryLocation,
       themeMode: themeMode ?? this.themeMode,
       discordPresence: discordPresence ?? this.discordPresence,
+      cacheMusic: cacheMusic ?? this.cacheMusic,
     );
   }
 
@@ -810,6 +857,9 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     if (discordPresence.present) {
       map['discord_presence'] = Variable<bool>(discordPresence.value);
     }
+    if (cacheMusic.present) {
+      map['cache_music'] = Variable<bool>(cacheMusic.value);
+    }
     return map;
   }
 
@@ -828,7 +878,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
           ..write('downloadLocation: $downloadLocation, ')
           ..write('localLibraryLocation: $localLibraryLocation, ')
           ..write('themeMode: $themeMode, ')
-          ..write('discordPresence: $discordPresence')
+          ..write('discordPresence: $discordPresence, ')
+          ..write('cacheMusic: $cacheMusic')
           ..write(')'))
         .toString();
   }
@@ -1704,6 +1755,7 @@ typedef $$PreferencesTableTableCreateCompanionBuilder =
       Value<List<String>> localLibraryLocation,
       Value<ThemeMode> themeMode,
       Value<bool> discordPresence,
+      Value<bool> cacheMusic,
     });
 typedef $$PreferencesTableTableUpdateCompanionBuilder =
     PreferencesTableCompanion Function({
@@ -1720,6 +1772,7 @@ typedef $$PreferencesTableTableUpdateCompanionBuilder =
       Value<List<String>> localLibraryLocation,
       Value<ThemeMode> themeMode,
       Value<bool> discordPresence,
+      Value<bool> cacheMusic,
     });
 
 class $$PreferencesTableTableFilterComposer
@@ -1801,6 +1854,11 @@ class $$PreferencesTableTableFilterComposer
     column: $table.discordPresence,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<bool> get cacheMusic => $composableBuilder(
+    column: $table.cacheMusic,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$PreferencesTableTableOrderingComposer
@@ -1876,6 +1934,11 @@ class $$PreferencesTableTableOrderingComposer
     column: $table.discordPresence,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get cacheMusic => $composableBuilder(
+    column: $table.cacheMusic,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PreferencesTableTableAnnotationComposer
@@ -1949,6 +2012,11 @@ class $$PreferencesTableTableAnnotationComposer
     column: $table.discordPresence,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get cacheMusic => $composableBuilder(
+    column: $table.cacheMusic,
+    builder: (column) => column,
+  );
 }
 
 class $$PreferencesTableTableTableManager
@@ -2001,6 +2069,7 @@ class $$PreferencesTableTableTableManager
                 Value<List<String>> localLibraryLocation = const Value.absent(),
                 Value<ThemeMode> themeMode = const Value.absent(),
                 Value<bool> discordPresence = const Value.absent(),
+                Value<bool> cacheMusic = const Value.absent(),
               }) => PreferencesTableCompanion(
                 id: id,
                 checkUpdate: checkUpdate,
@@ -2015,6 +2084,7 @@ class $$PreferencesTableTableTableManager
                 localLibraryLocation: localLibraryLocation,
                 themeMode: themeMode,
                 discordPresence: discordPresence,
+                cacheMusic: cacheMusic,
               ),
           createCompanionCallback:
               ({
@@ -2031,6 +2101,7 @@ class $$PreferencesTableTableTableManager
                 Value<List<String>> localLibraryLocation = const Value.absent(),
                 Value<ThemeMode> themeMode = const Value.absent(),
                 Value<bool> discordPresence = const Value.absent(),
+                Value<bool> cacheMusic = const Value.absent(),
               }) => PreferencesTableCompanion.insert(
                 id: id,
                 checkUpdate: checkUpdate,
@@ -2045,6 +2116,7 @@ class $$PreferencesTableTableTableManager
                 localLibraryLocation: localLibraryLocation,
                 themeMode: themeMode,
                 discordPresence: discordPresence,
+                cacheMusic: cacheMusic,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

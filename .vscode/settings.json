@@ -26,5 +26,11 @@
   "workbench.colorCustomizations": {
     "titleBar.activeForeground": "#bbbbbb",
     "editor.background": "#2b2b2b"
+  },
+  "terminal.integrated.env.windows": { 
+    "CHANNEL": "stable",
+    "DOTENV": "window",
+    "GITHUB_RUN_NUMBER": "1",
+    "FLUTTER_VERSION": "3.35.7"
   }
 }
