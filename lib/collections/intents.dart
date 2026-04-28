@@ -74,27 +74,24 @@ class HomeTabAction extends Action<HomeTabIntent> {
       case HomeTabs.search:
         router.navigate(const TestRoute());
         break;
-      default:
-        router.navigate(const HomeRoute());
+      case HomeTabs.lyrics:
+        router.navigate(const LyricsRoute());
         break;
-      // case HomeTabs.lyrics:
-      //   router.navigate(const LyricsRoute());
-      //   break;
-      // case HomeTabs.userPlaylists:
-      //   router.navigate(const UserPlaylistsRoute());
-      //   break;
-      // case HomeTabs.userArtists:
-      //   router.navigate(const UserArtistsRoute());
-      //   break;
-      // case HomeTabs.userAlbums:
-      //   router.navigate(const UserAlbumsRoute());
-      //   break;
-      // case HomeTabs.userLocalLibrary:
-      //   router.navigate(const UserLocalLibraryRoute());
-      //   break;
-      // case HomeTabs.userDownloads:
-      //   router.navigate(const UserDownloadsRoute());
-      //   break;
+      case HomeTabs.userPlaylists:
+        // router.navigate(const UserPlaylistsRoute());
+        break;
+      case HomeTabs.userArtists:
+        // router.navigate(const UserArtistsRoute());
+        break;
+      case HomeTabs.userAlbums:
+        // router.navigate(const UserAlbumsRoute());
+        break;
+      case HomeTabs.userLocalLibrary:
+        router.navigate(const UserLocalLibraryRoute());
+        break;
+      case HomeTabs.userDownloads:
+        router.navigate(const UserDownloadsRoute());
+        break;
     }
     return null;
   }

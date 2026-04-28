@@ -97,9 +97,9 @@ class BottomPlayer extends HookConsumerWidget {
                           const Duration(milliseconds: 100),
                           () async {
                             if (context.mounted) {
-                              // context.navigateTo(
-                              //   MiniLyricsRoute(prevSize: prevSize),
-                              // );
+                              context.navigateTo(
+                                MiniLyricsRoute(prevSize: prevSize),
+                              );
                             }
                           },
                         );

@@ -39,7 +39,28 @@ class AppRouter extends RootStackRouter {
           //   ),
           // ],
         ),
+        AutoRoute(
+          path: "library",
+          page: LibraryRoute.page,
+          children: [
+            // AutoRoute(
+            //   path: "playlists",
+            //   page: UserPlaylistsRoute.page,
+            // ),
+            // AutoRoute(
+            //   path: "artists",
+            //   page: UserArtistsRoute.page,
+            // ),
+            // AutoRoute(
+            //   path: "albums",
+            //   page: UserAlbumsRoute.page,
+            // ),
+            AutoRoute(path: "local", page: UserLocalLibraryRoute.page),
+            AutoRoute(path: "downloads", page: UserDownloadsRoute.page),
+          ],
+        ),
         AutoRoute(path: "artist/:id", page: ArtistRoute.page),
+        AutoRoute(path: "lyrics", page: LyricsRoute.page),
         AutoRoute(path: "settings", page: SettingsRoute.page),
         if (!kIsWeb) AutoRoute(path: "settings/logs", page: LogsRoute.page),
 
@@ -56,6 +77,18 @@ class AppRouter extends RootStackRouter {
       reverseDurationInMilliseconds: 200,
       path: "/player/queue",
       page: PlayerQueueRoute.page,
+    ),
+    CustomRoute(
+      transitionsBuilder: TransitionsBuilders.slideBottom,
+      durationInMilliseconds: 200,
+      reverseDurationInMilliseconds: 200,
+      path: "/player/lyrics",
+      page: PlayerLyricsRoute.page,
+    ),
+    AutoRoute(
+      path: "/mini-player",
+      page: MiniLyricsRoute.page,
+      // parentNavigatorKey: rootNavigatorKey,
     ),
   ];
 }

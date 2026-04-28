@@ -5,10 +5,10 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/collections/routes.gr.dart';
 import 'package:pomelo/collections/spotube_icons.dart';
-import 'package:pomelo/components/image/universal_image.dart';
+// import 'package:pomelo/components/image/universal_image.dart';
 import 'package:pomelo/extensions/constrains.dart';
 import 'package:pomelo/extensions/context.dart';
-import 'package:pomelo/models/metadata/metadata.dart';
+// import 'package:pomelo/models/metadata/metadata.dart';
 // import 'package:pomelo/modules/connect/connect_device.dart';
 import 'package:pomelo/provider/download_manager_provider.dart';
 // import 'package:pomelo/provider/metadata_plugin/core/auth.dart';
@@ -45,17 +45,17 @@ class SidebarFooter extends HookConsumerWidget implements NavigationBarItem {
         mainAxisSize: MainAxisSize.min,
         spacing: 10,
         children: [
-          // Badge(
-          //   isLabelVisible: downloadCount > 0,
-          //   label: Text(downloadCount.toString()),
-          //   child: IconButton(
-          //     variance: router.topRoute.name == UserDownloadsRoute.name
-          //         ? ButtonVariance.secondary
-          //         : ButtonVariance.ghost,
-          //     icon: const Icon(SpotubeIcons.download),
-          //     onPressed: () => context.navigateTo(const UserDownloadsRoute()),
-          //   ),
-          // ),
+          Badge(
+            isLabelVisible: downloadCount > 0,
+            label: Text(downloadCount.toString()),
+            child: IconButton(
+              variance: router.topRoute.name == UserDownloadsRoute.name
+                  ? ButtonVariance.secondary
+                  : ButtonVariance.ghost,
+              icon: const Icon(SpotubeIcons.download),
+              onPressed: () => context.navigateTo(const UserDownloadsRoute()),
+            ),
+          ),
           // const ConnectDeviceButton.sidebar(),
           IconButton(
             variance: ButtonVariance.ghost,
@@ -73,22 +73,22 @@ class SidebarFooter extends HookConsumerWidget implements NavigationBarItem {
         mainAxisSize: MainAxisSize.min,
         spacing: 10,
         children: [
-          // SizedBox(
-          //   width: double.infinity,
-          //   child: Button(
-          //     style: router.topRoute.name == UserDownloadsRoute.name
-          //         ? ButtonVariance.secondary
-          //         : ButtonVariance.outline,
-          //     onPressed: () {
-          //       context.navigateTo(const UserDownloadsRoute());
-          //     },
-          //     leading: const Icon(SpotubeIcons.download),
-          //     trailing: downloadCount > 0
-          //         ? PrimaryBadge(child: Text(downloadCount.toString()))
-          //         : null,
-          //     child: Text(context.l10n.downloads),
-          //   ),
-          // ),
+          SizedBox(
+            width: double.infinity,
+            child: Button(
+              style: router.topRoute.name == UserDownloadsRoute.name
+                  ? ButtonVariance.secondary
+                  : ButtonVariance.outline,
+              onPressed: () {
+                context.navigateTo(const UserDownloadsRoute());
+              },
+              leading: const Icon(SpotubeIcons.download),
+              trailing: downloadCount > 0
+                  ? PrimaryBadge(child: Text(downloadCount.toString()))
+                  : null,
+              child: Text(context.l10n.downloads),
+            ),
+          ),
           // const ConnectDeviceButton.sidebar(),
           Row(
             mainAxisSize: MainAxisSize.min,

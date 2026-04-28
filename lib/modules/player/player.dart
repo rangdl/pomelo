@@ -235,7 +235,7 @@ class PlayerView extends HookConsumerWidget {
                           leading: const Icon(SpotubeIcons.music),
                           child: Text(context.l10n.lyrics),
                           onPressed: () {
-                            // context.pushRoute(const PlayerLyricsRoute());
+                            context.pushRoute(const PlayerLyricsRoute());
                           },
                         ),
                       ),

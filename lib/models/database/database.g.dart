@@ -1720,6 +1720,258 @@ class HistoryTableCompanion extends UpdateCompanion<HistoryTableData> {
   }
 }
 
+class $LyricsTableTable extends LyricsTable
+    with TableInfo<$LyricsTableTable, LyricsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LyricsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _trackIdMeta = const VerificationMeta(
+    'trackId',
+  );
+  @override
+  late final GeneratedColumn<String> trackId = GeneratedColumn<String>(
+    'track_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<SubtitleSimple, String> data =
+      GeneratedColumn<String>(
+        'data',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<SubtitleSimple>($LyricsTableTable.$converterdata);
+  @override
+  List<GeneratedColumn> get $columns => [id, trackId, data];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'lyrics_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LyricsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('track_id')) {
+      context.handle(
+        _trackIdMeta,
+        trackId.isAcceptableOrUnknown(data['track_id']!, _trackIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_trackIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LyricsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LyricsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      trackId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}track_id'],
+      )!,
+      data: $LyricsTableTable.$converterdata.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}data'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $LyricsTableTable createAlias(String alias) {
+    return $LyricsTableTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<SubtitleSimple, String> $converterdata =
+      SubtitleTypeConverter();
+}
+
+class LyricsTableData extends DataClass implements Insertable<LyricsTableData> {
+  final int id;
+  final String trackId;
+  final SubtitleSimple data;
+  const LyricsTableData({
+    required this.id,
+    required this.trackId,
+    required this.data,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['track_id'] = Variable<String>(trackId);
+    {
+      map['data'] = Variable<String>(
+        $LyricsTableTable.$converterdata.toSql(data),
+      );
+    }
+    return map;
+  }
+
+  LyricsTableCompanion toCompanion(bool nullToAbsent) {
+    return LyricsTableCompanion(
+      id: Value(id),
+      trackId: Value(trackId),
+      data: Value(data),
+    );
+  }
+
+  factory LyricsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LyricsTableData(
+      id: serializer.fromJson<int>(json['id']),
+      trackId: serializer.fromJson<String>(json['trackId']),
+      data: serializer.fromJson<SubtitleSimple>(json['data']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'trackId': serializer.toJson<String>(trackId),
+      'data': serializer.toJson<SubtitleSimple>(data),
+    };
+  }
+
+  LyricsTableData copyWith({int? id, String? trackId, SubtitleSimple? data}) =>
+      LyricsTableData(
+        id: id ?? this.id,
+        trackId: trackId ?? this.trackId,
+        data: data ?? this.data,
+      );
+  LyricsTableData copyWithCompanion(LyricsTableCompanion data) {
+    return LyricsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      trackId: data.trackId.present ? data.trackId.value : this.trackId,
+      data: data.data.present ? data.data.value : this.data,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LyricsTableData(')
+          ..write('id: $id, ')
+          ..write('trackId: $trackId, ')
+          ..write('data: $data')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, trackId, data);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LyricsTableData &&
+          other.id == this.id &&
+          other.trackId == this.trackId &&
+          other.data == this.data);
+}
+
+class LyricsTableCompanion extends UpdateCompanion<LyricsTableData> {
+  final Value<int> id;
+  final Value<String> trackId;
+  final Value<SubtitleSimple> data;
+  const LyricsTableCompanion({
+    this.id = const Value.absent(),
+    this.trackId = const Value.absent(),
+    this.data = const Value.absent(),
+  });
+  LyricsTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String trackId,
+    required SubtitleSimple data,
+  }) : trackId = Value(trackId),
+       data = Value(data);
+  static Insertable<LyricsTableData> custom({
+    Expression<int>? id,
+    Expression<String>? trackId,
+    Expression<String>? data,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (trackId != null) 'track_id': trackId,
+      if (data != null) 'data': data,
+    });
+  }
+
+  LyricsTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? trackId,
+    Value<SubtitleSimple>? data,
+  }) {
+    return LyricsTableCompanion(
+      id: id ?? this.id,
+      trackId: trackId ?? this.trackId,
+      data: data ?? this.data,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (trackId.present) {
+      map['track_id'] = Variable<String>(trackId.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(
+        $LyricsTableTable.$converterdata.toSql(data.value),
+      );
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LyricsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('trackId: $trackId, ')
+          ..write('data: $data')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1729,6 +1981,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $AudioPlayerStateTableTable audioPlayerStateTable =
       $AudioPlayerStateTableTable(this);
   late final $HistoryTableTable historyTable = $HistoryTableTable(this);
+  late final $LyricsTableTable lyricsTable = $LyricsTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1737,6 +1990,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     preferencesTable,
     audioPlayerStateTable,
     historyTable,
+    lyricsTable,
   ];
 }
 
@@ -2611,6 +2865,159 @@ typedef $$HistoryTableTableProcessedTableManager =
       HistoryTableData,
       PrefetchHooks Function()
     >;
+typedef $$LyricsTableTableCreateCompanionBuilder =
+    LyricsTableCompanion Function({
+      Value<int> id,
+      required String trackId,
+      required SubtitleSimple data,
+    });
+typedef $$LyricsTableTableUpdateCompanionBuilder =
+    LyricsTableCompanion Function({
+      Value<int> id,
+      Value<String> trackId,
+      Value<SubtitleSimple> data,
+    });
+
+class $$LyricsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LyricsTableTable> {
+  $$LyricsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get trackId => $composableBuilder(
+    column: $table.trackId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<SubtitleSimple, SubtitleSimple, String>
+  get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+}
+
+class $$LyricsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LyricsTableTable> {
+  $$LyricsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get trackId => $composableBuilder(
+    column: $table.trackId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LyricsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LyricsTableTable> {
+  $$LyricsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get trackId =>
+      $composableBuilder(column: $table.trackId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<SubtitleSimple, String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+}
+
+class $$LyricsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LyricsTableTable,
+          LyricsTableData,
+          $$LyricsTableTableFilterComposer,
+          $$LyricsTableTableOrderingComposer,
+          $$LyricsTableTableAnnotationComposer,
+          $$LyricsTableTableCreateCompanionBuilder,
+          $$LyricsTableTableUpdateCompanionBuilder,
+          (
+            LyricsTableData,
+            BaseReferences<_$AppDatabase, $LyricsTableTable, LyricsTableData>,
+          ),
+          LyricsTableData,
+          PrefetchHooks Function()
+        > {
+  $$LyricsTableTableTableManager(_$AppDatabase db, $LyricsTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LyricsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LyricsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LyricsTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> trackId = const Value.absent(),
+                Value<SubtitleSimple> data = const Value.absent(),
+              }) => LyricsTableCompanion(id: id, trackId: trackId, data: data),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String trackId,
+                required SubtitleSimple data,
+              }) => LyricsTableCompanion.insert(
+                id: id,
+                trackId: trackId,
+                data: data,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LyricsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LyricsTableTable,
+      LyricsTableData,
+      $$LyricsTableTableFilterComposer,
+      $$LyricsTableTableOrderingComposer,
+      $$LyricsTableTableAnnotationComposer,
+      $$LyricsTableTableCreateCompanionBuilder,
+      $$LyricsTableTableUpdateCompanionBuilder,
+      (
+        LyricsTableData,
+        BaseReferences<_$AppDatabase, $LyricsTableTable, LyricsTableData>,
+      ),
+      LyricsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2621,4 +3028,6 @@ class $AppDatabaseManager {
       $$AudioPlayerStateTableTableTableManager(_db, _db.audioPlayerStateTable);
   $$HistoryTableTableTableManager get historyTable =>
       $$HistoryTableTableTableManager(_db, _db.historyTable);
+  $$LyricsTableTableTableManager get lyricsTable =>
+      $$LyricsTableTableTableManager(_db, _db.lyricsTable);
 }

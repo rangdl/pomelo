@@ -12,7 +12,7 @@ import 'package:pomelo/extensions/context.dart';
 import 'package:pomelo/extensions/duration.dart';
 import 'package:pomelo/modules/player/use_progress.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
-import 'package:pomelo/provider/audio_player/querying_track_info.dart';
+// import 'package:pomelo/provider/audio_player/querying_track_info.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/utils/platform.dart';
 

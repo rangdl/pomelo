@@ -1,24 +1,24 @@
 import 'dart:async';
 
-import 'package:auto_route/auto_route.dart';
+// import 'package:auto_route/auto_route.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:skeletonizer/skeletonizer.dart';
-import 'package:pomelo/collections/routes.gr.dart';
+// import 'package:pomelo/collections/routes.gr.dart';
 import 'package:pomelo/collections/spotube_icons.dart';
 import 'package:pomelo/components/hover_builder.dart';
 import 'package:pomelo/components/image/universal_image.dart';
 import 'package:pomelo/components/links/artist_link.dart';
-import 'package:pomelo/components/links/link_text.dart';
+// import 'package:pomelo/components/links/link_text.dart';
 import 'package:pomelo/components/track_tile/track_options_button.dart';
 import 'package:pomelo/components/ui/button_tile.dart';
 import 'package:pomelo/extensions/constrains.dart';
 import 'package:pomelo/extensions/duration.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
-import 'package:pomelo/provider/audio_player/querying_track_info.dart';
+// import 'package:pomelo/provider/audio_player/querying_track_info.dart';
 import 'package:pomelo/provider/audio_player/state.dart';
 // import 'package:pomelo/provider/blacklist_provider.dart';
 import 'package:pomelo/utils/platform.dart';

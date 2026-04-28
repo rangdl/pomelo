@@ -8,6 +8,7 @@ import 'package:encrypt/encrypt.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pomelo/models/lyrics.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/modules/settings/color_scheme_picker_dialog.dart';
 import 'package:pomelo/services/kv_store/encrypted_kv_store.dart';
@@ -19,6 +20,7 @@ import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 part 'tables/preferences.dart';
 part 'tables/audio_player_state.dart';
 part 'tables/history.dart';
+part 'tables/lyrics.dart';
 
 part 'typeconverters/color.dart';
 part 'typeconverters/locale.dart';
@@ -26,11 +28,14 @@ part 'typeconverters/string_list.dart';
 part 'typeconverters/encrypted_text.dart';
 part 'typeconverters/map.dart';
 part 'typeconverters/map_list.dart';
+part 'typeconverters/subtitle.dart';
 
 part 'database.g.dart';
 
 // https://drift.simonbinder.eu/dart_api
-@DriftDatabase(tables: [PreferencesTable, AudioPlayerStateTable, HistoryTable])
+@DriftDatabase(
+  tables: [PreferencesTable, AudioPlayerStateTable, HistoryTable, LyricsTable],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
