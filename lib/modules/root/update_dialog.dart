@@ -15,7 +15,7 @@ class RootAppUpdateDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const url = "https://github.com/rangdl/pomelo/releases/latest";
-    const nightlyUrl = "https://github.com/rangdl/pomelo/releases/latest";
+    const nightlyUrl = "https://github.com/rangdl/pomelo/releases/tag/nightly";
     return AlertDialog(
       title: Text(context.l10n.spotube_has_an_update),
       actions: [

@@ -17,26 +17,22 @@ class MacosBuildCommand extends Command with BuildCommandCommonSteps {
   FutureOr? run() async {
     await bootstrap();
 
-    await shell.run(
-      """
+    await shell.run("""
       flutter build macos
-      appdmg appdmg.json ${join(cwd.path, "build", "Spotube-macos-universal.dmg")}
+      appdmg appdmg.json ${join(cwd.path, "build", "Pomelo-macos-universal.dmg")}
       fastforge package --platform=macos --targets pkg --skip-clean
-      """,
-    );
+      """);
 
     final ogPkg = File(
       join(
         cwd.path,
         "dist",
         pubspec.version.toString(),
-        "spotube-${pubspec.version}-macos.pkg",
+        "pomelo-${pubspec.version}-macos.pkg",
       ),
     );
 
-    await ogPkg.copy(
-      join(cwd.path, "build", "Spotube-macos-universal.pkg"),
-    );
+    await ogPkg.copy(join(cwd.path, "build", "Pomelo-macos-universal.pkg"));
     await ogPkg.delete();
   }
 }
