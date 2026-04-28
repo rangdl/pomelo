@@ -44,5 +44,42 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+*.pkg.tar.zst
+/aur-struct/*.tar
+/aur-struct/src
+/aur-struct/pkg
+
+/deb-struct/usr
+/linux/packaging/deb/usr
+
+/AppDir
+/appimage-builder-cache
+*.AppImage
+
+/.flatpak
+/.flatpak-builder
+
+/iscc
+installer.exe
+
+/choco-struct/tools/*.exe
+
+# secrets
+*.env
+lib/collections/env.g.dart
+help.txt
+
+dist
+appimage-build
+
+android/key.properties
+
+**/pb_data
+
+tm.json
+
 # FVM Version Cache
 .fvm/
+
+android/build
+android/app/.cxx
