@@ -1,6 +1,7 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import '../../collections/env.dart';
 import '../../provider/audio_player/audio_player.dart';
 
 import '../../models/metadata/metadata.dart';
@@ -24,8 +25,15 @@ class AudioServices with WidgetsBindingObserver {
     final mobile = kIsMobile || kIsMacOS || kIsLinux
         ? await AudioService.init(
             builder: () => MobileAudioService(playback),
-            config: const AudioServiceConfig(
-              androidNotificationChannelId: 'cn.rang.pomelo',
+            config: AudioServiceConfig(
+              androidNotificationChannelId: switch ((
+                kIsLinux,
+                Env.releaseChannel,
+              )) {
+                (true, _) => "pomelo",
+                (_, ReleaseChannel.stable) => "cn.rang.pomelo",
+                (_, ReleaseChannel.nightly) => "cn.rang.pomelo.nightly",
+              },
               androidNotificationChannelName: 'Pomelo',
               androidNotificationOngoing: false,
               androidStopForegroundOnPause: false,
