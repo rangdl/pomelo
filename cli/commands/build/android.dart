@@ -18,9 +18,7 @@ class AndroidBuildCommand extends Command with BuildCommandCommonSteps {
   FutureOr? run() async {
     await bootstrap();
 
-    await shell.run(
-      "flutter build apk --flavor ${CliEnv.channel.name}",
-    );
+    await shell.run("flutter build apk --flavor ${CliEnv.channel.name}");
 
     final ogApkFile = File(
       join(
@@ -33,7 +31,7 @@ class AndroidBuildCommand extends Command with BuildCommandCommonSteps {
     );
 
     await ogApkFile.copy(
-      join(cwd.path, "build", "Spotube-android-all-arch.apk"),
+      join(cwd.path, "build", "Pomelo-android-all-arch.apk"),
     );
 
     stdout.writeln("✅ Built Android Apk and Appbundle");
