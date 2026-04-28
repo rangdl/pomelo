@@ -119,6 +119,7 @@ dependencies:
   auto_size_text: ^3.0.0
   fuzzywuzzy: ^1.1.6
   scroll_to_index: ^3.0.1
+  envied: ^1.0.0
 
   # quickjs
   # flutter_js: ^0.8.7
@@ -140,7 +141,7 @@ dev_dependencies:
   json_serializable: ^6.6.2
   drift_dev: ^2.21.0
   auto_route_generator: ^9.0.0
-
+  envied_generator: ^1.0.0
   # 打包
   process_run: ^0.14.2
   pub_api_client: ^3.0.0

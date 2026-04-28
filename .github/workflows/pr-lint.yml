@@ -22,8 +22,6 @@ jobs:
           envsubst < .env.example > .env
         env:
           ENABLE_UPDATE_CHECK: true
-          LASTFM_API_KEY: xxx
-          LASTFM_API_SECRET: xxx
           RELEASE_CHANNEL: nightly
           HIDE_DONATIONS: 0
 

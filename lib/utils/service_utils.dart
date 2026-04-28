@@ -23,7 +23,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-// import 'package:pomelo/collections/env.dart';
+import 'package:pomelo/collections/env.dart';
 
 import 'package:version/version.dart';
 
@@ -240,58 +240,58 @@ abstract class ServiceUtils {
     if (checkUpdate == false) return;
     final packageInfo = await PackageInfo.fromPlatform();
 
-    // if (Env.releaseChannel == ReleaseChannel.nightly) {
-    //   final value = await globalDio.getUri(
-    //     Uri.parse(
-    //       "https://api.github.com/repos/KRTirtho/spotube/actions/workflows/spotube-release-binary.yml/runs?status=success&per_page=1",
-    //     ),
-    //     options: Options(responseType: ResponseType.json),
-    //   );
+    if (Env.releaseChannel == ReleaseChannel.nightly) {
+      final value = await globalDio.getUri(
+        Uri.parse(
+          "https://api.github.com/repos/rangdl/pomelo/actions/workflows/release-binary.yml/runs?status=success&per_page=1",
+        ),
+        options: Options(responseType: ResponseType.json),
+      );
 
-    //   final buildNum = value.data["workflow_runs"][0]["run_number"] as int;
+      final buildNum = value.data["workflow_runs"][0]["run_number"] as int;
 
-    //   if (buildNum <= int.parse(packageInfo.buildNumber) || !context.mounted) {
-    //     return;
-    //   }
+      if (buildNum <= int.parse(packageInfo.buildNumber) || !context.mounted) {
+        return;
+      }
 
-    //   await showDialog(
-    //     context: context,
-    //     barrierDismissible: true,
-    //     barrierColor: Colors.black.withAlpha(66),
-    //     builder: (context) {
-    //       return RootAppUpdateDialog.nightly(nightlyBuildNum: buildNum);
-    //     },
-    //   );
-    // } else {
-    final value = await globalDio.getUri(
-      Uri.parse(
-        "https://api.github.com/repos/KRTirtho/spotube/releases/latest",
-      ),
-    );
-    final tagName = (value.data["tag_name"] as String).replaceAll("v", "");
-    final currentVersion = packageInfo.version == "Unknown"
-        ? null
-        : Version.parse(packageInfo.version);
-    final latestVersion = tagName == "nightly" ? null : Version.parse(tagName);
+      await showDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withAlpha(66),
+        builder: (context) {
+          return RootAppUpdateDialog.nightly(nightlyBuildNum: buildNum);
+        },
+      );
+    } else {
+      final value = await globalDio.getUri(
+        Uri.parse("https://api.github.com/repos/rangdl/pomelo/releases/latest"),
+      );
+      final tagName = (value.data["tag_name"] as String).replaceAll("v", "");
+      final currentVersion = packageInfo.version == "Unknown"
+          ? null
+          : Version.parse(packageInfo.version);
+      final latestVersion = tagName == "nightly"
+          ? null
+          : Version.parse(tagName);
 
-    if (currentVersion == null ||
-        latestVersion == null ||
-        (latestVersion.isPreRelease && !currentVersion.isPreRelease) ||
-        (!latestVersion.isPreRelease && currentVersion.isPreRelease)) {
-      return;
+      if (currentVersion == null ||
+          latestVersion == null ||
+          (latestVersion.isPreRelease && !currentVersion.isPreRelease) ||
+          (!latestVersion.isPreRelease && currentVersion.isPreRelease)) {
+        return;
+      }
+
+      if (latestVersion <= currentVersion || !context.mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        barrierColor: Colors.black.withAlpha(66),
+        builder: (context) {
+          return RootAppUpdateDialog(version: latestVersion);
+        },
+      );
     }
-
-    if (latestVersion <= currentVersion || !context.mounted) return;
-
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.black.withAlpha(66),
-      builder: (context) {
-        return RootAppUpdateDialog(version: latestVersion);
-      },
-    );
-    // }
   }
 
   static Future<Uint8List?> downloadImage(String imageUrl) async {
