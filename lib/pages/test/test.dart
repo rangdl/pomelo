@@ -11,6 +11,7 @@ import 'package:pomelo/components/titlebar/titlebar.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
+import 'package:pomelo/services/source/source.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 @RoutePage()
@@ -23,7 +24,8 @@ class TestPage extends HookConsumerWidget {
     final controller = useScrollController();
 
     final file = File('C:/Users/admin/Downloads/新建文件夹/周杰伦 - 晴天.mp3');
-
+    final sourceManager = SourceManager();
+    sourceManager.init();
     return Scaffold(
       headers: const [TitleBar(title: Text('测试'))],
       child: Scrollbar(
@@ -72,6 +74,21 @@ class TestPage extends HookConsumerWidget {
                         );
                       },
                       child: const Text('刷新demo'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        // sourceManager.loadUrl(
+                        //   'http://192.168.0.200/test/rang/juhe.js',
+                        // );
+                        sourceManager.loadAssets();
+                      },
+                      child: const Text('加载源'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        sourceManager.musicUrl();
+                      },
+                      child: const Text('从源获取链接'),
                     ),
                   ],
                 ),
