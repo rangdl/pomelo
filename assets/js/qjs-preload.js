@@ -191,27 +191,16 @@
         options.response_timeout = typeof timeout == 'number' && timeout > 0 ? Math.min(timeout, 60_000) : 60_000
         // let request = needle.request(method, url, data, options, (err, resp, body) => {
         // let request = fetchRequest(method, url, data, options, (err, resp, body) => {
-        console.log('native request start')
         let request = __native_send_request(method, url, data, options, (err, resp, body) => {
-          console.log('native request end')
-          console.log(err)
-          console.log(typeof resp)
-          console.log(resp)
-          console.log(resp.body)
-          console.log(resp['body'])
-          console.log(typeof body)
           try {
             if (err) {
               callback.call(this, err, null, null)
             } else {
-              // body = resp.body = resp.raw.toString()
+              body = resp.body = resp.raw.toString()
               try {
                 resp.body = JSON.parse(resp.body)
               } catch (_) {}
               body = resp.body
-              console.log('native request start - 0')
-              console.log(body)
-              console.log('native request start - 0')
               callback.call(this, err, {
                 statusCode: resp.statusCode,
                 statusMessage: resp.statusMessage,

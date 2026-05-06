@@ -24,8 +24,15 @@ class TestPage extends HookConsumerWidget {
     final controller = useScrollController();
 
     final file = File('C:/Users/admin/Downloads/新建文件夹/周杰伦 - 晴天.mp3');
-    final sourceManager = SourceManager();
-    sourceManager.init();
+    SourceManager? sourceManager;
+
+    useEffect(() {
+      sourceManager = SourceManager();
+      sourceManager?.init();
+      return () {
+        sourceManager?.dispose();
+      };
+    }, []);
     return Scaffold(
       headers: const [TitleBar(title: Text('测试'))],
       child: Scrollbar(
@@ -77,18 +84,53 @@ class TestPage extends HookConsumerWidget {
                     ),
                     TextButton(
                       onPressed: () async {
-                        // sourceManager.loadUrl(
-                        //   'http://192.168.0.200/test/rang/juhe.js',
-                        // );
-                        sourceManager.loadAssets();
+                        sourceManager?.loadUrl(
+                          'http://192.168.0.200/test/rang/music-source/juhe.js',
+                        );
                       },
-                      child: const Text('加载源'),
+                      child: const Text('加载 juhe 源'),
                     ),
                     TextButton(
                       onPressed: () async {
-                        sourceManager.musicUrl();
+                        sourceManager?.loadUrl(
+                          'http://192.168.0.200/test/rang/music-source/all.js',
+                        );
+                      },
+                      child: const Text('加载 全豆要 源'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        sourceManager?.loadUrl(
+                          'http://192.168.0.200/test/rang/music-source/长青SVIP音源v1.2.0.js',
+                        );
+                      },
+                      child: const Text('加载 长青 源'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        sourceManager?.loadUrl(
+                          'http://192.168.0.200/test/rang/music-source/flower.js',
+                        );
+                      },
+                      child: const Text('加载 野花 源'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        sourceManager?.loadAssets();
+                      },
+                      child: const Text('加载本地源'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        sourceManager?.musicUrl();
                       },
                       child: const Text('从源获取链接'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        sourceManager?.test();
+                      },
+                      child: const Text('测试'),
                     ),
                   ],
                 ),

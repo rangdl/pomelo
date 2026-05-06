@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
 import 'package:pomelo/services/dio/dio.dart';
@@ -15,6 +17,7 @@ const Map<String, int> _infoNames = {
 
 class SourceManager {
   late final JavascriptRuntime jsRuntime;
+  Timer? _timer;
 
   SourceManager() {
     // setFetchDebug(true);
@@ -22,17 +25,17 @@ class SourceManager {
     jsRuntime = getJavascriptRuntime();
   }
   init() async {
+    final cryptoJs = await rootBundle.loadString('assets/js/crypto-js.js');
     final qjsPolyfill = await rootBundle.loadString(
       'assets/js/qjs-polyfill.js',
     );
-    final cryptoJs = await rootBundle.loadString('assets/js/crypto-js.js');
     final pako = await rootBundle.loadString('assets/js/pako.js');
     final jsrsasign = await rootBundle.loadString(
       'assets/js/jsrsasign-all-min.js',
     );
     final preload = await rootBundle.loadString('assets/js/qjs-preload.js');
-    jsRuntime.evaluate(qjsPolyfill);
     jsRuntime.evaluate(cryptoJs);
+    jsRuntime.evaluate(qjsPolyfill);
     jsRuntime.evaluate(pako);
     jsRuntime.evaluate(jsrsasign);
     jsRuntime.evaluate(preload);
@@ -43,8 +46,18 @@ class SourceManager {
       __native_idRequest += 1;
       var cb = arguments[4];
       __native_xhrRequests[__native_idRequest] = {
-        callback: function(responseInfo, responseText, error) {
-          cb(error, responseInfo, responseText);
+        callback: function(error, responseInfo) {
+        if (error){
+          cb(error, null, null);
+          return
+        }
+        const raw = globalThis.lx.utils.buffer.from(responseInfo.body)
+        responseInfo.body = JSON.parse(responseInfo.body)
+        cb(error, {
+          raw: raw,
+          bytes: raw,
+          ...responseInfo
+          }, responseInfo.body);
         }
       };
       var args = [];
@@ -58,7 +71,7 @@ class SourceManager {
     }
     """);
     jsRuntime.onMessage('nativeSendRequest', (arguments) {
-      print('native_request');
+      print('native_request: 请求参数');
       print(arguments);
       try {
         String? method = arguments[0];
@@ -66,7 +79,7 @@ class SourceManager {
         Object? body = arguments[2];
         Map? options = arguments[3];
         int? idRequest = arguments[4];
-        Map<String, String> headers = {};
+        Map<String, dynamic> headers = options?['headers'] ?? {};
         // headersList.forEach((header) {
         //   // final headerMatch = regexpHeader.allMatches(value).first;
         //   // String? headerName = headerMatch.group(0);
@@ -77,31 +90,54 @@ class SourceManager {
         //   String headerKey = header[0];
         //   headers[headerKey] = header[1];
         // });
-        globalDio.request(url!, data: body).then((response) {
-          final body = jsonEncode(response.data);
-          Map<String, String> headersMap = {};
-          response.headers.forEach((name, values) {
-            headersMap[name] = values.join(', ');
-          });
+        int timeout = options?['response_timeout'] ?? 60000;
+        globalDio
+            .request(
+              url!,
+              data: body,
+              options: Options(
+                method: method,
+                headers: headers,
+                connectTimeout: const Duration(seconds: 5),
+                sendTimeout: Duration(milliseconds: timeout),
+                receiveTimeout: Duration(milliseconds: timeout),
+              ),
+            )
+            .then((response) {
+              final responseBody = jsonEncode(response.data);
+              Map<String, String> headersMap = {};
+              response.headers.forEach((name, values) {
+                headersMap[name] = values.join(', ');
+              });
 
-          final resp = {
-            'statusCode': response.statusCode,
-            'statusMessage': response.statusMessage,
-            'headers': headersMap,
-            'raw': body,
-            'body': body,
-            // 'bytes': body,
-          };
-          final respText = jsonEncode(resp);
-          jsRuntime.evaluate(
-            "globalThis.__native_xhrRequests[$idRequest].callback($respText,$body, null)",
-          );
-        });
+              final resp = {
+                'statusCode': response.statusCode,
+                'statusMessage': response.statusMessage,
+                'headers': headersMap,
+                // 'bytes': responseBody,
+                // 'raw': responseBody,
+                'body': responseBody,
+              };
+              final respText = jsonEncode(resp);
+              jsRuntime.evaluate(
+                "globalThis.__native_xhrRequests[$idRequest].callback(null,$respText)",
+              );
+            })
+            .catchError((err) {
+              jsRuntime.evaluate(
+                "globalThis.__native_xhrRequests[$idRequest].callback(`$err.message`,null)",
+              );
+            });
       } catch (e) {
         print(e);
       }
     });
     print('加载框架');
+
+    _timer?.cancel(); // 核心：取消定时器
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      jsRuntime.executePendingJob();
+    });
   }
 
   // 加载url
@@ -123,8 +159,8 @@ class SourceManager {
     final infoText = jsonEncode(info);
     String rawScript = base64.encode(utf8.encode(script));
 
-    var result = jsRuntime.evaluate('setup(`$infoText`, `$rawScript`)');
-    print(result);
+    jsRuntime.evaluate('setup(`$infoText`, `$rawScript`)');
+    jsRuntime.executePendingJob();
     print('加载本地源');
   }
 
@@ -138,7 +174,7 @@ class SourceManager {
         'action': 'musicUrl',
         'info': {
           'type': '128k',
-          'musicInfo': {"songmid": "0039MnYb0qxYhV"},
+          'musicInfo': {'source': 'tx', "songmid": "0039MnYb0qxYhV"},
         },
       },
     };
@@ -147,6 +183,8 @@ class SourceManager {
     jsRuntime.evaluate('jsCall(`$dataTextBase64`)');
     print('从源获取');
   }
+
+  test() {}
 
   Map<String, String> parseLxMusicScriptInfo(String script) {
     final RegExp headerRegex = RegExp(r'/\*[\s\S]+?\*/');
@@ -177,5 +215,10 @@ class SourceManager {
       }
     }
     return infos;
+  }
+
+  void dispose() {
+    _timer?.cancel(); // 核心：取消定时器
+    jsRuntime.dispose();
   }
 }
