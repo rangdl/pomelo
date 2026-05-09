@@ -102,40 +102,58 @@ class SourceManager {
       return {request: {}}
     }
     """);
-    // 桥接 事件监听 init
-    _jsRuntime.onMessage('init', (arguments) {
+
+    _jsRuntime.evaluate("""
+function clearTimeout(index) {}
+""");
+    // inited
+    // request
+    // updateAlert
+    // dispatchResult
+    // dispatchError
+    // 桥接 事件监听 inited
+    _jsRuntime.onMessage('inited', (arguments) {
       final status = arguments['status'] ?? false;
       if (status is bool && status) {
-        sources = arguments['data']['sources'] as Map<String, dynamic>;
+        sources = arguments['sources'] as Map<String, dynamic>;
       }
       _completeCompleter('init', '');
     });
-    // 桥接 事件监听 showUpdateAlert
-    _jsRuntime.onMessage('showUpdateAlert', (arguments) {
-      print(arguments);
-    });
     // 桥接 事件监听 request
     _jsRuntime.onMessage('request', (arguments) {
+      print('事件: request');
       print(arguments);
     });
-    // 桥接 事件监听 cancelRequest
-    _jsRuntime.onMessage('cancelRequest', (arguments) {
+    // 桥接 事件监听 updateAlert
+    _jsRuntime.onMessage('updateAlert', (arguments) {
+      print('事件: updateAlert');
       print(arguments);
     });
-    // 桥接 事件监听 response
-    _jsRuntime.onMessage('response', (arguments) {
-      final status = arguments['status'] ?? false;
-      final requestKey = arguments['data']['requestKey'] as String;
-      if (status is bool && status) {
-        try {
-          final url = arguments['data']['data']['url'] as String;
-          _completeCompleter(requestKey, url);
-        } catch (e, stack) {
-          AppLogger.reportError(e, stack);
-        }
-      } else {
-        _completeCompleter(requestKey, '');
-      }
+    // 桥接 事件监听 dispatchResult
+    _jsRuntime.onMessage('dispatchResult', (arguments) {
+      print('事件: dispatchResult');
+      print(arguments);
+      // final status = arguments['status'] ?? false;
+      // final requestKey = arguments['data']['requestKey'] as String;
+      // if (status is bool && status) {
+      //   try {
+      //     final url = arguments['data']['data']['url'] as String;
+      //     _completeCompleter(requestKey, url);
+      //   } catch (e, stack) {
+      //     AppLogger.reportError(e, stack);
+      //   }
+      // } else {
+      //   _completeCompleter(requestKey, '');
+      // }
+      final requestKey = arguments['id'] ?? '';
+      _completeCompleter(requestKey, '');
+    });
+    // 桥接 事件监听 dispatchError
+    _jsRuntime.onMessage('dispatchError', (arguments) {
+      print('事件: dispatchError');
+      print(arguments);
+      final requestKey = arguments['id'] ?? '';
+      _completeCompleter(requestKey, '');
     });
     // 桥接http
     _jsRuntime.onMessage('nativeSendRequest', (arguments) {
@@ -195,7 +213,7 @@ class SourceManager {
             })
             .catchError((err) {
               _jsRuntime.evaluate(
-                "globalThis.__native_xhrRequests[$idRequest].callback(`$err.message`,null)",
+                "globalThis.__native_xhrRequests[$idRequest].callback(`${err.message}`,null)",
               );
             });
       } catch (e) {
@@ -204,9 +222,15 @@ class SourceManager {
     });
     print('加载框架');
 
+    _sourceInfo['rawScript'] = script;
     final infoText = jsonEncode(_sourceInfo);
-    String rawScript = base64.encode(utf8.encode(script));
-    _jsRuntime.evaluate('setup(`$infoText`, `$rawScript`)');
+    // String rawScript = base64.encode(utf8.encode(script));
+    // _jsRuntime.evaluate('setup(`$infoText`, `$rawScript`)');
+    _jsRuntime.evaluate('initEnv($infoText)');
+    final result = _jsRuntime.evaluate('!(function (){$script})();');
+    if (result.isError) {
+      print(result.stringResult);
+    }
 
     _timer?.cancel(); // 核心：取消定时器
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -227,16 +251,19 @@ class SourceManager {
         "request__${Random().nextDouble().toString().substring(2)}";
     final completer = _addCompleter(requestKey);
     final data = {
-      'requestKey': requestKey,
-      'data': {
-        'source': musicInfo['source'],
-        'action': 'musicUrl',
-        'info': {'type': quality, 'musicInfo': musicInfo},
-      },
+      'source': musicInfo['source'],
+      'action': 'musicUrl',
+      'info': {'type': quality, 'musicInfo': musicInfo},
     };
-    final dataText = jsonEncode(data);
-    final dataTextBase64 = base64.encode(utf8.encode(dataText));
-    _jsRuntime.evaluate('jsCall(`$dataTextBase64`)');
+    final dataText = jsonEncode(data['data']);
+    // final dataTextBase64 = base64.encode(utf8.encode(dataText));
+    // _jsRuntime.evaluate('jsCall(`$dataTextBase64`)');
+    final result = _jsRuntime.evaluate(
+      'globalThis.lx._dispatch(`$requestKey`, `request`, `$dataText`)',
+    );
+    if (result.isError) {
+      print(result.stringResult);
+    }
     return await completer.future;
   }
 
