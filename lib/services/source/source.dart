@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -5,7 +6,9 @@ import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
+
 import 'package:pomelo/services/dio/dio.dart';
+import 'package:pomelo/services/logger/logger.dart';
 
 const Map<String, int> _infoNames = {
   'name': 24,
@@ -16,15 +19,44 @@ const Map<String, int> _infoNames = {
 };
 
 class SourceManager {
-  late final JavascriptRuntime jsRuntime;
+  late final String _id;
+  final bool enable;
+  final String script;
+  Map<String, dynamic>? sources; // 初始化完成
+  late final Map<String, String> _sourceInfo;
+  late final JavascriptRuntime _jsRuntime;
   Timer? _timer;
+  late final Map<String, Completer> _completers;
 
-  SourceManager() {
+  String get id => _id;
+  String get name => _sourceInfo['name'] ?? '';
+
+  List<String> get platforms => [...(sources?.keys) ?? []];
+  List<String> qualities(String platform) => [
+    ...(sources?[platform]?['qualitys'] ?? []),
+  ];
+
+  SourceManager(
+    this.script, {
+    String? id,
+    this.enable = false,
+    Map<String, String>? sourceInfo,
+    JavascriptRuntime? jsRuntime,
+    Timer? timer,
+    Map<String, Completer>? completers,
+  }) {
     // setFetchDebug(true);
     // setXhrDebug(true);
-    jsRuntime = getJavascriptRuntime();
+    _id = id ?? "source__${Random().nextDouble().toString().substring(2)}";
+    _jsRuntime = jsRuntime ?? getJavascriptRuntime();
+    _sourceInfo = sourceInfo ?? parseLxMusicScriptInfo(script);
+    _timer = timer;
+    _completers = completers ?? {};
   }
+
   init() async {
+    // _completers['init'] = Completer<String>();
+    final completer = _addCompleter('init');
     final cryptoJs = await rootBundle.loadString('assets/js/crypto-js.js');
     final qjsPolyfill = await rootBundle.loadString(
       'assets/js/qjs-polyfill.js',
@@ -34,12 +66,12 @@ class SourceManager {
       'assets/js/jsrsasign-all-min.js',
     );
     final preload = await rootBundle.loadString('assets/js/qjs-preload.js');
-    jsRuntime.evaluate(cryptoJs);
-    jsRuntime.evaluate(qjsPolyfill);
-    jsRuntime.evaluate(pako);
-    jsRuntime.evaluate(jsrsasign);
-    jsRuntime.evaluate(preload);
-    jsRuntime.evaluate("""
+    _jsRuntime.evaluate(cryptoJs);
+    _jsRuntime.evaluate(qjsPolyfill);
+    _jsRuntime.evaluate(pako);
+    _jsRuntime.evaluate(jsrsasign);
+    _jsRuntime.evaluate(preload);
+    _jsRuntime.evaluate("""
     var __native_xhrRequests = {};
     var __native_idRequest = -1;
     function __native_send_request() {
@@ -70,9 +102,43 @@ class SourceManager {
       return {request: {}}
     }
     """);
-    jsRuntime.onMessage('nativeSendRequest', (arguments) {
-      print('native_request: 请求参数');
+    // 桥接 事件监听 init
+    _jsRuntime.onMessage('init', (arguments) {
+      final status = arguments['status'] ?? false;
+      if (status is bool && status) {
+        sources = arguments['data']['sources'] as Map<String, dynamic>;
+      }
+      _completeCompleter('init', '');
+    });
+    // 桥接 事件监听 showUpdateAlert
+    _jsRuntime.onMessage('showUpdateAlert', (arguments) {
       print(arguments);
+    });
+    // 桥接 事件监听 request
+    _jsRuntime.onMessage('request', (arguments) {
+      print(arguments);
+    });
+    // 桥接 事件监听 cancelRequest
+    _jsRuntime.onMessage('cancelRequest', (arguments) {
+      print(arguments);
+    });
+    // 桥接 事件监听 response
+    _jsRuntime.onMessage('response', (arguments) {
+      final status = arguments['status'] ?? false;
+      final requestKey = arguments['data']['requestKey'] as String;
+      if (status is bool && status) {
+        try {
+          final url = arguments['data']['data']['url'] as String;
+          _completeCompleter(requestKey, url);
+        } catch (e, stack) {
+          AppLogger.reportError(e, stack);
+        }
+      } else {
+        _completeCompleter(requestKey, '');
+      }
+    });
+    // 桥接http
+    _jsRuntime.onMessage('nativeSendRequest', (arguments) {
       try {
         String? method = arguments[0];
         String? url = arguments[1];
@@ -90,6 +156,10 @@ class SourceManager {
         //   String headerKey = header[0];
         //   headers[headerKey] = header[1];
         // });
+        if (headers['User-Agent'] == null) {
+          headers['User-Agent'] =
+              'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36';
+        }
         int timeout = options?['response_timeout'] ?? 60000;
         globalDio
             .request(
@@ -119,12 +189,12 @@ class SourceManager {
                 'body': responseBody,
               };
               final respText = jsonEncode(resp);
-              jsRuntime.evaluate(
+              _jsRuntime.evaluate(
                 "globalThis.__native_xhrRequests[$idRequest].callback(null,$respText)",
               );
             })
             .catchError((err) {
-              jsRuntime.evaluate(
+              _jsRuntime.evaluate(
                 "globalThis.__native_xhrRequests[$idRequest].callback(`$err.message`,null)",
               );
             });
@@ -134,57 +204,41 @@ class SourceManager {
     });
     print('加载框架');
 
+    final infoText = jsonEncode(_sourceInfo);
+    String rawScript = base64.encode(utf8.encode(script));
+    _jsRuntime.evaluate('setup(`$infoText`, `$rawScript`)');
+
     _timer?.cancel(); // 核心：取消定时器
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      jsRuntime.executePendingJob();
+      if (_completers.isNotEmpty) {
+        print('定时刷新 quickjs 的Promise状态...');
+        _jsRuntime.executePendingJob();
+      }
     });
+    await completer.future;
   }
 
-  // 加载url
-  loadUrl(String url) async {
-    final response = await globalDio.get(url);
-    final script = response.toString();
-    final info = parseLxMusicScriptInfo(script);
-    final infoText = jsonEncode(info);
-    String rawScript = base64.encode(utf8.encode(script));
-
-    var result = jsRuntime.evaluate('setup(`$infoText`, `$rawScript`)');
-    print(result);
-    print('加载源');
-  }
-
-  loadAssets() async {
-    final script = await rootBundle.loadString('assets/js/juhe.js');
-    final info = parseLxMusicScriptInfo(script);
-    final infoText = jsonEncode(info);
-    String rawScript = base64.encode(utf8.encode(script));
-
-    jsRuntime.evaluate('setup(`$infoText`, `$rawScript`)');
-    jsRuntime.executePendingJob();
-    print('加载本地源');
-  }
-
-  musicUrl() {
+  Future<String> musicUrl(
+    Map<String, String> musicInfo, {
+    quality = '128k',
+  }) async {
+    print('从 $name 获取');
     final requestKey =
         "request__${Random().nextDouble().toString().substring(2)}";
+    final completer = _addCompleter(requestKey);
     final data = {
       'requestKey': requestKey,
       'data': {
-        'source': 'tx',
+        'source': musicInfo['source'],
         'action': 'musicUrl',
-        'info': {
-          'type': '128k',
-          'musicInfo': {'source': 'tx', "songmid": "0039MnYb0qxYhV"},
-        },
+        'info': {'type': quality, 'musicInfo': musicInfo},
       },
     };
     final dataText = jsonEncode(data);
     final dataTextBase64 = base64.encode(utf8.encode(dataText));
-    jsRuntime.evaluate('jsCall(`$dataTextBase64`)');
-    print('从源获取');
+    _jsRuntime.evaluate('jsCall(`$dataTextBase64`)');
+    return await completer.future;
   }
-
-  test() {}
 
   Map<String, String> parseLxMusicScriptInfo(String script) {
     final RegExp headerRegex = RegExp(r'/\*[\s\S]+?\*/');
@@ -217,8 +271,38 @@ class SourceManager {
     return infos;
   }
 
+  Completer<String> _addCompleter(String key) {
+    final completer = Completer<String>();
+    _completers[key] = completer;
+    return completer;
+  }
+
+  void _completeCompleter(String key, String value) {
+    _completers.remove(key)?.complete(value);
+  }
+
   void dispose() {
     _timer?.cancel(); // 核心：取消定时器
-    jsRuntime.dispose();
+    _jsRuntime.dispose();
+  }
+
+  SourceManager copyWith({
+    String? id,
+    bool? enable,
+    String? script,
+    Map<String, String>? sourceInfo,
+    JavascriptRuntime? jsRuntime,
+    Timer? timer,
+    Map<String, Completer>? completers,
+  }) {
+    return SourceManager(
+      id: id ?? _id,
+      script ?? this.script,
+      enable: enable ?? this.enable,
+      sourceInfo: sourceInfo ?? _sourceInfo,
+      jsRuntime: jsRuntime ?? _jsRuntime,
+      timer: _timer ?? timer,
+      completers: completers,
+    );
   }
 }

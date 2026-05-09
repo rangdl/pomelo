@@ -566,6 +566,66 @@ Map<String, dynamic> _$$SpotubeFullTrackObjectImplToJson(
   'runtimeType': instance.$type,
 };
 
+_$SpotubeTxTrackObjectImpl _$$SpotubeTxTrackObjectImplFromJson(Map json) =>
+    _$SpotubeTxTrackObjectImpl(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      externalUri: json['externalUri'] as String,
+      artists:
+          (json['artists'] as List<dynamic>?)
+              ?.map(
+                (e) => SpotubeSimpleArtistObject.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList() ??
+          const [],
+      album: SpotubeSimpleAlbumObject.fromJson(
+        Map<String, dynamic>.from(json['album'] as Map),
+      ),
+      durationMs: (json['durationMs'] as num).toInt(),
+      types:
+          (json['types'] as List<dynamic>?)
+              ?.map(
+                (e) => SpotubeTrackObjectType.fromJson(
+                  Map<String, dynamic>.from(e as Map),
+                ),
+              )
+              .toList() ??
+          const [],
+      musicId: json['musicId'] as String,
+      albumMid: json['albumMid'] as String,
+      strMediaMid: json['strMediaMid'] as String,
+      $type: json['runtimeType'] as String?,
+    );
+
+Map<String, dynamic> _$$SpotubeTxTrackObjectImplToJson(
+  _$SpotubeTxTrackObjectImpl instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'externalUri': instance.externalUri,
+  'artists': instance.artists.map((e) => e.toJson()).toList(),
+  'album': instance.album.toJson(),
+  'durationMs': instance.durationMs,
+  'types': instance.types.map((e) => e.toJson()).toList(),
+  'musicId': instance.musicId,
+  'albumMid': instance.albumMid,
+  'strMediaMid': instance.strMediaMid,
+  'runtimeType': instance.$type,
+};
+
+_$SpotubeTrackObjectTypeImplImpl _$$SpotubeTrackObjectTypeImplImplFromJson(
+  Map json,
+) => _$SpotubeTrackObjectTypeImplImpl(
+  type: json['type'] as String,
+  size: json['size'] as String,
+);
+
+Map<String, dynamic> _$$SpotubeTrackObjectTypeImplImplToJson(
+  _$SpotubeTrackObjectTypeImplImpl instance,
+) => <String, dynamic>{'type': instance.type, 'size': instance.size};
+
 _$SpotubeUserObjectImpl _$$SpotubeUserObjectImplFromJson(Map json) =>
     _$SpotubeUserObjectImpl(
       id: json['id'] as String,

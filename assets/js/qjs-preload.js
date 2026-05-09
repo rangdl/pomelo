@@ -1,8 +1,12 @@
 (function (){
   const sendMessage = (action, data, status, message) => {
     // ipcRenderer.send(action, { data, status, message })
-    console.log('sendMessage')
+    // console.log('sendMessage')
+    // console.log(typeof globalThis.sendMessage)
     console.log(action, data, status, message)
+    globalThis.sendMessage(action, JSON.stringify({
+      data, status, message
+    }))
   }
   let isInitedApi = false
   let isShowedUpdateAlert = false
@@ -80,6 +84,7 @@
       try {
         events.request.call(context, { source: data.source, action: data.action, info: data.info }).then(response => {
           let sendData = {
+            requestKey,
             source: data.source,
             action: data.action,
           }

@@ -23,6 +23,19 @@ class SpotubeTrackObject with _$SpotubeTrackObject {
     required bool explicit,
   }) = SpotubeFullTrackObject;
 
+  factory SpotubeTrackObject.tx({
+    required String id,
+    required String name,
+    required String externalUri,
+    @Default([]) List<SpotubeSimpleArtistObject> artists,
+    required SpotubeSimpleAlbumObject album,
+    required int durationMs,
+    @Default([]) List<SpotubeTrackObjectType> types,
+    required String musicId,
+    required String albumMid,
+    required String strMediaMid,
+  }) = SpotubeTxTrackObject;
+
   factory SpotubeTrackObject.localTrackFromFile(
     File file, {
     Metadata? metadata,
@@ -115,4 +128,13 @@ extension ToMetadataSpotubeFullTrackObject on SpotubeFullTrackObject {
           : null,
     );
   }
+}
+
+@freezed
+class SpotubeTrackObjectType with _$SpotubeTrackObjectType {
+  factory SpotubeTrackObjectType({required String type, required String size}) =
+      SpotubeTrackObjectTypeImpl;
+
+  factory SpotubeTrackObjectType.fromJson(Map<String, dynamic> json) =>
+      _$SpotubeTrackObjectTypeFromJson(json);
 }
