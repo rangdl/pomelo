@@ -46,6 +46,7 @@ class AudioSourcesProvider extends Notifier<List<SourceManager>> {
             "songmid": "0039MnYb0qxYhV",
           });
           print('从 ${source.name} 获取到播放链接: $url');
+          return url;
         } catch (e) {
           AppLogger.reportError(e, StackTrace.current);
         }

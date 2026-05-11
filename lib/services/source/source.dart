@@ -9,6 +9,7 @@ import 'package:flutter_js/flutter_js.dart';
 
 import 'package:pomelo/services/dio/dio.dart';
 import 'package:pomelo/services/logger/logger.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 const Map<String, int> _infoNames = {
   'name': 24,
@@ -20,11 +21,16 @@ const Map<String, int> _infoNames = {
 
 class SourceManager {
   late final String _id;
-  final bool enable;
   final String script;
   Map<String, dynamic>? sources; // 初始化完成
   late final Map<String, String> _sourceInfo;
-  late final JavascriptRuntime _jsRuntime;
+
+  final bool enable;
+  bool inited; // 初始化成功
+  String? updateUrl; // 更新URL 不为空则需要更新
+  String? log; // 需要更新
+
+  JavascriptRuntime? jsRuntime;
   Timer? _timer;
   late final Map<String, Completer> _completers;
 
@@ -40,21 +46,25 @@ class SourceManager {
     this.script, {
     String? id,
     this.enable = false,
+    this.inited = false,
+    this.updateUrl,
+    this.log,
     Map<String, String>? sourceInfo,
-    JavascriptRuntime? jsRuntime,
+    this.jsRuntime,
     Timer? timer,
     Map<String, Completer>? completers,
   }) {
     // setFetchDebug(true);
     // setXhrDebug(true);
     _id = id ?? "source__${Random().nextDouble().toString().substring(2)}";
-    _jsRuntime = jsRuntime ?? getJavascriptRuntime();
     _sourceInfo = sourceInfo ?? parseLxMusicScriptInfo(script);
     _timer = timer;
     _completers = completers ?? {};
   }
 
   init() async {
+    jsRuntime?.dispose();
+    jsRuntime = getJavascriptRuntime();
     // _completers['init'] = Completer<String>();
     final completer = _addCompleter('init');
     final cryptoJs = await rootBundle.loadString('assets/js/crypto-js.js');
@@ -66,12 +76,12 @@ class SourceManager {
       'assets/js/jsrsasign-all-min.js',
     );
     final preload = await rootBundle.loadString('assets/js/qjs-preload.js');
-    _jsRuntime.evaluate(cryptoJs);
-    _jsRuntime.evaluate(qjsPolyfill);
-    _jsRuntime.evaluate(pako);
-    _jsRuntime.evaluate(jsrsasign);
-    _jsRuntime.evaluate(preload);
-    _jsRuntime.evaluate("""
+    jsRuntime!.evaluate(cryptoJs);
+    jsRuntime!.evaluate(qjsPolyfill);
+    jsRuntime!.evaluate(pako);
+    jsRuntime!.evaluate(jsrsasign);
+    jsRuntime!.evaluate(preload);
+    jsRuntime!.evaluate("""
     var __native_xhrRequests = {};
     var __native_idRequest = -1;
     function __native_send_request() {
@@ -109,38 +119,35 @@ class SourceManager {
     // dispatchResult
     // dispatchError
     // 桥接 事件监听 inited
-    _jsRuntime.onMessage('inited', (arguments) {
+    jsRuntime!.onMessage('inited', (arguments) {
       sources = (arguments['sources'] ?? {}) as Map<String, dynamic>;
       _completeCompleter('init', '');
     });
     // 桥接 事件监听 request
-    _jsRuntime.onMessage('request', (arguments) {
+    jsRuntime!.onMessage('request', (arguments) {
       print('事件: request');
       print(arguments);
     });
     // 桥接 事件监听 updateAlert
-    _jsRuntime.onMessage('updateAlert', (arguments) {
-      final log = arguments['log'] ?? '';
-      final updateUrl = arguments['updateUrl'] ?? '';
-      // init事件触发完成
-      _completeCompleter('init', '');
-      print(log);
-      print(updateUrl);
+    jsRuntime!.onMessage('updateAlert', (arguments) {
+      log = arguments['log'] ?? '';
+      updateUrl = arguments['updateUrl'] ?? '';
+      _getCompleter('init')?.completeError('error');
     });
     // 桥接 事件监听 dispatchResult
-    _jsRuntime.onMessage('dispatchResult', (arguments) {
+    jsRuntime!.onMessage('dispatchResult', (arguments) {
       final requestKey = arguments['id'] ?? '';
       final url = arguments['result'] ?? '';
       _getCompleter(requestKey)?.complete(url);
     });
     // 桥接 事件监听 dispatchError
-    _jsRuntime.onMessage('dispatchError', (arguments) {
+    jsRuntime!.onMessage('dispatchError', (arguments) {
       final requestKey = arguments['id'] ?? '';
       final error = arguments['error'] ?? '';
       _getCompleter(requestKey)?.completeError(error);
     });
     // 桥接http
-    _jsRuntime.onMessage('nativeSendRequest', (arguments) {
+    jsRuntime!.onMessage('nativeSendRequest', (arguments) {
       try {
         String? method = arguments[0];
         String? url = arguments[1];
@@ -192,38 +199,34 @@ class SourceManager {
                 'body': responseBody,
               };
               final respText = jsonEncode(resp);
-              _jsRuntime.evaluate(
+              jsRuntime?.evaluate(
                 "globalThis.__native_xhrRequests[$idRequest].callback(null,$respText)",
               );
             })
             .catchError((err) {
-              _jsRuntime.evaluate(
+              jsRuntime?.evaluate(
                 "globalThis.__native_xhrRequests[$idRequest].callback(`${err.response.toString()}`,null)",
               );
             });
       } catch (e) {
-        print(e);
+        AppLogger.reportError(e, StackTrace.current);
       }
     });
-    print('加载框架');
 
     _sourceInfo['rawScript'] = script;
     final infoText = jsonEncode(_sourceInfo);
     // String rawScript = base64.encode(utf8.encode(script));
     // _jsRuntime.evaluate('setup(`$infoText`, `$rawScript`)');
-    _jsRuntime.evaluate('initEnv($infoText)');
-    final result = _jsRuntime.evaluate('!(function (){$script})();');
-    if (result.isError) {
-      print(result.stringResult);
-    }
+    jsRuntime!.evaluate('initEnv($infoText)');
+    jsRuntime!.evaluate('!(function (){$script})();');
 
-    _timer?.cancel(); // 核心：取消定时器
+    _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_completers.isNotEmpty) {
-        print('定时刷新 quickjs 的Promise状态...');
-        _jsRuntime.executePendingJob();
+        jsRuntime?.executePendingJob();
       }
     });
+    completer.then((v) => inited = true).catchError((err) => inited = false);
     await completer.future;
   }
 
@@ -231,6 +234,9 @@ class SourceManager {
     Map<String, String> musicInfo, {
     quality = '128k',
   }) async {
+    if (!inited) {
+      return '';
+    }
     print('从 $name 获取');
     final requestKey =
         "request__${Random().nextDouble().toString().substring(2)}";
@@ -243,7 +249,7 @@ class SourceManager {
     final dataText = jsonEncode(data);
     // final dataTextBase64 = base64.encode(utf8.encode(dataText));
     // _jsRuntime.evaluate('jsCall(`$dataTextBase64`)');
-    final result = _jsRuntime.evaluate(
+    final result = jsRuntime!.evaluate(
       'globalThis.lx._dispatch(`$requestKey`, `request`, $dataText)',
     );
     if (result.isError) {
@@ -299,7 +305,7 @@ class SourceManager {
 
   void dispose() {
     _timer?.cancel(); // 核心：取消定时器
-    _jsRuntime.dispose();
+    jsRuntime?.dispose();
   }
 
   SourceManager copyWith({
@@ -316,7 +322,7 @@ class SourceManager {
       script ?? this.script,
       enable: enable ?? this.enable,
       sourceInfo: sourceInfo ?? _sourceInfo,
-      jsRuntime: jsRuntime ?? _jsRuntime,
+      jsRuntime: jsRuntime ?? this.jsRuntime,
       timer: _timer ?? timer,
       completers: completers,
     );

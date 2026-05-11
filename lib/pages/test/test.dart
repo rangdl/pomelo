@@ -13,6 +13,8 @@ import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/provider/source/audio_source_provider.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
+import 'package:pomelo/services/dio/dio.dart';
+import 'package:pomelo/services/source/searcher.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 @RoutePage()
@@ -46,13 +48,23 @@ class TestPage extends HookConsumerWidget {
                           .map(
                             (v) => ListTile(
                               title: Text(v.name),
-                              leading: Switch(
-                                value: v.enable,
-                                onChanged: (value) {
-                                  ref
-                                      .read(audioSourcesProvider.notifier)
-                                      .enableSwitch(v.id, value);
-                                },
+                              leading: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  ActiveDotItem(
+                                    size: 12,
+                                    color: v.inited ? Colors.green : Colors.red,
+                                  ),
+                                  Switch(
+                                    value: v.enable,
+                                    onChanged: (value) {
+                                      ref
+                                          .read(audioSourcesProvider.notifier)
+                                          .enableSwitch(v.id, value);
+                                    },
+                                  ),
+                                ],
                               ),
                               // subtitle: Column(
                               //   children: v.platforms
@@ -102,6 +114,12 @@ class TestPage extends HookConsumerWidget {
                           )
                           .toList(),
                     ),
+                    const Row(
+                      children: [
+                        ActiveDotItem(size: 12, color: Colors.green),
+                        Text('测试文本'),
+                      ],
+                    ),
                     TextButton(
                       onPressed: () async {
                         FilePickerResult? result = await FilePicker.platform
@@ -119,6 +137,16 @@ class TestPage extends HookConsumerWidget {
                         ref.read(audioSourcesProvider.notifier).musicUrl();
                       },
                       child: const Text('从源获取播放链接'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        print('tx test');
+                        final txSearcher = TxSearcher(dio: globalDio);
+                        final search = await txSearcher.search('周杰伦');
+                        print(search);
+                        print('1');
+                      },
+                      child: const Text('搜索'),
                     ),
                     TextButton(
                       onPressed: () async {

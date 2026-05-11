@@ -11,6 +11,14 @@ class SpotubePaginationResponseObject<T>
     required List<T> items,
   }) = _SpotubePaginationResponseObject<T>;
 
+  factory SpotubePaginationResponseObject.page({
+    required int limit,
+    required int? page,
+    required int total,
+    required bool hasMore,
+    required List<T> items,
+  }) = SpotubePaginationResponseObjectPage<T>;
+
   factory SpotubePaginationResponseObject.fromJson(
     Map<String, Object?> json,
     T Function(Map<String, dynamic> json) fromJsonT,

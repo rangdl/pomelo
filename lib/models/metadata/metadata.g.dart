@@ -361,6 +361,7 @@ _$$SpotubePaginationResponseObjectImplFromJson<T>(
   total: (json['total'] as num).toInt(),
   hasMore: json['hasMore'] as bool,
   items: (json['items'] as List<dynamic>).map(fromJsonT).toList(),
+  $type: json['runtimeType'] as String?,
 );
 
 Map<String, dynamic> _$$SpotubePaginationResponseObjectImplToJson<T>(
@@ -372,6 +373,32 @@ Map<String, dynamic> _$$SpotubePaginationResponseObjectImplToJson<T>(
   'total': instance.total,
   'hasMore': instance.hasMore,
   'items': instance.items.map(toJsonT).toList(),
+  'runtimeType': instance.$type,
+};
+
+_$SpotubePaginationResponseObjectPageImpl<T>
+_$$SpotubePaginationResponseObjectPageImplFromJson<T>(
+  Map json,
+  T Function(Object? json) fromJsonT,
+) => _$SpotubePaginationResponseObjectPageImpl<T>(
+  limit: (json['limit'] as num).toInt(),
+  page: (json['page'] as num?)?.toInt(),
+  total: (json['total'] as num).toInt(),
+  hasMore: json['hasMore'] as bool,
+  items: (json['items'] as List<dynamic>).map(fromJsonT).toList(),
+  $type: json['runtimeType'] as String?,
+);
+
+Map<String, dynamic> _$$SpotubePaginationResponseObjectPageImplToJson<T>(
+  _$SpotubePaginationResponseObjectPageImpl<T> instance,
+  Object? Function(T value) toJsonT,
+) => <String, dynamic>{
+  'limit': instance.limit,
+  'page': instance.page,
+  'total': instance.total,
+  'hasMore': instance.hasMore,
+  'items': instance.items.map(toJsonT).toList(),
+  'runtimeType': instance.$type,
 };
 
 _$SpotubeFullPlaylistObjectImpl _$$SpotubeFullPlaylistObjectImplFromJson(

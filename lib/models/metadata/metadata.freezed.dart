@@ -4071,16 +4071,103 @@ SpotubePaginationResponseObject<T> _$SpotubePaginationResponseObjectFromJson<T>(
   Map<String, dynamic> json,
   T Function(Object?) fromJsonT,
 ) {
-  return _SpotubePaginationResponseObject<T>.fromJson(json, fromJsonT);
+  switch (json['runtimeType']) {
+    case 'default':
+      return _SpotubePaginationResponseObject<T>.fromJson(json, fromJsonT);
+    case 'page':
+      return SpotubePaginationResponseObjectPage<T>.fromJson(json, fromJsonT);
+
+    default:
+      throw CheckedFromJsonException(
+        json,
+        'runtimeType',
+        'SpotubePaginationResponseObject',
+        'Invalid union type "${json['runtimeType']}"!',
+      );
+  }
 }
 
 /// @nodoc
 mixin _$SpotubePaginationResponseObject<T> {
   int get limit => throw _privateConstructorUsedError;
-  int? get nextOffset => throw _privateConstructorUsedError;
   int get total => throw _privateConstructorUsedError;
   bool get hasMore => throw _privateConstructorUsedError;
   List<T> get items => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )
+    $default, {
+    required TResult Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )
+    page,
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    $default, {
+    TResult? Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    page,
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    $default, {
+    TResult Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    page,
+    required TResult orElse(),
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_SpotubePaginationResponseObject<T> value) $default, {
+    required TResult Function(SpotubePaginationResponseObjectPage<T> value)
+    page,
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_SpotubePaginationResponseObject<T> value)? $default, {
+    TResult? Function(SpotubePaginationResponseObjectPage<T> value)? page,
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_SpotubePaginationResponseObject<T> value)? $default, {
+    TResult Function(SpotubePaginationResponseObjectPage<T> value)? page,
+    required TResult orElse(),
+  }) => throw _privateConstructorUsedError;
 
   /// Serializes this SpotubePaginationResponseObject to a JSON map.
   Map<String, dynamic> toJson(Object? Function(T) toJsonT) =>
@@ -4108,13 +4195,7 @@ abstract class $SpotubePaginationResponseObjectCopyWith<T, $Res> {
         SpotubePaginationResponseObject<T>
       >;
   @useResult
-  $Res call({
-    int limit,
-    int? nextOffset,
-    int total,
-    bool hasMore,
-    List<T> items,
-  });
+  $Res call({int limit, int total, bool hasMore, List<T> items});
 }
 
 /// @nodoc
@@ -4137,7 +4218,6 @@ class _$SpotubePaginationResponseObjectCopyWithImpl<
   @override
   $Res call({
     Object? limit = null,
-    Object? nextOffset = freezed,
     Object? total = null,
     Object? hasMore = null,
     Object? items = null,
@@ -4148,10 +4228,6 @@ class _$SpotubePaginationResponseObjectCopyWithImpl<
                 ? _value.limit
                 : limit // ignore: cast_nullable_to_non_nullable
                       as int,
-            nextOffset: freezed == nextOffset
-                ? _value.nextOffset
-                : nextOffset // ignore: cast_nullable_to_non_nullable
-                      as int?,
             total: null == total
                 ? _value.total
                 : total // ignore: cast_nullable_to_non_nullable
@@ -4250,7 +4326,9 @@ class _$SpotubePaginationResponseObjectImpl<T>
     required this.total,
     required this.hasMore,
     required final List<T> items,
-  }) : _items = items;
+    final String? $type,
+  }) : _items = items,
+       $type = $type ?? 'default';
 
   factory _$SpotubePaginationResponseObjectImpl.fromJson(
     Map<String, dynamic> json,
@@ -4272,6 +4350,9 @@ class _$SpotubePaginationResponseObjectImpl<T>
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_items);
   }
+
+  @JsonKey(name: 'runtimeType')
+  final String $type;
 
   @override
   String toString() {
@@ -4318,6 +4399,111 @@ class _$SpotubePaginationResponseObjectImpl<T>
       >(this, _$identity);
 
   @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )
+    $default, {
+    required TResult Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )
+    page,
+  }) {
+    return $default(limit, nextOffset, total, hasMore, items);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    $default, {
+    TResult? Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    page,
+  }) {
+    return $default?.call(limit, nextOffset, total, hasMore, items);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    $default, {
+    TResult Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    page,
+    required TResult orElse(),
+  }) {
+    if ($default != null) {
+      return $default(limit, nextOffset, total, hasMore, items);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_SpotubePaginationResponseObject<T> value) $default, {
+    required TResult Function(SpotubePaginationResponseObjectPage<T> value)
+    page,
+  }) {
+    return $default(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_SpotubePaginationResponseObject<T> value)? $default, {
+    TResult? Function(SpotubePaginationResponseObjectPage<T> value)? page,
+  }) {
+    return $default?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_SpotubePaginationResponseObject<T> value)? $default, {
+    TResult Function(SpotubePaginationResponseObjectPage<T> value)? page,
+    required TResult orElse(),
+  }) {
+    if ($default != null) {
+      return $default(this);
+    }
+    return orElse();
+  }
+
+  @override
   Map<String, dynamic> toJson(Object? Function(T) toJsonT) {
     return _$$SpotubePaginationResponseObjectImplToJson<T>(this, toJsonT);
   }
@@ -4340,7 +4526,6 @@ abstract class _SpotubePaginationResponseObject<T>
 
   @override
   int get limit;
-  @override
   int? get nextOffset;
   @override
   int get total;
@@ -4356,6 +4541,298 @@ abstract class _SpotubePaginationResponseObject<T>
   _$$SpotubePaginationResponseObjectImplCopyWith<
     T,
     _$SpotubePaginationResponseObjectImpl<T>
+  >
+  get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$SpotubePaginationResponseObjectPageImplCopyWith<T, $Res>
+    implements $SpotubePaginationResponseObjectCopyWith<T, $Res> {
+  factory _$$SpotubePaginationResponseObjectPageImplCopyWith(
+    _$SpotubePaginationResponseObjectPageImpl<T> value,
+    $Res Function(_$SpotubePaginationResponseObjectPageImpl<T>) then,
+  ) = __$$SpotubePaginationResponseObjectPageImplCopyWithImpl<T, $Res>;
+  @override
+  @useResult
+  $Res call({int limit, int? page, int total, bool hasMore, List<T> items});
+}
+
+/// @nodoc
+class __$$SpotubePaginationResponseObjectPageImplCopyWithImpl<T, $Res>
+    extends
+        _$SpotubePaginationResponseObjectCopyWithImpl<
+          T,
+          $Res,
+          _$SpotubePaginationResponseObjectPageImpl<T>
+        >
+    implements _$$SpotubePaginationResponseObjectPageImplCopyWith<T, $Res> {
+  __$$SpotubePaginationResponseObjectPageImplCopyWithImpl(
+    _$SpotubePaginationResponseObjectPageImpl<T> _value,
+    $Res Function(_$SpotubePaginationResponseObjectPageImpl<T>) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of SpotubePaginationResponseObject
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? limit = null,
+    Object? page = freezed,
+    Object? total = null,
+    Object? hasMore = null,
+    Object? items = null,
+  }) {
+    return _then(
+      _$SpotubePaginationResponseObjectPageImpl<T>(
+        limit: null == limit
+            ? _value.limit
+            : limit // ignore: cast_nullable_to_non_nullable
+                  as int,
+        page: freezed == page
+            ? _value.page
+            : page // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        total: null == total
+            ? _value.total
+            : total // ignore: cast_nullable_to_non_nullable
+                  as int,
+        hasMore: null == hasMore
+            ? _value.hasMore
+            : hasMore // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        items: null == items
+            ? _value._items
+            : items // ignore: cast_nullable_to_non_nullable
+                  as List<T>,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable(genericArgumentFactories: true)
+class _$SpotubePaginationResponseObjectPageImpl<T>
+    implements SpotubePaginationResponseObjectPage<T> {
+  _$SpotubePaginationResponseObjectPageImpl({
+    required this.limit,
+    required this.page,
+    required this.total,
+    required this.hasMore,
+    required final List<T> items,
+    final String? $type,
+  }) : _items = items,
+       $type = $type ?? 'page';
+
+  factory _$SpotubePaginationResponseObjectPageImpl.fromJson(
+    Map<String, dynamic> json,
+    T Function(Object?) fromJsonT,
+  ) => _$$SpotubePaginationResponseObjectPageImplFromJson(json, fromJsonT);
+
+  @override
+  final int limit;
+  @override
+  final int? page;
+  @override
+  final int total;
+  @override
+  final bool hasMore;
+  final List<T> _items;
+  @override
+  List<T> get items {
+    if (_items is EqualUnmodifiableListView) return _items;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_items);
+  }
+
+  @JsonKey(name: 'runtimeType')
+  final String $type;
+
+  @override
+  String toString() {
+    return 'SpotubePaginationResponseObject<$T>.page(limit: $limit, page: $page, total: $total, hasMore: $hasMore, items: $items)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SpotubePaginationResponseObjectPageImpl<T> &&
+            (identical(other.limit, limit) || other.limit == limit) &&
+            (identical(other.page, page) || other.page == page) &&
+            (identical(other.total, total) || other.total == total) &&
+            (identical(other.hasMore, hasMore) || other.hasMore == hasMore) &&
+            const DeepCollectionEquality().equals(other._items, _items));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    limit,
+    page,
+    total,
+    hasMore,
+    const DeepCollectionEquality().hash(_items),
+  );
+
+  /// Create a copy of SpotubePaginationResponseObject
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SpotubePaginationResponseObjectPageImplCopyWith<
+    T,
+    _$SpotubePaginationResponseObjectPageImpl<T>
+  >
+  get copyWith =>
+      __$$SpotubePaginationResponseObjectPageImplCopyWithImpl<
+        T,
+        _$SpotubePaginationResponseObjectPageImpl<T>
+      >(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>(
+    TResult Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )
+    $default, {
+    required TResult Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )
+    page,
+  }) {
+    return page(limit, this.page, total, hasMore, items);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>(
+    TResult? Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    $default, {
+    TResult? Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    page,
+  }) {
+    return page?.call(limit, this.page, total, hasMore, items);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>(
+    TResult Function(
+      int limit,
+      int? nextOffset,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    $default, {
+    TResult Function(
+      int limit,
+      int? page,
+      int total,
+      bool hasMore,
+      List<T> items,
+    )?
+    page,
+    required TResult orElse(),
+  }) {
+    if (page != null) {
+      return page(limit, this.page, total, hasMore, items);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>(
+    TResult Function(_SpotubePaginationResponseObject<T> value) $default, {
+    required TResult Function(SpotubePaginationResponseObjectPage<T> value)
+    page,
+  }) {
+    return page(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>(
+    TResult? Function(_SpotubePaginationResponseObject<T> value)? $default, {
+    TResult? Function(SpotubePaginationResponseObjectPage<T> value)? page,
+  }) {
+    return page?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>(
+    TResult Function(_SpotubePaginationResponseObject<T> value)? $default, {
+    TResult Function(SpotubePaginationResponseObjectPage<T> value)? page,
+    required TResult orElse(),
+  }) {
+    if (page != null) {
+      return page(this);
+    }
+    return orElse();
+  }
+
+  @override
+  Map<String, dynamic> toJson(Object? Function(T) toJsonT) {
+    return _$$SpotubePaginationResponseObjectPageImplToJson<T>(this, toJsonT);
+  }
+}
+
+abstract class SpotubePaginationResponseObjectPage<T>
+    implements SpotubePaginationResponseObject<T> {
+  factory SpotubePaginationResponseObjectPage({
+    required final int limit,
+    required final int? page,
+    required final int total,
+    required final bool hasMore,
+    required final List<T> items,
+  }) = _$SpotubePaginationResponseObjectPageImpl<T>;
+
+  factory SpotubePaginationResponseObjectPage.fromJson(
+    Map<String, dynamic> json,
+    T Function(Object?) fromJsonT,
+  ) = _$SpotubePaginationResponseObjectPageImpl<T>.fromJson;
+
+  @override
+  int get limit;
+  int? get page;
+  @override
+  int get total;
+  @override
+  bool get hasMore;
+  @override
+  List<T> get items;
+
+  /// Create a copy of SpotubePaginationResponseObject
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$SpotubePaginationResponseObjectPageImplCopyWith<
+    T,
+    _$SpotubePaginationResponseObjectPageImpl<T>
   >
   get copyWith => throw _privateConstructorUsedError;
 }

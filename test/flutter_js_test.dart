@@ -1,12 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_js/extensions/fetch.dart';
-import 'package:flutter_js/extensions/xhr.dart';
 import 'package:flutter_js/flutter_js.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
-import 'package:pomelo/services/dio/dio.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
