@@ -9,6 +9,25 @@
     rawScript: ''
   };
 
+  const allSources = ['kw', 'kg', 'tx', 'wy', 'mg', 'local']
+  const supportQualitys = {
+    kw: ['128k', '320k', 'flac', 'flac24bit'],
+    kg: ['128k', '320k', 'flac', 'flac24bit'],
+    tx: ['128k', '320k', 'flac', 'flac24bit'],
+    wy: ['128k', '320k', 'flac', 'flac24bit'],
+    mg: ['128k', '320k', 'flac', 'flac24bit'],
+    local: [],
+  }
+  const supportActions = {
+    kw: ['musicUrl'],
+    kg: ['musicUrl'],
+    tx: ['musicUrl'],
+    wy: ['musicUrl'],
+    mg: ['musicUrl'],
+    xm: ['musicUrl'],
+    local: ['musicUrl', 'lyric', 'pic'],
+  }
+
   globalThis.lx = {
     version: '2.0.0',
     env: 'desktop',
@@ -56,29 +75,29 @@
 
       __native_send_request(method, url, data, options, (err, resp, body) => {
         if (aborted) return;
+        if (err) {
+          safeCallback(new Error(err), null, null);
+          return;
+        }
         console.error('[lx.request] fetch resolved, status=' + resp.status + ' url=' + url.substring(0, 100));
         try {
-          if (err) {
-            throw new Error(err);
-          } else {
-            body = resp.body = resp.raw.toString()
-            try {
-              resp.body = JSON.parse(resp.body)
-            } catch (_) {}
-            body = resp.body
+          body = resp.body = resp.raw.toString()
+          try {
+            resp.body = JSON.parse(resp.body)
+          } catch (_) {}
+          body = resp.body
 
-            var response = {
-              statusCode: resp.statusCode,
-              statusMessage: resp.statusMessage,
-              headers: resp.headers,
-              bytes: resp.bytes,
-              raw: resp.raw,
-              body,
-            };
-            console.error('[lx.request] calling safeCallback, statusCode=' + response.statusCode);
-            safeCallback(null, response, body);
-            console.error('[lx.request] safeCallback returned');
-          }
+          var response = {
+            statusCode: resp.statusCode,
+            statusMessage: resp.statusMessage,
+            headers: resp.headers,
+            bytes: resp.bytes,
+            raw: resp.raw,
+            body,
+          };
+          console.error('[lx.request] calling safeCallback, statusCode=' + response.statusCode);
+          safeCallback(null, response, body);
+          console.error('[lx.request] safeCallback returned');
         } catch (err) {
           if (aborted) return;
           var errMsg = (err && err.message) ? err.message : String(err);
@@ -93,6 +112,27 @@
     },
     send(eventName, data) {
       console.error('[lx.send] eventName=' + eventName);
+      if (eventName === 'inited') {
+        if (data && data.sources) {
+          const sources = {}
+          for (const source of allSources) {
+            const userSource = data.sources[source]
+            if (!userSource || userSource.type !== 'music') continue
+            const qualitys = supportQualitys[source]
+            const actions = supportActions[source]
+            sources[source] = {
+              name: userSource.name,
+              type: userSource.type,
+              actions: actions.filter(a => userSource.actions.includes(a)),
+              qualitys: qualitys.filter(q => userSource.qualitys.includes(q)),
+            }
+          }
+          data.sources = sources
+          console.error('[lx.send] inited sources=' + JSON.stringify(Object.keys(data.sources)));
+        } else {
+          console.error('[lx.send] inited but no sources in data');
+        }
+      }
       if (typeof globalThis.sendMessage === 'function') {
         globalThis.sendMessage(eventName, JSON.stringify(data))
       } else {
@@ -165,7 +205,6 @@
       // data = globalThis.lx.utils.buffer.bufToString(globalThis.lx.utils.buffer.from(data, 'base64'), 'utf-8')
       // data = JSON.parse(data)
       const handler = _eventHandlers[eventName];
-      console.log(typeof handler)
       if (typeof handler !== 'function') {
         if (typeof globalThis.sendMessage === 'function') {
           globalThis.sendMessage('dispatchError', JSON.stringify({
@@ -175,7 +214,7 @@
         }
         return;
       }
-      
+
       var settled = false;
 
       function sendResult(value) {
@@ -204,7 +243,7 @@
       }
 
       try {
-        var result = handler(data);
+        var result = handler.call(this, data);
         var isThenable = (result && typeof result.then === 'function');
         console.error('[_dispatch] handler returned, isThenable=' + isThenable + ' requestId=' + requestId);
 
@@ -219,7 +258,7 @@
             console.error('[_dispatch] Promise resolved, requestId=' + requestId);
             clearTimeout(timeoutId);
             sendResult(value);
-          }, function(err) {
+          }).catch(function(err) {
             console.error('[_dispatch] Promise rejected, requestId=' + requestId);
             clearTimeout(timeoutId);
             sendError(err);
@@ -246,4 +285,7 @@
   // Browser-like global aliases (needed by obfuscated scripts)
   globalThis.window = globalThis;
   globalThis.global = globalThis;
+  if (typeof clearTimeout !== "function"){
+    globalThis.clearTimeout = function clearTimeout(index) {}
+  }
 })()

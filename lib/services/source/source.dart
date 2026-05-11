@@ -103,9 +103,6 @@ class SourceManager {
     }
     """);
 
-    _jsRuntime.evaluate("""
-function clearTimeout(index) {}
-""");
     // inited
     // request
     // updateAlert
@@ -113,10 +110,7 @@ function clearTimeout(index) {}
     // dispatchError
     // 桥接 事件监听 inited
     _jsRuntime.onMessage('inited', (arguments) {
-      final status = arguments['status'] ?? false;
-      if (status is bool && status) {
-        sources = arguments['sources'] as Map<String, dynamic>;
-      }
+      sources = (arguments['sources'] ?? {}) as Map<String, dynamic>;
       _completeCompleter('init', '');
     });
     // 桥接 事件监听 request
@@ -126,34 +120,24 @@ function clearTimeout(index) {}
     });
     // 桥接 事件监听 updateAlert
     _jsRuntime.onMessage('updateAlert', (arguments) {
-      print('事件: updateAlert');
-      print(arguments);
+      final log = arguments['log'] ?? '';
+      final updateUrl = arguments['updateUrl'] ?? '';
+      // init事件触发完成
+      _completeCompleter('init', '');
+      print(log);
+      print(updateUrl);
     });
     // 桥接 事件监听 dispatchResult
     _jsRuntime.onMessage('dispatchResult', (arguments) {
-      print('事件: dispatchResult');
-      print(arguments);
-      // final status = arguments['status'] ?? false;
-      // final requestKey = arguments['data']['requestKey'] as String;
-      // if (status is bool && status) {
-      //   try {
-      //     final url = arguments['data']['data']['url'] as String;
-      //     _completeCompleter(requestKey, url);
-      //   } catch (e, stack) {
-      //     AppLogger.reportError(e, stack);
-      //   }
-      // } else {
-      //   _completeCompleter(requestKey, '');
-      // }
       final requestKey = arguments['id'] ?? '';
-      _completeCompleter(requestKey, '');
+      final url = arguments['result'] ?? '';
+      _getCompleter(requestKey)?.complete(url);
     });
     // 桥接 事件监听 dispatchError
     _jsRuntime.onMessage('dispatchError', (arguments) {
-      print('事件: dispatchError');
-      print(arguments);
       final requestKey = arguments['id'] ?? '';
-      _completeCompleter(requestKey, '');
+      final error = arguments['error'] ?? '';
+      _getCompleter(requestKey)?.completeError(error);
     });
     // 桥接http
     _jsRuntime.onMessage('nativeSendRequest', (arguments) {
@@ -199,6 +183,7 @@ function clearTimeout(index) {}
               });
 
               final resp = {
+                'status': response.statusCode,
                 'statusCode': response.statusCode,
                 'statusMessage': response.statusMessage,
                 'headers': headersMap,
@@ -213,7 +198,7 @@ function clearTimeout(index) {}
             })
             .catchError((err) {
               _jsRuntime.evaluate(
-                "globalThis.__native_xhrRequests[$idRequest].callback(`${err.message}`,null)",
+                "globalThis.__native_xhrRequests[$idRequest].callback(`${err.response.toString()}`,null)",
               );
             });
       } catch (e) {
@@ -255,11 +240,11 @@ function clearTimeout(index) {}
       'action': 'musicUrl',
       'info': {'type': quality, 'musicInfo': musicInfo},
     };
-    final dataText = jsonEncode(data['data']);
+    final dataText = jsonEncode(data);
     // final dataTextBase64 = base64.encode(utf8.encode(dataText));
     // _jsRuntime.evaluate('jsCall(`$dataTextBase64`)');
     final result = _jsRuntime.evaluate(
-      'globalThis.lx._dispatch(`$requestKey`, `request`, `$dataText`)',
+      'globalThis.lx._dispatch(`$requestKey`, `request`, $dataText)',
     );
     if (result.isError) {
       print(result.stringResult);
@@ -306,6 +291,10 @@ function clearTimeout(index) {}
 
   void _completeCompleter(String key, String value) {
     _completers.remove(key)?.complete(value);
+  }
+
+  Completer? _getCompleter(String key) {
+    return _completers.remove(key);
   }
 
   void dispose() {

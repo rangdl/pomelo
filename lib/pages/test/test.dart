@@ -66,14 +66,36 @@ class TestPage extends HookConsumerWidget {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 mainAxisAlignment: MainAxisAlignment.end,
-                                children: v.platforms
-                                    .map(
-                                      (p) => Button.text(
-                                        child: Text(p),
-                                        onPressed: () {},
-                                      ),
-                                    )
-                                    .toList(),
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: v.platforms
+                                        .map(
+                                          (p) => Tooltip(
+                                            // Tooltip wraps a target widget and shows TooltipContainer on hover/focus.
+                                            tooltip: TooltipContainer(
+                                              child: Text(
+                                                v.qualities(p).join(','),
+                                              ),
+                                            ).call,
+                                            child: OutlineBadge(
+                                              child: Text(p),
+                                              onPressed: () {},
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                  ),
+                                  IconButton.text(
+                                    onPressed: () {
+                                      ref
+                                          .read(audioSourcesProvider.notifier)
+                                          .remove(v.id);
+                                    },
+                                    icon: const Icon(Icons.delete_outline),
+                                  ),
+                                ],
                               ),
                               // trailing: Text('data'),
                             ),

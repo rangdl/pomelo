@@ -563,3 +563,75 @@ class AESEncryption {
     return bytes;
   }
 }
+
+/**
+ * QuickJS 下的自定义 console group/groupEnd 实现
+ * 本实现模拟输出格式：普通日志保持，groupStart 输出组标签并增加缩进，groupEnd 减少缩进
+ */
+
+if (!console.group) {
+    // 用一个栈来维护缩进级别
+    let groupStack = [];
+
+    // 辅助函数：生成当前缩进位的前缀字符串
+    function getIndentPrefix() {
+        return groupStack.map(() => '  ').join(''); // 每级缩进两个空格
+    }
+
+    // 保存原始的 log 等输出方法
+    const originalLog = console.log;
+    const originalInfo = console.info;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+
+    // 实现统一输出（带当前分组缩进）
+    function formatWithIndent(args) {
+        const prefix = getIndentPrefix();
+        if (prefix) {
+            // 第一个参数前面加上缩进（若存在）
+            if (typeof args[0] === 'string')
+                args[0] = prefix + args[0];
+            else
+                Array.prototype.unshift.call(args, prefix);
+        }
+        return args;
+    }
+
+    // 重写 console 方法：让它们自动携带缩进前缀
+    console.log = function(...args) {
+        originalLog.apply(console, formatWithIndent(args));
+    };
+    console.info = function(...args) {
+        originalInfo.apply(console, formatWithIndent(args));
+    };
+    console.warn = function(...args) {
+        originalWarn.apply(console, formatWithIndent(args));
+    };
+    console.error = function(...args) {
+        originalError.apply(console, formatWithIndent(args));
+    };
+
+    // 实现 group(groupName)：输出组名称，随后增加缩进级别
+    console.group = function(groupName = '') {
+        // 输出组标签（当前缩进 + 组名）
+        const prefix = getIndentPrefix();
+        originalLog.call(console, prefix + (groupName !== '' ? groupName : '└─ (unnamed group)'));
+        // 推入一个新层级（压栈）
+        groupStack.push(true);
+    };
+
+    // 实现 groupCollapsed（可选，默认直接等价于 group）
+    console.groupCollapsed = function(groupName = '') {
+        // 可选行为：根据需要设定一个折叠标签; 此处实现简化为与 group 相同
+        console.group.apply(console, [groupName]);
+    };
+
+    // 实现 groupEnd：检查确保栈非空，弹出一层
+    console.groupEnd = function() {
+        if (groupStack.length === 0) {
+            originalWarn.call(console, 'console.groupEnd() 调用不匹配: 没有对应的 console.group()');
+            return;
+        }
+        groupStack.pop();
+    };
+}
