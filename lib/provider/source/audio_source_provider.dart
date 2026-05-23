@@ -7,9 +7,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/models/database/database.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/provider/database/database.dart';
+import 'package:pomelo/services/dio/dio.dart';
 import 'package:pomelo/services/js_engine/js_engine.dart';
 import 'package:pomelo/services/logger/logger.dart';
-import 'package:pomelo/services/source/source.dart';
 import 'package:pomelo/services/sourced_track/sourced_track.dart';
 
 // 音源文件添加之后存储到数据库
@@ -37,6 +37,13 @@ class SourcesNotifier extends StreamNotifier<List<SourceTableData>> {
           ),
           mode: InsertMode.insert,
         );
+  }
+
+  Future<void> addRemote(String url) async {
+    final res = await globalDio.get(url);
+    if (res.statusCode == 200) {
+      await add(res.toString());
+    }
   }
 
   Future<void> enableSwitch(int id, bool enable) async {

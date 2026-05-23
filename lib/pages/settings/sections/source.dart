@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart' show BuildContext, ListTile;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/components/dialogs/aduio_source_dialog.dart';
 import 'package:pomelo/modules/settings/section_card_with_heading.dart';
 import 'package:pomelo/provider/source/audio_source_provider.dart';
+import 'package:pomelo/services/dio/dio.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class SettingsSourceSection extends HookConsumerWidget {
@@ -60,18 +62,34 @@ class SettingsSourceSection extends HookConsumerWidget {
             loading: () => [const CircularProgressIndicator()],
           ),
         ),
-        TextButton(
-          onPressed: () async {
-            FilePickerResult? result = await FilePicker.platform.pickFiles(
-              allowedExtensions: ['js'],
-            );
-            if (result != null) {
-              File file = File(result.files.single.path!);
-              final script = await file.readAsString();
-              ref.read(sourcesProvider.notifier).add(script);
-            }
-          },
-          child: const Text('本地导入'),
+        Row(
+          children: [
+            TextButton(
+              onPressed: () async {
+                FilePickerResult? result = await FilePicker.platform.pickFiles(
+                  allowedExtensions: ['js'],
+                );
+                if (result != null) {
+                  File file = File(result.files.single.path!);
+                  final script = await file.readAsString();
+                  ref.read(sourcesProvider.notifier).add(script);
+                }
+              },
+              child: const Text('本地导入'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final url =
+                    await showDialog<String>(
+                      context: context,
+                      builder: (context) => const AudioSourceDialog(),
+                    ) ??
+                    '';
+                ref.read(sourcesProvider.notifier).addRemote(url);
+              },
+              child: const Text('网络导入'),
+            ),
+          ],
         ),
       ],
     );
