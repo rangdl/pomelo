@@ -79,9 +79,9 @@ class PreferencesTable extends Table {
       boolean().withDefault(const Constant(true))();
   // BoolColumn get endlessPlayback =>
   //     boolean().withDefault(const Constant(true))();
-  // BoolColumn get enableConnect =>
-  //     boolean().withDefault(const Constant(false))();
-  // IntColumn get connectPort => integer().withDefault(const Constant(-1))();
+  BoolColumn get enableConnect =>
+      boolean().withDefault(const Constant(false))();
+  IntColumn get connectPort => integer().withDefault(const Constant(-1))();
   BoolColumn get cacheMusic => boolean().withDefault(const Constant(true))();
 
   // Default values as PreferencesTableData
@@ -110,9 +110,9 @@ class PreferencesTable extends Table {
       //     : YoutubeClientEngine.newPipe,
       discordPresence: true,
       // endlessPlayback: true,
-      // enableConnect: false,
+      enableConnect: false,
       cacheMusic: true,
-      // connectPort: -1,
+      connectPort: -1,
     );
   }
 }

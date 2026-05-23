@@ -1,14 +1,12 @@
 import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart' show CupertinoSliverRefreshControl;
 import 'package:flutter/material.dart' show Material, MaterialType, ListTile;
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:pomelo/collections/routes.gr.dart';
-import 'package:pomelo/components/titlebar/titlebar.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/provider/source/audio_source_provider.dart';
@@ -27,164 +25,81 @@ class TestPage extends HookConsumerWidget {
     final controller = useScrollController();
 
     final file = File('C:/Users/admin/Downloads/新建文件夹/周杰伦 - 晴天.mp3');
+    return Scrollbar(
+      controller: controller,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1366),
+          child: ScrollConfiguration(
+            behavior: const ScrollBehavior().copyWith(scrollbars: false),
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListView(
+                controller: controller,
+                children: [
+                  TextButton(
+                    onPressed: () async {
+                      ref.read(audioSourcesProvider.notifier).musicUrl({
+                        "source": 'tx',
+                        'songmid': '0039MnYb0qxYhV',
+                      });
+                    },
+                    child: const Text('从源获取播放链接'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      print('tx test');
+                      final txSearcher = TxSearcher(dio: globalDio);
+                      final search = await txSearcher.search('周杰伦');
+                      print(search);
+                      final track = search.items.first;
+                      // final url = await ref
+                      //     .read(audioSourcesProvider.notifier)
+                      //     .musicUrl(track);
 
-    final audioSources = ref.watch(audioSourcesProvider);
-    return Scaffold(
-      headers: const [TitleBar(title: Text('测试'))],
-      child: Scrollbar(
-        controller: controller,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1366),
-            child: ScrollConfiguration(
-              behavior: const ScrollBehavior().copyWith(scrollbars: false),
-              child: Material(
-                type: MaterialType.transparency,
-                child: ListView(
-                  controller: controller,
-                  children: [
-                    Column(
-                      children: audioSources
-                          .map(
-                            (v) => ListTile(
-                              title: Text(v.name),
-                              leading: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  ActiveDotItem(
-                                    size: 12,
-                                    color: v.inited ? Colors.green : Colors.red,
-                                  ),
-                                  Switch(
-                                    value: v.enable,
-                                    onChanged: (value) {
-                                      ref
-                                          .read(audioSourcesProvider.notifier)
-                                          .enableSwitch(v.id, value);
-                                    },
-                                  ),
-                                ],
-                              ),
-                              // subtitle: Column(
-                              //   children: v.platforms
-                              //       .map(
-                              //         (p) => Text(
-                              //           '$p: ${v.qualities(p).join(' ')}',
-                              //         ),
-                              //       )
-                              //       .toList(),
-                              // ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: v.platforms
-                                        .map(
-                                          (p) => Tooltip(
-                                            // Tooltip wraps a target widget and shows TooltipContainer on hover/focus.
-                                            tooltip: TooltipContainer(
-                                              child: Text(
-                                                v.qualities(p).join(','),
-                                              ),
-                                            ).call,
-                                            child: OutlineBadge(
-                                              child: Text(p),
-                                              onPressed: () {},
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
-                                  ),
-                                  IconButton.text(
-                                    onPressed: () {
-                                      ref
-                                          .read(audioSourcesProvider.notifier)
-                                          .remove(v.id);
-                                    },
-                                    icon: const Icon(Icons.delete_outline),
-                                  ),
-                                ],
-                              ),
-                              // trailing: Text('data'),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    const Row(
-                      children: [
-                        ActiveDotItem(size: 12, color: Colors.green),
-                        Text('测试文本'),
-                      ],
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        FilePickerResult? result = await FilePicker.platform
-                            .pickFiles(allowedExtensions: ['js']);
-                        if (result != null) {
-                          File file = File(result.files.single.path!);
-                          final script = await file.readAsString();
-                          ref.read(audioSourcesProvider.notifier).load(script);
-                        }
-                      },
-                      child: const Text('本地导入'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        ref.read(audioSourcesProvider.notifier).musicUrl();
-                      },
-                      child: const Text('从源获取播放链接'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        print('tx test');
-                        final txSearcher = TxSearcher(dio: globalDio);
-                        final search = await txSearcher.search('周杰伦');
-                        print(search);
-                        print('1');
-                      },
-                      child: const Text('搜索'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        print(await file.exists());
-                        final track = SpotubeTrackObject.localTrackFromFile(
-                          file,
-                          metadata: await MetadataGod.readMetadata(
-                            file: file.path,
-                          ),
-                        );
-                        ref.read(audioPlayerProvider.notifier).load([
-                          track,
-                        ], autoPlay: true);
-                      },
-                      child: const Text('播放'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        audioPlayer.pause();
-                      },
-                      child: const Text('暂停'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        audioPlayer.resume();
-                      },
-                      child: const Text('继续播放'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        context.router.push(
-                          const CupertinoSliverRefreshDemoRoute(),
-                        );
-                      },
-                      child: const Text('刷新demo'),
-                    ),
-                  ],
-                ),
+                      // ref.read(audioPlayerProvider.notifier).load([
+                      //   track.copyWith(externalUri: url),
+                      // ], autoPlay: true);
+                      print('1');
+                    },
+                    child: const Text('搜索'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      print(await file.exists());
+                      final track = SpotubeTrackObject.localTrackFromFile(
+                        file,
+                        metadata: await MetadataGod.readMetadata(
+                          file: file.path,
+                        ),
+                      );
+                      ref.read(audioPlayerProvider.notifier).load([
+                        track,
+                      ], autoPlay: true);
+                    },
+                    child: const Text('播放'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      audioPlayer.pause();
+                    },
+                    child: const Text('暂停'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      audioPlayer.resume();
+                    },
+                    child: const Text('继续播放'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      context.router.push(
+                        const CupertinoSliverRefreshDemoRoute(),
+                      );
+                    },
+                    child: const Text('刷新demo'),
+                  ),
+                ],
               ),
             ),
           ),

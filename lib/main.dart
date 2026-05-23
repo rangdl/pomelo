@@ -16,7 +16,11 @@ import 'package:pomelo/hooks/configurators/use_has_touch.dart';
 import 'package:pomelo/l10n/l10n.dart';
 import 'package:pomelo/models/database/database.dart';
 import 'package:pomelo/modules/settings/color_scheme_picker_dialog.dart';
+import 'package:pomelo/provider/connect/clients.dart';
 import 'package:pomelo/provider/database/database.dart';
+import 'package:pomelo/provider/server/bonsoir.dart';
+import 'package:pomelo/provider/server/server.dart';
+import 'package:pomelo/provider/source/audio_source_provider.dart';
 import 'package:pomelo/provider/user_preferences/user_preferences_provider.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/services/wm_tools/wm_tools.dart';
@@ -101,7 +105,11 @@ class Pomelo extends HookConsumerWidget {
     final router = useMemoized(() => AppRouter(ref), []);
     final hasTouchSupport = useHasTouch();
 
+    ref.listen(audioSourcesProvider, (_, __) {});
     ref.listen(audioPlayerStreamListenersProvider, (_, __) {});
+    ref.listen(bonsoirProvider, (_, __) {});
+    ref.listen(connectClientsProvider, (_, __) {});
+    ref.listen(serverProvider, (_, __) {});
 
     useEffect(() {
       // FlutterNativeSplash.remove();

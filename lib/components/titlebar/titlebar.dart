@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/collections/spotube_icons.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:shadcn_flutter/shadcn_flutter_extension.dart';
 import 'package:pomelo/components/button/back_button.dart';
@@ -103,7 +104,19 @@ class TitleBar extends HookConsumerWidget implements PreferredSizeWidget {
             },
             child:
                 AppBar(
-                  leading: canPop ? [const BackButton()] : leading,
+                  leading: canPop
+                      ? [const BackButton()]
+                      : [
+                          IconButton.ghost(
+                            size: const ButtonSize(1.2),
+                            icon: const Icon(
+                              SpotubeIcons.angleLeft,
+                              color: Colors.slate,
+                            ),
+                            onPressed: () {},
+                          ),
+                          ...leading,
+                        ],
                   trailing: [
                     ...trailing,
                     Align(

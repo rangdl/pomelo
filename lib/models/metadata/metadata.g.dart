@@ -109,6 +109,7 @@ _$$SpotubeAudioSourceStreamObjectImplFromJson(Map json) =>
       url: json['url'] as String,
       container: json['container'] as String,
       type: $enumDecode(_$SpotubeMediaCompressionTypeEnumMap, json['type']),
+      tag: json['tag'] as String,
       codec: json['codec'] as String?,
       bitrate: (json['bitrate'] as num?)?.toDouble(),
       bitDepth: (json['bitDepth'] as num?)?.toInt(),
@@ -121,6 +122,7 @@ Map<String, dynamic> _$$SpotubeAudioSourceStreamObjectImplToJson(
   'url': instance.url,
   'container': instance.container,
   'type': _$SpotubeMediaCompressionTypeEnumMap[instance.type]!,
+  'tag': instance.tag,
   'codec': instance.codec,
   'bitrate': instance.bitrate,
   'bitDepth': instance.bitDepth,
@@ -576,6 +578,9 @@ _$SpotubeFullTrackObjectImpl _$$SpotubeFullTrackObjectImplFromJson(Map json) =>
       durationMs: (json['durationMs'] as num).toInt(),
       isrc: json['isrc'] as String,
       explicit: json['explicit'] as bool,
+      extra: PomeloTrackObjectExtra.fromJson(
+        Map<String, dynamic>.from(json['extra'] as Map),
+      ),
       $type: json['runtimeType'] as String?,
     );
 
@@ -590,67 +595,42 @@ Map<String, dynamic> _$$SpotubeFullTrackObjectImplToJson(
   'durationMs': instance.durationMs,
   'isrc': instance.isrc,
   'explicit': instance.explicit,
+  'extra': instance.extra.toJson(),
   'runtimeType': instance.$type,
 };
 
-_$SpotubeTxTrackObjectImpl _$$SpotubeTxTrackObjectImplFromJson(Map json) =>
-    _$SpotubeTxTrackObjectImpl(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      externalUri: json['externalUri'] as String,
-      artists:
-          (json['artists'] as List<dynamic>?)
-              ?.map(
-                (e) => SpotubeSimpleArtistObject.fromJson(
-                  Map<String, dynamic>.from(e as Map),
-                ),
-              )
-              .toList() ??
-          const [],
-      album: SpotubeSimpleAlbumObject.fromJson(
-        Map<String, dynamic>.from(json['album'] as Map),
-      ),
-      durationMs: (json['durationMs'] as num).toInt(),
-      types:
-          (json['types'] as List<dynamic>?)
-              ?.map(
-                (e) => SpotubeTrackObjectType.fromJson(
-                  Map<String, dynamic>.from(e as Map),
-                ),
-              )
-              .toList() ??
-          const [],
-      musicId: json['musicId'] as String,
-      albumMid: json['albumMid'] as String,
-      strMediaMid: json['strMediaMid'] as String,
-      $type: json['runtimeType'] as String?,
-    );
-
-Map<String, dynamic> _$$SpotubeTxTrackObjectImplToJson(
-  _$SpotubeTxTrackObjectImpl instance,
-) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'externalUri': instance.externalUri,
-  'artists': instance.artists.map((e) => e.toJson()).toList(),
-  'album': instance.album.toJson(),
-  'durationMs': instance.durationMs,
-  'types': instance.types.map((e) => e.toJson()).toList(),
-  'musicId': instance.musicId,
-  'albumMid': instance.albumMid,
-  'strMediaMid': instance.strMediaMid,
-  'runtimeType': instance.$type,
-};
-
-_$SpotubeTrackObjectTypeImplImpl _$$SpotubeTrackObjectTypeImplImplFromJson(
+_$PomeloTrackObjectTxExtraImpl _$$PomeloTrackObjectTxExtraImplFromJson(
   Map json,
-) => _$SpotubeTrackObjectTypeImplImpl(
-  type: json['type'] as String,
-  size: json['size'] as String,
+) => _$PomeloTrackObjectTxExtraImpl(
+  source: json['source'] as String,
+  songMid: json['songMid'] as String,
+  types:
+      (json['types'] as List<dynamic>?)
+          ?.map(
+            (e) => PomeloTrackExtraType.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList() ??
+      const [],
 );
 
-Map<String, dynamic> _$$SpotubeTrackObjectTypeImplImplToJson(
-  _$SpotubeTrackObjectTypeImplImpl instance,
+Map<String, dynamic> _$$PomeloTrackObjectTxExtraImplToJson(
+  _$PomeloTrackObjectTxExtraImpl instance,
+) => <String, dynamic>{
+  'source': instance.source,
+  'songMid': instance.songMid,
+  'types': instance.types.map((e) => e.toJson()).toList(),
+};
+
+_$PomeloTrackExtraTypeImpl _$$PomeloTrackExtraTypeImplFromJson(Map json) =>
+    _$PomeloTrackExtraTypeImpl(
+      type: json['type'] as String,
+      size: json['size'] as String,
+    );
+
+Map<String, dynamic> _$$PomeloTrackExtraTypeImplToJson(
+  _$PomeloTrackExtraTypeImpl instance,
 ) => <String, dynamic>{'type': instance.type, 'size': instance.size};
 
 _$SpotubeUserObjectImpl _$$SpotubeUserObjectImplFromJson(Map json) =>

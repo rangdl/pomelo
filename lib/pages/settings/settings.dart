@@ -10,6 +10,8 @@ import 'package:pomelo/pages/settings/sections/desktop.dart';
 import 'package:pomelo/pages/settings/sections/developers.dart';
 import 'package:pomelo/pages/settings/sections/downloads.dart';
 import 'package:pomelo/pages/settings/sections/language_region.dart';
+import 'package:pomelo/pages/settings/sections/playback.dart';
+import 'package:pomelo/pages/settings/sections/source.dart';
 import 'package:pomelo/provider/user_preferences/user_preferences_provider.dart';
 import 'package:pomelo/utils/platform.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -38,7 +40,9 @@ class SettingsPage extends HookConsumerWidget {
                   controller: controller,
                   children: [
                     const SettingsLanguageRegionSection(),
+                    const SettingsSourceSection(),
                     const SettingsAppearanceSection(),
+                    const SettingsPlaybackSection(),
                     const SettingsDownloadsSection(),
                     if (kIsDesktop) const SettingsDesktopSection(),
                     if (!kIsWeb) const SettingsDevelopersSection(),

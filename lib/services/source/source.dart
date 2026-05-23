@@ -67,19 +67,22 @@ class SourceManager {
     jsRuntime = getJavascriptRuntime();
     // _completers['init'] = Completer<String>();
     final completer = _addCompleter('init');
-    final cryptoJs = await rootBundle.loadString('assets/js/crypto-js.js');
-    final qjsPolyfill = await rootBundle.loadString(
-      'assets/js/qjs-polyfill.js',
-    );
-    final pako = await rootBundle.loadString('assets/js/pako.js');
-    final jsrsasign = await rootBundle.loadString(
-      'assets/js/jsrsasign-all-min.js',
-    );
+    // final cryptoJs = await rootBundle.loadString('assets/js/crypto-js.js');
+    // final qjsPolyfill = await rootBundle.loadString(
+    //   'assets/js/qjs-polyfill.js',
+    // );
+    // final pako = await rootBundle.loadString('assets/js/pako.js');
+    // final jsrsasign = await rootBundle.loadString(
+    //   'assets/js/jsrsasign-all-min.js',
+    // );
+    // jsRuntime!.evaluate(cryptoJs);
+    // jsRuntime!.evaluate(qjsPolyfill);
+    // jsRuntime!.evaluate(pako);
+    // jsRuntime!.evaluate(jsrsasign);
+    final polyfill = await rootBundle.loadString('assets/js/polyfill.umd.js');
+    jsRuntime!.evaluate(polyfill);
     final preload = await rootBundle.loadString('assets/js/qjs-preload.js');
-    jsRuntime!.evaluate(cryptoJs);
-    jsRuntime!.evaluate(qjsPolyfill);
-    jsRuntime!.evaluate(pako);
-    jsRuntime!.evaluate(jsrsasign);
+
     jsRuntime!.evaluate(preload);
     jsRuntime!.evaluate("""
     var __native_xhrRequests = {};

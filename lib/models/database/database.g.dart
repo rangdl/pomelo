@@ -179,6 +179,33 @@ class $PreferencesTableTable extends PreferencesTable
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _enableConnectMeta = const VerificationMeta(
+    'enableConnect',
+  );
+  @override
+  late final GeneratedColumn<bool> enableConnect = GeneratedColumn<bool>(
+    'enable_connect',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enable_connect" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _connectPortMeta = const VerificationMeta(
+    'connectPort',
+  );
+  @override
+  late final GeneratedColumn<int> connectPort = GeneratedColumn<int>(
+    'connect_port',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(-1),
+  );
   static const VerificationMeta _cacheMusicMeta = const VerificationMeta(
     'cacheMusic',
   );
@@ -209,6 +236,8 @@ class $PreferencesTableTable extends PreferencesTable
     localLibraryLocation,
     themeMode,
     discordPresence,
+    enableConnect,
+    connectPort,
     cacheMusic,
   ];
   @override
@@ -277,6 +306,24 @@ class $PreferencesTableTable extends PreferencesTable
         discordPresence.isAcceptableOrUnknown(
           data['discord_presence']!,
           _discordPresenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('enable_connect')) {
+      context.handle(
+        _enableConnectMeta,
+        enableConnect.isAcceptableOrUnknown(
+          data['enable_connect']!,
+          _enableConnectMeta,
+        ),
+      );
+    }
+    if (data.containsKey('connect_port')) {
+      context.handle(
+        _connectPortMeta,
+        connectPort.isAcceptableOrUnknown(
+          data['connect_port']!,
+          _connectPortMeta,
         ),
       );
     }
@@ -362,6 +409,14 @@ class $PreferencesTableTable extends PreferencesTable
         DriftSqlType.bool,
         data['${effectivePrefix}discord_presence'],
       )!,
+      enableConnect: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enable_connect'],
+      )!,
+      connectPort: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}connect_port'],
+      )!,
       cacheMusic: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}cache_music'],
@@ -405,6 +460,8 @@ class PreferencesTableData extends DataClass
   final List<String> localLibraryLocation;
   final ThemeMode themeMode;
   final bool discordPresence;
+  final bool enableConnect;
+  final int connectPort;
   final bool cacheMusic;
   const PreferencesTableData({
     required this.id,
@@ -420,6 +477,8 @@ class PreferencesTableData extends DataClass
     required this.localLibraryLocation,
     required this.themeMode,
     required this.discordPresence,
+    required this.enableConnect,
+    required this.connectPort,
     required this.cacheMusic,
   });
   @override
@@ -466,6 +525,8 @@ class PreferencesTableData extends DataClass
       );
     }
     map['discord_presence'] = Variable<bool>(discordPresence);
+    map['enable_connect'] = Variable<bool>(enableConnect);
+    map['connect_port'] = Variable<int>(connectPort);
     map['cache_music'] = Variable<bool>(cacheMusic);
     return map;
   }
@@ -485,6 +546,8 @@ class PreferencesTableData extends DataClass
       localLibraryLocation: Value(localLibraryLocation),
       themeMode: Value(themeMode),
       discordPresence: Value(discordPresence),
+      enableConnect: Value(enableConnect),
+      connectPort: Value(connectPort),
       cacheMusic: Value(cacheMusic),
     );
   }
@@ -518,6 +581,8 @@ class PreferencesTableData extends DataClass
         serializer.fromJson<String>(json['themeMode']),
       ),
       discordPresence: serializer.fromJson<bool>(json['discordPresence']),
+      enableConnect: serializer.fromJson<bool>(json['enableConnect']),
+      connectPort: serializer.fromJson<int>(json['connectPort']),
       cacheMusic: serializer.fromJson<bool>(json['cacheMusic']),
     );
   }
@@ -546,6 +611,8 @@ class PreferencesTableData extends DataClass
         $PreferencesTableTable.$converterthemeMode.toJson(themeMode),
       ),
       'discordPresence': serializer.toJson<bool>(discordPresence),
+      'enableConnect': serializer.toJson<bool>(enableConnect),
+      'connectPort': serializer.toJson<int>(connectPort),
       'cacheMusic': serializer.toJson<bool>(cacheMusic),
     };
   }
@@ -564,6 +631,8 @@ class PreferencesTableData extends DataClass
     List<String>? localLibraryLocation,
     ThemeMode? themeMode,
     bool? discordPresence,
+    bool? enableConnect,
+    int? connectPort,
     bool? cacheMusic,
   }) => PreferencesTableData(
     id: id ?? this.id,
@@ -579,6 +648,8 @@ class PreferencesTableData extends DataClass
     localLibraryLocation: localLibraryLocation ?? this.localLibraryLocation,
     themeMode: themeMode ?? this.themeMode,
     discordPresence: discordPresence ?? this.discordPresence,
+    enableConnect: enableConnect ?? this.enableConnect,
+    connectPort: connectPort ?? this.connectPort,
     cacheMusic: cacheMusic ?? this.cacheMusic,
   );
   PreferencesTableData copyWithCompanion(PreferencesTableCompanion data) {
@@ -616,6 +687,12 @@ class PreferencesTableData extends DataClass
       discordPresence: data.discordPresence.present
           ? data.discordPresence.value
           : this.discordPresence,
+      enableConnect: data.enableConnect.present
+          ? data.enableConnect.value
+          : this.enableConnect,
+      connectPort: data.connectPort.present
+          ? data.connectPort.value
+          : this.connectPort,
       cacheMusic: data.cacheMusic.present
           ? data.cacheMusic.value
           : this.cacheMusic,
@@ -638,6 +715,8 @@ class PreferencesTableData extends DataClass
           ..write('localLibraryLocation: $localLibraryLocation, ')
           ..write('themeMode: $themeMode, ')
           ..write('discordPresence: $discordPresence, ')
+          ..write('enableConnect: $enableConnect, ')
+          ..write('connectPort: $connectPort, ')
           ..write('cacheMusic: $cacheMusic')
           ..write(')'))
         .toString();
@@ -658,6 +737,8 @@ class PreferencesTableData extends DataClass
     localLibraryLocation,
     themeMode,
     discordPresence,
+    enableConnect,
+    connectPort,
     cacheMusic,
   );
   @override
@@ -677,6 +758,8 @@ class PreferencesTableData extends DataClass
           other.localLibraryLocation == this.localLibraryLocation &&
           other.themeMode == this.themeMode &&
           other.discordPresence == this.discordPresence &&
+          other.enableConnect == this.enableConnect &&
+          other.connectPort == this.connectPort &&
           other.cacheMusic == this.cacheMusic);
 }
 
@@ -694,6 +777,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
   final Value<List<String>> localLibraryLocation;
   final Value<ThemeMode> themeMode;
   final Value<bool> discordPresence;
+  final Value<bool> enableConnect;
+  final Value<int> connectPort;
   final Value<bool> cacheMusic;
   const PreferencesTableCompanion({
     this.id = const Value.absent(),
@@ -709,6 +794,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     this.localLibraryLocation = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.discordPresence = const Value.absent(),
+    this.enableConnect = const Value.absent(),
+    this.connectPort = const Value.absent(),
     this.cacheMusic = const Value.absent(),
   });
   PreferencesTableCompanion.insert({
@@ -725,6 +812,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     this.localLibraryLocation = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.discordPresence = const Value.absent(),
+    this.enableConnect = const Value.absent(),
+    this.connectPort = const Value.absent(),
     this.cacheMusic = const Value.absent(),
   });
   static Insertable<PreferencesTableData> custom({
@@ -741,6 +830,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     Expression<String>? localLibraryLocation,
     Expression<String>? themeMode,
     Expression<bool>? discordPresence,
+    Expression<bool>? enableConnect,
+    Expression<int>? connectPort,
     Expression<bool>? cacheMusic,
   }) {
     return RawValuesInsertable({
@@ -759,6 +850,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
         'local_library_location': localLibraryLocation,
       if (themeMode != null) 'theme_mode': themeMode,
       if (discordPresence != null) 'discord_presence': discordPresence,
+      if (enableConnect != null) 'enable_connect': enableConnect,
+      if (connectPort != null) 'connect_port': connectPort,
       if (cacheMusic != null) 'cache_music': cacheMusic,
     });
   }
@@ -777,6 +870,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     Value<List<String>>? localLibraryLocation,
     Value<ThemeMode>? themeMode,
     Value<bool>? discordPresence,
+    Value<bool>? enableConnect,
+    Value<int>? connectPort,
     Value<bool>? cacheMusic,
   }) {
     return PreferencesTableCompanion(
@@ -793,6 +888,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
       localLibraryLocation: localLibraryLocation ?? this.localLibraryLocation,
       themeMode: themeMode ?? this.themeMode,
       discordPresence: discordPresence ?? this.discordPresence,
+      enableConnect: enableConnect ?? this.enableConnect,
+      connectPort: connectPort ?? this.connectPort,
       cacheMusic: cacheMusic ?? this.cacheMusic,
     );
   }
@@ -857,6 +954,12 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
     if (discordPresence.present) {
       map['discord_presence'] = Variable<bool>(discordPresence.value);
     }
+    if (enableConnect.present) {
+      map['enable_connect'] = Variable<bool>(enableConnect.value);
+    }
+    if (connectPort.present) {
+      map['connect_port'] = Variable<int>(connectPort.value);
+    }
     if (cacheMusic.present) {
       map['cache_music'] = Variable<bool>(cacheMusic.value);
     }
@@ -879,6 +982,8 @@ class PreferencesTableCompanion extends UpdateCompanion<PreferencesTableData> {
           ..write('localLibraryLocation: $localLibraryLocation, ')
           ..write('themeMode: $themeMode, ')
           ..write('discordPresence: $discordPresence, ')
+          ..write('enableConnect: $enableConnect, ')
+          ..write('connectPort: $connectPort, ')
           ..write('cacheMusic: $cacheMusic')
           ..write(')'))
         .toString();
@@ -1972,6 +2077,510 @@ class LyricsTableCompanion extends UpdateCompanion<LyricsTableData> {
   }
 }
 
+class $SourceTableTable extends SourceTable
+    with TableInfo<$SourceTableTable, SourceTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SourceTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorMeta = const VerificationMeta('author');
+  @override
+  late final GeneratedColumn<String> author = GeneratedColumn<String>(
+    'author',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _homepageMeta = const VerificationMeta(
+    'homepage',
+  );
+  @override
+  late final GeneratedColumn<String> homepage = GeneratedColumn<String>(
+    'homepage',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<String> version = GeneratedColumn<String>(
+    'version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rawScriptMeta = const VerificationMeta(
+    'rawScript',
+  );
+  @override
+  late final GeneratedColumn<String> rawScript = GeneratedColumn<String>(
+    'raw_script',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enableMeta = const VerificationMeta('enable');
+  @override
+  late final GeneratedColumn<bool> enable = GeneratedColumn<bool>(
+    'enable',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enable" IN (0, 1))',
+    ),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    description,
+    author,
+    homepage,
+    version,
+    rawScript,
+    enable,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'source_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SourceTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('author')) {
+      context.handle(
+        _authorMeta,
+        author.isAcceptableOrUnknown(data['author']!, _authorMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorMeta);
+    }
+    if (data.containsKey('homepage')) {
+      context.handle(
+        _homepageMeta,
+        homepage.isAcceptableOrUnknown(data['homepage']!, _homepageMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_homepageMeta);
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_versionMeta);
+    }
+    if (data.containsKey('raw_script')) {
+      context.handle(
+        _rawScriptMeta,
+        rawScript.isAcceptableOrUnknown(data['raw_script']!, _rawScriptMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rawScriptMeta);
+    }
+    if (data.containsKey('enable')) {
+      context.handle(
+        _enableMeta,
+        enable.isAcceptableOrUnknown(data['enable']!, _enableMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_enableMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SourceTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SourceTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      author: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author'],
+      )!,
+      homepage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}homepage'],
+      )!,
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}version'],
+      )!,
+      rawScript: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_script'],
+      )!,
+      enable: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enable'],
+      )!,
+    );
+  }
+
+  @override
+  $SourceTableTable createAlias(String alias) {
+    return $SourceTableTable(attachedDatabase, alias);
+  }
+}
+
+class SourceTableData extends DataClass implements Insertable<SourceTableData> {
+  final int id;
+  final String name;
+  final String description;
+  final String author;
+  final String homepage;
+  final String version;
+  final String rawScript;
+  final bool enable;
+  const SourceTableData({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.author,
+    required this.homepage,
+    required this.version,
+    required this.rawScript,
+    required this.enable,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['name'] = Variable<String>(name);
+    map['description'] = Variable<String>(description);
+    map['author'] = Variable<String>(author);
+    map['homepage'] = Variable<String>(homepage);
+    map['version'] = Variable<String>(version);
+    map['raw_script'] = Variable<String>(rawScript);
+    map['enable'] = Variable<bool>(enable);
+    return map;
+  }
+
+  SourceTableCompanion toCompanion(bool nullToAbsent) {
+    return SourceTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      description: Value(description),
+      author: Value(author),
+      homepage: Value(homepage),
+      version: Value(version),
+      rawScript: Value(rawScript),
+      enable: Value(enable),
+    );
+  }
+
+  factory SourceTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SourceTableData(
+      id: serializer.fromJson<int>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String>(json['description']),
+      author: serializer.fromJson<String>(json['author']),
+      homepage: serializer.fromJson<String>(json['homepage']),
+      version: serializer.fromJson<String>(json['version']),
+      rawScript: serializer.fromJson<String>(json['rawScript']),
+      enable: serializer.fromJson<bool>(json['enable']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String>(description),
+      'author': serializer.toJson<String>(author),
+      'homepage': serializer.toJson<String>(homepage),
+      'version': serializer.toJson<String>(version),
+      'rawScript': serializer.toJson<String>(rawScript),
+      'enable': serializer.toJson<bool>(enable),
+    };
+  }
+
+  SourceTableData copyWith({
+    int? id,
+    String? name,
+    String? description,
+    String? author,
+    String? homepage,
+    String? version,
+    String? rawScript,
+    bool? enable,
+  }) => SourceTableData(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    author: author ?? this.author,
+    homepage: homepage ?? this.homepage,
+    version: version ?? this.version,
+    rawScript: rawScript ?? this.rawScript,
+    enable: enable ?? this.enable,
+  );
+  SourceTableData copyWithCompanion(SourceTableCompanion data) {
+    return SourceTableData(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      author: data.author.present ? data.author.value : this.author,
+      homepage: data.homepage.present ? data.homepage.value : this.homepage,
+      version: data.version.present ? data.version.value : this.version,
+      rawScript: data.rawScript.present ? data.rawScript.value : this.rawScript,
+      enable: data.enable.present ? data.enable.value : this.enable,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SourceTableData(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('author: $author, ')
+          ..write('homepage: $homepage, ')
+          ..write('version: $version, ')
+          ..write('rawScript: $rawScript, ')
+          ..write('enable: $enable')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    description,
+    author,
+    homepage,
+    version,
+    rawScript,
+    enable,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SourceTableData &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.author == this.author &&
+          other.homepage == this.homepage &&
+          other.version == this.version &&
+          other.rawScript == this.rawScript &&
+          other.enable == this.enable);
+}
+
+class SourceTableCompanion extends UpdateCompanion<SourceTableData> {
+  final Value<int> id;
+  final Value<String> name;
+  final Value<String> description;
+  final Value<String> author;
+  final Value<String> homepage;
+  final Value<String> version;
+  final Value<String> rawScript;
+  final Value<bool> enable;
+  const SourceTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.author = const Value.absent(),
+    this.homepage = const Value.absent(),
+    this.version = const Value.absent(),
+    this.rawScript = const Value.absent(),
+    this.enable = const Value.absent(),
+  });
+  SourceTableCompanion.insert({
+    this.id = const Value.absent(),
+    required String name,
+    required String description,
+    required String author,
+    required String homepage,
+    required String version,
+    required String rawScript,
+    required bool enable,
+  }) : name = Value(name),
+       description = Value(description),
+       author = Value(author),
+       homepage = Value(homepage),
+       version = Value(version),
+       rawScript = Value(rawScript),
+       enable = Value(enable);
+  static Insertable<SourceTableData> custom({
+    Expression<int>? id,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<String>? author,
+    Expression<String>? homepage,
+    Expression<String>? version,
+    Expression<String>? rawScript,
+    Expression<bool>? enable,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (author != null) 'author': author,
+      if (homepage != null) 'homepage': homepage,
+      if (version != null) 'version': version,
+      if (rawScript != null) 'raw_script': rawScript,
+      if (enable != null) 'enable': enable,
+    });
+  }
+
+  SourceTableCompanion copyWith({
+    Value<int>? id,
+    Value<String>? name,
+    Value<String>? description,
+    Value<String>? author,
+    Value<String>? homepage,
+    Value<String>? version,
+    Value<String>? rawScript,
+    Value<bool>? enable,
+  }) {
+    return SourceTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      author: author ?? this.author,
+      homepage: homepage ?? this.homepage,
+      version: version ?? this.version,
+      rawScript: rawScript ?? this.rawScript,
+      enable: enable ?? this.enable,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (author.present) {
+      map['author'] = Variable<String>(author.value);
+    }
+    if (homepage.present) {
+      map['homepage'] = Variable<String>(homepage.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<String>(version.value);
+    }
+    if (rawScript.present) {
+      map['raw_script'] = Variable<String>(rawScript.value);
+    }
+    if (enable.present) {
+      map['enable'] = Variable<bool>(enable.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SourceTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('author: $author, ')
+          ..write('homepage: $homepage, ')
+          ..write('version: $version, ')
+          ..write('rawScript: $rawScript, ')
+          ..write('enable: $enable')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1982,6 +2591,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $AudioPlayerStateTableTable(this);
   late final $HistoryTableTable historyTable = $HistoryTableTable(this);
   late final $LyricsTableTable lyricsTable = $LyricsTableTable(this);
+  late final $SourceTableTable sourceTable = $SourceTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1991,6 +2601,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     audioPlayerStateTable,
     historyTable,
     lyricsTable,
+    sourceTable,
   ];
 }
 
@@ -2009,6 +2620,8 @@ typedef $$PreferencesTableTableCreateCompanionBuilder =
       Value<List<String>> localLibraryLocation,
       Value<ThemeMode> themeMode,
       Value<bool> discordPresence,
+      Value<bool> enableConnect,
+      Value<int> connectPort,
       Value<bool> cacheMusic,
     });
 typedef $$PreferencesTableTableUpdateCompanionBuilder =
@@ -2026,6 +2639,8 @@ typedef $$PreferencesTableTableUpdateCompanionBuilder =
       Value<List<String>> localLibraryLocation,
       Value<ThemeMode> themeMode,
       Value<bool> discordPresence,
+      Value<bool> enableConnect,
+      Value<int> connectPort,
       Value<bool> cacheMusic,
     });
 
@@ -2109,6 +2724,16 @@ class $$PreferencesTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get enableConnect => $composableBuilder(
+    column: $table.enableConnect,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get connectPort => $composableBuilder(
+    column: $table.connectPort,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<bool> get cacheMusic => $composableBuilder(
     column: $table.cacheMusic,
     builder: (column) => ColumnFilters(column),
@@ -2186,6 +2811,16 @@ class $$PreferencesTableTableOrderingComposer
 
   ColumnOrderings<bool> get discordPresence => $composableBuilder(
     column: $table.discordPresence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enableConnect => $composableBuilder(
+    column: $table.enableConnect,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get connectPort => $composableBuilder(
+    column: $table.connectPort,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2267,6 +2902,16 @@ class $$PreferencesTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get enableConnect => $composableBuilder(
+    column: $table.enableConnect,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get connectPort => $composableBuilder(
+    column: $table.connectPort,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get cacheMusic => $composableBuilder(
     column: $table.cacheMusic,
     builder: (column) => column,
@@ -2323,6 +2968,8 @@ class $$PreferencesTableTableTableManager
                 Value<List<String>> localLibraryLocation = const Value.absent(),
                 Value<ThemeMode> themeMode = const Value.absent(),
                 Value<bool> discordPresence = const Value.absent(),
+                Value<bool> enableConnect = const Value.absent(),
+                Value<int> connectPort = const Value.absent(),
                 Value<bool> cacheMusic = const Value.absent(),
               }) => PreferencesTableCompanion(
                 id: id,
@@ -2338,6 +2985,8 @@ class $$PreferencesTableTableTableManager
                 localLibraryLocation: localLibraryLocation,
                 themeMode: themeMode,
                 discordPresence: discordPresence,
+                enableConnect: enableConnect,
+                connectPort: connectPort,
                 cacheMusic: cacheMusic,
               ),
           createCompanionCallback:
@@ -2355,6 +3004,8 @@ class $$PreferencesTableTableTableManager
                 Value<List<String>> localLibraryLocation = const Value.absent(),
                 Value<ThemeMode> themeMode = const Value.absent(),
                 Value<bool> discordPresence = const Value.absent(),
+                Value<bool> enableConnect = const Value.absent(),
+                Value<int> connectPort = const Value.absent(),
                 Value<bool> cacheMusic = const Value.absent(),
               }) => PreferencesTableCompanion.insert(
                 id: id,
@@ -2370,6 +3021,8 @@ class $$PreferencesTableTableTableManager
                 localLibraryLocation: localLibraryLocation,
                 themeMode: themeMode,
                 discordPresence: discordPresence,
+                enableConnect: enableConnect,
+                connectPort: connectPort,
                 cacheMusic: cacheMusic,
               ),
           withReferenceMapper: (p0) => p0
@@ -3018,6 +3671,259 @@ typedef $$LyricsTableTableProcessedTableManager =
       LyricsTableData,
       PrefetchHooks Function()
     >;
+typedef $$SourceTableTableCreateCompanionBuilder =
+    SourceTableCompanion Function({
+      Value<int> id,
+      required String name,
+      required String description,
+      required String author,
+      required String homepage,
+      required String version,
+      required String rawScript,
+      required bool enable,
+    });
+typedef $$SourceTableTableUpdateCompanionBuilder =
+    SourceTableCompanion Function({
+      Value<int> id,
+      Value<String> name,
+      Value<String> description,
+      Value<String> author,
+      Value<String> homepage,
+      Value<String> version,
+      Value<String> rawScript,
+      Value<bool> enable,
+    });
+
+class $$SourceTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SourceTableTable> {
+  $$SourceTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get homepage => $composableBuilder(
+    column: $table.homepage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawScript => $composableBuilder(
+    column: $table.rawScript,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enable => $composableBuilder(
+    column: $table.enable,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SourceTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SourceTableTable> {
+  $$SourceTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get homepage => $composableBuilder(
+    column: $table.homepage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get rawScript => $composableBuilder(
+    column: $table.rawScript,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enable => $composableBuilder(
+    column: $table.enable,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SourceTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SourceTableTable> {
+  $$SourceTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get author =>
+      $composableBuilder(column: $table.author, builder: (column) => column);
+
+  GeneratedColumn<String> get homepage =>
+      $composableBuilder(column: $table.homepage, builder: (column) => column);
+
+  GeneratedColumn<String> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<String> get rawScript =>
+      $composableBuilder(column: $table.rawScript, builder: (column) => column);
+
+  GeneratedColumn<bool> get enable =>
+      $composableBuilder(column: $table.enable, builder: (column) => column);
+}
+
+class $$SourceTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SourceTableTable,
+          SourceTableData,
+          $$SourceTableTableFilterComposer,
+          $$SourceTableTableOrderingComposer,
+          $$SourceTableTableAnnotationComposer,
+          $$SourceTableTableCreateCompanionBuilder,
+          $$SourceTableTableUpdateCompanionBuilder,
+          (
+            SourceTableData,
+            BaseReferences<_$AppDatabase, $SourceTableTable, SourceTableData>,
+          ),
+          SourceTableData,
+          PrefetchHooks Function()
+        > {
+  $$SourceTableTableTableManager(_$AppDatabase db, $SourceTableTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SourceTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SourceTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SourceTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String> author = const Value.absent(),
+                Value<String> homepage = const Value.absent(),
+                Value<String> version = const Value.absent(),
+                Value<String> rawScript = const Value.absent(),
+                Value<bool> enable = const Value.absent(),
+              }) => SourceTableCompanion(
+                id: id,
+                name: name,
+                description: description,
+                author: author,
+                homepage: homepage,
+                version: version,
+                rawScript: rawScript,
+                enable: enable,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String name,
+                required String description,
+                required String author,
+                required String homepage,
+                required String version,
+                required String rawScript,
+                required bool enable,
+              }) => SourceTableCompanion.insert(
+                id: id,
+                name: name,
+                description: description,
+                author: author,
+                homepage: homepage,
+                version: version,
+                rawScript: rawScript,
+                enable: enable,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SourceTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SourceTableTable,
+      SourceTableData,
+      $$SourceTableTableFilterComposer,
+      $$SourceTableTableOrderingComposer,
+      $$SourceTableTableAnnotationComposer,
+      $$SourceTableTableCreateCompanionBuilder,
+      $$SourceTableTableUpdateCompanionBuilder,
+      (
+        SourceTableData,
+        BaseReferences<_$AppDatabase, $SourceTableTable, SourceTableData>,
+      ),
+      SourceTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3030,4 +3936,6 @@ class $AppDatabaseManager {
       $$HistoryTableTableTableManager(_db, _db.historyTable);
   $$LyricsTableTableTableManager get lyricsTable =>
       $$LyricsTableTableTableManager(_db, _db.lyricsTable);
+  $$SourceTableTableTableManager get sourceTable =>
+      $$SourceTableTableTableManager(_db, _db.sourceTable);
 }

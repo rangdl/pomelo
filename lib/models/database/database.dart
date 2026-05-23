@@ -18,9 +18,11 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 part 'tables/preferences.dart';
+part 'tables/source_match.dart';
 part 'tables/audio_player_state.dart';
 part 'tables/history.dart';
 part 'tables/lyrics.dart';
+part 'tables/source.dart';
 
 part 'typeconverters/color.dart';
 part 'typeconverters/locale.dart';
@@ -34,7 +36,14 @@ part 'database.g.dart';
 
 // https://drift.simonbinder.eu/dart_api
 @DriftDatabase(
-  tables: [PreferencesTable, AudioPlayerStateTable, HistoryTable, LyricsTable],
+  tables: [
+    PreferencesTable,
+    // SourceMatchTable,
+    AudioPlayerStateTable,
+    HistoryTable,
+    LyricsTable,
+    SourceTable,
+  ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());

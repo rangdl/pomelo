@@ -6,6 +6,14 @@ import 'package:pomelo/models/metadata/metadata.dart';
 
 interface class Searcher {
   late final Dio _dio;
+  Future<SpotubePaginationResponseObject<SpotubeTrackObject>> search(
+    String keyword, {
+    int page = 1,
+    int limit = 30,
+  }) {
+    // TODO: implement search
+    throw UnimplementedError();
+  }
 }
 
 /// 将字节大小转换为人类可读的字符串 (如 "3.5 MB")
@@ -66,7 +74,8 @@ class TxSearcher implements Searcher {
   /// [keyword] 搜索关键词
   /// [page] 页码(从1开始)，默认1
   /// [limit] 每页结果数量，默认30
-  Future<SpotubePaginationResponseObject> search(
+  @override
+  Future<SpotubePaginationResponseObject<SpotubeTrackObject>> search(
     String keyword, {
     int page = 1,
     int limit = 30,
@@ -215,13 +224,20 @@ class TxSearcher implements Searcher {
   /// 将QQ音乐歌曲项转换为通用格式
   SpotubeTrackObject _convertSongItem(Map<String, dynamic> song) {
     // 拼接歌手名
-    final List<String> singerNames = [];
-    final singers = song['singer'] as List<dynamic>?;
-    if (singers != null) {
-      for (final singer in singers) {
-        final name = singer['name'] as String?;
-        if (name != null && name.isNotEmpty) {
-          singerNames.add(name);
+    final List<SpotubeSimpleArtistObject> singers = [];
+    final singersDy = song['singer'] as List<dynamic>?;
+    if (singersDy != null) {
+      for (final singer in singersDy) {
+        final singerName = singer['name'] as String?;
+        final singerId = singer['name'] as String?;
+        if (singerName != null && singerName.isNotEmpty) {
+          singers.add(
+            SpotubeSimpleArtistObject(
+              id: '$name-$singerId',
+              name: singerName,
+              externalUri: '',
+            ),
+          );
         }
       }
     }
@@ -244,54 +260,125 @@ class TxSearcher implements Searcher {
     }
 
     // 构建音质列表
-    final List<SpotubeTrackObjectType> types = [];
+    final List<PomeloTrackExtraType> types = [];
     final file = song['file'] as Map<String, dynamic>? ?? {};
 
     final size128 = file['size_128mp3'] as int? ?? 0;
     if (size128 > 0) {
-      types.add(SpotubeTrackObjectType(type: '128k', size: sizeToStr(size128)));
+      types.add(PomeloTrackExtraType(type: '128k', size: sizeToStr(size128)));
+      // types.add(
+      //   SpotubeAudioSourceStreamObject(
+      //     url: '',
+      //     container: 'm4a',
+      //     type: SpotubeMediaCompressionType.lossy,
+      //     codec: 'aac',
+      //     tag: '128k',
+      //   ),
+      // );
     }
     final size320 = file['size_320mp3'] as int? ?? 0;
     if (size320 > 0) {
-      types.add(SpotubeTrackObjectType(type: '320k', size: sizeToStr(size320)));
+      types.add(PomeloTrackExtraType(type: '320k', size: sizeToStr(size320)));
+      // types.add(
+      //   SpotubeAudioSourceStreamObject(
+      //     url: '',
+      //     container: 'm4a',
+      //     type: SpotubeMediaCompressionType.lossy,
+      //     codec: 'aac',
+      //     tag: '320k',
+      //   ),
+      // );
     }
     final sizeFlac = file['size_flac'] as int? ?? 0;
     if (sizeFlac > 0) {
-      types.add(
-        SpotubeTrackObjectType(type: 'flac', size: sizeToStr(sizeFlac)),
-      );
+      types.add(PomeloTrackExtraType(type: 'flac', size: sizeToStr(sizeFlac)));
+      // types.add(
+      //   SpotubeAudioSourceStreamObject(
+      //     url: '',
+      //     container: 'flac',
+      //     type: SpotubeMediaCompressionType.lossy,
+      //     codec: 'flac',
+      //     tag: 'flac',
+      //   ),
+      // );
     }
     final sizeHiRes = file['size_hires'] as int? ?? 0;
     if (sizeHiRes > 0) {
       types.add(
-        SpotubeTrackObjectType(type: 'flac24bit', size: sizeToStr(sizeHiRes)),
+        PomeloTrackExtraType(type: 'flac24bit', size: sizeToStr(sizeHiRes)),
       );
+      // types.add(
+      //   SpotubeAudioSourceStreamObject(
+      //     url: '',
+      //     container: 'flac',
+      //     type: SpotubeMediaCompressionType.lossy,
+      //     codec: 'flac',
+      //     tag: 'flac24bit',
+      //   ),
+      // );
     }
 
     // 获取mid值 (优先使用song.mid，否则使用song.id)
     final musicId = (song['mid'] as String?) ?? (song['id']?.toString() ?? '');
 
-    return SpotubeTrackObject.tx(
-      id: '',
+    // final sourcedTrack = {
+    //   "siblings": [],
+    //   "sources": types,
+    //   "info": SpotubeAudioSourceMatchObject(
+    //     id: musicId,
+    //     title: decodeName(song['name'] ?? ''),
+    //     artists: singers.map((v) => v.name).toList(),
+    //     duration: Duration(seconds: song['interval'] ?? 0),
+    //     externalUri: '',
+    //     thumbnail: img,
+    //   ),
+    //   "query": SpotubeTrackObject.full(
+    //     id: '$name-$musicId',
+    //     name: decodeName(song['name'] ?? ''),
+    //     externalUri: '',
+    //     artists: singers,
+    //     album: SpotubeSimpleAlbumObject(
+    //       id: '$name-$musicId-${album?['id'] ?? ''}',
+    //       name: decodeName(album?['name'] ?? ''),
+    //       externalUri: '',
+    //       images: [SpotubeImageObject(url: img)],
+    //       artists: [],
+    //       albumType: SpotubeAlbumType.album,
+    //     ),
+    //     durationMs: song['interval'] ?? 0,
+    //     isrc: '',
+    //     explicit: false,
+    //   ),
+    //   "source": name,
+    // };
+    // return sourcedTrack;
+    return SpotubeTrackObject.full(
+      // source: name,
+      id: '$name-$musicId',
       name: decodeName(song['name'] ?? ''),
       externalUri: '',
-      artists: singerNames
-          .map(
-            (v) => SpotubeSimpleArtistObject(id: '', name: v, externalUri: ''),
-          )
-          .toList(),
+      artists: singers,
       album: SpotubeSimpleAlbumObject(
-        id: '',
+        id: '$name-$musicId-${album?['id'] ?? ''}',
         name: decodeName(album?['name'] ?? ''),
-        externalUri: img,
+        externalUri: '',
+        images: [SpotubeImageObject(url: img)],
         artists: [],
         albumType: SpotubeAlbumType.album,
       ),
       durationMs: song['interval'] ?? 0,
-      musicId: musicId,
-      types: types,
-      albumMid: albumMid ?? '',
-      strMediaMid: file['media_mid'] ?? '',
+      isrc: '',
+      explicit: false,
+      extra: PomeloTrackObjectExtra.tx(
+        source: "tx",
+        songMid: '0039MnYb0qxYhV',
+        types: types,
+      ),
+      // musicId: musicId,
+      // types: types,
+      // songMid: musicId,
+      // albumMid: albumMid ?? '',
+      // strMediaMid: file['media_mid'] ?? '',
     );
   }
 }

@@ -96,6 +96,7 @@ class SpotubeAudioSourceStreamObject with _$SpotubeAudioSourceStreamObject {
     required String url,
     required String container,
     required SpotubeMediaCompressionType type,
+    required String tag,
     String? codec,
     double? bitrate,
     int? bitDepth,

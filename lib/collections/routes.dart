@@ -59,6 +59,7 @@ class AppRouter extends RootStackRouter {
             AutoRoute(path: "downloads", page: UserDownloadsRoute.page),
           ],
         ),
+        AutoRoute(path: "search", page: SearchRoute.page),
         AutoRoute(path: "artist/:id", page: ArtistRoute.page),
         AutoRoute(path: "lyrics", page: LyricsRoute.page),
         AutoRoute(path: "settings", page: SettingsRoute.page),

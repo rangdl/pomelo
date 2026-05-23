@@ -21,20 +21,8 @@ class SpotubeTrackObject with _$SpotubeTrackObject {
     required int durationMs,
     required String isrc,
     required bool explicit,
+    required PomeloTrackObjectExtra extra,
   }) = SpotubeFullTrackObject;
-
-  factory SpotubeTrackObject.tx({
-    required String id,
-    required String name,
-    required String externalUri,
-    @Default([]) List<SpotubeSimpleArtistObject> artists,
-    required SpotubeSimpleAlbumObject album,
-    required int durationMs,
-    @Default([]) List<SpotubeTrackObjectType> types,
-    required String musicId,
-    required String albumMid,
-    required String strMediaMid,
-  }) = SpotubeTxTrackObject;
 
   factory SpotubeTrackObject.localTrackFromFile(
     File file, {
@@ -93,6 +81,30 @@ class SpotubeTrackObject with _$SpotubeTrackObject {
       );
 }
 
+@freezed
+class PomeloTrackObjectExtra with _$PomeloTrackObjectExtra {
+  factory PomeloTrackObjectExtra.tx({
+    required String source,
+    required String songMid,
+    @Default([]) List<PomeloTrackExtraType> types,
+  }) = PomeloTrackObjectTxExtra;
+
+  factory PomeloTrackObjectExtra.fromJson(Map<String, dynamic> json) =>
+      _$PomeloTrackObjectExtraFromJson({
+        ...json,
+        "runtimeType": json['source'],
+      });
+}
+
+@freezed
+class PomeloTrackExtraType with _$PomeloTrackExtraType {
+  factory PomeloTrackExtraType({required String type, required String size}) =
+      _PomeloTrackExtraType;
+
+  factory PomeloTrackExtraType.fromJson(Map<String, dynamic> json) =>
+      _$PomeloTrackExtraTypeFromJson(json);
+}
+
 extension AsMediaListSpotubeTrackObject on Iterable<SpotubeTrackObject> {
   List<SpotubeMedia> asMediaList() {
     return map((track) => SpotubeMedia(track)).toList();
@@ -128,13 +140,4 @@ extension ToMetadataSpotubeFullTrackObject on SpotubeFullTrackObject {
           : null,
     );
   }
-}
-
-@freezed
-class SpotubeTrackObjectType with _$SpotubeTrackObjectType {
-  factory SpotubeTrackObjectType({required String type, required String size}) =
-      SpotubeTrackObjectTypeImpl;
-
-  factory SpotubeTrackObjectType.fromJson(Map<String, dynamic> json) =>
-      _$SpotubeTrackObjectTypeFromJson(json);
 }

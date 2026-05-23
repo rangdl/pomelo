@@ -7,7 +7,7 @@ import 'package:shadcn_flutter/shadcn_flutter_extension.dart';
 import 'package:pomelo/collections/spotube_icons.dart';
 import 'package:pomelo/components/image/universal_image.dart';
 import 'package:pomelo/components/links/artist_link.dart';
-// import 'package:pomelo/components/track_tile/track_options.dart';
+import 'package:pomelo/components/track_tile/track_options.dart';
 import 'package:pomelo/extensions/constrains.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 

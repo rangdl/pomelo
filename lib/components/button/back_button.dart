@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/collections/spotube_icons.dart';
 
@@ -11,7 +12,8 @@ class BackButton extends StatelessWidget {
     return IconButton.ghost(
       size: const ButtonSize(1.2),
       icon: Icon(icon, color: color),
-      onPressed: () => Navigator.of(context).pop(),
+      // onPressed: () => Navigator.of(context).pop(),
+      onPressed: () => context.watchRouter.maybePop(),
     );
   }
 }

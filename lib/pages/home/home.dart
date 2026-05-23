@@ -23,7 +23,16 @@ class HomePage extends HookConsumerWidget {
       userPreferencesProvider.select((s) => s.layoutMode),
     );
     return Scaffold(
-      headers: [if (kTitlebarVisible) const TitleBar(height: 30)],
+      // headers: [
+      //   if (kTitlebarVisible)
+      //     const TitleBar(
+      //       height: 36,
+      //       title: SizedBox(
+      //         width: 200,
+      //         child: TextField(placeholder: Text('Enter your name')),
+      //       ),
+      //     ),
+      // ],
       child: CustomScrollView(
         controller: controller,
         slivers: [
@@ -37,7 +46,7 @@ class HomePage extends HookConsumerWidget {
                   letterSpacing: 1.8,
                   color: theme.colorScheme.foreground,
                 ),
-                child: const Text("Spotube"),
+                child: const Text("Pomelo"),
               ),
               backgroundColor: theme.colorScheme.background,
               foregroundColor: theme.colorScheme.foreground,

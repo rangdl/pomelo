@@ -147,23 +147,16 @@
     utils: {
       crypto: {
         aesEncrypt(buffer, mode, key, iv) {
-          return new AESEncryption().aesEncrypt(buffer, mode, key, iv)
+          return globalThis.crypto.aesEncrypt(buffer, mode, key, iv)
         },
         rsaEncrypt(buffer, key) {
-          const keyObj = KEYUTIL.getKey(key);
-          const plaintext = buffer.toString('utf8')
-          const encryptedHex = KJUR.crypto.Cipher.encrypt(plaintext, keyObj);
-          return Buffer.from(hextob64(encryptedHex), 'base64');
+          return globalThis.crypto.rsaEncrypt(buffer, key)
         },
         randomBytes(size) {
-          const bytes = new Uint8Array(size);
-          for (let i = 0; i < size; i++) {
-            bytes[i] = Math.floor(Math.random() * 256);
-          }
-          return bytes;
+          return globalThis.crypto.randomBytes(size);
         },
         md5(str) {
-          return CryptoJS.MD5(str).toString()
+          return globalThis.crypto.md5(str).toString()
         },
       },
       buffer: {
@@ -176,24 +169,10 @@
       },
       zlib: {
         inflate(buf) {
-          return new Promise((resolve, reject) => {
-            try {
-              const result = pako.inflate(buf);
-              resolve(result)
-            } catch (err) {
-              reject(err);
-            }
-          })
+          return globalThis.zlib.inflate(buf)
         },
         deflate(data) {
-          return new Promise((resolve, reject) => {
-            try {
-              const result = pako.deflate(data);
-              resolve(result)
-            } catch (err) {
-              reject(err);
-            }
-          })
+          return globalThis.zlib.deflate(data)
         },
       },
     },

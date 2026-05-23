@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:pomelo/models/database/database.dart';
 import 'package:pomelo/provider/database/database.dart';
+import 'package:pomelo/provider/server/sourced_track_provider.dart';
 import '../../extensions/list.dart';
 // import 'package:pomelo/models/database/database.dart';
 // import 'package:pomelo/provider/blacklist_provider.dart';
@@ -349,11 +350,11 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     // because of timeout
     final intendedActiveTrack = medias.elementAt(initialIndex);
     if (intendedActiveTrack.track is! SpotubeLocalTrackObject) {
-      // ref.read(
-      //   sourcedTrackProvider(
-      //     intendedActiveTrack.track as SpotubeFullTrackObject,
-      //   ).future,
-      // );
+      ref.read(
+        sourcedTrackProvider(
+          intendedActiveTrack.track as SpotubeFullTrackObject,
+        ).future,
+      );
     }
 
     if (medias.isEmpty) return;
