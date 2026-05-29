@@ -1,11 +1,14 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_js/flutter_js.dart';
+import 'package:flutter_js/quickjs/ffi.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/collections/routes.gr.dart';
 import 'package:pomelo/collections/spotube_icons.dart';
 import 'package:pomelo/components/titlebar/titlebar.dart';
 import 'package:pomelo/extensions/constrains.dart';
 import 'package:pomelo/models/database/database.dart';
+import 'package:pomelo/provider/source/musicsdk_provider.dart';
 import 'package:pomelo/provider/user_preferences/user_preferences_provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -22,6 +25,8 @@ class HomePage extends HookConsumerWidget {
     final layoutMode = ref.watch(
       userPreferencesProvider.select((s) => s.layoutMode),
     );
+
+    final jsRuntime = ref.watch(musicsdkProvider);
     return Scaffold(
       // headers: [
       //   if (kTitlebarVisible)
@@ -62,6 +67,33 @@ class HomePage extends HookConsumerWidget {
                 const Gap(10),
               ],
             ),
+          SliverToBoxAdapter(
+            child: Button.card(
+              child: const Text('测试'),
+              onPressed: () async {
+                print('111');
+                jsRuntime.evaluate("""
+async function test() {
+  const registry = new globalThis.musicsdk.Registry();
+  console.log(typeof registry);
+  registry.register(new globalThis.musicsdk.TxSearcher());
+  const searcher = registry.get('tx');
+  console.log(1);
+  const result = await searcher.search('周杰伦', 1, 20);
+  return result;
+}
+""");
+                final result = await jsRuntime.evaluateAsync("test()");
+                jsRuntime.executePendingJob();
+                if (result.isError) {
+                  print(result.toString());
+                }
+                final asyncResult = await jsRuntime.handlePromise(result);
+
+                print(asyncResult.toString());
+              },
+            ),
+          ),
         ],
       ),
     );

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pomelo/services/dio/dio.dart';
-import 'package:pomelo/services/source/searcher.dart';
+import 'package:pomelo/services/source/tx/searcher.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -452,7 +452,7 @@ extension ToSourcedTrackSpotubeFullTrackObject on SpotubeFullTrackObject {
   SourcedTrack toSourcedTrack(ref) {
     return SourcedTrack(
       info: SpotubeAudioSourceMatchObject(
-        id: extra.songMid,
+        id: meta!.songMid,
         title: name,
         artists: artists.map((v) => v.name).toList(),
         duration: Duration(seconds: durationMs),
@@ -461,9 +461,9 @@ extension ToSourcedTrackSpotubeFullTrackObject on SpotubeFullTrackObject {
       ),
       ref: ref,
       query: this,
-      source: extra.source,
+      source: meta!.source,
       siblings: [],
-      sources: extra.types
+      sources: meta!.types
           .map(
             (v) => SpotubeAudioSourceStreamObject(
               url: '',

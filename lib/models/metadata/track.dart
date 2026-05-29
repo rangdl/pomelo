@@ -4,24 +4,24 @@ part of 'metadata.dart';
 class SpotubeTrackObject with _$SpotubeTrackObject {
   factory SpotubeTrackObject.local({
     required String id,
-    required String name,
+    required String name, // 歌曲名
     required String externalUri,
-    @Default([]) List<SpotubeSimpleArtistObject> artists,
-    required SpotubeSimpleAlbumObject album,
-    required int durationMs,
-    required String path,
+    @Default([]) List<SpotubeSimpleArtistObject> artists, // 艺术家
+    required SpotubeSimpleAlbumObject album, // 专辑
+    required int durationMs, // 时长
+    required String path, // 文件路径
   }) = SpotubeLocalTrackObject;
 
   factory SpotubeTrackObject.full({
     required String id,
-    required String name,
+    required String name, // 歌曲名
     required String externalUri,
-    @Default([]) List<SpotubeSimpleArtistObject> artists,
-    required SpotubeSimpleAlbumObject album,
-    required int durationMs,
-    required String isrc,
+    @Default([]) List<SpotubeSimpleArtistObject> artists, // 艺术家
+    required SpotubeSimpleAlbumObject album, // 专辑
+    required int durationMs, // 时长
+    required String isrc, // 播放链接 如果为空则从源查找
     required bool explicit,
-    required PomeloTrackObjectExtra extra,
+    PomeloTrackObjectMeta? meta, // 元信息
   }) = SpotubeFullTrackObject;
 
   factory SpotubeTrackObject.localTrackFromFile(
@@ -82,18 +82,31 @@ class SpotubeTrackObject with _$SpotubeTrackObject {
 }
 
 @freezed
-class PomeloTrackObjectExtra with _$PomeloTrackObjectExtra {
-  factory PomeloTrackObjectExtra.tx({
-    required String source,
+class PomeloTrackObjectMeta with _$PomeloTrackObjectMeta {
+  factory PomeloTrackObjectMeta.tx({
+    @Default('tx') String source,
     required String songMid,
     @Default([]) List<PomeloTrackExtraType> types,
-  }) = PomeloTrackObjectTxExtra;
+    // tx
+    required String strMediaMid, // 歌曲strMediaMid
+    String? id, // 歌曲songId
+    String? albumMid, // 歌曲albumMid
+  }) = PomeloTrackObjectMetaTx;
 
-  factory PomeloTrackObjectExtra.fromJson(Map<String, dynamic> json) =>
-      _$PomeloTrackObjectExtraFromJson({
-        ...json,
-        "runtimeType": json['source'],
-      });
+  factory PomeloTrackObjectMeta.mg({
+    @Default('mg') String source,
+    required String songMid,
+
+    // mg
+    required String copyrightId, // 歌曲copyrightId
+    String? lrcUrl, // 歌曲lrcUrl
+    String? mrcUrl, // 歌曲mrcUrl
+    String? trcUrl, // 歌曲trcUrl
+    @Default([]) List<PomeloTrackExtraType> types,
+  }) = PomeloTrackObjectMetaMg;
+
+  factory PomeloTrackObjectMeta.fromJson(Map<String, dynamic> json) =>
+      _$PomeloTrackObjectMetaFromJson({...json, "runtimeType": json['source']});
 }
 
 @freezed
@@ -139,5 +152,16 @@ extension ToMetadataSpotubeFullTrackObject on SpotubeFullTrackObject {
             )
           : null,
     );
+  }
+
+  Map<String, String> toQuery() {
+    return {
+      "name": name,
+      "singer": artists.map((v) => v.name).toList().join(','),
+      ...(meta?.toJson().map(
+            (key, value) => MapEntry(key, value?.toString() ?? ''),
+          ) ??
+          {}),
+    };
   }
 }

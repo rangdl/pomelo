@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/services/dio/dio.dart';
-import 'package:pomelo/services/source/searcher.dart';
+import 'package:pomelo/services/source/index.dart';
 import 'package:pomelo/services/sourced_track/sourced_track.dart';
 
 class SourcedTrackNotifier extends Notifier<SourcedTrack?> {
@@ -40,9 +40,7 @@ final searchTermProvider = NotifierProvider<StringNotifier, String>(
   StringNotifier.new,
 );
 
-final searcherProvider = Provider<Searcher>(
-  (ref) => TxSearcher(dio: globalDio),
-);
+final searcherProvider = Provider<Searcher>((ref) => TxSearcher());
 
 class SearchNotifier
     extends AsyncNotifier<SpotubePaginationResponseObject<SpotubeTrackObject>> {

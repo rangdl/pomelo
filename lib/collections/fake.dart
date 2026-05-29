@@ -70,10 +70,6 @@ abstract class FakeData {
             durationMs: 3 * 60 * 1000, // 3 minutes
             isrc: "USUM72112345",
             explicit: false,
-            extra: PomeloTrackObjectExtra.tx(
-              source: "tx",
-              songMid: '0039MnYb0qxYhV',
-            ),
           )
           as SpotubeFullTrackObject;
 

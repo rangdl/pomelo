@@ -1,20 +1,8 @@
-// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
-
-interface class Searcher {
-  late final Dio _dio;
-  Future<SpotubePaginationResponseObject<SpotubeTrackObject>> search(
-    String keyword, {
-    int page = 1,
-    int limit = 30,
-  }) {
-    // TODO: implement search
-    throw UnimplementedError();
-  }
-}
+import 'package:pomelo/services/source/http.dart';
+import 'package:pomelo/services/source/registry.dart';
 
 /// 将字节大小转换为人类可读的字符串 (如 "3.5 MB")
 String sizeToStr(int sizeInBytes) {
@@ -54,21 +42,10 @@ const String txSourceId = 'tx';
 
 class TxSearcher implements Searcher {
   @override
-  late Dio _dio;
-  TxSearcher({required Dio? dio}) {
-    _dio = dio ?? Dio();
-    _dio.options.baseUrl = txApiUrl;
-    _dio.options.headers.addAll({
-      'Content-Type': 'application/json',
-      'User-Agent': txUa,
-    });
-  }
+  String id() => txSourceId;
 
-  /// 获取平台标识
-  String get id => txSourceId;
-
-  /// 获取平台名称
-  String get name => 'tx';
+  @override
+  String name() => 'tx';
 
   /// 执行搜索
   /// [keyword] 搜索关键词
@@ -134,66 +111,51 @@ class TxSearcher implements Searcher {
       },
     };
 
-    // 打印调试信息
-    print('[TxSearcher] search {keyword: $keyword, page: $page}');
-
-    // 发送请求
-    Response<dynamic> response;
     try {
-      response = await _dio.post(
-        '',
-        data: reqBody,
-        options: Options(responseType: ResponseType.plain),
+      final result = await httpPostJson(
+        txApiUrl,
+        reqBody,
+        headers: {'User-Agent': txUa},
       );
-    } catch (e) {
-      throw Exception('HTTP request failed: $e');
-    }
-
-    // 调试模式下打印原始响应（仅当长度不大时）
-    if (const bool.fromEnvironment('DEBUG')) {
-      final respStr = response.data.toString();
-      if (respStr.length <= 2000) {
-        print('[TxSearcher] raw response: $respStr');
-      } else {
-        print(
-          '[TxSearcher] raw response (truncated): ${respStr.substring(0, 2000)}',
+      final parsed = _parseResponse(jsonDecode(result));
+      if (parsed == null) {
+        throw Exception('Failed to parse response');
+      }
+      // 检查API返回码
+      if (parsed['code'] != 0 || parsed['reqCode'] != 0) {
+        throw Exception(
+          'API error: code=${parsed['code']}, req.code=${parsed['reqCode']}',
         );
       }
-    }
+      // 转换结果
+      final List<SpotubeTrackObject> items = [];
+      final songs = parsed['songs'] as List<dynamic>;
+      for (final song in songs) {
+        // 跳过没有 media_mid 的歌曲
+        final file = song['file'] as Map<String, dynamic>?;
+        if (file == null || file['media_mid'] == null) {
+          continue;
+        }
+        final item = _convertSongItem(song);
+        items.add(item);
+      }
 
-    // 解析并验证响应
-    final parsed = _parseResponse(jsonDecode(response.data));
-    if (parsed == null) {
-      throw Exception('Failed to parse response');
-    }
-
-    // 检查API返回码
-    if (parsed['code'] != 0 || parsed['reqCode'] != 0) {
-      throw Exception(
-        'API error: code=${parsed['code']}, req.code=${parsed['reqCode']}',
+      return SpotubePaginationResponseObject.page(
+        items: items,
+        limit: limit,
+        total: parsed['total'],
+        page: page,
+        hasMore: items.length == limit,
+      );
+    } catch (e) {
+      return SpotubePaginationResponseObject.page(
+        items: [],
+        limit: limit,
+        total: 0,
+        page: page,
+        hasMore: false,
       );
     }
-
-    // 转换结果
-    final List<SpotubeTrackObject> items = [];
-    final songs = parsed['songs'] as List<dynamic>;
-    for (final song in songs) {
-      // 跳过没有 media_mid 的歌曲
-      final file = song['file'] as Map<String, dynamic>?;
-      if (file == null || file['media_mid'] == null) {
-        continue;
-      }
-      final item = _convertSongItem(song);
-      items.add(item);
-    }
-
-    return SpotubePaginationResponseObject.page(
-      items: items,
-      limit: limit,
-      total: parsed['total'],
-      page: page,
-      hasMore: items.length == limit,
-    );
   }
 
   /// 解析QQ音乐API响应
@@ -266,92 +228,24 @@ class TxSearcher implements Searcher {
     final size128 = file['size_128mp3'] as int? ?? 0;
     if (size128 > 0) {
       types.add(PomeloTrackExtraType(type: '128k', size: sizeToStr(size128)));
-      // types.add(
-      //   SpotubeAudioSourceStreamObject(
-      //     url: '',
-      //     container: 'm4a',
-      //     type: SpotubeMediaCompressionType.lossy,
-      //     codec: 'aac',
-      //     tag: '128k',
-      //   ),
-      // );
     }
     final size320 = file['size_320mp3'] as int? ?? 0;
     if (size320 > 0) {
       types.add(PomeloTrackExtraType(type: '320k', size: sizeToStr(size320)));
-      // types.add(
-      //   SpotubeAudioSourceStreamObject(
-      //     url: '',
-      //     container: 'm4a',
-      //     type: SpotubeMediaCompressionType.lossy,
-      //     codec: 'aac',
-      //     tag: '320k',
-      //   ),
-      // );
     }
     final sizeFlac = file['size_flac'] as int? ?? 0;
     if (sizeFlac > 0) {
       types.add(PomeloTrackExtraType(type: 'flac', size: sizeToStr(sizeFlac)));
-      // types.add(
-      //   SpotubeAudioSourceStreamObject(
-      //     url: '',
-      //     container: 'flac',
-      //     type: SpotubeMediaCompressionType.lossy,
-      //     codec: 'flac',
-      //     tag: 'flac',
-      //   ),
-      // );
     }
     final sizeHiRes = file['size_hires'] as int? ?? 0;
     if (sizeHiRes > 0) {
       types.add(
         PomeloTrackExtraType(type: 'flac24bit', size: sizeToStr(sizeHiRes)),
       );
-      // types.add(
-      //   SpotubeAudioSourceStreamObject(
-      //     url: '',
-      //     container: 'flac',
-      //     type: SpotubeMediaCompressionType.lossy,
-      //     codec: 'flac',
-      //     tag: 'flac24bit',
-      //   ),
-      // );
     }
 
     // 获取mid值 (优先使用song.mid，否则使用song.id)
     final musicId = (song['mid'] as String?) ?? (song['id']?.toString() ?? '');
-
-    // final sourcedTrack = {
-    //   "siblings": [],
-    //   "sources": types,
-    //   "info": SpotubeAudioSourceMatchObject(
-    //     id: musicId,
-    //     title: decodeName(song['name'] ?? ''),
-    //     artists: singers.map((v) => v.name).toList(),
-    //     duration: Duration(seconds: song['interval'] ?? 0),
-    //     externalUri: '',
-    //     thumbnail: img,
-    //   ),
-    //   "query": SpotubeTrackObject.full(
-    //     id: '$name-$musicId',
-    //     name: decodeName(song['name'] ?? ''),
-    //     externalUri: '',
-    //     artists: singers,
-    //     album: SpotubeSimpleAlbumObject(
-    //       id: '$name-$musicId-${album?['id'] ?? ''}',
-    //       name: decodeName(album?['name'] ?? ''),
-    //       externalUri: '',
-    //       images: [SpotubeImageObject(url: img)],
-    //       artists: [],
-    //       albumType: SpotubeAlbumType.album,
-    //     ),
-    //     durationMs: song['interval'] ?? 0,
-    //     isrc: '',
-    //     explicit: false,
-    //   ),
-    //   "source": name,
-    // };
-    // return sourcedTrack;
     return SpotubeTrackObject.full(
       // source: name,
       id: '$name-$musicId',
@@ -369,10 +263,12 @@ class TxSearcher implements Searcher {
       durationMs: song['interval'] ?? 0,
       isrc: '',
       explicit: false,
-      extra: PomeloTrackObjectExtra.tx(
-        source: "tx",
-        songMid: '0039MnYb0qxYhV',
+      meta: PomeloTrackObjectMeta.tx(
+        songMid: musicId,
         types: types,
+        id: musicId,
+        albumMid: albumMid ?? '',
+        strMediaMid: file['media_mid'] ?? '',
       ),
       // musicId: musicId,
       // types: types,

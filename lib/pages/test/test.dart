@@ -12,7 +12,7 @@ import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/provider/source/audio_source_provider.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/services/dio/dio.dart';
-import 'package:pomelo/services/source/searcher.dart';
+import 'package:pomelo/services/source/tx/searcher.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 @RoutePage()
@@ -48,11 +48,11 @@ class TestPage extends HookConsumerWidget {
                   ),
                   TextButton(
                     onPressed: () async {
-                      print('tx test');
-                      final txSearcher = TxSearcher(dio: globalDio);
-                      final search = await txSearcher.search('周杰伦');
-                      print(search);
-                      final track = search.items.first;
+                      // print('tx test');
+                      // final txSearcher = TxSearcher(dio: globalDio);
+                      // final search = await txSearcher.search('周杰伦');
+                      // print(search);
+                      // final track = search.items.first;
                       // final url = await ref
                       //     .read(audioSourcesProvider.notifier)
                       //     .musicUrl(track);

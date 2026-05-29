@@ -578,9 +578,11 @@ _$SpotubeFullTrackObjectImpl _$$SpotubeFullTrackObjectImplFromJson(Map json) =>
       durationMs: (json['durationMs'] as num).toInt(),
       isrc: json['isrc'] as String,
       explicit: json['explicit'] as bool,
-      extra: PomeloTrackObjectExtra.fromJson(
-        Map<String, dynamic>.from(json['extra'] as Map),
-      ),
+      meta: json['meta'] == null
+          ? null
+          : PomeloTrackObjectMeta.fromJson(
+              Map<String, dynamic>.from(json['meta'] as Map),
+            ),
       $type: json['runtimeType'] as String?,
     );
 
@@ -595,14 +597,14 @@ Map<String, dynamic> _$$SpotubeFullTrackObjectImplToJson(
   'durationMs': instance.durationMs,
   'isrc': instance.isrc,
   'explicit': instance.explicit,
-  'extra': instance.extra.toJson(),
+  'meta': instance.meta?.toJson(),
   'runtimeType': instance.$type,
 };
 
-_$PomeloTrackObjectTxExtraImpl _$$PomeloTrackObjectTxExtraImplFromJson(
+_$PomeloTrackObjectMetaTxImpl _$$PomeloTrackObjectMetaTxImplFromJson(
   Map json,
-) => _$PomeloTrackObjectTxExtraImpl(
-  source: json['source'] as String,
+) => _$PomeloTrackObjectMetaTxImpl(
+  source: json['source'] as String? ?? 'tx',
   songMid: json['songMid'] as String,
   types:
       (json['types'] as List<dynamic>?)
@@ -613,14 +615,56 @@ _$PomeloTrackObjectTxExtraImpl _$$PomeloTrackObjectTxExtraImplFromJson(
           )
           .toList() ??
       const [],
+  strMediaMid: json['strMediaMid'] as String,
+  id: json['id'] as String?,
+  albumMid: json['albumMid'] as String?,
+  $type: json['runtimeType'] as String?,
 );
 
-Map<String, dynamic> _$$PomeloTrackObjectTxExtraImplToJson(
-  _$PomeloTrackObjectTxExtraImpl instance,
+Map<String, dynamic> _$$PomeloTrackObjectMetaTxImplToJson(
+  _$PomeloTrackObjectMetaTxImpl instance,
 ) => <String, dynamic>{
   'source': instance.source,
   'songMid': instance.songMid,
   'types': instance.types.map((e) => e.toJson()).toList(),
+  'strMediaMid': instance.strMediaMid,
+  'id': instance.id,
+  'albumMid': instance.albumMid,
+  'runtimeType': instance.$type,
+};
+
+_$PomeloTrackObjectMetaMgImpl _$$PomeloTrackObjectMetaMgImplFromJson(
+  Map json,
+) => _$PomeloTrackObjectMetaMgImpl(
+  source: json['source'] as String? ?? 'mg',
+  songMid: json['songMid'] as String,
+  copyrightId: json['copyrightId'] as String,
+  lrcUrl: json['lrcUrl'] as String?,
+  mrcUrl: json['mrcUrl'] as String?,
+  trcUrl: json['trcUrl'] as String?,
+  types:
+      (json['types'] as List<dynamic>?)
+          ?.map(
+            (e) => PomeloTrackExtraType.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList() ??
+      const [],
+  $type: json['runtimeType'] as String?,
+);
+
+Map<String, dynamic> _$$PomeloTrackObjectMetaMgImplToJson(
+  _$PomeloTrackObjectMetaMgImpl instance,
+) => <String, dynamic>{
+  'source': instance.source,
+  'songMid': instance.songMid,
+  'copyrightId': instance.copyrightId,
+  'lrcUrl': instance.lrcUrl,
+  'mrcUrl': instance.mrcUrl,
+  'trcUrl': instance.trcUrl,
+  'types': instance.types.map((e) => e.toJson()).toList(),
+  'runtimeType': instance.$type,
 };
 
 _$PomeloTrackExtraTypeImpl _$$PomeloTrackExtraTypeImplFromJson(Map json) =>

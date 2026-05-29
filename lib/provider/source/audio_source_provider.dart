@@ -168,7 +168,7 @@ class AudioSourcesNotifier extends Notifier<List<AudioSourceRuntime>> {
         }
         try {
           final url = await source.jsEngine!.musicUrl(
-            toQuery(sourcedTrack.query),
+            sourcedTrack.query.toQuery(),
             quality: quality,
           );
           print('从 ${source.jsEngine?.name} 获取到播放链接: $url');
@@ -182,15 +182,6 @@ class AudioSourcesNotifier extends Notifier<List<AudioSourceRuntime>> {
       }
     }
     return null;
-  }
-
-  Map<String, String> toQuery(SpotubeFullTrackObject track) {
-    return {
-      "songmid": track.extra.songMid,
-      "source": track.extra.source,
-      "name": track.name,
-      "singer": track.artists.map((v) => v.name).toList().join(','),
-    };
   }
 }
 
