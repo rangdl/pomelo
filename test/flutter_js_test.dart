@@ -214,6 +214,15 @@ sendMessage('__lx_native__', JSON.stringify({
     //     print(aaa.toString());
 
     //     print(utf8.decode(bytes));
+    print('测试fetch');
+    jsRuntime.onMessage('__native_async__', (arguments) {
+      final arg = arguments['aa'];
+      return 'async-$arg';
+    });
+    final asyncResult = await jsRuntime.evaluateAsync(
+      "sendMessage('__native_async__', JSON.stringify({aa:'123'}))",
+    );
+    print(asyncResult.toString());
 
     print('测试结束');
   });
