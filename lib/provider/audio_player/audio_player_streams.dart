@@ -108,7 +108,7 @@ class AudioPlayerStreamListeners {
         // ref
         //     .read(metadataPluginScrobbleProvider.notifier)
         //     .scrobble(audioPlayerState.activeTrack!);
-        // lastScrobbled = uid;
+        lastScrobbled = uid;
 
         // /// The [Track] from Playlist.getTracks doesn't contain artist images
         // /// so we need to fetch them from the API

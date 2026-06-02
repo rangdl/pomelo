@@ -40,10 +40,10 @@ class PlaybackHistoryActions {
   }
 
   Future<void> addTracks(List<SpotubeTrackObject> tracks) async {
-    assert(
-      tracks.every((t) => t.artists.every((a) => a.images != null)),
-      'Track artists must have images',
-    );
+    // assert(
+    //   tracks.every((t) => t.artists.every((a) => a.images != null)),
+    //   'Track artists must have images',
+    // );
 
     await _batchInsertHistoryEntries([
       for (final track in tracks)
@@ -56,10 +56,10 @@ class PlaybackHistoryActions {
   }
 
   Future<void> addTrack(SpotubeTrackObject track) async {
-    assert(
-      track.artists.every((a) => a.images != null),
-      'Track artists must have images',
-    );
+    // assert(
+    //   track.artists.every((a) => a.images != null),
+    //   'Track artists must have images',
+    // );
 
     await _db
         .into(_db.historyTable)

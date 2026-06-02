@@ -1,23 +1,9 @@
-import 'dart:convert';
-
 import 'package:collection/collection.dart';
-import 'package:dio/dio.dart';
-import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/models/database/database.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/models/playback/track_sources.dart';
-import 'package:pomelo/provider/database/database.dart';
-import 'package:pomelo/provider/search/search.dart';
 import 'package:pomelo/provider/source/audio_source_provider.dart';
-// import 'package:pomelo/provider/metadata_plugin/audio_source/quality_presets.dart';
-// import 'package:pomelo/provider/metadata_plugin/metadata_plugin_provider.dart';
-import 'package:pomelo/services/dio/dio.dart';
 import 'package:pomelo/services/logger/logger.dart';
-import 'package:pomelo/services/metadata/errors/exceptions.dart';
-
-import 'package:pomelo/services/sourced_track/exceptions.dart';
-import 'package:pomelo/utils/service_utils.dart';
 
 final officialMusicRegex = RegExp(
   r"official\s(video|audio|music\svideo|lyric\svideo|visualizer)",
@@ -40,84 +26,8 @@ class SourcedTrack extends BasicSourcedTrack {
     required SpotubeFullTrackObject query,
     required Ref ref,
   }) async {
-    // final audioSource = await ref.read(audioSourcePluginProvider.future);
-    // final audioSourceConfig = await ref.read(
-    //   metadataPluginsProvider.selectAsync(
-    //     (data) => data.defaultAudioSourcePluginConfig,
-    //   ),
-    // );
-    // if (audioSource == null || audioSourceConfig == null) {
-    //   throw MetadataPluginException.noDefaultAudioSourcePlugin();
-    // }
-
-    // final database = ref.read(databaseProvider);
-    // final cachedSource =
-    //     await (database.select(database.sourceMatchTable)
-    //           ..where(
-    //             (s) => s.trackId.equals(query.id),
-    //             // &s.sourceType.equals(audioSourceConfig.slug),
-    //           )
-    //           ..limit(1)
-    //           ..orderBy([
-    //             (s) => OrderingTerm(
-    //               expression: s.createdAt,
-    //               mode: OrderingMode.desc,
-    //             ),
-    //           ]))
-    //         .get()
-    //         .then((s) => s.firstOrNull);
-
-    // if (cachedSource == null) {
-    //   final siblings = await fetchSiblings(ref: ref, query: query);
-    //   if (siblings.isEmpty) {
-    //     throw TrackNotFoundError(query);
-    //   }
-
-    //   await database
-    //       .into(database.sourceMatchTable)
-    //       .insert(
-    //         SourceMatchTableCompanion.insert(
-    //           trackId: query.id,
-    //           sourceInfo: Value(jsonEncode(siblings.first)),
-    //           sourceType: audioSourceConfig.slug,
-    //         ),
-    //       );
-
-    //   final manifest = await audioSource.audioSource.streams(siblings.first);
-
-    //   return SourcedTrack(
-    //     ref: ref,
-    //     siblings: siblings.skip(1).toList(),
-    //     info: siblings.first,
-    //     source: audioSourceConfig.slug,
-    //     sources: manifest,
-    //     query: query,
-    //   );
-    // }
-    // final item = SpotubeAudioSourceMatchObject.fromJson(
-    //   jsonDecode(cachedSource.sourceInfo),
-    // );
-    // final manifest = await audioSource.audioSource.streams(item);
-
-    final sourcedTrackOrigin = query.toSourcedTrack(ref);
-
-    final sourceFirst = await ref
-        .read(audioSourcesProvider.notifier)
-        .musicUrl2(sourcedTrackOrigin);
-    if (sourceFirst == null) {
-      throw TrackNotFoundError(query);
-    }
-    final sourcedTrack = SourcedTrack(
-      ref: ref,
-      siblings: [],
-      sources: [sourceFirst],
-      info: sourcedTrackOrigin.info,
-      query: query,
-      source: sourcedTrackOrigin.source,
-    );
-
+    final sourcedTrack = query.toSourcedTrack(ref);
     AppLogger.log.i("${query.name}: ${sourcedTrack.url}");
-
     return sourcedTrack;
   }
 
@@ -281,65 +191,16 @@ class SourcedTrack extends BasicSourcedTrack {
   }
 
   Future<SourcedTrack> refreshStream() async {
-    // final audioSource = await ref.read(audioSourcePluginProvider.future);
-    // final audioSourceConfig = await ref.read(
-    //   metadataPluginsProvider.selectAsync(
-    //     (data) => data.defaultAudioSourcePluginConfig,
-    //   ),
-    // );
-    // if (audioSource == null || audioSourceConfig == null) {
-    //   throw MetadataPluginException.noDefaultAudioSourcePlugin();
-    // }
-
-    // List<SpotubeAudioSourceStreamObject> validStreams = [];
-
-    // final stringBuffer = StringBuffer();
-    // for (final source in sources) {
-    //   final res = await globalDio.head(
-    //     source.url,
-    //     options: Options(
-    //       validateStatus: (status) => status != null && status < 500,
-    //     ),
-    //   );
-
-    //   stringBuffer.writeln(
-    //     "[${query.id}] ${res.statusCode} ${source.container} ${source.codec} ${source.bitrate}",
-    //   );
-
-    //   if (res.statusCode! < 400) {
-    //     validStreams.add(source);
-    //   }
-    // }
-
-    // AppLogger.log.d(stringBuffer.toString());
-
-    // if (validStreams.isEmpty) {
-    //   validStreams = await audioSource.audioSource.streams(info);
-    // }
-
-    // final sourcedTrack = SourcedTrack(
-    //   ref: ref,
-    //   siblings: siblings,
-    //   source: source,
-    //   sources: validStreams,
-    //   info: info,
-    //   query: query,
-    // );
-
     List<SpotubeAudioSourceStreamObject> validStreams = [];
-
     final stringBuffer = StringBuffer();
+    final currentSource = getStreamOfQuality2();
     for (final source in sources) {
-      final res = await globalDio.head(
-        source.url,
-        options: Options(
-          validateStatus: (status) => status != null && status < 500,
-        ),
-      );
-      stringBuffer.writeln(
-        "[${query.id}] ${res.statusCode} ${source.container} ${source.codec} ${source.bitrate}",
-      );
-      if (res.statusCode! < 400) {
+      if (source == currentSource && source.url.isEmpty) {
+        final url = await ref
+            .read(audioSourcesProvider.notifier)
+            .musicUrl2(query, quality: source.tag);
+        validStreams.add(source.copyWith(url: url ?? ''));
+      } else {
         validStreams.add(source);
       }
     }
@@ -353,15 +214,13 @@ class SourcedTrack extends BasicSourcedTrack {
       info: info,
       query: query,
     );
-
-    sourcedTrack.sources.map((source) {}).toList();
+    // sourcedTrack.sources.map((source) {}).toList();
     AppLogger.log.i("Refreshing ${query.name}: ${sourcedTrack.url}");
-
     return sourcedTrack;
   }
 
   String? get url {
-    return sources.firstOrNull?.url;
+    return getStreamOfQuality2()?.url;
     // final preferences = ref.read(audioSourcePresetsProvider);
 
     // return getUrlOfQuality(
@@ -425,6 +284,13 @@ class SourcedTrack extends BasicSourcedTrack {
         });
   }
 
+  SpotubeAudioSourceStreamObject? getStreamOfQuality2() {
+    if (sources.isEmpty) return null;
+    if (sources.length <= 1) return sources.first;
+    const quality = '128k';
+    return sources.firstWhereOrNull((s) => s.tag == quality);
+  }
+
   String? getUrlOfQuality(
     SpotubeAudioSourceContainerPreset preset,
     int qualityIndex,
@@ -439,7 +305,7 @@ class SourcedTrack extends BasicSourcedTrack {
     // );
   }
   String? getFileExtension() {
-    return sources.firstOrNull?.container;
+    return getStreamOfQuality2()?.container;
 
     // final presetState = ref.read(audioSourcePresetsProvider);
     // return presetState.presets.elementAtOrNull(
@@ -452,7 +318,7 @@ extension ToSourcedTrackSpotubeFullTrackObject on SpotubeFullTrackObject {
   SourcedTrack toSourcedTrack(ref) {
     return SourcedTrack(
       info: SpotubeAudioSourceMatchObject(
-        id: meta!.songMid,
+        id: meta!.musicId,
         title: name,
         artists: artists.map((v) => v.name).toList(),
         duration: Duration(seconds: durationMs),
@@ -470,7 +336,7 @@ extension ToSourcedTrackSpotubeFullTrackObject on SpotubeFullTrackObject {
               container: switch (v.type) {
                 'flac24bit' => 'flac',
                 'flac' => 'flac',
-                _ => 'mp3',
+                _ => 'm4a',
               },
               type: switch (v.type) {
                 'flac24bit' => SpotubeMediaCompressionType.lossless,

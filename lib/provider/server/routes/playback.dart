@@ -4,10 +4,13 @@ import 'dart:math';
 
 import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
+import 'package:file_type_dart/file_type_dart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart';
+import 'package:path/path.dart' as path;
+import 'package:pomelo/services/audio_processor.dart';
 import 'package:shelf/shelf.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/models/parser/range_headers.dart';
@@ -43,13 +46,23 @@ class ServerPlaybackRoutes {
   ServerPlaybackRoutes(this.ref) : dio = Dio();
 
   Future<String> _getTrackCacheFilePath(SourcedTrack track) async {
-    return join(
+    String filePath = join(
       await UserPreferencesNotifier.getMusicCacheDir(),
       ServiceUtils.sanitizeFilename(
         // '${track.query.name} - ${track.query.artists.map((d) => d.name).join(",")} (${track.info.id}).${track.qualityPreset!.getFileExtension()}',
         '${track.query.name} - ${track.query.artists.map((d) => d.name).join(",")} (${track.info.id}).${track.getFileExtension()}',
       ),
     );
+    if (!await File(filePath).exists()) {
+      final exts = ['mp3', 'm4a'];
+      for (final ext in exts) {
+        String filePath2 = path.setExtension(filePath, '.$ext');
+        if (await File(filePath2).exists()) {
+          return filePath2;
+        }
+      }
+    }
+    return filePath;
   }
 
   Future<SourcedTrack?> _getSourcedTrack(
@@ -94,11 +107,15 @@ class ServerPlaybackRoutes {
 
     if (await trackCacheFile.exists() && userPreferences.cacheMusic) {
       final fileLength = await trackCacheFile.length();
+      String ext = path
+          .extension(trackCacheFile.path)
+          .substring(1); // 包含点：".txt"
 
       return dio_lib.Response(
         statusCode: 200,
         headers: Headers.fromMap({
-          "content-type": ["audio/${track.qualityPreset!.name}"],
+          // "content-type": ["audio/${track.qualityPreset!.name}"],
+          "content-type": ["audio/$ext"],
           "content-length": ["$fileLength"],
           "accept-ranges": ["bytes"],
           "content-range": ["bytes 0-$fileLength/$fileLength"],
@@ -144,11 +161,12 @@ class ServerPlaybackRoutes {
     if (await trackCacheFile.exists() && userPreferences.cacheMusic) {
       final bytes = await trackCacheFile.readAsBytes();
       final cachedFileLength = bytes.length;
-
+      String ext = path.extension(trackCacheFile.path).substring(1);
       return dio_lib.Response<Uint8List>(
         statusCode: 200,
         headers: Headers.fromMap({
-          "content-type": ["audio/${track.getFileExtension()}"],
+          // "content-type": ["audio/${track.qualityPreset!.name}"],
+          "content-type": ["audio/$ext"],
           "content-length": ["${cachedFileLength - 1}"],
           "accept-ranges": ["bytes"],
           "content-range": [
@@ -161,12 +179,13 @@ class ServerPlaybackRoutes {
       );
     }
 
-    String url =
-        track.url ??
-        await ref
-            .read(sourcedTrackProvider(track.query).notifier)
-            .swapWithNextSibling()
-            .then((track) => track.url!);
+    String url = track.url ?? '';
+    if (url.isEmpty) {
+      url = await ref
+          .read(sourcedTrackProvider(track.query).notifier)
+          .refreshStreamingUrl()
+          .then((track) => track.url!);
+    }
 
     final options = Options(
       headers: {
@@ -252,21 +271,28 @@ class ServerPlaybackRoutes {
 
         final fileLength = await trackPartialCacheFile.length();
         if (fileLength != contentRange.total) return;
+        String filePath = trackCacheFile.path;
 
-        await trackPartialCacheFile.rename(trackCacheFile.path);
-
+        if (track.getFileExtension() != "flac") {
+          final result = FileType.fromBuffer(
+            await trackPartialCacheFile.readAsBytes(),
+          );
+          if (result != null) {
+            filePath = path.setExtension(trackCacheFile.path, '.${result.ext}');
+          }
+        }
+        await trackPartialCacheFile.rename(filePath);
         // if (track.qualityPreset!.getFileExtension() == "weba") return;
-        if (track.getFileExtension() == "weba") return;
-
         final imageBytes = await ServiceUtils.downloadImage(
           track.query.album.images.asUrlString(
             placeholder: ImagePlaceholder.albumArt,
             index: 1,
           ),
         );
+        // final aaa = MetadataGod.readMetadata(file: trackPartialCacheFile.path);
 
         await MetadataGod.writeMetadata(
-          file: trackCacheFile.path,
+          file: filePath,
           metadata: track.query.toMetadata(
             imageBytes: imageBytes,
             fileLength: fileLength,

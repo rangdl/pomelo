@@ -152,14 +152,14 @@ class AudioSourcesNotifier extends Notifier<List<AudioSourceRuntime>> {
     return '';
   }
 
-  Future<SpotubeAudioSourceStreamObject?> musicUrl2(
-    SourcedTrack sourcedTrack,
-  ) async {
+  Future<String?> musicUrl2(
+    SpotubeFullTrackObject query, {
+    quality = '128k',
+  }) async {
     if (!_inited.isCompleted) {
       // 等待源初始化完成
       await _inited.future;
     }
-    final quality = sourcedTrack.sources.first.tag;
     final sources = state.where((v) => v.enable).toList();
     if (sources.isNotEmpty) {
       for (final source in sources) {
@@ -168,14 +168,11 @@ class AudioSourcesNotifier extends Notifier<List<AudioSourceRuntime>> {
         }
         try {
           final url = await source.jsEngine!.musicUrl(
-            sourcedTrack.query.toQuery(),
+            query.meta?.toJson() ?? {},
             quality: quality,
           );
           print('从 ${source.jsEngine?.name} 获取到播放链接: $url');
-          var firstWhereOrNull = sourcedTrack.sources.firstWhereOrNull(
-            (v) => v.tag == quality,
-          );
-          return firstWhereOrNull?.copyWith(url: url);
+          return url;
         } catch (e) {
           AppLogger.reportError(e, StackTrace.current);
         }

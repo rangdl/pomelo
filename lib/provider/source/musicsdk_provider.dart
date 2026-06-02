@@ -1,10 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/models/metadata/metadata.dart';
 import 'package:pomelo/services/js_engine/js_engine.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class MusicsdkNotifier extends Notifier<JavascriptRuntime> {
   @override
@@ -16,12 +14,6 @@ class MusicsdkNotifier extends Notifier<JavascriptRuntime> {
   }
 
   Future<void> init() async {
-    // state.onMessage('__native_fetch__', (arguments) {
-    //   String url = arguments[1] as String;
-    //   Map<String, dynamic> options = arguments[0] ?? {};
-    //   globalDio.request(url)
-    // });
-
     // 加载 sdk
     final musicsdk = await rootBundle.loadString('assets/js/musicsdk.umd.js');
     final resultSdk = state.evaluate(musicsdk);
@@ -77,7 +69,7 @@ registry.registerTipSearchProvider(new musicsdk.MgTipSearchProvider());
     }
   }
 
-  Future<void> search(
+  Future<SpotubePaginationResponseObject<SpotubeTrackObject>> search(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -92,8 +84,23 @@ registry.registerTipSearchProvider(new musicsdk.MgTipSearchProvider());
       print(result.toString());
     }
     final asyncResult = await state.handlePromise(result);
-    final aaa2 = await asyncResult.rawResult;
-    print(aaa2);
+    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
+    final total = json['total'] ?? 0;
+    final items = (json['list'] ?? []) as List<dynamic>;
+    final res = SpotubePaginationResponseObject.page(
+      limit: limit,
+      page: page,
+      total: total,
+      hasMore: (page * limit) < total,
+      items: items
+          .map(
+            (item) => PomeloTrackObjectMeta.fromJson(
+              Map<String, dynamic>.from(item),
+            ).toSpotubeFullTrackObject(),
+          )
+          .toList(),
+    );
+    return res;
   }
 }
 

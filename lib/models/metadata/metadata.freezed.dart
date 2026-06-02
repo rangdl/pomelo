@@ -6799,110 +6799,28 @@ abstract class SpotubeFullTrackObject implements SpotubeTrackObject {
 PomeloTrackObjectMeta _$PomeloTrackObjectMetaFromJson(
   Map<String, dynamic> json,
 ) {
-  switch (json['runtimeType']) {
-    case 'tx':
-      return PomeloTrackObjectMetaTx.fromJson(json);
-    case 'mg':
-      return PomeloTrackObjectMetaMg.fromJson(json);
-
-    default:
-      throw CheckedFromJsonException(
-        json,
-        'runtimeType',
-        'PomeloTrackObjectMeta',
-        'Invalid union type "${json['runtimeType']}"!',
-      );
-  }
+  return _PomeloTrackObjectMeta.fromJson(json);
 }
 
 /// @nodoc
 mixin _$PomeloTrackObjectMeta {
-  String get source => throw _privateConstructorUsedError;
-  String get songMid => throw _privateConstructorUsedError;
-  List<PomeloTrackExtraType> get types => throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )
-    tx,
-    required TResult Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )
-    mg,
-  }) => throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )?
-    tx,
-    TResult? Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )?
-    mg,
-  }) => throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )?
-    tx,
-    TResult Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )?
-    mg,
-    required TResult orElse(),
-  }) => throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(PomeloTrackObjectMetaTx value) tx,
-    required TResult Function(PomeloTrackObjectMetaMg value) mg,
-  }) => throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(PomeloTrackObjectMetaTx value)? tx,
-    TResult? Function(PomeloTrackObjectMetaMg value)? mg,
-  }) => throw _privateConstructorUsedError;
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(PomeloTrackObjectMetaTx value)? tx,
-    TResult Function(PomeloTrackObjectMetaMg value)? mg,
-    required TResult orElse(),
-  }) => throw _privateConstructorUsedError;
+  String get name => throw _privateConstructorUsedError; // 歌曲名称
+  String get singer => throw _privateConstructorUsedError; // 歌手
+  String get album => throw _privateConstructorUsedError; // 专辑
+  String? get albumId => throw _privateConstructorUsedError; // 专辑 ID
+  int get duration => throw _privateConstructorUsedError; // 时长（秒）
+  String get source =>
+      throw _privateConstructorUsedError; // 平台标识 kg/kw/tx/wy/mg
+  String get musicId => throw _privateConstructorUsedError; // 平台歌曲唯一标识
+  String? get img => throw _privateConstructorUsedError; // 封面图 URL
+  List<PomeloTrackExtraType> get types =>
+      throw _privateConstructorUsedError; // 可用音质列表
+  // 平台特有字段（getMusicUrl 时需要）
+  String? get hash => throw _privateConstructorUsedError; // kg
+  String? get copyrightId => throw _privateConstructorUsedError; // mg
+  String? get strMediaMid => throw _privateConstructorUsedError; // tx
+  String? get albumMid => throw _privateConstructorUsedError; // tx
+  String? get songmid => throw _privateConstructorUsedError;
 
   /// Serializes this PomeloTrackObjectMeta to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -6921,7 +6839,22 @@ abstract class $PomeloTrackObjectMetaCopyWith<$Res> {
     $Res Function(PomeloTrackObjectMeta) then,
   ) = _$PomeloTrackObjectMetaCopyWithImpl<$Res, PomeloTrackObjectMeta>;
   @useResult
-  $Res call({String source, String songMid, List<PomeloTrackExtraType> types});
+  $Res call({
+    String name,
+    String singer,
+    String album,
+    String? albumId,
+    int duration,
+    String source,
+    String musicId,
+    String? img,
+    List<PomeloTrackExtraType> types,
+    String? hash,
+    String? copyrightId,
+    String? strMediaMid,
+    String? albumMid,
+    String? songmid,
+  });
 }
 
 /// @nodoc
@@ -6942,24 +6875,79 @@ class _$PomeloTrackObjectMetaCopyWithImpl<
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? name = null,
+    Object? singer = null,
+    Object? album = null,
+    Object? albumId = freezed,
+    Object? duration = null,
     Object? source = null,
-    Object? songMid = null,
+    Object? musicId = null,
+    Object? img = freezed,
     Object? types = null,
+    Object? hash = freezed,
+    Object? copyrightId = freezed,
+    Object? strMediaMid = freezed,
+    Object? albumMid = freezed,
+    Object? songmid = freezed,
   }) {
     return _then(
       _value.copyWith(
+            name: null == name
+                ? _value.name
+                : name // ignore: cast_nullable_to_non_nullable
+                      as String,
+            singer: null == singer
+                ? _value.singer
+                : singer // ignore: cast_nullable_to_non_nullable
+                      as String,
+            album: null == album
+                ? _value.album
+                : album // ignore: cast_nullable_to_non_nullable
+                      as String,
+            albumId: freezed == albumId
+                ? _value.albumId
+                : albumId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            duration: null == duration
+                ? _value.duration
+                : duration // ignore: cast_nullable_to_non_nullable
+                      as int,
             source: null == source
                 ? _value.source
                 : source // ignore: cast_nullable_to_non_nullable
                       as String,
-            songMid: null == songMid
-                ? _value.songMid
-                : songMid // ignore: cast_nullable_to_non_nullable
+            musicId: null == musicId
+                ? _value.musicId
+                : musicId // ignore: cast_nullable_to_non_nullable
                       as String,
+            img: freezed == img
+                ? _value.img
+                : img // ignore: cast_nullable_to_non_nullable
+                      as String?,
             types: null == types
                 ? _value.types
                 : types // ignore: cast_nullable_to_non_nullable
                       as List<PomeloTrackExtraType>,
+            hash: freezed == hash
+                ? _value.hash
+                : hash // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            copyrightId: freezed == copyrightId
+                ? _value.copyrightId
+                : copyrightId // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            strMediaMid: freezed == strMediaMid
+                ? _value.strMediaMid
+                : strMediaMid // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            albumMid: freezed == albumMid
+                ? _value.albumMid
+                : albumMid // ignore: cast_nullable_to_non_nullable
+                      as String?,
+            songmid: freezed == songmid
+                ? _value.songmid
+                : songmid // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -6967,32 +6955,40 @@ class _$PomeloTrackObjectMetaCopyWithImpl<
 }
 
 /// @nodoc
-abstract class _$$PomeloTrackObjectMetaTxImplCopyWith<$Res>
+abstract class _$$PomeloTrackObjectMetaImplCopyWith<$Res>
     implements $PomeloTrackObjectMetaCopyWith<$Res> {
-  factory _$$PomeloTrackObjectMetaTxImplCopyWith(
-    _$PomeloTrackObjectMetaTxImpl value,
-    $Res Function(_$PomeloTrackObjectMetaTxImpl) then,
-  ) = __$$PomeloTrackObjectMetaTxImplCopyWithImpl<$Res>;
+  factory _$$PomeloTrackObjectMetaImplCopyWith(
+    _$PomeloTrackObjectMetaImpl value,
+    $Res Function(_$PomeloTrackObjectMetaImpl) then,
+  ) = __$$PomeloTrackObjectMetaImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({
+    String name,
+    String singer,
+    String album,
+    String? albumId,
+    int duration,
     String source,
-    String songMid,
+    String musicId,
+    String? img,
     List<PomeloTrackExtraType> types,
-    String strMediaMid,
-    String? id,
+    String? hash,
+    String? copyrightId,
+    String? strMediaMid,
     String? albumMid,
+    String? songmid,
   });
 }
 
 /// @nodoc
-class __$$PomeloTrackObjectMetaTxImplCopyWithImpl<$Res>
+class __$$PomeloTrackObjectMetaImplCopyWithImpl<$Res>
     extends
-        _$PomeloTrackObjectMetaCopyWithImpl<$Res, _$PomeloTrackObjectMetaTxImpl>
-    implements _$$PomeloTrackObjectMetaTxImplCopyWith<$Res> {
-  __$$PomeloTrackObjectMetaTxImplCopyWithImpl(
-    _$PomeloTrackObjectMetaTxImpl _value,
-    $Res Function(_$PomeloTrackObjectMetaTxImpl) _then,
+        _$PomeloTrackObjectMetaCopyWithImpl<$Res, _$PomeloTrackObjectMetaImpl>
+    implements _$$PomeloTrackObjectMetaImplCopyWith<$Res> {
+  __$$PomeloTrackObjectMetaImplCopyWithImpl(
+    _$PomeloTrackObjectMetaImpl _value,
+    $Res Function(_$PomeloTrackObjectMetaImpl) _then,
   ) : super(_value, _then);
 
   /// Create a copy of PomeloTrackObjectMeta
@@ -7000,39 +6996,79 @@ class __$$PomeloTrackObjectMetaTxImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
+    Object? name = null,
+    Object? singer = null,
+    Object? album = null,
+    Object? albumId = freezed,
+    Object? duration = null,
     Object? source = null,
-    Object? songMid = null,
+    Object? musicId = null,
+    Object? img = freezed,
     Object? types = null,
-    Object? strMediaMid = null,
-    Object? id = freezed,
+    Object? hash = freezed,
+    Object? copyrightId = freezed,
+    Object? strMediaMid = freezed,
     Object? albumMid = freezed,
+    Object? songmid = freezed,
   }) {
     return _then(
-      _$PomeloTrackObjectMetaTxImpl(
+      _$PomeloTrackObjectMetaImpl(
+        name: null == name
+            ? _value.name
+            : name // ignore: cast_nullable_to_non_nullable
+                  as String,
+        singer: null == singer
+            ? _value.singer
+            : singer // ignore: cast_nullable_to_non_nullable
+                  as String,
+        album: null == album
+            ? _value.album
+            : album // ignore: cast_nullable_to_non_nullable
+                  as String,
+        albumId: freezed == albumId
+            ? _value.albumId
+            : albumId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        duration: null == duration
+            ? _value.duration
+            : duration // ignore: cast_nullable_to_non_nullable
+                  as int,
         source: null == source
             ? _value.source
             : source // ignore: cast_nullable_to_non_nullable
                   as String,
-        songMid: null == songMid
-            ? _value.songMid
-            : songMid // ignore: cast_nullable_to_non_nullable
+        musicId: null == musicId
+            ? _value.musicId
+            : musicId // ignore: cast_nullable_to_non_nullable
                   as String,
+        img: freezed == img
+            ? _value.img
+            : img // ignore: cast_nullable_to_non_nullable
+                  as String?,
         types: null == types
             ? _value._types
             : types // ignore: cast_nullable_to_non_nullable
                   as List<PomeloTrackExtraType>,
-        strMediaMid: null == strMediaMid
+        hash: freezed == hash
+            ? _value.hash
+            : hash // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        copyrightId: freezed == copyrightId
+            ? _value.copyrightId
+            : copyrightId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        strMediaMid: freezed == strMediaMid
             ? _value.strMediaMid
             : strMediaMid // ignore: cast_nullable_to_non_nullable
-                  as String,
-        id: freezed == id
-            ? _value.id
-            : id // ignore: cast_nullable_to_non_nullable
                   as String?,
         albumMid: freezed == albumMid
             ? _value.albumMid
             : albumMid // ignore: cast_nullable_to_non_nullable
                   as String?,
+        songmid: freezed == songmid
+            ? _value.songmid
+            : songmid // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -7040,27 +7076,53 @@ class __$$PomeloTrackObjectMetaTxImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$PomeloTrackObjectMetaTxImpl implements PomeloTrackObjectMetaTx {
-  _$PomeloTrackObjectMetaTxImpl({
-    this.source = 'tx',
-    required this.songMid,
+class _$PomeloTrackObjectMetaImpl implements _PomeloTrackObjectMeta {
+  _$PomeloTrackObjectMetaImpl({
+    required this.name,
+    required this.singer,
+    required this.album,
+    this.albumId,
+    required this.duration,
+    required this.source,
+    required this.musicId,
+    this.img,
     final List<PomeloTrackExtraType> types = const [],
-    required this.strMediaMid,
-    this.id,
+    this.hash,
+    this.copyrightId,
+    this.strMediaMid,
     this.albumMid,
-    final String? $type,
-  }) : _types = types,
-       $type = $type ?? 'tx';
+    this.songmid,
+  }) : _types = types;
 
-  factory _$PomeloTrackObjectMetaTxImpl.fromJson(Map<String, dynamic> json) =>
-      _$$PomeloTrackObjectMetaTxImplFromJson(json);
+  factory _$PomeloTrackObjectMetaImpl.fromJson(Map<String, dynamic> json) =>
+      _$$PomeloTrackObjectMetaImplFromJson(json);
 
   @override
-  @JsonKey()
+  final String name;
+  // 歌曲名称
+  @override
+  final String singer;
+  // 歌手
+  @override
+  final String album;
+  // 专辑
+  @override
+  final String? albumId;
+  // 专辑 ID
+  @override
+  final int duration;
+  // 时长（秒）
+  @override
   final String source;
+  // 平台标识 kg/kw/tx/wy/mg
   @override
-  final String songMid;
+  final String musicId;
+  // 平台歌曲唯一标识
+  @override
+  final String? img;
+  // 封面图 URL
   final List<PomeloTrackExtraType> _types;
+  // 封面图 URL
   @override
   @JsonKey()
   List<PomeloTrackExtraType> get types {
@@ -7069,370 +7131,71 @@ class _$PomeloTrackObjectMetaTxImpl implements PomeloTrackObjectMetaTx {
     return EqualUnmodifiableListView(_types);
   }
 
-  // tx
+  // 可用音质列表
+  // 平台特有字段（getMusicUrl 时需要）
   @override
-  final String strMediaMid;
-  // 歌曲strMediaMid
+  final String? hash;
+  // kg
   @override
-  final String? id;
-  // 歌曲songId
-  @override
-  final String? albumMid;
-
-  @JsonKey(name: 'runtimeType')
-  final String $type;
-
-  @override
-  String toString() {
-    return 'PomeloTrackObjectMeta.tx(source: $source, songMid: $songMid, types: $types, strMediaMid: $strMediaMid, id: $id, albumMid: $albumMid)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$PomeloTrackObjectMetaTxImpl &&
-            (identical(other.source, source) || other.source == source) &&
-            (identical(other.songMid, songMid) || other.songMid == songMid) &&
-            const DeepCollectionEquality().equals(other._types, _types) &&
-            (identical(other.strMediaMid, strMediaMid) ||
-                other.strMediaMid == strMediaMid) &&
-            (identical(other.id, id) || other.id == id) &&
-            (identical(other.albumMid, albumMid) ||
-                other.albumMid == albumMid));
-  }
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  int get hashCode => Object.hash(
-    runtimeType,
-    source,
-    songMid,
-    const DeepCollectionEquality().hash(_types),
-    strMediaMid,
-    id,
-    albumMid,
-  );
-
-  /// Create a copy of PomeloTrackObjectMeta
-  /// with the given fields replaced by the non-null parameter values.
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$PomeloTrackObjectMetaTxImplCopyWith<_$PomeloTrackObjectMetaTxImpl>
-  get copyWith =>
-      __$$PomeloTrackObjectMetaTxImplCopyWithImpl<
-        _$PomeloTrackObjectMetaTxImpl
-      >(this, _$identity);
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )
-    tx,
-    required TResult Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )
-    mg,
-  }) {
-    return tx(source, songMid, types, strMediaMid, id, albumMid);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )?
-    tx,
-    TResult? Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )?
-    mg,
-  }) {
-    return tx?.call(source, songMid, types, strMediaMid, id, albumMid);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )?
-    tx,
-    TResult Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )?
-    mg,
-    required TResult orElse(),
-  }) {
-    if (tx != null) {
-      return tx(source, songMid, types, strMediaMid, id, albumMid);
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(PomeloTrackObjectMetaTx value) tx,
-    required TResult Function(PomeloTrackObjectMetaMg value) mg,
-  }) {
-    return tx(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(PomeloTrackObjectMetaTx value)? tx,
-    TResult? Function(PomeloTrackObjectMetaMg value)? mg,
-  }) {
-    return tx?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(PomeloTrackObjectMetaTx value)? tx,
-    TResult Function(PomeloTrackObjectMetaMg value)? mg,
-    required TResult orElse(),
-  }) {
-    if (tx != null) {
-      return tx(this);
-    }
-    return orElse();
-  }
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$PomeloTrackObjectMetaTxImplToJson(this);
-  }
-}
-
-abstract class PomeloTrackObjectMetaTx implements PomeloTrackObjectMeta {
-  factory PomeloTrackObjectMetaTx({
-    final String source,
-    required final String songMid,
-    final List<PomeloTrackExtraType> types,
-    required final String strMediaMid,
-    final String? id,
-    final String? albumMid,
-  }) = _$PomeloTrackObjectMetaTxImpl;
-
-  factory PomeloTrackObjectMetaTx.fromJson(Map<String, dynamic> json) =
-      _$PomeloTrackObjectMetaTxImpl.fromJson;
-
-  @override
-  String get source;
-  @override
-  String get songMid;
-  @override
-  List<PomeloTrackExtraType> get types; // tx
-  String get strMediaMid; // 歌曲strMediaMid
-  String? get id; // 歌曲songId
-  String? get albumMid;
-
-  /// Create a copy of PomeloTrackObjectMeta
-  /// with the given fields replaced by the non-null parameter values.
-  @override
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$PomeloTrackObjectMetaTxImplCopyWith<_$PomeloTrackObjectMetaTxImpl>
-  get copyWith => throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class _$$PomeloTrackObjectMetaMgImplCopyWith<$Res>
-    implements $PomeloTrackObjectMetaCopyWith<$Res> {
-  factory _$$PomeloTrackObjectMetaMgImplCopyWith(
-    _$PomeloTrackObjectMetaMgImpl value,
-    $Res Function(_$PomeloTrackObjectMetaMgImpl) then,
-  ) = __$$PomeloTrackObjectMetaMgImplCopyWithImpl<$Res>;
-  @override
-  @useResult
-  $Res call({
-    String source,
-    String songMid,
-    String copyrightId,
-    String? lrcUrl,
-    String? mrcUrl,
-    String? trcUrl,
-    List<PomeloTrackExtraType> types,
-  });
-}
-
-/// @nodoc
-class __$$PomeloTrackObjectMetaMgImplCopyWithImpl<$Res>
-    extends
-        _$PomeloTrackObjectMetaCopyWithImpl<$Res, _$PomeloTrackObjectMetaMgImpl>
-    implements _$$PomeloTrackObjectMetaMgImplCopyWith<$Res> {
-  __$$PomeloTrackObjectMetaMgImplCopyWithImpl(
-    _$PomeloTrackObjectMetaMgImpl _value,
-    $Res Function(_$PomeloTrackObjectMetaMgImpl) _then,
-  ) : super(_value, _then);
-
-  /// Create a copy of PomeloTrackObjectMeta
-  /// with the given fields replaced by the non-null parameter values.
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? source = null,
-    Object? songMid = null,
-    Object? copyrightId = null,
-    Object? lrcUrl = freezed,
-    Object? mrcUrl = freezed,
-    Object? trcUrl = freezed,
-    Object? types = null,
-  }) {
-    return _then(
-      _$PomeloTrackObjectMetaMgImpl(
-        source: null == source
-            ? _value.source
-            : source // ignore: cast_nullable_to_non_nullable
-                  as String,
-        songMid: null == songMid
-            ? _value.songMid
-            : songMid // ignore: cast_nullable_to_non_nullable
-                  as String,
-        copyrightId: null == copyrightId
-            ? _value.copyrightId
-            : copyrightId // ignore: cast_nullable_to_non_nullable
-                  as String,
-        lrcUrl: freezed == lrcUrl
-            ? _value.lrcUrl
-            : lrcUrl // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        mrcUrl: freezed == mrcUrl
-            ? _value.mrcUrl
-            : mrcUrl // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        trcUrl: freezed == trcUrl
-            ? _value.trcUrl
-            : trcUrl // ignore: cast_nullable_to_non_nullable
-                  as String?,
-        types: null == types
-            ? _value._types
-            : types // ignore: cast_nullable_to_non_nullable
-                  as List<PomeloTrackExtraType>,
-      ),
-    );
-  }
-}
-
-/// @nodoc
-@JsonSerializable()
-class _$PomeloTrackObjectMetaMgImpl implements PomeloTrackObjectMetaMg {
-  _$PomeloTrackObjectMetaMgImpl({
-    this.source = 'mg',
-    required this.songMid,
-    required this.copyrightId,
-    this.lrcUrl,
-    this.mrcUrl,
-    this.trcUrl,
-    final List<PomeloTrackExtraType> types = const [],
-    final String? $type,
-  }) : _types = types,
-       $type = $type ?? 'mg';
-
-  factory _$PomeloTrackObjectMetaMgImpl.fromJson(Map<String, dynamic> json) =>
-      _$$PomeloTrackObjectMetaMgImplFromJson(json);
-
-  @override
-  @JsonKey()
-  final String source;
-  @override
-  final String songMid;
+  final String? copyrightId;
   // mg
   @override
-  final String copyrightId;
-  // 歌曲copyrightId
+  final String? strMediaMid;
+  // tx
   @override
-  final String? lrcUrl;
-  // 歌曲lrcUrl
+  final String? albumMid;
+  // tx
   @override
-  final String? mrcUrl;
-  // 歌曲mrcUrl
-  @override
-  final String? trcUrl;
-  // 歌曲trcUrl
-  final List<PomeloTrackExtraType> _types;
-  // 歌曲trcUrl
-  @override
-  @JsonKey()
-  List<PomeloTrackExtraType> get types {
-    if (_types is EqualUnmodifiableListView) return _types;
-    // ignore: implicit_dynamic_type
-    return EqualUnmodifiableListView(_types);
-  }
-
-  @JsonKey(name: 'runtimeType')
-  final String $type;
+  final String? songmid;
 
   @override
   String toString() {
-    return 'PomeloTrackObjectMeta.mg(source: $source, songMid: $songMid, copyrightId: $copyrightId, lrcUrl: $lrcUrl, mrcUrl: $mrcUrl, trcUrl: $trcUrl, types: $types)';
+    return 'PomeloTrackObjectMeta(name: $name, singer: $singer, album: $album, albumId: $albumId, duration: $duration, source: $source, musicId: $musicId, img: $img, types: $types, hash: $hash, copyrightId: $copyrightId, strMediaMid: $strMediaMid, albumMid: $albumMid, songmid: $songmid)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$PomeloTrackObjectMetaMgImpl &&
+            other is _$PomeloTrackObjectMetaImpl &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.singer, singer) || other.singer == singer) &&
+            (identical(other.album, album) || other.album == album) &&
+            (identical(other.albumId, albumId) || other.albumId == albumId) &&
+            (identical(other.duration, duration) ||
+                other.duration == duration) &&
             (identical(other.source, source) || other.source == source) &&
-            (identical(other.songMid, songMid) || other.songMid == songMid) &&
+            (identical(other.musicId, musicId) || other.musicId == musicId) &&
+            (identical(other.img, img) || other.img == img) &&
+            const DeepCollectionEquality().equals(other._types, _types) &&
+            (identical(other.hash, hash) || other.hash == hash) &&
             (identical(other.copyrightId, copyrightId) ||
                 other.copyrightId == copyrightId) &&
-            (identical(other.lrcUrl, lrcUrl) || other.lrcUrl == lrcUrl) &&
-            (identical(other.mrcUrl, mrcUrl) || other.mrcUrl == mrcUrl) &&
-            (identical(other.trcUrl, trcUrl) || other.trcUrl == trcUrl) &&
-            const DeepCollectionEquality().equals(other._types, _types));
+            (identical(other.strMediaMid, strMediaMid) ||
+                other.strMediaMid == strMediaMid) &&
+            (identical(other.albumMid, albumMid) ||
+                other.albumMid == albumMid) &&
+            (identical(other.songmid, songmid) || other.songmid == songmid));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(
     runtimeType,
+    name,
+    singer,
+    album,
+    albumId,
+    duration,
     source,
-    songMid,
-    copyrightId,
-    lrcUrl,
-    mrcUrl,
-    trcUrl,
+    musicId,
+    img,
     const DeepCollectionEquality().hash(_types),
+    hash,
+    copyrightId,
+    strMediaMid,
+    albumMid,
+    songmid,
   );
 
   /// Create a copy of PomeloTrackObjectMeta
@@ -7440,169 +7203,75 @@ class _$PomeloTrackObjectMetaMgImpl implements PomeloTrackObjectMetaMg {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$PomeloTrackObjectMetaMgImplCopyWith<_$PomeloTrackObjectMetaMgImpl>
+  _$$PomeloTrackObjectMetaImplCopyWith<_$PomeloTrackObjectMetaImpl>
   get copyWith =>
-      __$$PomeloTrackObjectMetaMgImplCopyWithImpl<
-        _$PomeloTrackObjectMetaMgImpl
-      >(this, _$identity);
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )
-    tx,
-    required TResult Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )
-    mg,
-  }) {
-    return mg(source, songMid, copyrightId, lrcUrl, mrcUrl, trcUrl, types);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )?
-    tx,
-    TResult? Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )?
-    mg,
-  }) {
-    return mg?.call(
-      source,
-      songMid,
-      copyrightId,
-      lrcUrl,
-      mrcUrl,
-      trcUrl,
-      types,
-    );
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function(
-      String source,
-      String songMid,
-      List<PomeloTrackExtraType> types,
-      String strMediaMid,
-      String? id,
-      String? albumMid,
-    )?
-    tx,
-    TResult Function(
-      String source,
-      String songMid,
-      String copyrightId,
-      String? lrcUrl,
-      String? mrcUrl,
-      String? trcUrl,
-      List<PomeloTrackExtraType> types,
-    )?
-    mg,
-    required TResult orElse(),
-  }) {
-    if (mg != null) {
-      return mg(source, songMid, copyrightId, lrcUrl, mrcUrl, trcUrl, types);
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(PomeloTrackObjectMetaTx value) tx,
-    required TResult Function(PomeloTrackObjectMetaMg value) mg,
-  }) {
-    return mg(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(PomeloTrackObjectMetaTx value)? tx,
-    TResult? Function(PomeloTrackObjectMetaMg value)? mg,
-  }) {
-    return mg?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(PomeloTrackObjectMetaTx value)? tx,
-    TResult Function(PomeloTrackObjectMetaMg value)? mg,
-    required TResult orElse(),
-  }) {
-    if (mg != null) {
-      return mg(this);
-    }
-    return orElse();
-  }
+      __$$PomeloTrackObjectMetaImplCopyWithImpl<_$PomeloTrackObjectMetaImpl>(
+        this,
+        _$identity,
+      );
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$PomeloTrackObjectMetaMgImplToJson(this);
+    return _$$PomeloTrackObjectMetaImplToJson(this);
   }
 }
 
-abstract class PomeloTrackObjectMetaMg implements PomeloTrackObjectMeta {
-  factory PomeloTrackObjectMetaMg({
-    final String source,
-    required final String songMid,
-    required final String copyrightId,
-    final String? lrcUrl,
-    final String? mrcUrl,
-    final String? trcUrl,
+abstract class _PomeloTrackObjectMeta implements PomeloTrackObjectMeta {
+  factory _PomeloTrackObjectMeta({
+    required final String name,
+    required final String singer,
+    required final String album,
+    final String? albumId,
+    required final int duration,
+    required final String source,
+    required final String musicId,
+    final String? img,
     final List<PomeloTrackExtraType> types,
-  }) = _$PomeloTrackObjectMetaMgImpl;
+    final String? hash,
+    final String? copyrightId,
+    final String? strMediaMid,
+    final String? albumMid,
+    final String? songmid,
+  }) = _$PomeloTrackObjectMetaImpl;
 
-  factory PomeloTrackObjectMetaMg.fromJson(Map<String, dynamic> json) =
-      _$PomeloTrackObjectMetaMgImpl.fromJson;
+  factory _PomeloTrackObjectMeta.fromJson(Map<String, dynamic> json) =
+      _$PomeloTrackObjectMetaImpl.fromJson;
 
   @override
-  String get source;
+  String get name; // 歌曲名称
   @override
-  String get songMid; // mg
-  String get copyrightId; // 歌曲copyrightId
-  String? get lrcUrl; // 歌曲lrcUrl
-  String? get mrcUrl; // 歌曲mrcUrl
-  String? get trcUrl; // 歌曲trcUrl
+  String get singer; // 歌手
   @override
-  List<PomeloTrackExtraType> get types;
+  String get album; // 专辑
+  @override
+  String? get albumId; // 专辑 ID
+  @override
+  int get duration; // 时长（秒）
+  @override
+  String get source; // 平台标识 kg/kw/tx/wy/mg
+  @override
+  String get musicId; // 平台歌曲唯一标识
+  @override
+  String? get img; // 封面图 URL
+  @override
+  List<PomeloTrackExtraType> get types; // 可用音质列表
+  // 平台特有字段（getMusicUrl 时需要）
+  @override
+  String? get hash; // kg
+  @override
+  String? get copyrightId; // mg
+  @override
+  String? get strMediaMid; // tx
+  @override
+  String? get albumMid; // tx
+  @override
+  String? get songmid;
 
   /// Create a copy of PomeloTrackObjectMeta
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$PomeloTrackObjectMetaMgImplCopyWith<_$PomeloTrackObjectMetaMgImpl>
+  _$$PomeloTrackObjectMetaImplCopyWith<_$PomeloTrackObjectMetaImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
 
@@ -7612,8 +7281,10 @@ PomeloTrackExtraType _$PomeloTrackExtraTypeFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$PomeloTrackExtraType {
-  String get type => throw _privateConstructorUsedError;
-  String get size => throw _privateConstructorUsedError;
+  String get type =>
+      throw _privateConstructorUsedError; // 音质类型: "128k", "320k", "flac", "flac24bit"
+  String? get size => throw _privateConstructorUsedError; // 文件大小（可选）
+  String? get hash => throw _privateConstructorUsedError;
 
   /// Serializes this PomeloTrackExtraType to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -7632,7 +7303,7 @@ abstract class $PomeloTrackExtraTypeCopyWith<$Res> {
     $Res Function(PomeloTrackExtraType) then,
   ) = _$PomeloTrackExtraTypeCopyWithImpl<$Res, PomeloTrackExtraType>;
   @useResult
-  $Res call({String type, String size});
+  $Res call({String type, String? size, String? hash});
 }
 
 /// @nodoc
@@ -7652,17 +7323,25 @@ class _$PomeloTrackExtraTypeCopyWithImpl<
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? type = null, Object? size = null}) {
+  $Res call({
+    Object? type = null,
+    Object? size = freezed,
+    Object? hash = freezed,
+  }) {
     return _then(
       _value.copyWith(
             type: null == type
                 ? _value.type
                 : type // ignore: cast_nullable_to_non_nullable
                       as String,
-            size: null == size
+            size: freezed == size
                 ? _value.size
                 : size // ignore: cast_nullable_to_non_nullable
-                      as String,
+                      as String?,
+            hash: freezed == hash
+                ? _value.hash
+                : hash // ignore: cast_nullable_to_non_nullable
+                      as String?,
           )
           as $Val,
     );
@@ -7678,7 +7357,7 @@ abstract class _$$PomeloTrackExtraTypeImplCopyWith<$Res>
   ) = __$$PomeloTrackExtraTypeImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String type, String size});
+  $Res call({String type, String? size, String? hash});
 }
 
 /// @nodoc
@@ -7694,17 +7373,25 @@ class __$$PomeloTrackExtraTypeImplCopyWithImpl<$Res>
   /// with the given fields replaced by the non-null parameter values.
   @pragma('vm:prefer-inline')
   @override
-  $Res call({Object? type = null, Object? size = null}) {
+  $Res call({
+    Object? type = null,
+    Object? size = freezed,
+    Object? hash = freezed,
+  }) {
     return _then(
       _$PomeloTrackExtraTypeImpl(
         type: null == type
             ? _value.type
             : type // ignore: cast_nullable_to_non_nullable
                   as String,
-        size: null == size
+        size: freezed == size
             ? _value.size
             : size // ignore: cast_nullable_to_non_nullable
-                  as String,
+                  as String?,
+        hash: freezed == hash
+            ? _value.hash
+            : hash // ignore: cast_nullable_to_non_nullable
+                  as String?,
       ),
     );
   }
@@ -7713,19 +7400,23 @@ class __$$PomeloTrackExtraTypeImplCopyWithImpl<$Res>
 /// @nodoc
 @JsonSerializable()
 class _$PomeloTrackExtraTypeImpl implements _PomeloTrackExtraType {
-  _$PomeloTrackExtraTypeImpl({required this.type, required this.size});
+  _$PomeloTrackExtraTypeImpl({required this.type, this.size, this.hash});
 
   factory _$PomeloTrackExtraTypeImpl.fromJson(Map<String, dynamic> json) =>
       _$$PomeloTrackExtraTypeImplFromJson(json);
 
   @override
   final String type;
+  // 音质类型: "128k", "320k", "flac", "flac24bit"
   @override
-  final String size;
+  final String? size;
+  // 文件大小（可选）
+  @override
+  final String? hash;
 
   @override
   String toString() {
-    return 'PomeloTrackExtraType(type: $type, size: $size)';
+    return 'PomeloTrackExtraType(type: $type, size: $size, hash: $hash)';
   }
 
   @override
@@ -7734,12 +7425,13 @@ class _$PomeloTrackExtraTypeImpl implements _PomeloTrackExtraType {
         (other.runtimeType == runtimeType &&
             other is _$PomeloTrackExtraTypeImpl &&
             (identical(other.type, type) || other.type == type) &&
-            (identical(other.size, size) || other.size == size));
+            (identical(other.size, size) || other.size == size) &&
+            (identical(other.hash, hash) || other.hash == hash));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, type, size);
+  int get hashCode => Object.hash(runtimeType, type, size, hash);
 
   /// Create a copy of PomeloTrackExtraType
   /// with the given fields replaced by the non-null parameter values.
@@ -7762,16 +7454,19 @@ class _$PomeloTrackExtraTypeImpl implements _PomeloTrackExtraType {
 abstract class _PomeloTrackExtraType implements PomeloTrackExtraType {
   factory _PomeloTrackExtraType({
     required final String type,
-    required final String size,
+    final String? size,
+    final String? hash,
   }) = _$PomeloTrackExtraTypeImpl;
 
   factory _PomeloTrackExtraType.fromJson(Map<String, dynamic> json) =
       _$PomeloTrackExtraTypeImpl.fromJson;
 
   @override
-  String get type;
+  String get type; // 音质类型: "128k", "320k", "flac", "flac24bit"
   @override
-  String get size;
+  String? get size; // 文件大小（可选）
+  @override
+  String? get hash;
 
   /// Create a copy of PomeloTrackExtraType
   /// with the given fields replaced by the non-null parameter values.

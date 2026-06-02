@@ -303,7 +303,7 @@ class AudioSourceJsEngine {
 
   // musicInfo = {'source': 'tx', 'songmid': '0039MnYb0qxYhV'}
   Future<String> musicUrl(
-    Map<String, String> musicInfo, {
+    Map<String, dynamic> musicInfo, {
     quality = '128k',
   }) async {
     final source = musicInfo['source'] ?? '';

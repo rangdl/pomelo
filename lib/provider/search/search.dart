@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/models/metadata/metadata.dart';
+import 'package:pomelo/provider/source/musicsdk_provider.dart';
 import 'package:pomelo/services/dio/dio.dart';
 import 'package:pomelo/services/source/index.dart';
 import 'package:pomelo/services/sourced_track/sourced_track.dart';
@@ -47,8 +48,10 @@ class SearchNotifier
   @override
   Future<SpotubePaginationResponseObject<SpotubeTrackObject>> build() async {
     final searchTerm = ref.watch(searchTermProvider);
-    final searcher = ref.watch(searcherProvider);
-    return await searcher.search(searchTerm);
+    // final searcher = ref.watch(searcherProvider);
+    final notifier = ref.watch(musicsdkProvider.notifier);
+
+    return await notifier.search(searchTerm);
     // final items = search.items.map((v) {
     //   final track = v['query'] as SpotubeFullTrackObject;
     //   ref

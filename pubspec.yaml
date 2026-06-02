@@ -125,6 +125,7 @@ dependencies:
   shelf_router: ^1.1.4
   shelf_web_socket: ^2.0.0
   bonsoir: ^5.1.10
+  file_type_dart: ^1.0.1
 
   # quickjs
   flutter_js: ^0.8.7
@@ -158,6 +159,8 @@ dependency_overrides:
       url: https://github.com/KRTirtho/Bonsoir.git
       path: packages/bonsoir_android
   flutter_svg: ^2.0.17
+  meta: ^1.17.0
+
   # smtc_windows:
   #   git:
   #     url: https://github.com/Bonfra04/smtc_windows.git

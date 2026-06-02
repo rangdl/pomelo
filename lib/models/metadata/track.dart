@@ -83,36 +83,34 @@ class SpotubeTrackObject with _$SpotubeTrackObject {
 
 @freezed
 class PomeloTrackObjectMeta with _$PomeloTrackObjectMeta {
-  factory PomeloTrackObjectMeta.tx({
-    @Default('tx') String source,
-    required String songMid,
-    @Default([]) List<PomeloTrackExtraType> types,
-    // tx
-    required String strMediaMid, // 歌曲strMediaMid
-    String? id, // 歌曲songId
-    String? albumMid, // 歌曲albumMid
-  }) = PomeloTrackObjectMetaTx;
-
-  factory PomeloTrackObjectMeta.mg({
-    @Default('mg') String source,
-    required String songMid,
-
-    // mg
-    required String copyrightId, // 歌曲copyrightId
-    String? lrcUrl, // 歌曲lrcUrl
-    String? mrcUrl, // 歌曲mrcUrl
-    String? trcUrl, // 歌曲trcUrl
-    @Default([]) List<PomeloTrackExtraType> types,
-  }) = PomeloTrackObjectMetaMg;
-
+  factory PomeloTrackObjectMeta({
+    required String name, // 歌曲名称
+    required String singer, // 歌手
+    required String album, // 专辑
+    String? albumId, // 专辑 ID
+    required int duration, // 时长（秒）
+    required String source, // 平台标识 kg/kw/tx/wy/mg
+    required String musicId, // 平台歌曲唯一标识
+    String? img, // 封面图 URL
+    @Default([]) List<PomeloTrackExtraType> types, // 可用音质列表
+    // 平台特有字段（getMusicUrl 时需要）
+    String? hash, // kg
+    String? copyrightId, // mg
+    String? strMediaMid, // tx
+    String? albumMid, // tx
+    String? songmid, // tx/wy
+  }) = _PomeloTrackObjectMeta;
   factory PomeloTrackObjectMeta.fromJson(Map<String, dynamic> json) =>
       _$PomeloTrackObjectMetaFromJson({...json, "runtimeType": json['source']});
 }
 
 @freezed
 class PomeloTrackExtraType with _$PomeloTrackExtraType {
-  factory PomeloTrackExtraType({required String type, required String size}) =
-      _PomeloTrackExtraType;
+  factory PomeloTrackExtraType({
+    required String type, // 音质类型: "128k", "320k", "flac", "flac24bit"
+    String? size, // 文件大小（可选）
+    String? hash, // 文件 hash（kg 特有）
+  }) = _PomeloTrackExtraType;
 
   factory PomeloTrackExtraType.fromJson(Map<String, dynamic> json) =>
       _$PomeloTrackExtraTypeFromJson(json);
@@ -153,15 +151,39 @@ extension ToMetadataSpotubeFullTrackObject on SpotubeFullTrackObject {
           : null,
     );
   }
+}
 
-  Map<String, String> toQuery() {
-    return {
-      "name": name,
-      "singer": artists.map((v) => v.name).toList().join(','),
-      ...(meta?.toJson().map(
-            (key, value) => MapEntry(key, value?.toString() ?? ''),
-          ) ??
-          {}),
-    };
+extension ToSpotubeFullTrackObject on PomeloTrackObjectMeta {
+  SpotubeTrackObject toSpotubeFullTrackObject() {
+    return SpotubeTrackObject.full(
+      id: musicId,
+      name: name,
+      externalUri: '',
+      artists: singer
+          .split('、')
+          .map(
+            (s) => SpotubeSimpleArtistObject(
+              id: '',
+              name: s,
+              externalUri: '',
+              images: [],
+            ),
+          )
+          .toList(),
+      album: SpotubeSimpleAlbumObject(
+        id: albumId ?? '$source-$musicId-${albumId ?? ''}',
+        name: album,
+        externalUri: '',
+        images: [
+          if (img != null && img!.isNotEmpty) SpotubeImageObject(url: img!),
+        ],
+        artists: [],
+        albumType: SpotubeAlbumType.album,
+      ),
+      durationMs: duration,
+      isrc: '',
+      explicit: false,
+      meta: this,
+    );
   }
 }
