@@ -5,7 +5,7 @@ part 'env.g.dart';
 
 enum ReleaseChannel { nightly, stable }
 
-@Envied(obfuscate: true, requireEnvFile: true, path: ".env")
+@Envied(obfuscate: true, requireEnvFile: false, path: ".env")
 abstract class Env {
   @EnviedField(varName: 'HIDE_DONATIONS', defaultValue: "0")
   static final int _hideDonations = _Env._hideDonations;
