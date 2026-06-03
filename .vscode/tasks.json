@@ -32,6 +32,30 @@
           "message": 4
         }
       }
+    },
+    {
+      "label": "build ios (stable)",
+      "type": "shell",
+      "command": "flutter build ios --flavor stable --release",
+      "group": "build",
+      "detail": "Build iOS release with stable flavor",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "build ios (stable, debug)",
+      "type": "shell",
+      "command": "flutter build ios --flavor stable --debug",
+      "group": "build",
+      "detail": "Build iOS debug with stable flavor",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
     }
   ]
 }

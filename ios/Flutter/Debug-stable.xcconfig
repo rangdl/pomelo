@@ -1,0 +1,3 @@
+#include "Debug.xcconfig"
+INFOPLIST_FILE = stable-Info.plist
+CODE_SIGN_ENTITLEMENTS = stable.entitlements
