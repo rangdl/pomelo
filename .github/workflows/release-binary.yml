@@ -52,23 +52,23 @@ jobs:
           #   arch: all
           #   files: |
           #     build/Spotube-android-all-arch.apk
-          - os: windows-latest
-            platform: windows
-            arch: x86
-            files: |
-              dist/Pomelo-windows-x86_64.nupkg
-              dist/Pomelo-windows-x86_64-setup.exe
+          # - os: windows-latest
+          #   platform: windows
+          #   arch: x86
+          #   files: |
+          #     dist/Pomelo-windows-x86_64.nupkg
+          #     dist/Pomelo-windows-x86_64-setup.exe
           - os: macos-14
             platform: ios
             arch: all
             files: |
               Pomelo-iOS.ipa
-          - os: macos-14
-            platform: macos
-            arch: all
-            files: |
-              build/Pomelo-macos-universal.dmg
-              build/Pomelo-macos-universal.pkg
+          # - os: macos-14
+          #   platform: macos
+          #   arch: all
+          #   files: |
+          #     build/Pomelo-macos-universal.dmg
+          #     build/Pomelo-macos-universal.pkg
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v4
