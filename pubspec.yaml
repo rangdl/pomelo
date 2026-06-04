@@ -160,15 +160,15 @@ dependency_overrides:
       path: packages/bonsoir_android
   flutter_svg: ^2.0.17
   meta: ^1.17.0
-
+  intl: any
   # smtc_windows:
   #   git:
   #     url: https://github.com/Bonfra04/smtc_windows.git
   #     ref: main
   #     path: packages/smtc_windows
 
-flutter_intl:
-  enabled: true
+# flutter_intl:
+#   enabled: true
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

@@ -14,12 +14,12 @@ import 'package:pomelo/provider/download_manager_provider.dart';
 // import 'package:pomelo/provider/metadata_plugin/core/auth.dart';
 // import 'package:pomelo/provider/metadata_plugin/core/user.dart';
 
-class SidebarFooter extends HookConsumerWidget implements NavigationBarItem {
+class SidebarFooter extends HookConsumerWidget {
   const SidebarFooter({super.key});
 
   @override
   Widget build(BuildContext context, ref) {
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context);
     final router = AutoRouter.of(context, watch: true);
     final mediaQuery = MediaQuery.of(context);
     final downloadCount = ref
@@ -137,7 +137,4 @@ class SidebarFooter extends HookConsumerWidget implements NavigationBarItem {
       ),
     );
   }
-
-  @override
-  bool get selectable => false;
 }

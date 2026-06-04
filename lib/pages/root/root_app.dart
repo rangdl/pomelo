@@ -1,6 +1,4 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/src/widgets/framework.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/collections/routes.gr.dart';
 import 'package:pomelo/components/titlebar/titlebar.dart';
