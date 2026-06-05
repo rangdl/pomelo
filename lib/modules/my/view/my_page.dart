@@ -1,0 +1,13 @@
+import 'package:auto_route/auto_route.dart';
+import 'package:flutter/material.dart';
+
+/// 我的页面
+@RoutePage()
+class MyPage extends StatelessWidget {
+  const MyPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(body: Center(child: Text('我的')));
+  }
+}

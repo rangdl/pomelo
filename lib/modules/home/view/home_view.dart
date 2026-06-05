@@ -1,3 +1,4 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
@@ -6,6 +7,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 /// Home 模块 - 视图层
 ///
 /// 使用 M.A.R.S. 模式 + shadcn/ui 组件。
+@RoutePage()
 class HomeView extends ConsumerWidget {
   const HomeView({super.key});
 

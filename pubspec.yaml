@@ -46,8 +46,6 @@ dependencies:
   flutter_riverpod: ^3.3.1
   riverpod_annotation: ^4.0.2
   
-  go_router: ^14.2.0  # 声明式路由，类型安全
-
   hive_ce: ^2.19.3  # 高性能 NoSQL
   # shared_preferences: ^2.2.3  # 简单键值对
   # sqflite: ^2.3.3  # SQLite 数据库
@@ -56,11 +54,14 @@ dependencies:
   # 桌面
   window_manager: ^0.5.1 # 窗口管理
   shadcn_ui: ^0.53.6
+  auto_route: ^10.2.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_test:
     sdk: flutter
+  auto_route_generator: ^10.2.6
+  build_runner: ^2.7.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

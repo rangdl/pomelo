@@ -2,7 +2,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
-import 'package:pomelo/core/routers/router.dart';
+import 'package:pomelo/core/routers/app_router.dart';
 import 'package:pomelo/modules/home/home_module.dart';
 import 'package:pomelo/modules/example/example_module.dart';
 import 'package:pomelo/core/theme/app_theme.dart';
@@ -10,6 +10,8 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/helper.dart';
+
+final appRouter = AppRouter();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,7 +67,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
-      routerConfig: routerConfig,
+      routerConfig: appRouter.config(),
       builder: (context, child) {
         return BotToastInit()(context, ShadAppBuilder(child: child!));
       },

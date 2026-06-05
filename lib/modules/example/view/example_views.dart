@@ -1,9 +1,10 @@
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:pomelo/core/routers/router.dart';
+import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 /// Example 模块 - 示例列表页
+@RoutePage()
 class ExListView extends StatelessWidget {
   const ExListView({super.key});
 
@@ -28,8 +29,7 @@ class ExListView extends StatelessWidget {
               title: const Text('示例1'),
               description: const Text('包含按钮、Toast 等交互组件'),
               trailing: ShadButton(
-                onPressed: () =>
-                    GoRouter.of(context).pushNamed(Routes.ex1.name),
+                onPressed: () => context.pushRoute(const Ex1DetailRoute()),
                 child: const Text('打开'),
               ),
             ),
@@ -38,8 +38,7 @@ class ExListView extends StatelessWidget {
               title: const Text('示例2'),
               description: const Text('导航回退演示'),
               trailing: ShadButton(
-                onPressed: () =>
-                    GoRouter.of(context).pushNamed(Routes.ex2.name),
+                onPressed: () => context.pushRoute(const Ex2DetailRoute()),
                 child: const Text('打开'),
               ),
             ),
@@ -51,6 +50,7 @@ class ExListView extends StatelessWidget {
 }
 
 /// Example 模块 - 示例1详情页
+@RoutePage()
 class Ex1DetailView extends StatelessWidget {
   const Ex1DetailView({super.key});
 
@@ -125,6 +125,7 @@ class Ex1DetailView extends StatelessWidget {
   }
 }
 
+@RoutePage()
 /// Example 模块 - 示例2详情页
 class Ex2DetailView extends StatelessWidget {
   const Ex2DetailView({super.key});
@@ -148,7 +149,7 @@ class Ex2DetailView extends StatelessWidget {
               description: const Text('点击按钮返回上一页'),
               trailing: ShadButton(
                 leading: const Icon(LucideIcons.arrowLeft, size: 16),
-                onPressed: () => GoRouter.of(context).pop(),
+                onPressed: () => context.maybePop(),
                 child: const Text('返回'),
               ),
             ),
