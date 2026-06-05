@@ -53,7 +53,7 @@ dependencies:
 
   # 桌面
   window_manager: ^0.5.1 # 窗口管理
-  shadcn_ui: ^0.53.6
+  shadcn_flutter: ^0.0.52
   auto_route: ^10.2.0
 
 dev_dependencies:

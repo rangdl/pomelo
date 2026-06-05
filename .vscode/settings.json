@@ -2,7 +2,9 @@
   "cSpell.words": [
     "Cupertino",
     "Fluxy",
+    "Lucide",
     "riverpod",
+    "shadcn",
     "sqflite"
   ],
   "dart.flutterSdkPath": ".fvm/versions/3.35.7",

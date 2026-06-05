@@ -1,10 +1,94 @@
 import 'dart:ui';
 
 import 'package:bot_toast/bot_toast.dart';
+import 'package:flutter/widgets.dart';
+
+/// ============================================================
+/// 响应式布局工具
+/// ============================================================
+
+/// 响应式断点常量
+abstract final class ResponsiveBreakpoints {
+  /// 手机 (< 600px)
+  static const double mobile = 600;
+
+  /// 平板 (600~1024px)
+  static const double tablet = 1024;
+
+  /// 桌面 (1024~1440px)
+  static const double desktop = 1440;
+
+  /// TV (> 1440px)
+  static const double tv = 1440;
+}
+
+/// ============================================================
+/// 主工具类
+/// ============================================================
 
 class Rx {
   Rx._();
   static RxToast get toast => RxToast();
+
+  /// 响应式布局
+  ///
+  /// 根据屏幕宽度自动选择合适的布局组件。
+  ///
+  /// 用法:
+  /// ```dart
+  /// Rx.layout(
+  ///   context,
+  ///   mobile: () => _MobileWidget(),
+  ///   tablet: () => _TabletWidget(),
+  ///   desktop: () => _DesktopWidget(),
+  /// )
+  /// ```
+  ///
+  /// 未提供的断点按以下规则回退:
+  /// - mobile   → tablet → desktop → tv
+  /// - tablet  → desktop → mobile → tv
+  /// - desktop → tablet → tv → mobile
+  /// - tv      → desktop → tablet → mobile
+  static Widget layout(
+    BuildContext context, {
+    Widget Function()? mobile,
+    Widget Function()? tablet,
+    Widget Function()? desktop,
+    Widget Function()? tv,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return _resolve(
+          constraints.maxWidth,
+          mobile: mobile,
+          tablet: tablet,
+          desktop: desktop,
+          tv: tv,
+        );
+      },
+    );
+  }
+
+  static Widget _resolve(
+    double width, {
+    Widget Function()? mobile,
+    Widget Function()? tablet,
+    Widget Function()? desktop,
+    Widget Function()? tv,
+  }) {
+    final shrink = const SizedBox.shrink();
+
+    if (width < ResponsiveBreakpoints.mobile) {
+      return (mobile ?? tablet ?? desktop ?? tv)?.call() ?? shrink;
+    }
+    if (width < ResponsiveBreakpoints.tablet) {
+      return (tablet ?? desktop ?? mobile ?? tv)?.call() ?? shrink;
+    }
+    if (width < ResponsiveBreakpoints.desktop) {
+      return (desktop ?? tablet ?? tv ?? mobile)?.call() ?? shrink;
+    }
+    return (tv ?? desktop ?? tablet ?? mobile)?.call() ?? shrink;
+  }
 }
 
 // 文档 https://github.com/MMMzq/bot_toast/blob/master/API_zh.md

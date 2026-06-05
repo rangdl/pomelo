@@ -1,12 +1,10 @@
 import 'package:bot_toast/bot_toast.dart';
-import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/routers/app_router.dart';
 import 'package:pomelo/modules/home/home_module.dart';
 import 'package:pomelo/modules/example/example_module.dart';
-import 'package:pomelo/core/theme/app_theme.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/helper.dart';
@@ -27,17 +25,14 @@ void main() async {
 
   runApp(
     ProviderScope(
-      child: ShadApp.custom(
+      child: ShadcnApp.router(
         themeMode: ThemeMode.system,
-        theme: ShadThemeData(
-          brightness: Brightness.light,
-          colorScheme: const ShadSlateColorScheme.light(),
-        ),
-        darkTheme: ShadThemeData(
-          brightness: Brightness.dark,
-          colorScheme: const ShadSlateColorScheme.dark(),
-        ),
-        appBuilder: (context) => const MyApp(),
+        theme: ThemeData(colorScheme: ColorSchemes.lightSlate),
+        darkTheme: ThemeData(colorScheme: ColorSchemes.darkSlate),
+        routerConfig: appRouter.config(),
+        builder: (context, child) {
+          return BotToastInit()(context, child ?? const SizedBox.shrink());
+        },
       ),
     ),
   );
@@ -54,23 +49,4 @@ Future<void> _runPlatformSpecificCode() async {
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.setPreventClose(true);
   });
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'Pomelo',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
-      routerConfig: appRouter.config(),
-      builder: (context, child) {
-        return BotToastInit()(context, ShadAppBuilder(child: child!));
-      },
-    );
-  }
 }

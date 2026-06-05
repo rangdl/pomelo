@@ -10,9 +10,9 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i7;
-import 'package:pomelo/modules/example/view/example_views.dart' as _i1;
+import 'package:pomelo/modules/example/view/example.dart' as _i1;
 import 'package:pomelo/modules/favorite/view/favorite_page.dart' as _i2;
-import 'package:pomelo/modules/home/view/home_view.dart' as _i3;
+import 'package:pomelo/modules/home/view/home.dart' as _i3;
 import 'package:pomelo/modules/my/view/my_page.dart' as _i4;
 import 'package:pomelo/modules/root/root_page.dart' as _i5;
 import 'package:pomelo/modules/statistics/view/statistics_page.dart' as _i6;
@@ -50,7 +50,7 @@ class Ex2DetailRoute extends _i7.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i1.ExListView]
+/// [_i1.ExListPage]
 class ExListRoute extends _i7.PageRouteInfo<void> {
   const ExListRoute({List<_i7.PageRouteInfo>? children})
     : super(ExListRoute.name, initialChildren: children);
@@ -60,7 +60,7 @@ class ExListRoute extends _i7.PageRouteInfo<void> {
   static _i7.PageInfo page = _i7.PageInfo(
     name,
     builder: (data) {
-      return const _i1.ExListView();
+      return const _i1.ExListPage();
     },
   );
 }
