@@ -5,5 +5,10 @@
     "riverpod",
     "sqflite"
   ],
-  "dart.flutterSdkPath": ".fvm/versions/3.35.7"
+  "dart.flutterSdkPath": ".fvm/versions/3.35.7",
+  // 将 Copilot Chat 整体语言设置为中文
+  "github.copilot.chat.localeOverride": "zh-CN",
+  "github.copilot.chat.commitMessageGeneration.instructions": [
+    { "file": ".github/commit-message-instructions.md" }
+  ]
 }

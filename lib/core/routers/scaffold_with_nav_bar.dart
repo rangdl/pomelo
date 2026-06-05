@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../helper.dart';
 import '../widgets/glass.dart';
@@ -74,11 +75,11 @@ class ScaffoldWithNavBar extends HookConsumerWidget {
 }
 
 final tabs = [
-  RxTabItem(label: "首页", icon: Icons.home_outlined),
-  RxTabItem(label: "收藏", icon: Icons.favorite_outline),
-  RxTabItem(label: "统计", icon: Icons.bar_chart_outlined),
-  RxTabItem(label: "我的", icon: Icons.person_outline),
-  if (Helper.isDebug) RxTabItem(label: "测试", icon: Icons.support_outlined),
+  RxTabItem(label: "首页", icon: LucideIcons.house),
+  RxTabItem(label: "收藏", icon: LucideIcons.heart),
+  RxTabItem(label: "统计", icon: LucideIcons.barChart3),
+  RxTabItem(label: "我的", icon: LucideIcons.user),
+  if (Helper.isDebug) RxTabItem(label: "测试", icon: LucideIcons.beaker),
 ];
 
 class RxTabItem {
@@ -108,11 +109,9 @@ class RxBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Helper.isDark(context);
-    final effectiveActive =
-        activeColor ?? Theme.of(context).colorScheme.primary;
-    final effectiveBase =
-        baseColor ?? (isDark ? Colors.white70 : Colors.black54);
+    final shadTheme = ShadTheme.of(context);
+    final effectiveActive = shadTheme.colorScheme.primary;
+    final effectiveBase = shadTheme.colorScheme.mutedForeground;
 
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -136,12 +135,6 @@ class RxBottomBar extends StatelessWidget {
                   horizontal: 12,
                   vertical: 6,
                 ),
-                // decoration: BoxDecoration(
-                //   color: isActive
-                //       ? effectiveActive.withValues(alpha: 0.1)
-                //       : Colors.transparent,
-                //   borderRadius: BorderRadius.circular(12),
-                // ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -153,7 +146,7 @@ class RxBottomBar extends StatelessWidget {
                     Text(
                       item.label,
                       style: TextStyle(
-                        color: isActive ? effectiveActive : baseColor,
+                        color: isActive ? effectiveActive : effectiveBase,
                         fontWeight: isActive
                             ? FontWeight.bold
                             : FontWeight.w500,
@@ -200,17 +193,15 @@ class RxSideBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Helper.isDark(context);
-    final effectiveActive =
-        activeColor ?? Theme.of(context).colorScheme.primary;
-    final effectiveBase =
-        baseColor ?? (isDark ? Colors.white70 : Colors.black54);
+    final shadTheme = ShadTheme.of(context);
+    final effectiveActive = shadTheme.colorScheme.primary;
+    final effectiveBase = shadTheme.colorScheme.mutedForeground;
     return Container(
       width: width,
       padding: const EdgeInsets.all(8.0),
       child: Column(
         children: [
-          ?header,
+          if (header != null) header!,
           Expanded(
             child: ListView.separated(
               itemBuilder: (context, index) {
@@ -242,14 +233,15 @@ class RxSideBar extends StatelessWidget {
                           color: isActive ? effectiveActive : effectiveBase,
                           size: 24,
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           item.label,
                           style: TextStyle(
-                            color: isActive ? effectiveActive : baseColor,
+                            color: isActive ? effectiveActive : effectiveBase,
                             fontWeight: isActive
                                 ? FontWeight.bold
                                 : FontWeight.w500,
-                            fontSize: 12,
+                            fontSize: 14,
                           ),
                           maxLines: 1,
                           textAlign: TextAlign.center,
@@ -264,7 +256,7 @@ class RxSideBar extends StatelessWidget {
               itemCount: tabs.length,
             ),
           ),
-          ?footer,
+          if (footer != null) footer!,
         ],
       ),
     );

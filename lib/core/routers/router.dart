@@ -1,9 +1,9 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
+import 'package:pomelo/modules/example/view/example_views.dart';
+import 'package:pomelo/modules/home/view/home_view.dart';
 
-import '../../features/example/ex.view.dart';
-import '../../features/home/home.view.dart';
 import '../../global.dart';
 import 'scaffold_with_nav_bar.dart';
 
@@ -65,17 +65,17 @@ final routerConfig = GoRouter(
             GoRoute(
               path: Routes.ex.localPath,
               name: Routes.ex.name,
-              builder: (context, state) => const ExView(),
+              builder: (context, state) => const ExListView(),
               routes: [
                 GoRoute(
                   path: Routes.ex1.localPath,
                   name: Routes.ex1.name,
-                  builder: (context, state) => const Ex1View(),
+                  builder: (context, state) => const Ex1DetailView(),
                 ),
                 GoRoute(
                   path: Routes.ex2.localPath,
                   name: Routes.ex2.name,
-                  builder: (context, state) => const Ex2View(),
+                  builder: (context, state) => const Ex2DetailView(),
                 ),
               ],
             ),

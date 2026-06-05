@@ -55,6 +55,7 @@ dependencies:
 
   # 桌面
   window_manager: ^0.5.1 # 窗口管理
+  shadcn_ui: ^0.53.6
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
