@@ -10,12 +10,12 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i7;
-import 'package:pomelo/modules/example/view/example.dart' as _i1;
-import 'package:pomelo/modules/favorite/view/favorite_page.dart' as _i2;
-import 'package:pomelo/modules/home/view/home.dart' as _i3;
-import 'package:pomelo/modules/my/view/my_page.dart' as _i4;
-import 'package:pomelo/modules/root/root_page.dart' as _i5;
-import 'package:pomelo/modules/statistics/view/statistics_page.dart' as _i6;
+import 'package:pomelo/ui/example/example_page.dart' as _i1;
+import 'package:pomelo/ui/favorite/favorite_page.dart' as _i2;
+import 'package:pomelo/ui/home/home_page.dart' as _i3;
+import 'package:pomelo/ui/my/my_page.dart' as _i4;
+import 'package:pomelo/ui/root/root_page.dart' as _i5;
+import 'package:pomelo/ui/statistics/statistics_page.dart' as _i6;
 
 /// generated route for
 /// [_i1.Ex1DetailView]

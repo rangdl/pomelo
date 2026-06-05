@@ -9,6 +9,7 @@ targets:
           enable_cached_builds: true
         generate_for:
           - lib/modules/**/*.dart
+          - lib/ui/**/*.dart
       auto_route_generator:auto_router_generator: # this for @AutoRouterConfig
         options:
           enable_cached_builds: true

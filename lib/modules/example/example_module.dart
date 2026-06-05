@@ -11,6 +11,9 @@ class ExampleModule extends Module {
   String get displayName => '示例';
 
   @override
+  bool get lazy => true;
+
+  @override
   List<String> get dependencies => ['home'];
 
   @override

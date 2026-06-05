@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -58,6 +61,18 @@ class RootPage extends StatelessWidget {
   }
 }
 
+/// Tab 索引到模块 ID 的映射
+const _tabModuleIds = ['home', 'favorite', 'statistics', 'my'];
+
+/// 延迟初始化对应 Tab 的 M.A.R.S. 模块
+void _lazyInitModule(int index) {
+  if (index < 0 || index >= _tabModuleIds.length) return;
+  final moduleId = _tabModuleIds[index];
+  // home 是即时加载模块，不需要延迟初始化
+  if (moduleId == 'home') return;
+  unawaited(ModuleManager().lazyInit(moduleId));
+}
+
 /// 手机布局 — 底部导航栏
 class _PhoneLayout extends HookConsumerWidget {
   final TabsRouter tabsRouter;
@@ -73,6 +88,13 @@ class _PhoneLayout extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, ref) {
     final selectedKey = useState<Key?>(ValueKey(tabsRouter.activeIndex));
+
+    // 延迟加载非首屏模块 — 用户切到对应 Tab 时才初始化
+    useEffect(() {
+      _lazyInitModule(tabsRouter.activeIndex);
+      return null;
+    }, [tabsRouter.activeIndex]);
+
     return Scaffold(
       footers: [
         NavigationBar(
@@ -114,6 +136,12 @@ class _NavigationRailLayout extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, ref) {
     final selectedKey = useState<Key?>(ValueKey(tabsRouter.activeIndex));
+
+    // 延迟加载非首屏模块 — 用户切到对应 Tab 时才初始化
+    useEffect(() {
+      _lazyInitModule(tabsRouter.activeIndex);
+      return null;
+    }, [tabsRouter.activeIndex]);
 
     return Scaffold(
       child: Row(

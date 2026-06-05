@@ -4,9 +4,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-/// Home 模块 - 视图层
+/// Home 页面
 ///
-/// 使用 M.A.R.S. 模式 + shadcn_flutter 组件。
+/// 通过 M.A.R.S. 模块的 Provider 获取数据，不直接依赖 Repository。
 @RoutePage()
 class HomeView extends ConsumerWidget {
   const HomeView({super.key});

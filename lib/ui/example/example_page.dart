@@ -3,7 +3,7 @@ import 'package:flutter/material.dart' show ListTile;
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-/// Example 模块 - 示例列表页
+/// Example 页面 — 示例列表页
 @RoutePage()
 class ExListPage extends StatelessWidget {
   const ExListPage({super.key});
@@ -52,7 +52,7 @@ class ExListPage extends StatelessWidget {
   }
 }
 
-/// Example 模块 - 示例1详情页
+/// Example 页面 — 示例1详情页
 @RoutePage()
 class Ex1DetailView extends StatelessWidget {
   const Ex1DetailView({super.key});
@@ -97,31 +97,15 @@ class Ex1DetailView extends StatelessWidget {
               onPressed: () {
                 showToast(
                   context: context,
-                  builder: (BuildContext context, ToastOverlay overlay) =>
-                      Alert(
-                        leading: const Icon(Icons.check_circle),
-                        title: const Text('操作成功'),
-                        content: const Text('Welcome back!'),
-                      ),
+                  builder: (context, overlay) => Card(
+                    child: ListTile(
+                      title: Text('操作成功'),
+                      subtitle: Text('这是一个 shadcn_flutter Toast'),
+                    ),
+                  ),
                 );
               },
               child: const Text('显示 Toast'),
-            ),
-            const Gap(12),
-            DestructiveButton(
-              leading: const Icon(Icons.error, size: 16),
-              onPressed: () {
-                showToast(
-                  context: context,
-                  builder: (BuildContext context, ToastOverlay overlay) =>
-                      Alert(
-                        leading: const Icon(Icons.error),
-                        title: const Text('错误'),
-                        content: const Text('操作失败，请重试'),
-                      ),
-                );
-              },
-              child: const Text('显示错误 Toast'),
             ),
           ],
         ),
@@ -130,7 +114,7 @@ class Ex1DetailView extends StatelessWidget {
   }
 }
 
-/// Example 模块 - 示例2详情页
+/// Example 页面 — 示例2详情页（导航演示）
 @RoutePage()
 class Ex2DetailView extends StatelessWidget {
   const Ex2DetailView({super.key});
@@ -144,20 +128,13 @@ class Ex2DetailView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('路由导航'),
+            Text('导航示例'),
             const Gap(8),
-            Text('使用 auto_route 进行页面导航'),
+            Text('返回上级页面'),
             const Gap(24),
-            Card(
-              child: ListTile(
-                title: const Text('页面返回'),
-                subtitle: const Text('点击按钮返回上一页'),
-                trailing: PrimaryButton(
-                  leading: const Icon(Icons.arrow_back, size: 16),
-                  onPressed: () => context.maybePop(),
-                  child: const Text('返回'),
-                ),
-              ),
+            PrimaryButton(
+              onPressed: () => context.router.pop(),
+              child: const Text('返回'),
             ),
           ],
         ),

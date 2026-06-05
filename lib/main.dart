@@ -2,6 +2,9 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/routers/app_router.dart';
+import 'package:pomelo/modules/favorite/favorite_module.dart';
+import 'package:pomelo/modules/my/my_module.dart';
+import 'package:pomelo/modules/statistics/statistics_module.dart';
 import 'package:pomelo/modules/home/home_module.dart';
 import 'package:pomelo/modules/example/example_module.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -18,7 +21,13 @@ void main() async {
 
   // ========== M.A.R.S. 模块初始化 ==========
   final moduleManager = ModuleManager();
-  await moduleManager.registerAll([HomeModule(), ExampleModule()]);
+  await moduleManager.registerAll([
+    HomeModule(),
+    ExampleModule(),
+    FavoriteModule(),
+    MyModule(),
+    StatisticsModule(),
+  ]);
   await moduleManager.initAll();
   await moduleManager.readyAll();
   // =========================================

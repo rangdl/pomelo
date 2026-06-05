@@ -20,6 +20,13 @@ abstract class Module {
   /// 模块依赖的其他模块ID列表
   List<String> get dependencies => [];
 
+  /// 是否为延迟加载模块
+  ///
+  /// 延迟模块不会在应用启动时自动初始化，
+  /// 而是在首次通过 [ModuleManager.lazyInit] 触发时才执行生命周期。
+  /// 适用于非首屏、低频访问的模块，可缩短应用冷启动时间。
+  bool get lazy => false;
+
   /// 模块初始化（启动时调用）
   Future<void> onInit() async {}
 

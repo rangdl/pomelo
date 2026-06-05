@@ -4,6 +4,9 @@ import 'module_manager.dart';
 /// M.A.R.S. 模块化应用入口组件
 ///
 /// 自动管理模块初始化流程，并在初始化完成前展示启动画面。
+///
+/// ⚠️ 建议改为在 main.dart 中手动调用 ModuleManager 的生命周期方法。
+///     详见 lib/main.dart 的使用方式。
 class ModuleApp extends StatefulWidget {
   final WidgetBuilder builder;
   final bool initialized;
