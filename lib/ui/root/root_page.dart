@@ -102,7 +102,11 @@ class _PhoneLayout extends HookConsumerWidget {
           labelType: NavigationLabelType.none,
           expanded: extended,
           onSelected: (key) {
-            selectedKey.value = key;
+            final index = _navDestinations.indexWhere((d) => d.key == key);
+            if (index >= 0 && index != tabsRouter.activeIndex) {
+              selectedKey.value = key;
+              tabsRouter.setActiveIndex(index);
+            }
           },
           selectedKey: selectedKey.value,
           children: _navDestinations
@@ -151,7 +155,11 @@ class _NavigationRailLayout extends HookConsumerWidget {
             labelType: NavigationLabelType.none,
             expanded: extended,
             onSelected: (key) {
-              selectedKey.value = key;
+              final index = _navDestinations.indexWhere((d) => d.key == key);
+              if (index >= 0 && index != tabsRouter.activeIndex) {
+                selectedKey.value = key;
+                tabsRouter.setActiveIndex(index);
+              }
             },
             selectedKey: selectedKey.value,
             children: _navDestinations
