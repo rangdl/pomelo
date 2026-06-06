@@ -60,6 +60,7 @@ dependencies:
   # quickjs
   flutter_js: ^0.8.7
   crypto: ^3.0.3
+  encrypt: ^5.0.3
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1

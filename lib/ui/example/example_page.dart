@@ -3,6 +3,8 @@ import 'package:flutter/material.dart' show ListTile;
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import 'js_engine_test_page.dart';
+
 /// Example 页面 — 示例列表页
 @RoutePage()
 class ExListPage extends StatelessWidget {
@@ -37,10 +39,10 @@ class ExListPage extends StatelessWidget {
             const Gap(12),
             Card(
               child: ListTile(
-                title: const Text('示例2'),
-                subtitle: const Text('导航回退演示'),
+                title: const Text('示例3'),
+                subtitle: const Text('JsEngine 引擎 (MD5/SHA256/AES)'),
                 trailing: PrimaryButton(
-                  onPressed: () => context.pushRoute(const Ex2DetailRoute()),
+                  onPressed: () => context.pushRoute(const JsEngineTestRoute()),
                   child: const Text('打开'),
                 ),
               ),

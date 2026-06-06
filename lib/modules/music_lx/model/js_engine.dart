@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+import 'package:encrypt/encrypt.dart';
 import 'package:flutter_js/flutter_js.dart';
 
 // JsEngine 负责在 Dart 中创建一个 quickjs 运行环境，并注入 fetch 实现，供 quickjs 代码调用。
@@ -15,6 +17,8 @@ class JsEngine {
   }
   void init() {
     _setupFetch();
+    _setupCrypto();
+    _setupAES();
   }
 
   // 注入 fetch 实现，供 quickjs 代码调用
@@ -109,10 +113,92 @@ function fetch(url, options) {
           })
           .catchError((err) {
             _jsRuntime.evaluate(
-              "globalThis.__native_xhrRequests[$nativeFetchId].callback(`${err.response.toString()}`,null)",
+              "globalThis.__native_fetch_callback[$nativeFetchId].callback(`${err.response.toString()}`,null)",
             );
           });
     });
+  }
+
+  // 注入 crypto 实现，供 quickjs 代码调用 MD5 / SHA256
+  void _setupCrypto() {
+    _jsRuntime.evaluate("""
+function __go_crypto_md5(str) {
+  return sendMessage('__native_crypto__', JSON.stringify(['md5', str]));
+}
+
+function __go_crypto_sha256(data) {
+  return sendMessage('__native_crypto__', JSON.stringify(['sha256', data]));
+}
+    """);
+
+    _jsRuntime.onMessage('__native_crypto__', (arguments) {
+      String type = arguments[0] as String;
+      String input = arguments[1] as String;
+      if (type == 'md5') {
+        return md5.convert(utf8.encode(input)).toString();
+      }
+      return sha256.convert(utf8.encode(input)).toString();
+    });
+  }
+
+  // 注入 AES 加密实现，供 quickjs 代码调用
+  // mode 格式: "aes-128-cbc", "aes-256-ecb", "cbc" 等 Node.js 风格
+  void _setupAES() {
+    _jsRuntime.evaluate("""
+function __go_crypto_aes_encrypt(dataHex, mode, keyHex, ivHex) {
+  return sendMessage('__native_aes_encrypt__', JSON.stringify([dataHex, mode, keyHex, ivHex]));
+}
+    """);
+
+    _jsRuntime.onMessage('__native_aes_encrypt__', (arguments) {
+      String dataHex = arguments[0] as String;
+      String mode = arguments[1] as String;
+      String keyHex = arguments[2] as String;
+      String ivHex = arguments[3] as String;
+
+      final key = Key.fromBase16(keyHex);
+      final iv = ivHex.isNotEmpty ? IV.fromBase16(ivHex) : null;
+
+      // 解析 Node.js 风格 mode: "aes-128-cbc" → "cbc"
+      String modeName = mode.toLowerCase();
+      if (modeName.startsWith('aes-')) {
+        modeName = modeName.split('-').last;
+      }
+
+      final aesMode = _parseAESMode(modeName);
+      final aes = AES(key, mode: aesMode, padding: 'PKCS7');
+      final encrypter = Encrypter(aes);
+
+      // dataHex 作为 hex 字节数组加密
+      final data = Encrypted.fromBase16(dataHex).bytes;
+      final encrypted = encrypter.encryptBytes(data, iv: iv);
+
+      return encrypted.base16;
+    });
+  }
+
+  AESMode _parseAESMode(String mode) {
+    switch (mode) {
+      case 'cbc':
+        return AESMode.cbc;
+      case 'cfb':
+      case 'cfb8':
+      case 'cfb128':
+        return AESMode.cfb64;
+      case 'ctr':
+        return AESMode.ctr;
+      case 'ecb':
+        return AESMode.ecb;
+      case 'ofb':
+      case 'ofb64':
+        return AESMode.ofb64;
+      case 'gcm':
+        return AESMode.gcm;
+      case 'sic':
+        return AESMode.sic;
+      default:
+        throw ArgumentError('Unsupported AES mode: $mode');
+    }
   }
 
   void dispose() {
