@@ -1,9 +1,22 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart' show ListTile;
+import 'package:flutter/material.dart'
+    hide
+        Card,
+        Divider,
+        Column,
+        Expanded,
+        Row,
+        Scaffold,
+        AppBar,
+        Theme,
+        CircularProgressIndicator,
+        Center,
+        Text;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:pomelo/ui/music/music_section.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors, TextField;
 
 /// Home 页面
 ///
@@ -20,7 +33,29 @@ class HomeView extends ConsumerWidget {
     return Scaffold(
       headers: [
         AppBar(
-          title: const Text('Pomelo'),
+          title: SizedBox(
+            height: 36,
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: '搜索歌曲...',
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                prefixIcon: const Icon(Icons.search, size: 18),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: theme.colorScheme.border),
+                ),
+              ),
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  context.pushRoute(MusicSearchRoute(keyword: value.trim()));
+                }
+              },
+            ),
+          ),
           trailing: [const SourceSwitchButton()],
         ),
       ],
