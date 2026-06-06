@@ -2,6 +2,8 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/routers/app_router.dart';
+import 'package:pomelo/modules/log/log_module.dart';
+import 'package:pomelo/modules/log/providers/log_providers.dart';
 import 'package:pomelo/modules/favorite/favorite_module.dart';
 import 'package:pomelo/modules/my/my_module.dart';
 import 'package:pomelo/modules/music_sdk/music_module.dart';
@@ -25,6 +27,7 @@ void main() async {
 
   // ========== M.A.R.S. 模块初始化 ==========
   final moduleManager = ModuleManager();
+  final logModule = LogModule();
   await moduleManager.registerAll([
     HomeModule(),
     ExampleModule(),
@@ -35,6 +38,7 @@ void main() async {
     MusicModule(),
     MusicLocalModule(),
     LxMusicModule(),
+    logModule,
   ]);
   await moduleManager.initAll();
   await moduleManager.readyAll();
@@ -42,6 +46,7 @@ void main() async {
 
   runApp(
     ProviderScope(
+      overrides: [logServiceProvider.overrideWithValue(logModule.service)],
       child: ShadcnApp.router(
         themeMode: ThemeMode.system,
         theme: ThemeData(colorScheme: ColorSchemes.lightSlate),

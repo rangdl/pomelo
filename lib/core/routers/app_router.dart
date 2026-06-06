@@ -35,6 +35,9 @@ class AppRouter extends RootStackRouter {
       ],
     ),
 
+    /// 日志模块
+    AutoRoute(path: '/log', page: LogRoute.page),
+
     /// 示例模块（无底部导航）
     AutoRoute(
       path: '/ex',
