@@ -4,6 +4,8 @@ import '../model/lx_music_provider.dart';
 ///
 /// TODO: 实现具体的方法
 class KgMusicProvider extends LxMusicProvider {
+  KgMusicProvider({required super.jsEngine});
+
   @override
   String get sourceId => 'kg';
 

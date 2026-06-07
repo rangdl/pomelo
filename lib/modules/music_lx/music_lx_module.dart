@@ -1,6 +1,7 @@
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music_lx/model/lx_music_provider.dart';
+import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
 import 'package:pomelo/modules/music_lx/providers/providers.dart';
 
 /// Lx 音乐模块
@@ -40,11 +41,13 @@ class LxMusicModule extends Module {
 
   @override
   Future<void> onInit() async {
-    _txMusicProvider = TxMusicProvider();
-    _kgMusicProvider = KgMusicProvider();
-    _wyMusicProvider = WyMusicProvider();
-    _kwMusicProvider = KwMusicProvider();
-    _mgMusicProvider = MgMusicProvider();
+    LxJsEngine jsEngine = LxJsEngine();
+    await jsEngine.init();
+    _txMusicProvider = TxMusicProvider(jsEngine: jsEngine);
+    _kgMusicProvider = KgMusicProvider(jsEngine: jsEngine);
+    _wyMusicProvider = WyMusicProvider(jsEngine: jsEngine);
+    _kwMusicProvider = KwMusicProvider(jsEngine: jsEngine);
+    _mgMusicProvider = MgMusicProvider(jsEngine: jsEngine);
   }
 
   @override
@@ -52,10 +55,10 @@ class LxMusicModule extends Module {
     final musicModule = ModuleManager().find<MusicModule>('music');
     if (musicModule == null) return;
     musicModule.register(_txMusicProvider);
-    musicModule.register(_kgMusicProvider);
-    musicModule.register(_wyMusicProvider);
-    musicModule.register(_kwMusicProvider);
-    musicModule.register(_mgMusicProvider);
+    // musicModule.register(_kgMusicProvider);
+    // musicModule.register(_wyMusicProvider); // 无结果
+    // musicModule.register(_kwMusicProvider);
+    // musicModule.register(_mgMusicProvider); // 报错
   }
 
   @override

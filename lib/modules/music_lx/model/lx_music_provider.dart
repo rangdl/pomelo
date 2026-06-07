@@ -1,17 +1,22 @@
 import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
 
 /// Lx 音乐提供者基类
 ///
 /// 为 [MusicProvider] 提供默认的空实现（抛出 [UnimplementedError]）。
 /// 各子类只需重写 [sourceId]、[sourceName]，按需实现具体方法。
 abstract class LxMusicProvider extends MusicProvider {
+  final LxJsEngine jsEngine;
+
+  LxMusicProvider({required this.jsEngine});
   @override
   Future<SongPageResult> searchSongs(
     String keyword, {
     int page = 1,
     int limit = 20,
   }) {
-    throw UnimplementedError('$sourceName(searchSongs) 尚未实现');
+    return jsEngine.search(keyword, page: page, limit: limit, type: sourceId);
+    // throw UnimplementedError('$sourceName(searchSongs) 尚未实现');
   }
 
   @override
