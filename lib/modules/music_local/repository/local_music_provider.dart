@@ -11,6 +11,12 @@ class LocalMusicProvider extends MusicProvider {
   @override
   String get sourceName => '本地音乐';
 
+  @override
+  String get categoryId => 'local';
+
+  @override
+  String get categoryName => '本地';
+
   final _source = (id: 'local', name: '本地音乐');
 
   /// 模拟数据

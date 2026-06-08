@@ -23,6 +23,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart'
 
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
+import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 
 /// 歌曲搜索结果页面
 @RoutePage()
@@ -62,6 +63,12 @@ class _MusicSearchPageState extends ConsumerState<MusicSearchPage> {
     return Scaffold(
       headers: [
         AppBar(
+          leading: [
+            GhostButton(
+              onPressed: () => context.router.pop(),
+              child: const Icon(Icons.arrow_back, size: 20),
+            ),
+          ],
           title: SizedBox(
             height: 36,
             child: TextField(
@@ -108,10 +115,15 @@ class _SearchResults extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final providersAsync = ref.watch(musicProvidersProvider);
+    final selectedSourceId = ref.watch(selectedSourceProvider);
 
     return providersAsync.when(
       data: (providers) {
-        return _SearchResultsList(providers: providers, keyword: keyword);
+        // 根据选中的来源过滤
+        final filtered = selectedSourceId == null
+            ? providers
+            : providers.where((p) => p.sourceId == selectedSourceId).toList();
+        return _SearchResultsList(providers: filtered, keyword: keyword);
       },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(child: Text('搜索失败: $error')),

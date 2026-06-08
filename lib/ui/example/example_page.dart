@@ -3,8 +3,6 @@ import 'package:flutter/material.dart' show ListTile;
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'js_engine_test_page.dart';
-
 /// Example 页面 — 示例列表页
 @RoutePage()
 class ExListPage extends StatelessWidget {

@@ -35,3 +35,21 @@ final musicProviderBySourceProvider = Provider.family<MusicProvider?, String>((
   final module = ref.watch(musicModuleProvider);
   return module?.provider(sourceId);
 });
+
+/// 按分类分组的所有 MusicProvider
+///
+/// 返回 Map，key 为类别标识，value 为Provider列表。
+final musicProvidersByCategoryProvider =
+    FutureProvider<Map<String, List<MusicProvider>>>((ref) async {
+      await ref.watch(musicReadyProvider.future);
+      final module = ref.watch(musicModuleProvider);
+      return module?.providersByCategory() ?? {};
+    });
+
+/// 所有已注册的分类列表
+final musicCategoriesProvider =
+    FutureProvider<List<({String id, String name})>>((ref) async {
+      await ref.watch(musicReadyProvider.future);
+      final module = ref.watch(musicModuleProvider);
+      return module?.categories ?? [];
+    });

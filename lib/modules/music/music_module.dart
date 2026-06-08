@@ -53,6 +53,34 @@ class MusicModule extends Module {
     return _providers.whereType<T>().toList();
   }
 
+  /// 按分类分组所有提供者
+  ///
+  /// 返回 Map，key 为 [categoryId]，value 为该分类下的提供者列表。
+  /// 可用于 UI 上按分组展示来源选择。
+  Map<String, List<MusicProvider>> providersByCategory() {
+    final map = <String, List<MusicProvider>>{};
+    for (final p in _providers) {
+      map.putIfAbsent(p.categoryId, () => []).add(p);
+    }
+    return map;
+  }
+
+  /// 获取指定分类下的所有提供者
+  List<MusicProvider> providersInCategory(String categoryId) {
+    return _providers.where((p) => p.categoryId == categoryId).toList();
+  }
+
+  /// 获取所有已注册的分类及其名称
+  ///
+  /// 返回按首次出现顺序排列的 (categoryId, categoryName) 列表。
+  List<({String id, String name})> get categories {
+    final seen = <String, String>{};
+    for (final p in _providers) {
+      seen.putIfAbsent(p.categoryId, () => p.categoryName);
+    }
+    return seen.entries.map((e) => (id: e.key, name: e.value)).toList();
+  }
+
   // ========== 便捷查询（遍历所有提供者） ==========
 
   /// 在所有提供者中搜索歌曲

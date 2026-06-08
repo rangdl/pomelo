@@ -6,6 +6,12 @@ import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
 /// 为 [MusicProvider] 提供默认的空实现（抛出 [UnimplementedError]）。
 /// 各子类只需重写 [sourceId]、[sourceName]，按需实现具体方法。
 abstract class LxMusicProvider extends MusicProvider {
+  @override
+  String get categoryId => 'lx';
+
+  @override
+  String get categoryName => '在线音乐';
+
   final LxJsEngine jsEngine;
 
   LxMusicProvider({required this.jsEngine});

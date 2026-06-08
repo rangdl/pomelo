@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/modules/music/model/models.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../model/js_engine.dart';
 
@@ -83,9 +84,11 @@ registry.registerTipSearchProvider(new musicsdk.MgTipSearchProvider());
       print(result.toString());
     }
     final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-    final json = Map<String, dynamic>.from(
-      jsonDecode(asyncResult.stringResult),
-    );
+    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
+    // final json = Map<String, dynamic>.from(
+    //   jsonDecode(asyncResult.stringResult),
+    // );
+
     final total = json['total'] ?? 0;
     final items = (json['list'] ?? []) as List<dynamic>;
     final res = PaginationResponse<Song>(
@@ -281,8 +284,9 @@ class PomeloTrackObjectMeta {
     final List<PomeloTrackExtraType> parsedTypes = typesList != null
         ? typesList
               .map(
-                (item) =>
-                    PomeloTrackExtraType.fromJson(item as Map<String, dynamic>),
+                (item) => PomeloTrackExtraType.fromJson(
+                  Map<String, dynamic>.from(item),
+                ),
               )
               .toList()
         : const []; // 默认空列表

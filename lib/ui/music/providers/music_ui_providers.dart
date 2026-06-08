@@ -1,18 +1,34 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
+import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music_sdk/model/song.dart';
 
+/// 持久化 key
+const _kSelectedSource = 'music_selected_source';
+
 /// 当前选中的音乐来源 sourceId 的 Notifier
 ///
 /// null 表示"全部来源"。
+/// 选中的来源会自动持久化到 Settings，应用重启后自动恢复。
 class SelectedSourceNotifier extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() {
+    // 从持久化存储恢复
+    final saved = Settings.get(_kSelectedSource);
+    return (saved != null && saved.isNotEmpty) ? saved : null;
+  }
 
-  void selectAll() => state = null;
-  void select(String sourceId) => state = sourceId;
+  void selectAll() {
+    state = null;
+    Settings.set(_kSelectedSource, '');
+  }
+
+  void select(String sourceId) {
+    state = sourceId;
+    Settings.set(_kSelectedSource, sourceId);
+  }
 }
 
 /// 当前选中的音乐来源 sourceId

@@ -51,6 +51,10 @@ class SourceSwitchButton extends ConsumerWidget {
     List<MusicProvider> providers,
     String? selectedSourceId,
   ) {
+    final module = ref.read(musicModuleProvider);
+    final categories = module?.categories ?? [];
+    final byCategory = module?.providersByCategory() ?? {};
+
     showDialog(
       context: context,
       builder: (dialogContext) {
@@ -69,22 +73,42 @@ class SourceSwitchButton extends ConsumerWidget {
                 ),
               ),
             ),
-            ...providers.map(
-              (p) => SimpleDialogOption(
-                onPressed: () {
-                  ref.read(selectedSourceProvider.notifier).select(p.sourceId);
-                  Navigator.of(dialogContext).pop();
-                },
-                child: Text(
-                  p.sourceName,
-                  style: TextStyle(
-                    fontWeight: selectedSourceId == p.sourceId
-                        ? FontWeight.bold
-                        : null,
+            const Divider(height: 1),
+            ...categories.expand((category) {
+              final catProviders = byCategory[category.id] ?? [];
+              return [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
+                  child: Text(
+                    category.name,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                    ),
                   ),
                 ),
-              ),
-            ),
+                ...catProviders.map(
+                  (p) => SimpleDialogOption(
+                    onPressed: () {
+                      ref
+                          .read(selectedSourceProvider.notifier)
+                          .select(p.sourceId);
+                      Navigator.of(dialogContext).pop();
+                    },
+                    child: Text(
+                      p.sourceName,
+                      style: TextStyle(
+                        fontWeight: selectedSourceId == p.sourceId
+                            ? FontWeight.bold
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+              ];
+            }),
           ],
         );
       },

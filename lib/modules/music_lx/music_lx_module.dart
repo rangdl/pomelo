@@ -55,10 +55,10 @@ class LxMusicModule extends Module {
     final musicModule = ModuleManager().find<MusicModule>('music');
     if (musicModule == null) return;
     musicModule.register(_txMusicProvider);
-    // musicModule.register(_kgMusicProvider);
-    // musicModule.register(_wyMusicProvider); // 无结果
-    // musicModule.register(_kwMusicProvider);
-    // musicModule.register(_mgMusicProvider); // 报错
+    musicModule.register(_kgMusicProvider);
+    musicModule.register(_wyMusicProvider);
+    musicModule.register(_kwMusicProvider);
+    musicModule.register(_mgMusicProvider);
   }
 
   @override
