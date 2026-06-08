@@ -4,6 +4,7 @@ import 'package:pomelo/modules/music/model/music_provider.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/song_list.dart';
+import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart'
     show GhostButton, ButtonSize;
 
@@ -122,7 +123,7 @@ class MusicSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final songsAsync = ref.watch(currentSourceSongsProvider);
+    final dataAsync = ref.watch(currentSourceSongsProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -134,24 +135,29 @@ class MusicSection extends ConsumerWidget {
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
         ),
-        songsAsync.when(
-          data: (songs) {
-            if (songs.isEmpty) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text(
-                    '暂无歌曲',
-                    style: TextStyle(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.6),
+        dataAsync.when(
+          data: (data) {
+            return Column(
+              children: [
+                ProviderErrorBanner(errors: data.errors),
+                if (data.songs.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        '暂无歌曲',
+                        style: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }
-            return SongList(songs: songs);
+                  )
+                else
+                  SongList(songs: data.songs),
+              ],
+            );
           },
           loading: () => const Center(
             child: Padding(
