@@ -1,10 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/modules/music/model/models.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../model/js_engine.dart';
 
