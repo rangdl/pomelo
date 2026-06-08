@@ -53,6 +53,7 @@ dependencies:
   # drift: ^2.14.2  # 类型安全的 SQLite ORM
 
   # 桌面
+  path_provider: ^2.1.5  # 各平台标准目录
   window_manager: ^0.5.1 # 窗口管理
   shadcn_flutter: ^0.0.52
   auto_route: ^10.2.0

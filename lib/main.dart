@@ -28,7 +28,8 @@ void main() async {
   await _runPlatformSpecificCode();
 
   // ========== 存储层初始化（先于模块） ==========
-  Hive.init(Helper.getAppDataDir());
+  final appDir = await Helper.getAppDataDir();
+  Hive.init(appDir);
   await Settings.init();
   // =============================================
 
@@ -54,17 +55,39 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [logServiceProvider.overrideWithValue(logModule.service)],
-      child: ShadcnApp.router(
-        themeMode: ThemeMode.system,
-        theme: ThemeData(colorScheme: ColorSchemes.lightSlate),
-        darkTheme: ThemeData(colorScheme: ColorSchemes.darkSlate),
-        routerConfig: appRouter.config(),
-        builder: (context, child) {
-          return BotToastInit()(context, child ?? const SizedBox.shrink());
-        },
-      ),
+      child: const _AppShell(),
     ),
   );
+}
+
+/// 应用壳 — 监听全局设置并响应式更新
+class _AppShell extends ConsumerWidget {
+  const _AppShell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 响应式监听主题模式设置
+    final themeModeStr = ref.watch(settingWatcherProvider('my_theme_mode'));
+    final themeMode = _parseThemeMode(themeModeStr);
+
+    return ShadcnApp.router(
+      themeMode: themeMode,
+      theme: ThemeData(colorScheme: ColorSchemes.lightSlate),
+      darkTheme: ThemeData(colorScheme: ColorSchemes.darkSlate),
+      routerConfig: appRouter.config(),
+      builder: (context, child) {
+        return BotToastInit()(context, child ?? const SizedBox.shrink());
+      },
+    );
+  }
+
+  ThemeMode _parseThemeMode(String? mode) {
+    return switch (mode) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+  }
 }
 
 Future<void> _runPlatformSpecificCode() async {

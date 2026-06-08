@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:path_provider/path_provider.dart';
 
 class Helper {
   static bool get isAndroid => !kIsWeb && Platform.isAndroid;
@@ -29,13 +30,26 @@ class Helper {
 
   static bool get isDebug => kDebugMode;
 
-  /// 获取应用数据目录（用于 hive_ce 存储）
-  /// 如果不可用则回退到当前工作目录
-  static String getAppDataDir() {
+  /// 获取应用文档目录（用于 hive_ce 存储）
+  ///
+  /// 各平台路径:
+  /// - Windows: C:\Users\<用户名>\Documents\pomelo\
+  /// - macOS:   ~/Documents/pomelo/
+  /// - Linux:   ~/Documents/pomelo/
+  /// - 移动端:  应用文档目录
+  ///
+  /// 确保数据不随项目目录变更而丢失。
+  static Future<String> getAppDataDir() async {
     try {
-      return Directory.current.path;
+      final dir = await getApplicationDocumentsDirectory();
+      final appDir = Directory('${dir.path}/pomelo');
+      if (!await appDir.exists()) {
+        await appDir.create(recursive: true);
+      }
+      return appDir.path;
     } catch (_) {
-      return '.';
+      // 回退到当前目录
+      return Directory.current.path;
     }
   }
 }

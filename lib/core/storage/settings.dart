@@ -189,5 +189,8 @@ final settingWatcherProvider = Provider.family<String?, String>((
   ref,
   String key,
 ) {
+  // 通过 settingsProvider 建立响应式依赖链：
+  // Settings.set() → box.watch() → settingsProvider 发射新值 → 本 provider 重建
+  ref.watch(settingsProvider);
   return Settings.get(key);
 });
