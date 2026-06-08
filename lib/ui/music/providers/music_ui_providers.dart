@@ -1,9 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/modules/music/model/pagination_response.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
+import 'package:pomelo/modules/music/model/music_provider.dart';
 import 'package:pomelo/modules/music_sdk/model/song.dart';
+import 'package:pomelo/ui/music/model/provider_result.dart';
 
 /// 持久化 key
 const _kSelectedSource = 'music_selected_source';
@@ -37,21 +40,47 @@ final selectedSourceProvider =
       SelectedSourceNotifier.new,
     );
 
-/// 获取当前来源的歌曲列表
-final currentSourceSongsProvider = FutureProvider<List<Song>>((ref) async {
-  final sourceId = ref.watch(selectedSourceProvider);
+/// 音乐列表数据：歌曲列表 + 出错的提供者
+class MusicListData {
+  final List<Song> songs;
+  final List<({String sourceId, String sourceName, Object error})> errors;
 
+  const MusicListData({this.songs = const [], this.errors = const []});
+}
+
+/// 获取当前来源的歌曲列表（逐提供者隔离异常）
+final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
+  final sourceId = ref.watch(selectedSourceProvider);
   final providers = await ref.watch(musicProvidersProvider.future);
 
-  if (sourceId == null) {
-    // 全部来源: 从所有 provider 获取
-    final results = await Future.wait(providers.map((p) => p.getSongs()));
-    return results.expand((r) => r.items).toList();
+  Iterable<MusicProvider> targets = providers;
+  if (sourceId != null) {
+    final module = ModuleManager().find<MusicModule>('music');
+    final p = module?.provider(sourceId);
+    targets = p != null ? [p] : [];
   }
 
-  final module = ModuleManager().find<MusicModule>('music');
-  final provider = module?.provider(sourceId);
-  if (provider == null) return [];
-  final result = await provider.getSongs();
-  return result.items;
+  if (targets.isEmpty) return const MusicListData();
+
+  final results = await safeCallProviders<SongPageResult>(
+    targets.toList(),
+    (p) => (p as MusicProvider).getSongs(),
+    getId: (p) => (p as MusicProvider).sourceId,
+    getName: (p) => (p as MusicProvider).sourceName,
+  );
+
+  final songs = <Song>[];
+  final errors = <({String sourceId, String sourceName, Object error})>[];
+  for (final r in results) {
+    if (r.isSuccess && r.data != null) {
+      songs.addAll(r.data!.items);
+    } else if (r.isError && r.error != null) {
+      errors.add((
+        sourceId: r.sourceId,
+        sourceName: r.sourceName,
+        error: r.error!,
+      ));
+    }
+  }
+  return MusicListData(songs: songs, errors: errors);
 });
