@@ -16,8 +16,12 @@ class JsEngine {
     init();
   }
   void init() {
+    // fetch
     _setupFetch();
+    // __go_crypto_md5
+    // __go_crypto_sha256
     _setupCrypto();
+    //__go_crypto_aes_encrypt
     _setupAES();
   }
 

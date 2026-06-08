@@ -11,6 +11,13 @@ class LxJsEngine {
   LxJsEngine() : jsEngine = JsEngine();
 
   Future<void> init() async {
+    final polyfill = await rootBundle.loadString('assets/js/polyfill.umd.js');
+    final resultPolyfill = jsEngine.jsRuntime.evaluate(polyfill);
+    if (resultPolyfill.isError) {
+      print('js: ${resultPolyfill.toString()}');
+    } else {
+      print('polyfill加载成功');
+    }
     // 加载 sdk
     final musicsdk = await rootBundle.loadString('assets/js/musicsdk.umd.js');
     final resultSdk = jsEngine.jsRuntime.evaluate(musicsdk);
@@ -19,7 +26,6 @@ class LxJsEngine {
     } else {
       print('musicsdk加载成功');
     }
-
     // 加载插件
     final result = jsEngine.jsRuntime.evaluate("""
 const registry = new globalThis.musicsdk.Registry();
