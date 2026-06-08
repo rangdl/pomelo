@@ -1,7 +1,9 @@
 import 'package:bot_toast/bot_toast.dart';
+import 'package:hive_ce/hive.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/routers/app_router.dart';
+import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/modules/log/log_module.dart';
 import 'package:pomelo/modules/log/providers/log_providers.dart';
 import 'package:pomelo/modules/favorite/favorite_module.dart';
@@ -24,6 +26,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await _runPlatformSpecificCode();
+
+  // ========== 存储层初始化（先于模块） ==========
+  Hive.init(Helper.getAppDataDir());
+  await Settings.init();
+  // =============================================
 
   // ========== M.A.R.S. 模块初始化 ==========
   final moduleManager = ModuleManager();

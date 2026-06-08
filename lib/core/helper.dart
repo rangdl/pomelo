@@ -28,4 +28,14 @@ class Helper {
   }
 
   static bool get isDebug => kDebugMode;
+
+  /// 获取应用数据目录（用于 hive_ce 存储）
+  /// 如果不可用则回退到当前工作目录
+  static String getAppDataDir() {
+    try {
+      return Directory.current.path;
+    } catch (_) {
+      return '.';
+    }
+  }
 }

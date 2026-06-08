@@ -5,10 +5,10 @@ import 'service/my_service.dart';
 /// My 模块定义
 ///
 /// 遵循 M.A.R.S. 架构：
-/// - Model: my_profile.dart
+/// - Model: my_profile.dart（支持 JSON 序列化，零迁移）
 /// - Action: (模块初始化/就绪/销毁)
-/// - Repository: MyRepository
-/// - Service/State: MyService / Riverpod Provider
+/// - Repository: MyRepository（PersistentRepository，自动持久化）
+/// - Service/State: MyService / Riverpod Provider（内部可直接使用 Settings）
 class MyModule extends Module {
   MyModule() : _repository = MyRepository();
 
@@ -29,6 +29,10 @@ class MyModule extends Module {
     await _repository.onInit();
     _service = MyService(_repository);
     await _service.onInit();
+
+    // 演示：模块初始化时从 Settings 恢复之前保存的状态
+    _service.getThemeMode();
+    // ... 可以根据 theme 做状态恢复
   }
 
   @override
