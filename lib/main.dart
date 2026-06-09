@@ -8,7 +8,6 @@ import 'package:pomelo/modules/log/log_module.dart';
 import 'package:pomelo/modules/log/providers/log_providers.dart';
 import 'package:pomelo/modules/favorite/favorite_module.dart';
 import 'package:pomelo/modules/my/my_module.dart';
-import 'package:pomelo/modules/music_sdk/music_module.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music_local/music_local_module.dart';
 import 'package:pomelo/modules/music_lx/music_lx_module.dart';
@@ -42,7 +41,6 @@ void main() async {
     FavoriteModule(),
     MyModule(),
     StatisticsModule(),
-    MusicSdkModule(),
     MusicModule(),
     MusicLocalModule(),
     LxMusicModule(),

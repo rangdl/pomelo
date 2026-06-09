@@ -1,4 +1,4 @@
-import 'package:pomelo/modules/music_sdk/model/song.dart';
+import 'package:pomelo/modules/music/model/song.dart';
 
 /// 合并后的歌曲展示模型
 ///

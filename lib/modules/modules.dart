@@ -5,7 +5,6 @@ export 'package:pomelo/modules/favorite/favorite_module.dart';
 export 'package:pomelo/modules/log/log_module.dart';
 export 'package:pomelo/modules/my/my_module.dart';
 export 'package:pomelo/modules/statistics/statistics_module.dart';
-export 'package:pomelo/modules/music_sdk/music_module.dart';
 export 'package:pomelo/modules/music/music_module.dart';
 export 'package:pomelo/modules/music_local/music_local_module.dart';
 export 'package:pomelo/modules/music_lx/music_lx_module.dart';

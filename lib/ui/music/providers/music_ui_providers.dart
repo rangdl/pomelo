@@ -5,7 +5,7 @@ import 'package:pomelo/modules/music/model/pagination_response.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music/model/music_provider.dart';
-import 'package:pomelo/modules/music_sdk/model/song.dart';
+import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/ui/music/model/provider_result.dart';
 
 /// 持久化 key
