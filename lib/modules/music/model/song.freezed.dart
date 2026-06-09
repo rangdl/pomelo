@@ -16,7 +16,20 @@ final _privateConstructorUsedError = UnsupportedError(
 );
 
 Song _$SongFromJson(Map<String, dynamic> json) {
-  return _Song.fromJson(json);
+  switch (json['runtimeType']) {
+    case 'full':
+      return SongFull.fromJson(json);
+    case 'local':
+      return SongLocal.fromJson(json);
+
+    default:
+      throw CheckedFromJsonException(
+        json,
+        'runtimeType',
+        'Song',
+        'Invalid union type "${json['runtimeType']}"!',
+      );
+  }
 }
 
 /// @nodoc
@@ -39,8 +52,117 @@ mixin _$Song {
   /// 由提供数据的模块自定义，可存储来源特有的元信息。
   /// 例如网易云模块可存 `{'song_id': 123456, 'quality': 'lossless'}`。
   Map<String, dynamic> get meta => throw _privateConstructorUsedError;
-  DateTime? get createdAt => throw _privateConstructorUsedError; // 创建时间
-  String get path => throw _privateConstructorUsedError;
+  DateTime? get createdAt => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )
+    full,
+    required TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )
+    local,
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )?
+    full,
+    TResult? Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )?
+    local,
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )?
+    full,
+    TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )?
+    local,
+    required TResult orElse(),
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(SongFull value) full,
+    required TResult Function(SongLocal value) local,
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(SongFull value)? full,
+    TResult? Function(SongLocal value)? local,
+  }) => throw _privateConstructorUsedError;
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(SongFull value)? full,
+    TResult Function(SongLocal value)? local,
+    required TResult orElse(),
+  }) => throw _privateConstructorUsedError;
 
   /// Serializes this Song to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -67,7 +189,6 @@ abstract class $SongCopyWith<$Res> {
     ({String id, String name}) source,
     Map<String, dynamic> meta,
     DateTime? createdAt,
-    String path,
   });
 }
 
@@ -96,7 +217,6 @@ class _$SongCopyWithImpl<$Res, $Val extends Song>
     Object? source = null,
     Object? meta = null,
     Object? createdAt = freezed,
-    Object? path = null,
   }) {
     return _then(
       _value.copyWith(
@@ -140,10 +260,6 @@ class _$SongCopyWithImpl<$Res, $Val extends Song>
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
                       as DateTime?,
-            path: null == path
-                ? _value.path
-                : path // ignore: cast_nullable_to_non_nullable
-                      as String,
           )
           as $Val,
     );
@@ -151,11 +267,480 @@ class _$SongCopyWithImpl<$Res, $Val extends Song>
 }
 
 /// @nodoc
-abstract class _$$SongImplCopyWith<$Res> implements $SongCopyWith<$Res> {
-  factory _$$SongImplCopyWith(
-    _$SongImpl value,
-    $Res Function(_$SongImpl) then,
-  ) = __$$SongImplCopyWithImpl<$Res>;
+abstract class _$$SongFullImplCopyWith<$Res> implements $SongCopyWith<$Res> {
+  factory _$$SongFullImplCopyWith(
+    _$SongFullImpl value,
+    $Res Function(_$SongFullImpl) then,
+  ) = __$$SongFullImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({
+    String id,
+    String name,
+    String artist,
+    String? albumId,
+    String? albumName,
+    String? coverUrl,
+    int duration,
+    ({String id, String name}) source,
+    Map<String, dynamic> meta,
+    DateTime? createdAt,
+    String src,
+  });
+}
+
+/// @nodoc
+class __$$SongFullImplCopyWithImpl<$Res>
+    extends _$SongCopyWithImpl<$Res, _$SongFullImpl>
+    implements _$$SongFullImplCopyWith<$Res> {
+  __$$SongFullImplCopyWithImpl(
+    _$SongFullImpl _value,
+    $Res Function(_$SongFullImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of Song
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? id = null,
+    Object? name = null,
+    Object? artist = null,
+    Object? albumId = freezed,
+    Object? albumName = freezed,
+    Object? coverUrl = freezed,
+    Object? duration = null,
+    Object? source = null,
+    Object? meta = null,
+    Object? createdAt = freezed,
+    Object? src = null,
+  }) {
+    return _then(
+      _$SongFullImpl(
+        id: null == id
+            ? _value.id
+            : id // ignore: cast_nullable_to_non_nullable
+                  as String,
+        name: null == name
+            ? _value.name
+            : name // ignore: cast_nullable_to_non_nullable
+                  as String,
+        artist: null == artist
+            ? _value.artist
+            : artist // ignore: cast_nullable_to_non_nullable
+                  as String,
+        albumId: freezed == albumId
+            ? _value.albumId
+            : albumId // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        albumName: freezed == albumName
+            ? _value.albumName
+            : albumName // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        coverUrl: freezed == coverUrl
+            ? _value.coverUrl
+            : coverUrl // ignore: cast_nullable_to_non_nullable
+                  as String?,
+        duration: null == duration
+            ? _value.duration
+            : duration // ignore: cast_nullable_to_non_nullable
+                  as int,
+        source: null == source
+            ? _value.source
+            : source // ignore: cast_nullable_to_non_nullable
+                  as ({String id, String name}),
+        meta: null == meta
+            ? _value._meta
+            : meta // ignore: cast_nullable_to_non_nullable
+                  as Map<String, dynamic>,
+        createdAt: freezed == createdAt
+            ? _value.createdAt
+            : createdAt // ignore: cast_nullable_to_non_nullable
+                  as DateTime?,
+        src: null == src
+            ? _value.src
+            : src // ignore: cast_nullable_to_non_nullable
+                  as String,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+@JsonSerializable()
+class _$SongFullImpl implements SongFull {
+  _$SongFullImpl({
+    required this.id,
+    required this.name,
+    required this.artist,
+    this.albumId,
+    this.albumName,
+    this.coverUrl,
+    this.duration = 0,
+    required this.source,
+    final Map<String, dynamic> meta = const {},
+    this.createdAt,
+    required this.src,
+    final String? $type,
+  }) : _meta = meta,
+       $type = $type ?? 'full';
+
+  factory _$SongFullImpl.fromJson(Map<String, dynamic> json) =>
+      _$$SongFullImplFromJson(json);
+
+  @override
+  final String id;
+  // 歌曲唯一标识
+  @override
+  final String name;
+  // 歌曲标题
+  @override
+  final String artist;
+  // 艺术家
+  @override
+  final String? albumId;
+  // 专辑ID
+  @override
+  final String? albumName;
+  // 专辑名称
+  @override
+  final String? coverUrl;
+  // 封面图片URL
+  @override
+  @JsonKey()
+  final int duration;
+  // 时长（秒）
+  /// 数据来源
+  ///
+  /// 如 `(id: 'netease', name: '网易云音乐')`、
+  /// `(id: 'local', name: '本地')`
+  @override
+  final ({String id, String name}) source;
+
+  /// 来源原始数据
+  ///
+  /// 由提供数据的模块自定义，可存储来源特有的元信息。
+  /// 例如网易云模块可存 `{'song_id': 123456, 'quality': 'lossless'}`。
+  final Map<String, dynamic> _meta;
+
+  /// 来源原始数据
+  ///
+  /// 由提供数据的模块自定义，可存储来源特有的元信息。
+  /// 例如网易云模块可存 `{'song_id': 123456, 'quality': 'lossless'}`。
+  @override
+  @JsonKey()
+  Map<String, dynamic> get meta {
+    if (_meta is EqualUnmodifiableMapView) return _meta;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableMapView(_meta);
+  }
+
+  @override
+  final DateTime? createdAt;
+  // 创建时间
+  @override
+  final String src;
+
+  @JsonKey(name: 'runtimeType')
+  final String $type;
+
+  @override
+  String toString() {
+    return 'Song.full(id: $id, name: $name, artist: $artist, albumId: $albumId, albumName: $albumName, coverUrl: $coverUrl, duration: $duration, source: $source, meta: $meta, createdAt: $createdAt, src: $src)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$SongFullImpl &&
+            (identical(other.id, id) || other.id == id) &&
+            (identical(other.name, name) || other.name == name) &&
+            (identical(other.artist, artist) || other.artist == artist) &&
+            (identical(other.albumId, albumId) || other.albumId == albumId) &&
+            (identical(other.albumName, albumName) ||
+                other.albumName == albumName) &&
+            (identical(other.coverUrl, coverUrl) ||
+                other.coverUrl == coverUrl) &&
+            (identical(other.duration, duration) ||
+                other.duration == duration) &&
+            (identical(other.source, source) || other.source == source) &&
+            const DeepCollectionEquality().equals(other._meta, _meta) &&
+            (identical(other.createdAt, createdAt) ||
+                other.createdAt == createdAt) &&
+            (identical(other.src, src) || other.src == src));
+  }
+
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  int get hashCode => Object.hash(
+    runtimeType,
+    id,
+    name,
+    artist,
+    albumId,
+    albumName,
+    coverUrl,
+    duration,
+    source,
+    const DeepCollectionEquality().hash(_meta),
+    createdAt,
+    src,
+  );
+
+  /// Create a copy of Song
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$SongFullImplCopyWith<_$SongFullImpl> get copyWith =>
+      __$$SongFullImplCopyWithImpl<_$SongFullImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )
+    full,
+    required TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )
+    local,
+  }) {
+    return full(
+      id,
+      name,
+      artist,
+      albumId,
+      albumName,
+      coverUrl,
+      duration,
+      source,
+      meta,
+      createdAt,
+      src,
+    );
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )?
+    full,
+    TResult? Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )?
+    local,
+  }) {
+    return full?.call(
+      id,
+      name,
+      artist,
+      albumId,
+      albumName,
+      coverUrl,
+      duration,
+      source,
+      meta,
+      createdAt,
+      src,
+    );
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )?
+    full,
+    TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )?
+    local,
+    required TResult orElse(),
+  }) {
+    if (full != null) {
+      return full(
+        id,
+        name,
+        artist,
+        albumId,
+        albumName,
+        coverUrl,
+        duration,
+        source,
+        meta,
+        createdAt,
+        src,
+      );
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(SongFull value) full,
+    required TResult Function(SongLocal value) local,
+  }) {
+    return full(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(SongFull value)? full,
+    TResult? Function(SongLocal value)? local,
+  }) {
+    return full?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(SongFull value)? full,
+    TResult Function(SongLocal value)? local,
+    required TResult orElse(),
+  }) {
+    if (full != null) {
+      return full(this);
+    }
+    return orElse();
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return _$$SongFullImplToJson(this);
+  }
+}
+
+abstract class SongFull implements Song {
+  factory SongFull({
+    required final String id,
+    required final String name,
+    required final String artist,
+    final String? albumId,
+    final String? albumName,
+    final String? coverUrl,
+    final int duration,
+    required final ({String id, String name}) source,
+    final Map<String, dynamic> meta,
+    final DateTime? createdAt,
+    required final String src,
+  }) = _$SongFullImpl;
+
+  factory SongFull.fromJson(Map<String, dynamic> json) =
+      _$SongFullImpl.fromJson;
+
+  @override
+  String get id; // 歌曲唯一标识
+  @override
+  String get name; // 歌曲标题
+  @override
+  String get artist; // 艺术家
+  @override
+  String? get albumId; // 专辑ID
+  @override
+  String? get albumName; // 专辑名称
+  @override
+  String? get coverUrl; // 封面图片URL
+  @override
+  int get duration; // 时长（秒）
+  /// 数据来源
+  ///
+  /// 如 `(id: 'netease', name: '网易云音乐')`、
+  /// `(id: 'local', name: '本地')`
+  @override
+  ({String id, String name}) get source;
+
+  /// 来源原始数据
+  ///
+  /// 由提供数据的模块自定义，可存储来源特有的元信息。
+  /// 例如网易云模块可存 `{'song_id': 123456, 'quality': 'lossless'}`。
+  @override
+  Map<String, dynamic> get meta;
+  @override
+  DateTime? get createdAt; // 创建时间
+  String get src;
+
+  /// Create a copy of Song
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$SongFullImplCopyWith<_$SongFullImpl> get copyWith =>
+      throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$SongLocalImplCopyWith<$Res> implements $SongCopyWith<$Res> {
+  factory _$$SongLocalImplCopyWith(
+    _$SongLocalImpl value,
+    $Res Function(_$SongLocalImpl) then,
+  ) = __$$SongLocalImplCopyWithImpl<$Res>;
   @override
   @useResult
   $Res call({
@@ -174,11 +759,13 @@ abstract class _$$SongImplCopyWith<$Res> implements $SongCopyWith<$Res> {
 }
 
 /// @nodoc
-class __$$SongImplCopyWithImpl<$Res>
-    extends _$SongCopyWithImpl<$Res, _$SongImpl>
-    implements _$$SongImplCopyWith<$Res> {
-  __$$SongImplCopyWithImpl(_$SongImpl _value, $Res Function(_$SongImpl) _then)
-    : super(_value, _then);
+class __$$SongLocalImplCopyWithImpl<$Res>
+    extends _$SongCopyWithImpl<$Res, _$SongLocalImpl>
+    implements _$$SongLocalImplCopyWith<$Res> {
+  __$$SongLocalImplCopyWithImpl(
+    _$SongLocalImpl _value,
+    $Res Function(_$SongLocalImpl) _then,
+  ) : super(_value, _then);
 
   /// Create a copy of Song
   /// with the given fields replaced by the non-null parameter values.
@@ -198,7 +785,7 @@ class __$$SongImplCopyWithImpl<$Res>
     Object? path = null,
   }) {
     return _then(
-      _$SongImpl(
+      _$SongLocalImpl(
         id: null == id
             ? _value.id
             : id // ignore: cast_nullable_to_non_nullable
@@ -250,8 +837,8 @@ class __$$SongImplCopyWithImpl<$Res>
 
 /// @nodoc
 @JsonSerializable()
-class _$SongImpl implements _Song {
-  _$SongImpl({
+class _$SongLocalImpl implements SongLocal {
+  _$SongLocalImpl({
     required this.id,
     required this.name,
     required this.artist,
@@ -263,10 +850,12 @@ class _$SongImpl implements _Song {
     final Map<String, dynamic> meta = const {},
     this.createdAt,
     required this.path,
-  }) : _meta = meta;
+    final String? $type,
+  }) : _meta = meta,
+       $type = $type ?? 'local';
 
-  factory _$SongImpl.fromJson(Map<String, dynamic> json) =>
-      _$$SongImplFromJson(json);
+  factory _$SongLocalImpl.fromJson(Map<String, dynamic> json) =>
+      _$$SongLocalImplFromJson(json);
 
   @override
   final String id;
@@ -321,16 +910,19 @@ class _$SongImpl implements _Song {
   @override
   final String path;
 
+  @JsonKey(name: 'runtimeType')
+  final String $type;
+
   @override
   String toString() {
-    return 'Song(id: $id, name: $name, artist: $artist, albumId: $albumId, albumName: $albumName, coverUrl: $coverUrl, duration: $duration, source: $source, meta: $meta, createdAt: $createdAt, path: $path)';
+    return 'Song.local(id: $id, name: $name, artist: $artist, albumId: $albumId, albumName: $albumName, coverUrl: $coverUrl, duration: $duration, source: $source, meta: $meta, createdAt: $createdAt, path: $path)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
-            other is _$SongImpl &&
+            other is _$SongLocalImpl &&
             (identical(other.id, id) || other.id == id) &&
             (identical(other.name, name) || other.name == name) &&
             (identical(other.artist, artist) || other.artist == artist) &&
@@ -370,17 +962,193 @@ class _$SongImpl implements _Song {
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   @pragma('vm:prefer-inline')
-  _$$SongImplCopyWith<_$SongImpl> get copyWith =>
-      __$$SongImplCopyWithImpl<_$SongImpl>(this, _$identity);
+  _$$SongLocalImplCopyWith<_$SongLocalImpl> get copyWith =>
+      __$$SongLocalImplCopyWithImpl<_$SongLocalImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )
+    full,
+    required TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )
+    local,
+  }) {
+    return local(
+      id,
+      name,
+      artist,
+      albumId,
+      albumName,
+      coverUrl,
+      duration,
+      source,
+      meta,
+      createdAt,
+      path,
+    );
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )?
+    full,
+    TResult? Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )?
+    local,
+  }) {
+    return local?.call(
+      id,
+      name,
+      artist,
+      albumId,
+      albumName,
+      coverUrl,
+      duration,
+      source,
+      meta,
+      createdAt,
+      path,
+    );
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String src,
+    )?
+    full,
+    TResult Function(
+      String id,
+      String name,
+      String artist,
+      String? albumId,
+      String? albumName,
+      String? coverUrl,
+      int duration,
+      ({String id, String name}) source,
+      Map<String, dynamic> meta,
+      DateTime? createdAt,
+      String path,
+    )?
+    local,
+    required TResult orElse(),
+  }) {
+    if (local != null) {
+      return local(
+        id,
+        name,
+        artist,
+        albumId,
+        albumName,
+        coverUrl,
+        duration,
+        source,
+        meta,
+        createdAt,
+        path,
+      );
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(SongFull value) full,
+    required TResult Function(SongLocal value) local,
+  }) {
+    return local(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(SongFull value)? full,
+    TResult? Function(SongLocal value)? local,
+  }) {
+    return local?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(SongFull value)? full,
+    TResult Function(SongLocal value)? local,
+    required TResult orElse(),
+  }) {
+    if (local != null) {
+      return local(this);
+    }
+    return orElse();
+  }
 
   @override
   Map<String, dynamic> toJson() {
-    return _$$SongImplToJson(this);
+    return _$$SongLocalImplToJson(this);
   }
 }
 
-abstract class _Song implements Song {
-  factory _Song({
+abstract class SongLocal implements Song {
+  factory SongLocal({
     required final String id,
     required final String name,
     required final String artist,
@@ -392,9 +1160,10 @@ abstract class _Song implements Song {
     final Map<String, dynamic> meta,
     final DateTime? createdAt,
     required final String path,
-  }) = _$SongImpl;
+  }) = _$SongLocalImpl;
 
-  factory _Song.fromJson(Map<String, dynamic> json) = _$SongImpl.fromJson;
+  factory SongLocal.fromJson(Map<String, dynamic> json) =
+      _$SongLocalImpl.fromJson;
 
   @override
   String get id; // 歌曲唯一标识
@@ -425,13 +1194,12 @@ abstract class _Song implements Song {
   Map<String, dynamic> get meta;
   @override
   DateTime? get createdAt; // 创建时间
-  @override
   String get path;
 
   /// Create a copy of Song
   /// with the given fields replaced by the non-null parameter values.
   @override
   @JsonKey(includeFromJson: false, includeToJson: false)
-  _$$SongImplCopyWith<_$SongImpl> get copyWith =>
+  _$$SongLocalImplCopyWith<_$SongLocalImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }

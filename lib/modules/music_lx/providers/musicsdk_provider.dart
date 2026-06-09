@@ -334,14 +334,14 @@ class PomeloTrackObjectMeta {
   }
 
   Song toSong() {
-    return Song(
+    return Song.full(
       id: '$source-$musicId',
       name: name,
       artist: singer,
       albumId: albumId,
       albumName: album,
       coverUrl: img,
-      path: '', // 需要根据类型选择合适的链接
+      src: '', // 需要根据类型选择合适的链接
       duration: duration,
       source: (id: source, name: source), // 简化处理
     );
