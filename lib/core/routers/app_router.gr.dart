@@ -168,16 +168,6 @@ class MusicSearchRouteArgs {
   String toString() {
     return 'MusicSearchRouteArgs{key: $key, keyword: $keyword}';
   }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    if (other is! MusicSearchRouteArgs) return false;
-    return key == other.key && keyword == other.keyword;
-  }
-
-  @override
-  int get hashCode => key.hashCode ^ keyword.hashCode;
 }
 
 /// generated route for

@@ -133,7 +133,7 @@ class Ex2DetailView extends StatelessWidget {
             Text('返回上级页面'),
             const Gap(24),
             PrimaryButton(
-              onPressed: () => context.router.pop(),
+              onPressed: () => context.router.maybePop(),
               child: const Text('返回'),
             ),
           ],

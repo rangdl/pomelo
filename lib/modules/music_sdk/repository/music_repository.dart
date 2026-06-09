@@ -57,7 +57,7 @@ class MusicSdkRepository {
     return all
         .where(
           (s) =>
-              s.title.toLowerCase().contains(lower) ||
+              s.name.toLowerCase().contains(lower) ||
               s.artist.toLowerCase().contains(lower),
         )
         .toList();

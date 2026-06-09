@@ -27,7 +27,7 @@ class SongList extends ConsumerWidget {
                 color: colorScheme.primary,
                 size: 24,
               ),
-              title: Text(song.title),
+              title: Text(song.name),
               subtitle: Text('${song.artist}  ·  ${song.formattedDuration}'),
               trailing: Text(
                 song.source.name,
