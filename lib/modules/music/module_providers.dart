@@ -1,19 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/repository/repository.dart';
-import '../model/song.dart';
-import '../model/album.dart';
-import '../model/playlist.dart';
-import '../music_module.dart';
+import 'model/song.dart';
+import 'model/album.dart';
+import 'model/playlist.dart';
+import 'music_module.dart';
 
 // ============================================================
 // Music SDK Provider
 // 注意: 使用模块实例前需确保模块已通过 ModuleManager.lazyInit 初始化
 // ============================================================
 
-/// 持有 MusicSdkModule 实例的 Provider
-final musicSdkModuleProvider = Provider<MusicSdkModule>((ref) {
+/// 持有 MusicModule 实例的 Provider
+final musicSdkModuleProvider = Provider<MusicModule>((ref) {
   throw UnimplementedError(
-    'MusicSdkModule 尚未初始化。请先调用 ModuleManager.lazyInit("music_sdk")。',
+    'MusicModule 尚未初始化。请先调用 ModuleManager.lazyInit("music")。',
   );
 });
 

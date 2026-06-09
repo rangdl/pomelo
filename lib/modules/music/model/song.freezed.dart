@@ -30,8 +30,8 @@ mixin _$Song {
   int get duration => throw _privateConstructorUsedError; // 时长（秒）
   /// 数据来源
   ///
-  /// 如 `MusicSource(id: 'netease', name: '网易云音乐')`、
-  /// `MusicSource(id: 'local', name: '本地')`
+  /// 如 `(id: 'netease', name: '网易云音乐')`、
+  /// `(id: 'local', name: '本地')`
   ({String id, String name}) get source => throw _privateConstructorUsedError;
 
   /// 来源原始数据
@@ -292,8 +292,8 @@ class _$SongImpl implements _Song {
   // 时长（秒）
   /// 数据来源
   ///
-  /// 如 `MusicSource(id: 'netease', name: '网易云音乐')`、
-  /// `MusicSource(id: 'local', name: '本地')`
+  /// 如 `(id: 'netease', name: '网易云音乐')`、
+  /// `(id: 'local', name: '本地')`
   @override
   final ({String id, String name}) source;
 
@@ -412,8 +412,8 @@ abstract class _Song implements Song {
   int get duration; // 时长（秒）
   /// 数据来源
   ///
-  /// 如 `MusicSource(id: 'netease', name: '网易云音乐')`、
-  /// `MusicSource(id: 'local', name: '本地')`
+  /// 如 `(id: 'netease', name: '网易云音乐')`、
+  /// `(id: 'local', name: '本地')`
   @override
   ({String id, String name}) get source;
 

@@ -1,16 +1,28 @@
 import 'package:pomelo/core/mars.dart';
 import 'model/music_provider.dart';
 import 'model/pagination_response.dart';
+import 'repository/music_repository.dart';
+import 'service/music_service.dart';
 
 /// Music 模块
 ///
-/// 音乐平台的上层接口层，不直接提供数据。
-/// 维护一个 [MusicProvider] 列表，各平台模块（music_local、music_netease 等）
-/// 在初始化完成后通过 [register] 方法注册自己的提供者。
+/// 音乐模块，合并了原 music_sdk 的数据模型/仓储/服务和原 music 的提供者管理。
 ///
-/// 调用方通过 [provider] / [providersOf] 获取对应平台的接口实例，
-/// 无需直接依赖具体平台模块。
+/// 职责：
+/// - 底层数据：管理 [Song]/[Album]/[Playlist] 数据的 [MusicSdkRepository]
+/// - 播放服务：通过 [MusicSdkService] 管理播放队列
+/// - 上层接口：各平台模块（music_local、music_lx 等）通过 [register] 注册 [MusicProvider]
+///
+/// 遵循 M.A.R.S. 架构：
+/// - Model: song.dart, album.dart, playlist.dart, music_source.dart
+/// - Action: (模块初始化/就绪/销毁)
+/// - Repository: MusicSdkRepository
+/// - Service/State: MusicSdkService / Riverpod Provider
 class MusicModule extends Module {
+  MusicModule() : _repository = MusicSdkRepository();
+
+  final MusicSdkRepository _repository;
+  late final MusicSdkService _service;
   final List<MusicProvider> _providers = [];
 
   @override
@@ -23,7 +35,13 @@ class MusicModule extends Module {
   bool get lazy => true;
 
   @override
-  List<String> get dependencies => ['music_sdk'];
+  List<String> get dependencies => ['home'];
+
+  /// 对外暴露仓储，供 Provider 使用
+  MusicSdkRepository get repository => _repository;
+
+  /// 对外暴露服务，供 Provider 使用
+  MusicSdkService get service => _service;
 
   /// 所有已注册的提供者（只读）
   List<MusicProvider> get providers => List.unmodifiable(_providers);
@@ -129,7 +147,9 @@ class MusicModule extends Module {
 
   @override
   Future<void> onInit() async {
-    // 初始化阶段，等待各平台模块注册提供者
+    await _repository.onInit();
+    _service = MusicSdkService(repository: _repository);
+    await _service.onInit();
   }
 
   @override
@@ -139,6 +159,8 @@ class MusicModule extends Module {
 
   @override
   Future<void> onDispose() async {
+    await _service.onDispose();
+    await _repository.onDispose();
     _providers.clear();
   }
 }

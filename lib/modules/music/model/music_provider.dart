@@ -1,6 +1,6 @@
-import 'package:pomelo/modules/music_sdk/model/song.dart';
-import 'package:pomelo/modules/music_sdk/model/album.dart';
-import 'package:pomelo/modules/music_sdk/model/playlist.dart';
+import 'song.dart';
+import 'album.dart';
+import 'playlist.dart';
 import 'pagination_response.dart';
 
 /// 音乐数据提供者接口

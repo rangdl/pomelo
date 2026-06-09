@@ -1,6 +1,6 @@
-import 'package:pomelo/modules/music_sdk/model/song.dart';
-import 'package:pomelo/modules/music_sdk/model/album.dart';
-import 'package:pomelo/modules/music_sdk/model/playlist.dart';
+import 'song.dart';
+import 'album.dart';
+import 'playlist.dart';
 
 /// 分页查询结果
 ///
@@ -30,7 +30,11 @@ class PaginationResponse<T> {
   });
 
   /// 从完整列表创建分页结果
-  factory PaginationResponse.fromList(List<T> allItems, {int page = 1, int limit = 20}) {
+  factory PaginationResponse.fromList(
+    List<T> allItems, {
+    int page = 1,
+    int limit = 20,
+  }) {
     final start = (page - 1) * limit;
     final end = start + limit;
     final hasMore = end < allItems.length;
