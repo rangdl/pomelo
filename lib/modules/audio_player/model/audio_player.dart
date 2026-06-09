@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/modules/music/model/models.dart' show Song;
+import 'package:pomelo/modules/music/model/song.dart' show SongLocal;
 
 // import '../../models/metadata/metadata.dart';
 // import '../../utils/platform.dart';
@@ -31,10 +32,9 @@ class PomeloMedia extends mk.Media {
       //   ),
       // If the track is a local track, use its path, otherwise use the server URL
       super(
-        track.path,
-        // track is SpotubeLocalTrackObject
-        //     ? track.path
-        //     : "http://$_host:$serverPort/stream/${track.id}",
+        track is SongLocal
+            ? track.path
+            : "http://$_host:$serverPort/stream/${track.id}",
         extras: track.toJson(),
       );
 

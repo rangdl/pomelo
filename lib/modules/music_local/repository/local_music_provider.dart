@@ -41,7 +41,7 @@ class LocalMusicProvider extends MusicProvider {
     });
 
     _mockSongs = List.generate(20, (i) {
-      return Song(
+      return Song.local(
         id: 'local_song_$i',
         name: '本地歌曲 ${i + 1}',
         artist: '艺术家 ${(i % 5) + 1}',
