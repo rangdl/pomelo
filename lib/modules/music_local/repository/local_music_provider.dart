@@ -43,12 +43,12 @@ class LocalMusicProvider extends MusicProvider {
     _mockSongs = List.generate(20, (i) {
       return Song(
         id: 'local_song_$i',
-        title: '本地歌曲 ${i + 1}',
+        name: '本地歌曲 ${i + 1}',
         artist: '艺术家 ${(i % 5) + 1}',
         albumId: 'local_album_${i % 5}',
         albumName: '本地专辑 ${(i % 5) + 1}',
         duration: Duration(seconds: 180 + i * 10).inSeconds,
-        audioUrl: 'file:///local/songs/song_$i.mp3',
+        path: 'file:///local/songs/song_$i.mp3',
         source: _source,
       );
     });
@@ -67,7 +67,7 @@ class LocalMusicProvider extends MusicProvider {
         name: '我的最爱',
         creator: '我',
         description: '收藏的歌曲',
-        songs: _mockSongs.where((s) => s.playCount > 0).toList(),
+        songs: _mockSongs,
         source: _source,
       ),
     ];
@@ -85,7 +85,7 @@ class LocalMusicProvider extends MusicProvider {
     final filtered = _mockSongs
         .where(
           (s) =>
-              s.title.toLowerCase().contains(lower) ||
+              s.name.toLowerCase().contains(lower) ||
               s.artist.toLowerCase().contains(lower),
         )
         .toList();

@@ -69,7 +69,7 @@ class _MusicSearchPageState extends ConsumerState<MusicSearchPage> {
         AppBar(
           leading: [
             GhostButton(
-              onPressed: () => context.router.pop(),
+              onPressed: () => context.router.maybePop(),
               child: const Icon(Icons.arrow_back, size: 20),
             ),
           ],
@@ -369,7 +369,7 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
                               size: 24,
                             ),
                             title: Text(
-                              merged.primary.title,
+                              merged.primary.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
