@@ -1,5 +1,4 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'music_source.dart';
 
 part 'song.freezed.dart';
 part 'song.g.dart';
