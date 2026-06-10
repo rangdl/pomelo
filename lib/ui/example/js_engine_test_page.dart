@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart' show ListTile;
 import 'package:pomelo/modules/music_lx/model/js_engine.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -95,7 +94,17 @@ __go_crypto_aes_encrypt(
       showToast(
         context: context,
         builder: (ctx, overlay) => const Card(
-          child: ListTile(title: Text('已是 hex 格式'), subtitle: Text('无需转换')),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('已是 hex 格式'),
+                Text('无需转换', style: TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
         ),
       );
     } catch (_) {

@@ -10,6 +10,7 @@ class HomeRepository extends InMemoryRepository<HomeItem> {
 
   @override
   Future<void> onInit() async {
+    await super.onInit();
     // 初始化默认数据
     await saveAll([
       const HomeItem(

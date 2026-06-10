@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/music/model/models.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌曲列表组件
 class SongList extends ConsumerWidget {
@@ -22,22 +23,18 @@ class SongList extends ConsumerWidget {
           padding: const EdgeInsets.only(bottom: 4),
           child: Card(
             child: ListTile(
-              leading: Icon(
-                Icons.music_note,
-                color: colorScheme.primary,
-                size: 24,
+              leading: Icon(Icons.music_note, color: colorScheme.primary, size: 24),
+              title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(
+                '${song.artist}  ·  ${song.formattedDuration}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              title: Text(song.name),
-              subtitle: Text('${song.artist}  ·  ${song.formattedDuration}'),
               trailing: Text(
                 song.source.name,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
-                ),
+                style: const TextStyle(fontSize: 12),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
           ),
         );

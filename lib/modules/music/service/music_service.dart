@@ -57,11 +57,13 @@ class MusicSdkService extends Service {
 
   @override
   Future<void> onInit() async {
+    await super.onInit();
     // 服务初始化逻辑
   }
 
   @override
   Future<void> onDispose() async {
+    await super.onDispose();
     _queue = [];
     _currentIndex = 0;
   }

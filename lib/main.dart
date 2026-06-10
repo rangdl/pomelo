@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
+
 import 'package:bot_toast/bot_toast.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -13,6 +16,7 @@ import 'package:pomelo/modules/music_local/music_local_module.dart';
 import 'package:pomelo/modules/music_lx/music_lx_module.dart';
 import 'package:pomelo/modules/statistics/statistics_module.dart';
 import 'package:pomelo/modules/home/home_module.dart';
+import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:pomelo/modules/example/example_module.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
@@ -34,9 +38,10 @@ void main() async {
 
   // ========== M.A.R.S. 模块初始化 ==========
   final moduleManager = ModuleManager();
+  final homeModule = HomeModule();
   final logModule = LogModule();
   await moduleManager.registerAll([
-    HomeModule(),
+    homeModule,
     ExampleModule(),
     FavoriteModule(),
     MyModule(),
@@ -50,9 +55,36 @@ void main() async {
   await moduleManager.readyAll();
   // =========================================
 
+  // ========== 全局错误处理 ==========
+  final logService = logModule.service;
+
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    logService.error(
+      'FlutterError',
+      details.exceptionAsString(),
+      error: details.exception,
+      stackTrace: details.stack,
+    );
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    logService.fatal(
+      'PlatformError',
+      error.toString(),
+      error: error,
+      stackTrace: stack,
+    );
+    return true;
+  };
+  // ================================
+
   runApp(
     ProviderScope(
-      overrides: [logServiceProvider.overrideWithValue(logModule.service)],
+      overrides: [
+        logServiceProvider.overrideWithValue(logModule.service),
+        homeModuleProvider.overrideWithValue(homeModule),
+      ],
       child: const _AppShell(),
     ),
   );
@@ -65,8 +97,8 @@ class _AppShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 响应式监听主题模式设置
-    final themeModeStr = ref.watch(settingWatcherProvider('my_theme_mode'));
-    final themeMode = _parseThemeMode(themeModeStr);
+    final themeModeAsync = ref.watch(settingWatcherProvider('my_theme_mode'));
+    final themeMode = _parseThemeMode(themeModeAsync.value);
 
     return ShadcnApp.router(
       themeMode: themeMode,

@@ -4,24 +4,10 @@
 library;
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart'
-    hide
-        Card,
-        Divider,
-        Column,
-        Expanded,
-        Row,
-        Scaffold,
-        AppBar,
-        Theme,
-        CircularProgressIndicator,
-        Center,
-        Text,
-        IconButton,
-        showDialog;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors, TextField;
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/model/merged_song.dart';
@@ -78,25 +64,17 @@ class _MusicSearchPageState extends ConsumerState<MusicSearchPage> {
             child: TextField(
               controller: _searchController,
               autofocus: false,
-              decoration: InputDecoration(
-                hintText: '搜索歌曲...',
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.border,
+              placeholder: const Text('搜索歌曲...'),
+              onSubmitted: _doSearch,
+              features: [
+                InputFeature.trailing(
+                  GhostButton(
+                    density: ButtonDensity.icon,
+                    onPressed: () => _doSearch(_searchController.text),
+                    child: const Icon(Icons.search, size: 20),
                   ),
                 ),
-                suffixIcon: IconButton.text(
-                  icon: const Icon(Icons.search, size: 20),
-                  onPressed: () => _doSearch(_searchController.text),
-                ),
-              ),
-              onSubmitted: _doSearch,
+              ],
             ),
           ),
         ),
@@ -219,7 +197,7 @@ class _TabChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: selected ? colorScheme.primary : Colors.transparent,
+            color: selected ? colorScheme.primary : const Color(0x00000000),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
@@ -324,6 +302,7 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
     }
 
     final songs = _allResults ?? [];
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       children: [
@@ -334,7 +313,7 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+                  Icon(Icons.search_off, size: 48, color: colorScheme.mutedForeground),
                   const SizedBox(height: 12),
                   Text('未找到与"${widget.keyword}"相关的歌曲'),
                 ],
@@ -350,7 +329,7 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: Text(
                     '找到 ${songs.length} 首歌曲',
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: colorScheme.mutedForeground),
                   ),
                 ),
                 Expanded(
@@ -363,11 +342,7 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Card(
                           child: ListTile(
-                            leading: Icon(
-                              Icons.music_note,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 24,
-                            ),
+                            leading: Icon(Icons.music_note, color: colorScheme.primary, size: 24),
                             title: Text(
                               merged.primary.name,
                               maxLines: 1,
@@ -380,11 +355,9 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
                             ),
                             trailing: Text(
                               merged.displaySources,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
-                              ),
+                              style: const TextStyle(fontSize: 12),
                             ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           ),
                         ),
                       );

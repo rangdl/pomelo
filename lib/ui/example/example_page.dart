@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart' show ListTile;
 import 'package:pomelo/core/routers/app_router.gr.dart';
+import 'package:pomelo/core/framework/framework.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Example 页面 — 示例列表页
@@ -98,9 +98,22 @@ class Ex1DetailView extends StatelessWidget {
                 showToast(
                   context: context,
                   builder: (context, overlay) => Card(
-                    child: ListTile(
-                      title: Text('操作成功'),
-                      subtitle: Text('这是一个 shadcn_flutter Toast'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('操作成功'),
+                          Text(
+                            '这是一个 shadcn_flutter Toast',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.mutedForeground,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );

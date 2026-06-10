@@ -1,8 +1,8 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart' show ListTile;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors;
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/framework/framework.dart';
 
 /// 我的页面 — 用户设置中心
 ///
@@ -20,8 +20,8 @@ class MyPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeMode = ref.watch(settingWatcherProvider('my_theme_mode'));
-    final effective = themeMode ?? 'system';
+    final themeModeAsync = ref.watch(settingWatcherProvider('my_theme_mode'));
+    final themeMode = themeModeAsync.value ?? 'system';
 
     return Scaffold(
       headers: [AppBar(title: const Text('设置'))],
@@ -40,10 +40,10 @@ class MyPage extends ConsumerWidget {
           const SizedBox(height: 8),
           Card(
             child: ListTile(
-              leading: const Icon(Icons.brightness_6),
+              leading: const Icon(Icons.brightness_6, size: 20),
               title: const Text('主题模式'),
               trailing: Select<String>(
-                value: effective,
+                value: themeMode,
                 onChanged: (value) {
                   if (value != null) Settings.set('my_theme_mode', value);
                 },
@@ -81,12 +81,9 @@ class MyPage extends ConsumerWidget {
           const SizedBox(height: 8),
           Card(
             child: ListTile(
-              leading: const Icon(Icons.volume_up),
+              leading: const Icon(Icons.volume_up, size: 20),
               title: const Text('播放设置'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                // TODO: 导航到播放设置
-              },
+              trailing: const Icon(Icons.chevron_right, size: 20),
             ),
           ),
         ],

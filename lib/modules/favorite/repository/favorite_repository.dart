@@ -8,6 +8,7 @@ class FavoriteRepository extends InMemoryRepository<FavoriteItem> {
 
   @override
   Future<void> onInit() async {
+    await super.onInit();
     // 初始化默认数据
     await saveAll([
       const FavoriteItem(id: '1', title: '示例收藏 1', icon: 'heart'),

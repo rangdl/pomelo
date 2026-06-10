@@ -5,3 +5,4 @@ export 'module/module_widget.dart';
 export 'repository/repository.dart';
 export 'service/service.dart';
 export 'storage/storage.dart';
+export 'framework/framework.dart';
