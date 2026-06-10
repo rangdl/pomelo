@@ -1,16 +1,18 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
 // import 'package:drift/drift.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:pomelo/core/storage/settings.dart';
-import 'package:pomelo/modules/music/model/song.dart';
 // import 'package:pomelo/models/database/database.dart';
 // import 'package:pomelo/provider/database/database.dart';
 // import 'package:pomelo/provider/server/sourced_track_provider.dart';
 import 'package:pomelo/core/extensions/list.dart';
+import 'package:pomelo/modules/audio_player/module_providers.dart';
+import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
+import 'package:pomelo/modules/log/providers/log_providers.dart';
+import 'package:pomelo/modules/music/model/song.dart';
+
 // import 'package:pomelo/models/database/database.dart';
 // import 'package:pomelo/provider/blacklist_provider.dart';
 // import 'package:pomelo/provider/database/database.dart';
@@ -18,28 +20,14 @@ import 'package:pomelo/core/extensions/list.dart';
 // import 'package:pomelo/provider/server/sourced_track_provider.dart';
 
 // import '../../models/metadata/metadata.dart';
-import '../model/audio_player.dart';
+import '../model/media.dart';
 // import '../../services/logger/logger.dart';
 // import '../model/audio_player.dart';
 import '../model/state.dart';
 
-/// 持久化 key
-const _storageKey = 'audio_player_state';
-
-Future<AudioPlayerState?> _get() async {
-  final sss = Settings.get(_storageKey);
-  if (sss == null) {
-    return null;
-  }
-  return AudioPlayerState.fromJson(jsonDecode(sss));
-}
-
-Future<void> _set(AudioPlayerState state) async {
-  Settings.set(_storageKey, jsonEncode(state));
-}
-
 class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   // BlackListNotifier get _blacklist => ref.read(blacklistProvider.notifier);
+  AudioPlayerService get audioPlayer => ref.read(audioPlayerServiceProvider);
 
   void _assertAllowedTracks(Iterable<Song> tracks) {
     assert(
@@ -57,8 +45,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
   Future<void> _syncSavedState() async {
     // final database = ref.read(databaseProvider);
-
-    var playerState = await _get();
+    final audioPlayerService = ref.read(audioPlayerServiceProvider);
+    var playerState = await audioPlayerService.repository.restore();
 
     if (playerState == null) {
       playerState = AudioPlayerState(
@@ -67,7 +55,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         shuffled: audioPlayer.isShuffled,
         collections: [],
       );
-      _set(
+      audioPlayerService.repository.persist(
         AudioPlayerState(
           playing: audioPlayer.isPlaying,
           loopMode: audioPlayer.loopMode,
@@ -106,7 +94,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   }
 
   Future<void> _updatePlayerState(AudioPlayerState companion) async {
-    await _set(companion);
+    await ref.read(audioPlayerServiceProvider).repository.persist(companion);
     // final database = ref.read(databaseProvider);
 
     // await (database.update(
@@ -126,6 +114,14 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
             state,
           );
         } catch (e, stack) {
+          ref
+              .read(logServiceProvider)
+              .error(
+                'audioPlayerState',
+                e.toString(),
+                error: e,
+                stackTrace: stack,
+              );
           // AppLogger.reportError(e, stack);
         }
       }),
@@ -138,6 +134,14 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
             // AudioPlayerStateTableCompanion(loopMode: Value(loopMode)),
           );
         } catch (e, stack) {
+          ref
+              .read(logServiceProvider)
+              .error(
+                'audioPlayerState',
+                e.toString(),
+                error: e,
+                stackTrace: stack,
+              );
           // AppLogger.reportError(e, stack);
         }
       }),
@@ -150,6 +154,14 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
             // AudioPlayerStateTableCompanion(shuffled: Value(shuffled)),
           );
         } catch (e, stack) {
+          ref
+              .read(logServiceProvider)
+              .error(
+                'audioPlayerState',
+                e.toString(),
+                error: e,
+                stackTrace: stack,
+              );
           // AppLogger.reportError(e, stack);
         }
       }),
@@ -169,6 +181,14 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
             // ),
           );
         } catch (e, stack) {
+          ref
+              .read(logServiceProvider)
+              .error(
+                'audioPlayerState',
+                e.toString(),
+                error: e,
+                stackTrace: stack,
+              );
           // AppLogger.reportError(e, stack);
         }
       }),
@@ -476,8 +496,3 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     // ref.read(discordProvider.notifier).clear();
   }
 }
-
-final audioPlayerProvider =
-    NotifierProvider<AudioPlayerNotifier, AudioPlayerState>(
-      () => AudioPlayerNotifier(),
-    );

@@ -9,6 +9,8 @@ import 'package:pomelo/core/routers/app_router.dart';
 import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/modules/log/log_module.dart';
 import 'package:pomelo/modules/log/providers/log_providers.dart';
+import 'package:pomelo/modules/audio_player/audio_player_module.dart';
+import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/favorite/favorite_module.dart';
 import 'package:pomelo/modules/my/my_module.dart';
 import 'package:pomelo/modules/music/music_module.dart';
@@ -40,6 +42,7 @@ void main() async {
   final moduleManager = ModuleManager();
   final homeModule = HomeModule();
   final logModule = LogModule();
+  final audioPlayerModule = AudioPlayerModule();
   await moduleManager.registerAll([
     homeModule,
     ExampleModule(),
@@ -50,6 +53,7 @@ void main() async {
     MusicLocalModule(),
     LxMusicModule(),
     logModule,
+    audioPlayerModule,
   ]);
   await moduleManager.initAll();
   await moduleManager.readyAll();
@@ -84,6 +88,7 @@ void main() async {
       overrides: [
         logServiceProvider.overrideWithValue(logModule.service),
         homeModuleProvider.overrideWithValue(homeModule),
+        audioPlayerModuleProvider.overrideWithValue(audioPlayerModule),
       ],
       child: const _AppShell(),
     ),
