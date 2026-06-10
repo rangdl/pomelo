@@ -129,3 +129,9 @@ class AudioPlayerInterface {
     return _mkPlayer.state.buffering;
   }
 }
+
+extension AsMediaListSong on Iterable<Song> {
+  List<PomeloMedia> asMediaList() {
+    return map((track) => PomeloMedia(track)).toList();
+  }
+}

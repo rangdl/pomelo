@@ -48,7 +48,8 @@ class LocalMusicProvider extends MusicProvider {
         albumId: 'local_album_${i % 5}',
         albumName: '本地专辑 ${(i % 5) + 1}',
         duration: Duration(seconds: 180 + i * 10).inSeconds,
-        path: 'file:///local/songs/song_$i.mp3',
+        // path: 'file:///local/songs/song_$i.mp3',
+        path: 'E:\\music\\lx-music\\周深 - 漫漫.mp3',
         source: _source,
       );
     });

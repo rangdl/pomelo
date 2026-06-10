@@ -1,5 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -23,16 +24,33 @@ class SongList extends ConsumerWidget {
           padding: const EdgeInsets.only(bottom: 4),
           child: Card(
             child: ListTile(
-              leading: Icon(Icons.music_note, color: colorScheme.primary, size: 24),
-              title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              leading: Icon(
+                Icons.music_note,
+                color: colorScheme.primary,
+                size: 24,
+              ),
+              title: Text(
+                song.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               subtitle: Text(
                 '${song.artist}  ·  ${song.formattedDuration}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              trailing: Text(
-                song.source.name,
-                style: const TextStyle(fontSize: 12),
+              trailing: Row(
+                children: [
+                  Text(song.source.name).medium,
+                  IconButton.text(
+                    icon: Icon(Icons.play_arrow_outlined),
+                    onPressed: () {
+                      ref.read(audioPlayerProvider.notifier).load([
+                        song,
+                      ], autoPlay: true);
+                    },
+                  ),
+                ],
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
