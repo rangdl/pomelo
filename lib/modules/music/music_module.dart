@@ -1,3 +1,4 @@
+import 'package:media_kit/media_kit.dart';
 import 'package:pomelo/core/mars.dart';
 import 'model/music_provider.dart';
 import 'model/pagination_response.dart';
@@ -147,6 +148,7 @@ class MusicModule extends Module {
 
   @override
   Future<void> onInit() async {
+    MediaKit.ensureInitialized();
     await _repository.onInit();
     _service = MusicSdkService(repository: _repository);
     await _service.onInit();
