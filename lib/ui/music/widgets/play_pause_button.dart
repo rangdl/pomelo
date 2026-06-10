@@ -1,5 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/modules/audio_player/model/audio_player.dart';
+import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
 import 'package:pomelo/modules/music/model/song.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -10,6 +10,7 @@ class PlayPauseButton extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final audioPlayer = ref.watch(audioPlayerServiceProvider);
     final audioPlayerState = ref.watch(audioPlayerProvider);
     final notifier = ref.read(audioPlayerProvider.notifier);
 
