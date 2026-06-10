@@ -44,14 +44,14 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   void _assertAllowedTracks(Iterable<Song> tracks) {
     assert(
       tracks.every((track) => track is SongFull || track is SongLocal),
-      'All tracks must be either SpotubeFullTrackObject or SpotubeLocalTrackObject',
+      'All tracks must be either SongFull or SongLocal',
     );
   }
 
   void _assertAllowedTrack(Song tracks) {
     assert(
       tracks is SongFull || tracks is SongLocal,
-      'Track must be either SpotubeFullTrackObject or SpotubeLocalTrackObject',
+      'Track must be either SongFull or SongLocal',
     );
   }
 

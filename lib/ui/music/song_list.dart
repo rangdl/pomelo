@@ -1,7 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
 import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌曲列表组件
@@ -41,15 +41,8 @@ class SongList extends ConsumerWidget {
               ),
               trailing: Row(
                 children: [
-                  Text(song.source.name).medium,
-                  IconButton.text(
-                    icon: Icon(Icons.play_arrow_outlined),
-                    onPressed: () {
-                      ref.read(audioPlayerProvider.notifier).load([
-                        song,
-                      ], autoPlay: true);
-                    },
-                  ),
+                  Text(song.source.name).muted,
+                  PlayPauseButton(song: song),
                 ],
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
