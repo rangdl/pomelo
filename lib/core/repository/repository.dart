@@ -26,13 +26,17 @@ abstract class Repository<T> {
 
   /// 仓储是否已初始化
   bool get isInitialized => _isInitialized;
-  final bool _isInitialized = false;
+  bool _isInitialized = false;
 
   /// 初始化仓储
-  Future<void> onInit() async {}
+  Future<void> onInit() async {
+    _isInitialized = true;
+  }
 
   /// 销毁仓储
-  Future<void> onDispose() async {}
+  Future<void> onDispose() async {
+    _isInitialized = false;
+  }
 }
 
 /// 基础内存仓储实现

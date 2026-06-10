@@ -8,6 +8,7 @@ class StatisticsRepository extends InMemoryRepository<StatisticsEntry> {
 
   @override
   Future<void> onInit() async {
+    await super.onInit();
     await saveAll([
       const StatisticsEntry(id: '1', label: '项目数', value: 12, unit: '个'),
       const StatisticsEntry(id: '2', label: '完成率', value: 75, unit: '%'),

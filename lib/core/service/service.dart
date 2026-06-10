@@ -6,12 +6,16 @@ abstract class Service {
   /// 服务标识
   String get id;
 
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+
   /// 初始化服务
-  Future<void> onInit() async {}
+  Future<void> onInit() async {
+    _isInitialized = true;
+  }
 
   /// 销毁服务
-  Future<void> onDispose() async {}
-
-  final bool _isInitialized = false;
-  bool get isInitialized => _isInitialized;
+  Future<void> onDispose() async {
+    _isInitialized = false;
+  }
 }

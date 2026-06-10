@@ -1,12 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/modules/music/model/music_provider.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/song_list.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart'
-    show GhostButton, ButtonSize;
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 音乐来源切换按钮（右上角）
 class SourceSwitchButton extends ConsumerWidget {
@@ -59,58 +57,64 @@ class SourceSwitchButton extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (dialogContext) {
-        return SimpleDialog(
+        return AlertDialog(
           title: const Text('选择音乐来源'),
-          children: [
-            SimpleDialogOption(
-              onPressed: () {
-                ref.read(selectedSourceProvider.notifier).selectAll();
-                Navigator.of(dialogContext).pop();
-              },
-              child: Text(
-                '全部来源',
-                style: TextStyle(
-                  fontWeight: selectedSourceId == null ? FontWeight.bold : null,
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            ...categories.expand((category) {
-              final catProviders = byCategory[category.id] ?? [];
-              return [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 4),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GhostButton(
+                  onPressed: () {
+                    ref.read(selectedSourceProvider.notifier).selectAll();
+                    Navigator.of(dialogContext).pop();
+                  },
                   child: Text(
-                    category.name,
+                    '全部来源',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.5),
+                      fontWeight: selectedSourceId == null ? FontWeight.bold : null,
                     ),
                   ),
                 ),
-                ...catProviders.map(
-                  (p) => SimpleDialogOption(
-                    onPressed: () {
-                      ref
-                          .read(selectedSourceProvider.notifier)
-                          .select(p.sourceId);
-                      Navigator.of(dialogContext).pop();
-                    },
-                    child: Text(
-                      p.sourceName,
-                      style: TextStyle(
-                        fontWeight: selectedSourceId == p.sourceId
-                            ? FontWeight.bold
-                            : null,
+                const Divider(),
+                ...categories.expand((category) {
+                  final catProviders = byCategory[category.id] ?? [];
+                  return [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                      child: Text(
+                        category.name,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.mutedForeground,
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ];
-            }),
-          ],
+                    ...catProviders.map(
+                      (p) => GhostButton(
+                        onPressed: () {
+                          ref
+                              .read(selectedSourceProvider.notifier)
+                              .select(p.sourceId);
+                          Navigator.of(dialogContext).pop();
+                        },
+                        child: Text(
+                          p.sourceName,
+                          style: TextStyle(
+                            fontWeight: selectedSourceId == p.sourceId
+                                ? FontWeight.bold
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ];
+                }),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -149,7 +153,7 @@ class MusicSection extends ConsumerWidget {
                         style: TextStyle(
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withValues(alpha: 0.6),
+                          ).colorScheme.mutedForeground,
                         ),
                       ),
                     ),
@@ -173,7 +177,7 @@ class MusicSection extends ConsumerWidget {
                 style: TextStyle(
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ).colorScheme.mutedForeground,
                 ),
               ),
             ),

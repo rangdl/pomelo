@@ -4,12 +4,11 @@
 library;
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/material.dart'
-    show Colors, ListTile, SimpleDialog, showDialog;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/log/model/log_entry.dart';
 import 'package:pomelo/modules/log/providers/log_providers.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart' hide Colors, showDialog;
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 日志主页面
 @RoutePage()
@@ -91,6 +90,7 @@ class _LogTile extends StatelessWidget {
           '${entry.timestamp.toString().substring(0, 19)}  [${entry.tag}]'
           '${entry.sourceModuleId != null ? ' (${entry.sourceModuleId})' : ''}',
         ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         onTap: () => _showLogDetail(context, entry),
       ),
     );
@@ -100,63 +100,74 @@ class _LogTile extends StatelessWidget {
   void _showLogDetail(BuildContext context, LogEntry entry) {
     showDialog(
       context: context,
-      builder: (dialogContext) => SimpleDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('日志详情'),
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _detailRow('级别', entry.level.name.toUpperCase()),
-                _detailRow('标签', entry.tag),
-                _detailRow('时间', entry.timestamp.toString()),
-                if (entry.sourceModuleId != null)
-                  _detailRow('来源模块', entry.sourceModuleId!),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _detailRow(context, '级别', entry.level.name.toUpperCase()),
+              _detailRow(context, '标签', entry.tag),
+              _detailRow(context, '时间', entry.timestamp.toString()),
+              if (entry.sourceModuleId != null)
+                _detailRow(context, '来源模块', entry.sourceModuleId!),
+              const SizedBox(height: 12),
+              Text(
+                '消息',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.mutedForeground,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(entry.message),
+              if (entry.error != null) ...[
                 const SizedBox(height: 12),
-                const Text('消息', style: TextStyle(color: Color(0xFF757575))),
+                Text(
+                  '错误详情',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.mutedForeground,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(entry.message),
-                if (entry.error != null) ...[
-                  const SizedBox(height: 12),
-                  const Text(
-                    '错误详情',
-                    style: TextStyle(color: Color(0xFF757575)),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    entry.error.toString(),
-                    style: const TextStyle(color: Colors.red),
-                  ),
-                ],
-                if (entry.stackTrace != null) ...[
-                  const SizedBox(height: 12),
-                  const Text(
-                    '堆栈跟踪',
-                    style: TextStyle(color: Color(0xFF757575)),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    entry.stackTrace.toString(),
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                ],
-                if (entry.metadata != null && entry.metadata!.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  const Text('元数据', style: TextStyle(color: Color(0xFF757575))),
-                  const SizedBox(height: 4),
-                  Text(entry.metadata.toString()),
-                ],
+                Text(
+                  entry.error.toString(),
+                  style: const TextStyle(color: Color(0xFFEF4444)),
+                ),
               ],
-            ),
+              if (entry.stackTrace != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  '堆栈跟踪',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.mutedForeground,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  entry.stackTrace.toString(),
+                  style: const TextStyle(fontSize: 11),
+                ),
+              ],
+              if (entry.metadata != null && entry.metadata!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  '元数据',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.mutedForeground,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(entry.metadata.toString()),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _detailRow(String label, String value) {
+  Widget _detailRow(BuildContext context, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -166,7 +177,9 @@ class _LogTile extends StatelessWidget {
             width: 72,
             child: Text(
               label,
-              style: const TextStyle(color: Color(0xFF757575)),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.mutedForeground,
+              ),
             ),
           ),
           Expanded(child: Text(value)),
@@ -182,14 +195,23 @@ class _LogLevelBadge extends StatelessWidget {
 
   const _LogLevelBadge({required this.level});
 
+  static const _levelColors = {
+    LogLevel.debug: Color(0xFF9E9E9E),
+    LogLevel.info: Color(0xFF2196F3),
+    LogLevel.warning: Color(0xFFFF9800),
+    LogLevel.error: Color(0xFFEF4444),
+    LogLevel.fatal: Color(0xFF9C27B0),
+  };
+
   @override
   Widget build(BuildContext context) {
-    final (color, label) = switch (level) {
-      LogLevel.debug => (Colors.grey, 'DBG'),
-      LogLevel.info => (Colors.blue, 'INF'),
-      LogLevel.warning => (Colors.orange, 'WRN'),
-      LogLevel.error => (Colors.red, 'ERR'),
-      LogLevel.fatal => (Colors.purple, 'FTL'),
+    final color = _levelColors[level]!;
+    final label = switch (level) {
+      LogLevel.debug => 'DBG',
+      LogLevel.info => 'INF',
+      LogLevel.warning => 'WRN',
+      LogLevel.error => 'ERR',
+      LogLevel.fatal => 'FTL',
     };
 
     return Container(

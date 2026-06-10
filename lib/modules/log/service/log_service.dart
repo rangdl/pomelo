@@ -177,10 +177,13 @@ class LogService extends Service {
   int get count => repository.count;
 
   @override
-  Future<void> onInit() async {}
+  Future<void> onInit() async {
+    await super.onInit();
+  }
 
   @override
   Future<void> onDispose() async {
+    await super.onDispose();
     _listeners.clear();
   }
 }

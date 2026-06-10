@@ -125,11 +125,13 @@ class LogRepository extends Repository<LogEntry> {
 
   @override
   Future<void> onInit() async {
+    await super.onInit();
     // 可在此处加载持久化日志
   }
 
   @override
   Future<void> onDispose() async {
+    await super.onDispose();
     // 可在此处持久化日志
   }
 }

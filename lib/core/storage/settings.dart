@@ -181,16 +181,31 @@ final settingsProvider = StreamProvider<Map<String, String?>>((ref) {
 
 /// 监听单个设置项的变化
 ///
+/// 直接监听指定 key 的 BoxEvent，避免全量重建。
+///
 /// 用法:
 /// ```dart
 /// final themeMode = ref.watch(settingWatcherProvider('theme_mode'));
 /// ```
-final settingWatcherProvider = Provider.family<String?, String>((
+final settingWatcherProvider = StreamProvider.family<String?, String>((
   ref,
   String key,
 ) {
-  // 通过 settingsProvider 建立响应式依赖链：
-  // Settings.set() → box.watch() → settingsProvider 发射新值 → 本 provider 重建
-  ref.watch(settingsProvider);
-  return Settings.get(key);
+  final box = Settings._internalBox;
+  if (box == null) return const Stream.empty();
+
+  // 先发射当前值，再监听后续变化
+  final controller = StreamController<String?>();
+  controller.add(box.get(key));
+
+  final sub = box.watch(key: key).listen((_) {
+    controller.add(box.get(key));
+  });
+
+  ref.onDispose(() {
+    sub.cancel();
+    controller.close();
+  });
+
+  return controller.stream;
 });
