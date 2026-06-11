@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/music_module.dart';
-import 'package:pomelo/modules/music_lx/model/lx_music_provider.dart';
+import 'package:pomelo/modules/music_lx/model/lx_music_service.dart';
 import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
 import 'package:pomelo/modules/music_lx/providers/providers.dart';
 
@@ -13,15 +13,15 @@ const _kLxScriptPaths = 'music_lx_script_paths';
 /// Lx 音乐模块
 ///
 /// 通过 quickjs 动态加载用户上传的 JS 脚本文件，
-/// 提供 tx/kg/wy/kw/mg 五个音乐平台的 [MusicProvider] 实现。
-/// 初始化完成后通过 [MusicModule.register] 注册自身为数据提供者。
+/// 提供 tx/kg/wy/kw/mg 五个音乐平台的 [MusicService] 实现。
+/// 初始化完成后通过 [MusicModule.register] 注册自身为数据服务。
 class LxMusicModule extends Module {
   late final LxJsEngine _jsEngine;
-  late final TxMusicProvider _txMusicProvider;
-  late final KgMusicProvider _kgMusicProvider;
-  late final WyMusicProvider _wyMusicProvider;
-  late final KwMusicProvider _kwMusicProvider;
-  late final MgMusicProvider _mgMusicProvider;
+  late final TxMusicService _txMusicService;
+  late final KgMusicService _kgMusicService;
+  late final WyMusicService _wyMusicService;
+  late final KwMusicService _kwMusicService;
+  late final MgMusicService _mgMusicService;
 
   /// 已加载的脚本路径列表
   final List<String> _scriptPaths = [];
@@ -44,14 +44,14 @@ class LxMusicModule extends Module {
   /// 已加载的脚本路径列表（只读）
   List<String> get scriptPaths => List.unmodifiable(_scriptPaths);
 
-  /// 获取指定平台的提供者
-  LxMusicProvider? provider(String platformId) {
+  /// 获取指定平台的服务
+  LxMusicService? service(String platformId) {
     return switch (platformId) {
-      'tx' => _txMusicProvider,
-      'kg' => _kgMusicProvider,
-      'wy' => _wyMusicProvider,
-      'kw' => _kwMusicProvider,
-      'mg' => _mgMusicProvider,
+      'tx' => _txMusicService,
+      'kg' => _kgMusicService,
+      'wy' => _wyMusicService,
+      'kw' => _kwMusicService,
+      'mg' => _mgMusicService,
       _ => null,
     };
   }
@@ -61,12 +61,12 @@ class LxMusicModule extends Module {
     _jsEngine = LxJsEngine();
     await _jsEngine.init();
 
-    // 创建各平台提供者
-    _txMusicProvider = TxMusicProvider(jsEngine: _jsEngine);
-    _kgMusicProvider = KgMusicProvider(jsEngine: _jsEngine);
-    _wyMusicProvider = WyMusicProvider(jsEngine: _jsEngine);
-    _kwMusicProvider = KwMusicProvider(jsEngine: _jsEngine);
-    _mgMusicProvider = MgMusicProvider(jsEngine: _jsEngine);
+    // 创建各平台服务
+    _txMusicService = TxMusicService(jsEngine: _jsEngine);
+    _kgMusicService = KgMusicService(jsEngine: _jsEngine);
+    _wyMusicService = WyMusicService(jsEngine: _jsEngine);
+    _kwMusicService = KwMusicService(jsEngine: _jsEngine);
+    _mgMusicService = MgMusicService(jsEngine: _jsEngine);
 
     // 从 Settings 读取已保存的脚本文件路径并加载
     final pathsJson = Settings.get(_kLxScriptPaths);
@@ -86,11 +86,11 @@ class LxMusicModule extends Module {
   Future<void> onReady() async {
     final musicModule = ModuleManager().find<MusicModule>('music');
     if (musicModule == null) return;
-    musicModule.register(_txMusicProvider);
-    musicModule.register(_kgMusicProvider);
-    musicModule.register(_wyMusicProvider);
-    musicModule.register(_kwMusicProvider);
-    musicModule.register(_mgMusicProvider);
+    musicModule.register(_txMusicService);
+    musicModule.register(_kgMusicService);
+    musicModule.register(_wyMusicService);
+    musicModule.register(_kwMusicService);
+    musicModule.register(_mgMusicService);
   }
 
   @override

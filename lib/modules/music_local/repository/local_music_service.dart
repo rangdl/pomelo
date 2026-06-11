@@ -1,15 +1,16 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 
 /// 支持的音频文件扩展名
 const _audioExtensions = {'.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.wma'};
 
-/// 本地音乐提供者
+/// 本地音乐服务
 ///
-/// 实现 [MusicProvider] 接口，提供本地音乐的查询能力。
+/// 实现 [MusicService] 接口，提供本地音乐的查询能力。
 /// 通过扫描用户指定的目录，将音频文件信息存入内存，对外提供查询服务。
-class LocalMusicProvider extends MusicProvider {
+class LocalMusicService extends MusicService {
   @override
   String get sourceId => 'local';
 
@@ -145,10 +146,10 @@ class LocalMusicProvider extends MusicProvider {
     }
   }
 
-  // ========== MusicProvider 接口实现 ==========
+  // ========== MusicService 接口实现 ==========
 
   @override
-  Future<SongPageResult> searchSongs(
+  Future<PaginationResponse<Song>> searchSongs(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -168,7 +169,7 @@ class LocalMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<AlbumPageResult> searchAlbums(
+  Future<PaginationResponse<Album>> searchAlbums(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -188,7 +189,7 @@ class LocalMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<PlaylistPageResult> searchPlaylists(
+  Future<PaginationResponse<Playlist>> searchPlaylists(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -213,7 +214,7 @@ class LocalMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<SongPageResult> getSongs({int page = 1, int limit = 20}) async {
+  Future<PaginationResponse<Song>> getSongs({int page = 1, int limit = 20}) async {
     return PaginationResponse.fromList(_songs, page: page, limit: limit);
   }
 
@@ -227,7 +228,7 @@ class LocalMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<SongPageResult> getAlbumSongs(
+  Future<PaginationResponse<Song>> getAlbumSongs(
     String albumId, {
     int page = 1,
     int limit = 20,
@@ -249,7 +250,7 @@ class LocalMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<PlaylistPageResult> getPlaylists({
+  Future<PaginationResponse<Playlist>> getPlaylists({
     int page = 1,
     int limit = 20,
   }) async {

@@ -1,5 +1,5 @@
-export 'tx_music_provider.dart';
-export 'kg_music_provider.dart';
-export 'wy_music_provider.dart';
-export 'kw_music_provider.dart';
-export 'mg_music_provider.dart';
+export 'tx_music_service.dart';
+export 'kg_music_service.dart';
+export 'wy_music_service.dart';
+export 'kw_music_service.dart';
+export 'mg_music_service.dart';
