@@ -43,9 +43,9 @@ class LxJsEngine {
     print('LxJsEngine: 脚本加载成功');
 
     // 调用脚本初始化方法
-    final resultSetup = jsEngine.jsRuntime.evaluate('musicsdk.setup()');
+    final resultSetup = jsEngine.jsRuntime.evaluate('setup()');
     if (resultSetup.isError) {
-      print('LxJsEngine: 脚本初始化方法: ${result.toString()}');
+      print('LxJsEngine: 脚本初始化失败: ${result.toString()}');
       return false;
     }
     print('LxJsEngine: 脚本初始化成功');
@@ -60,7 +60,7 @@ class LxJsEngine {
     type = 'tx',
   }) async {
     final result = await jsEngine.jsRuntime.evaluateAsync(
-      "musicsdk.registry.get(`$type`)?.search(`$keyword`, $page, $limit)",
+      "registry.get(`$type`)?.search(`$keyword`, $page, $limit)",
     );
     jsEngine.jsRuntime.executePendingJob();
     if (result.isError) {
