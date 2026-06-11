@@ -1,5 +1,5 @@
 import 'package:pomelo/core/mars.dart';
-import '../model/song.dart';
+
 import '../repository/music_repository.dart';
 
 /// Music SDK 业务服务
