@@ -37,12 +37,6 @@ final musicSdkPlaylistRepositoryProvider =
       return ref.watch(musicSdkModuleProvider).repository.playlists;
     });
 
-/// 当前播放歌曲
-final musicSdkCurrentSongProvider = Provider<Song?>((ref) {
-  final module = ref.watch(musicSdkModuleProvider);
-  return module.service.currentSong;
-});
-
 /// 音乐搜索关键词 Notifier
 class SearchKeywordNotifier extends Notifier<String> {
   @override

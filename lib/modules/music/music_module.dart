@@ -148,7 +148,6 @@ class MusicModule extends Module {
 
   @override
   Future<void> onInit() async {
-    MediaKit.ensureInitialized();
     await _repository.onInit();
     _service = MusicSdkService(repository: _repository);
     await _service.onInit();
