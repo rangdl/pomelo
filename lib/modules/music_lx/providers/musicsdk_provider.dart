@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/model/models.dart';
@@ -20,13 +19,13 @@ class LxJsEngine {
   /// 此方法用于额外初始化逻辑（如预加载 polyfill）。
   Future<void> init() async {
     // 注入polyfill兼容能力
-    final polyfill = await rootBundle.loadString('assets/js/polyfill.umd.js');
-    final resultPolyfill = jsEngine.jsRuntime.evaluate(polyfill);
-    if (resultPolyfill.isError) {
-      print('js: ${resultPolyfill.toString()}');
-    } else {
-      print('polyfill加载成功');
-    }
+    // final polyfill = await rootBundle.loadString('assets/js/polyfill.umd.js');
+    // final resultPolyfill = jsEngine.jsRuntime.evaluate(polyfill);
+    // if (resultPolyfill.isError) {
+    //   print('js: ${resultPolyfill.toString()}');
+    // } else {
+    //   print('polyfill加载成功');
+    // }
   }
 
   /// 动态加载 JS 脚本内容

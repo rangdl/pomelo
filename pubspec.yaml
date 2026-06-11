@@ -62,8 +62,8 @@ dependencies:
 
   # quickjs
   flutter_js: ^0.8.7
-  crypto: ^3.0.3
-  encrypt: ^5.0.3
+  # crypto: ^3.0.3
+  # encrypt: ^5.0.3
 
   audio_service: 0.18.18
   audio_service_mpris: ^0.2.0
@@ -81,6 +81,8 @@ dependencies:
   json_annotation: ^4.9.0
   file_picker: ^10.1.9
   path: ^1.9.1
+  pointycastle: ^3.9.1
+  convert: ^3.1.1          # hex 编解码
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
