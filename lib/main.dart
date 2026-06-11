@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:bot_toast/bot_toast.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:media_kit/media_kit.dart' show MediaKit;
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/routers/app_router.dart';
 import 'package:pomelo/core/storage/settings.dart';
@@ -29,6 +30,7 @@ final appRouter = AppRouter();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
 
   await _runPlatformSpecificCode();
 

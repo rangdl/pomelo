@@ -76,4 +76,9 @@ abstract class MusicProvider {
 
   /// 获取歌单列表（推荐/默认）
   Future<PlaylistPageResult> getPlaylists({int page = 1, int limit = 20});
+
+  /// 获取歌曲播放链接 用于音乐信息和播放链接分步获取
+  Future<String> getMusicUrl(Song song) {
+    throw UnimplementedError('$sourceName(getMusicUrl) 尚未实现');
+  }
 }
