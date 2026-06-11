@@ -1,9 +1,14 @@
+import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:pomelo/modules/music/model/models.dart';
+
+/// 支持的音频文件扩展名
+const _audioExtensions = {'.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.wma'};
 
 /// 本地音乐提供者
 ///
 /// 实现 [MusicProvider] 接口，提供本地音乐的查询能力。
-/// 当前使用模拟数据，实际应用可替换为本地数据库查询。
+/// 通过扫描用户指定的目录，将音频文件信息存入内存，对外提供查询服务。
 class LocalMusicProvider extends MusicProvider {
   @override
   String get sourceId => 'local';
@@ -19,60 +24,128 @@ class LocalMusicProvider extends MusicProvider {
 
   final _source = (id: 'local', name: '本地音乐');
 
-  /// 模拟数据
-  late final List<Song> _mockSongs;
-  late final List<Album> _mockAlbums;
-  late final List<Playlist> _mockPlaylists;
+  /// 内存中的歌曲列表
+  final List<Song> _songs = [];
 
-  LocalMusicProvider() {
-    _initMockData();
+  /// 内存中的专辑列表
+  final List<Album> _albums = [];
+
+  /// 内存中的歌单列表
+  final List<Playlist> _playlists = [];
+
+  /// 已配置的扫描目录列表
+  final List<String> _directories = [];
+
+  /// 已配置的扫描目录列表（只读）
+  List<String> get directories => List.unmodifiable(_directories);
+
+  /// 当前歌曲总数
+  int get songCount => _songs.length;
+
+  /// 当前专辑总数
+  int get albumCount => _albums.length;
+
+  // ========== 目录管理 ==========
+
+  /// 添加目录并扫描
+  Future<void> addDirectory(String path) async {
+    if (_directories.contains(path)) return;
+    _directories.add(path);
+    await scanDirectory(path);
   }
 
-  void _initMockData() {
-    _mockAlbums = List.generate(5, (i) {
-      return Album(
-        id: 'local_album_$i',
-        title: '本地专辑 ${i + 1}',
-        artist: '艺术家 ${i + 1}',
-        year: 2020 + i,
-        songCount: 10 + i,
-        source: _source,
-      );
-    });
-
-    _mockSongs = List.generate(20, (i) {
-      return Song.local(
-        id: 'local_song_$i',
-        name: '本地歌曲 ${i + 1}',
-        artist: '艺术家 ${(i % 5) + 1}',
-        albumId: 'local_album_${i % 5}',
-        albumName: '本地专辑 ${(i % 5) + 1}',
-        duration: Duration(seconds: 180 + i * 10).inSeconds,
-        // path: 'file:///local/songs/song_$i.mp3',
-        path: 'E:\\music\\lx-music\\周深 - 漫漫.mp3',
-        source: _source,
-      );
-    });
-
-    _mockPlaylists = [
-      Playlist(
-        id: 'local_playlist_0',
-        name: '最近播放',
-        creator: '我',
-        description: '最近播放的歌曲',
-        songs: _mockSongs.take(5).toList(),
-        source: _source,
-      ),
-      Playlist(
-        id: 'local_playlist_1',
-        name: '我的最爱',
-        creator: '我',
-        description: '收藏的歌曲',
-        songs: _mockSongs,
-        source: _source,
-      ),
-    ];
+  /// 移除目录并清理对应歌曲
+  void removeDirectory(String path) {
+    _directories.remove(path);
+    // 移除来自该目录的所有歌曲
+    _songs.removeWhere((s) => s is SongLocal && s.path.startsWith(path));
+    // 重建专辑列表
+    _rebuildAlbums();
   }
+
+  /// 清空所有数据
+  void clear() {
+    _songs.clear();
+    _albums.clear();
+    _playlists.clear();
+    _directories.clear();
+  }
+
+  // ========== 目录扫描 ==========
+
+  /// 扫描指定目录，递归查找音频文件并加入内存
+  Future<void> scanDirectory(String dirPath) async {
+    final dir = Directory(dirPath);
+    if (!await dir.exists()) return;
+
+    await for (final entity in dir.list(recursive: true)) {
+      if (entity is! File) continue;
+      final ext = p.extension(entity.path).toLowerCase();
+      if (!_audioExtensions.contains(ext)) continue;
+
+      // 避免重复添加
+      if (_songs.any((s) => s is SongLocal && s.path == entity.path)) continue;
+
+      final fileName = p.basenameWithoutExtension(entity.path);
+      // 尝试解析 "艺术家 - 歌名" 格式
+      final parts = fileName.split(' - ');
+      final String artist;
+      final String name;
+      if (parts.length >= 2) {
+        artist = parts[0].trim();
+        name = parts.sublist(1).join(' - ').trim();
+      } else {
+        artist = '未知艺术家';
+        name = fileName;
+      }
+
+      final id = 'local-${entity.path.hashCode}';
+      final song = Song.local(
+        id: id,
+        name: name,
+        artist: artist,
+        albumId: null,
+        albumName: null,
+        duration: 0, // 不解析 tag，时长设为 0
+        path: entity.path,
+        source: _source,
+      );
+      _songs.add(song);
+    }
+
+    // 扫描完成后重建专辑列表
+    _rebuildAlbums();
+  }
+
+  /// 重新扫描所有已配置的目录
+  Future<void> rescanAll() async {
+    _songs.clear();
+    _albums.clear();
+    for (final dir in List<String>.from(_directories)) {
+      await scanDirectory(dir);
+    }
+  }
+
+  /// 根据歌曲列表重建专辑分组
+  void _rebuildAlbums() {
+    _albums.clear();
+    // 按艺术家分组作为"专辑"
+    final groups = <String, List<Song>>{};
+    for (final song in _songs) {
+      groups.putIfAbsent(song.artist, () => []).add(song);
+    }
+    for (final entry in groups.entries) {
+      _albums.add(Album(
+        id: 'local-artist-${entry.key.hashCode}',
+        title: entry.key,
+        artist: entry.key,
+        songCount: entry.value.length,
+        source: _source,
+      ));
+    }
+  }
+
+  // ========== MusicProvider 接口实现 ==========
 
   @override
   Future<SongPageResult> searchSongs(
@@ -80,10 +153,11 @@ class LocalMusicProvider extends MusicProvider {
     int page = 1,
     int limit = 20,
   }) async {
-    if (keyword.isEmpty)
+    if (keyword.isEmpty) {
       return PaginationResponse.empty(page: page, limit: limit);
+    }
     final lower = keyword.toLowerCase();
-    final filtered = _mockSongs
+    final filtered = _songs
         .where(
           (s) =>
               s.name.toLowerCase().contains(lower) ||
@@ -99,10 +173,11 @@ class LocalMusicProvider extends MusicProvider {
     int page = 1,
     int limit = 20,
   }) async {
-    if (keyword.isEmpty)
+    if (keyword.isEmpty) {
       return PaginationResponse.empty(page: page, limit: limit);
+    }
     final lower = keyword.toLowerCase();
-    final filtered = _mockAlbums
+    final filtered = _albums
         .where(
           (a) =>
               a.title.toLowerCase().contains(lower) ||
@@ -118,10 +193,11 @@ class LocalMusicProvider extends MusicProvider {
     int page = 1,
     int limit = 20,
   }) async {
-    if (keyword.isEmpty)
+    if (keyword.isEmpty) {
       return PaginationResponse.empty(page: page, limit: limit);
+    }
     final lower = keyword.toLowerCase();
-    final filtered = _mockPlaylists
+    final filtered = _playlists
         .where((p) => p.name.toLowerCase().contains(lower))
         .toList();
     return PaginationResponse.fromList(filtered, page: page, limit: limit);
@@ -130,7 +206,7 @@ class LocalMusicProvider extends MusicProvider {
   @override
   Future<Song?> getSong(String id) async {
     try {
-      return _mockSongs.firstWhere((s) => s.id == id);
+      return _songs.firstWhere((s) => s.id == id);
     } catch (_) {
       return null;
     }
@@ -138,13 +214,13 @@ class LocalMusicProvider extends MusicProvider {
 
   @override
   Future<SongPageResult> getSongs({int page = 1, int limit = 20}) async {
-    return PaginationResponse.fromList(_mockSongs, page: page, limit: limit);
+    return PaginationResponse.fromList(_songs, page: page, limit: limit);
   }
 
   @override
   Future<Album?> getAlbum(String id) async {
     try {
-      return _mockAlbums.firstWhere((a) => a.id == id);
+      return _albums.firstWhere((a) => a.id == id);
     } catch (_) {
       return null;
     }
@@ -156,14 +232,17 @@ class LocalMusicProvider extends MusicProvider {
     int page = 1,
     int limit = 20,
   }) async {
-    final filtered = _mockSongs.where((s) => s.albumId == albumId).toList();
+    final album = await getAlbum(albumId);
+    if (album == null) return PaginationResponse.empty(page: page, limit: limit);
+    // 专辑按艺术家分组，查找该艺术家的所有歌曲
+    final filtered = _songs.where((s) => s.artist == album.artist).toList();
     return PaginationResponse.fromList(filtered, page: page, limit: limit);
   }
 
   @override
   Future<Playlist?> getPlaylist(String id) async {
     try {
-      return _mockPlaylists.firstWhere((p) => p.id == id);
+      return _playlists.firstWhere((p) => p.id == id);
     } catch (_) {
       return null;
     }
@@ -175,7 +254,7 @@ class LocalMusicProvider extends MusicProvider {
     int limit = 20,
   }) async {
     return PaginationResponse.fromList(
-      _mockPlaylists,
+      _playlists,
       page: page,
       limit: limit,
     );

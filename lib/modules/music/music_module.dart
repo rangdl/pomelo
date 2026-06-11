@@ -1,29 +1,24 @@
-import 'package:media_kit/media_kit.dart';
 import 'package:pomelo/core/mars.dart';
 import 'model/music_provider.dart';
 import 'model/pagination_response.dart';
-import 'repository/music_repository.dart';
-import 'service/music_service.dart';
 
 /// Music 模块
 ///
-/// 音乐模块，合并了原 music_sdk 的数据模型/仓储/服务和原 music 的提供者管理。
+/// 音乐查询服务模块，统一管理所有注册的 [MusicProvider]。
 ///
 /// 职责：
-/// - 底层数据：管理 [Song]/[Album]/[Playlist] 数据的 [MusicSdkRepository]
-/// - 播放服务：通过 [MusicSdkService] 管理播放队列
-/// - 上层接口：各平台模块（music_local、music_lx 等）通过 [register] 注册 [MusicProvider]
+/// - 提供 [MusicProvider] 接口规范，供其他模块实现
+/// - 通过 [register] 接收并管理各平台模块注册的音乐服务
+/// - 提供统一的多源聚合查询能力（搜索歌曲/专辑/歌单）
+///
+/// 本模块不包含播放功能，播放由 audio_player 模块负责。
 ///
 /// 遵循 M.A.R.S. 架构：
-/// - Model: song.dart, album.dart, playlist.dart, music_source.dart
+/// - Model: song.dart, album.dart, playlist.dart, music_provider.dart
 /// - Action: (模块初始化/就绪/销毁)
-/// - Repository: MusicSdkRepository
-/// - Service/State: MusicSdkService / Riverpod Provider
+/// - Repository: 由各 MusicProvider 实现自行管理
+/// - Service/State: Riverpod Provider
 class MusicModule extends Module {
-  MusicModule() : _repository = MusicSdkRepository();
-
-  final MusicSdkRepository _repository;
-  late final MusicSdkService _service;
   final List<MusicProvider> _providers = [];
 
   @override
@@ -38,18 +33,19 @@ class MusicModule extends Module {
   @override
   List<String> get dependencies => ['home'];
 
-  /// 对外暴露仓储，供 Provider 使用
-  MusicSdkRepository get repository => _repository;
-
-  /// 对外暴露服务，供 Provider 使用
-  MusicSdkService get service => _service;
-
   /// 所有已注册的提供者（只读）
   List<MusicProvider> get providers => List.unmodifiable(_providers);
 
   /// 注册一个音乐数据提供者
   void register(MusicProvider provider) {
     _providers.add(provider);
+  }
+
+  /// 注销一个音乐数据提供者
+  bool unregister(String sourceId) {
+    final before = _providers.length;
+    _providers.removeWhere((p) => p.sourceId == sourceId);
+    return _providers.length < before;
   }
 
   /// 根据 sourceId 获取对应的提供者
@@ -148,9 +144,7 @@ class MusicModule extends Module {
 
   @override
   Future<void> onInit() async {
-    await _repository.onInit();
-    _service = MusicSdkService(repository: _repository);
-    await _service.onInit();
+    // 等待各平台模块注册 MusicProvider
   }
 
   @override
@@ -160,8 +154,6 @@ class MusicModule extends Module {
 
   @override
   Future<void> onDispose() async {
-    await _service.onDispose();
-    await _repository.onDispose();
     _providers.clear();
   }
 }

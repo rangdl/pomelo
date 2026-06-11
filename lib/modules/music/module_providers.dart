@@ -1,8 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/core/repository/repository.dart';
 import 'model/song.dart';
-import 'model/album.dart';
-import 'model/playlist.dart';
 import 'music_module.dart';
 
 // ============================================================
@@ -16,26 +13,6 @@ final musicSdkModuleProvider = Provider<MusicModule>((ref) {
     'MusicModule 尚未初始化。请先调用 ModuleManager.lazyInit("music")。',
   );
 });
-
-/// 歌曲 Repository 的 Provider
-final musicSdkSongRepositoryProvider = Provider<InMemoryRepository<Song>>((
-  ref,
-) {
-  return ref.watch(musicSdkModuleProvider).repository.songs;
-});
-
-/// 专辑 Repository 的 Provider
-final musicSdkAlbumRepositoryProvider = Provider<InMemoryRepository<Album>>((
-  ref,
-) {
-  return ref.watch(musicSdkModuleProvider).repository.albums;
-});
-
-/// 歌单 Repository 的 Provider
-final musicSdkPlaylistRepositoryProvider =
-    Provider<InMemoryRepository<Playlist>>((ref) {
-      return ref.watch(musicSdkModuleProvider).repository.playlists;
-    });
 
 /// 音乐搜索关键词 Notifier
 class SearchKeywordNotifier extends Notifier<String> {
