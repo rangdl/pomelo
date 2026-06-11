@@ -1,16 +1,24 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 
 import '../model/js_engine.dart';
 
+/// Lx JS 引擎封装
+///
+/// 负责管理 quickjs 运行时，注入基础能力（fetch/crypto/AES），
+/// 并支持动态加载用户上传的 JS 脚本文件内容。
 class LxJsEngine {
   final JsEngine jsEngine;
 
   LxJsEngine() : jsEngine = JsEngine();
 
+  /// 初始化引擎（注入 fetch/crypto/AES 基础能力）
+  ///
+  /// 注意：JsEngine 构造函数中已自动调用 init() 注入基础能力，
+  /// 此方法用于额外初始化逻辑（如预加载 polyfill）。
   Future<void> init() async {
+    // 注入polyfill兼容能力
     final polyfill = await rootBundle.loadString('assets/js/polyfill.umd.js');
     final resultPolyfill = jsEngine.jsRuntime.evaluate(polyfill);
     if (resultPolyfill.isError) {
@@ -18,60 +26,33 @@ class LxJsEngine {
     } else {
       print('polyfill加载成功');
     }
-    // 加载 sdk
-    final musicsdk = await rootBundle.loadString('assets/js/musicsdk.umd.js');
-    final resultSdk = jsEngine.jsRuntime.evaluate(musicsdk);
-    if (resultSdk.isError) {
-      print('js: ${resultSdk.toString()}');
-    } else {
-      print('musicsdk加载成功');
-    }
-    // 加载插件
-    final result = jsEngine.jsRuntime.evaluate("""
-const registry = new globalThis.musicsdk.Registry();
-registry.register(new musicsdk.KgSearcher());
-registry.register(new musicsdk.KwSearcher());
-registry.register(new musicsdk.TxSearcher());
-registry.register(new musicsdk.WySearcher());
-registry.register(new musicsdk.MgSearcher());
-
-registry.registerSongListProvider(new musicsdk.KgSongListProvider());
-registry.registerSongListProvider(new musicsdk.KwSongListProvider());
-registry.registerSongListProvider(new musicsdk.TxSongListProvider());
-registry.registerSongListProvider(new musicsdk.WySongListProvider());
-registry.registerSongListProvider(new musicsdk.MgSongListProvider());
-
-registry.registerLyricFetcher(new musicsdk.KgLyricFetcher());
-registry.registerLyricFetcher(new musicsdk.KwLyricFetcher());
-registry.registerLyricFetcher(new musicsdk.TxLyricFetcher());
-registry.registerLyricFetcher(new musicsdk.WyLyricFetcher());
-registry.registerLyricFetcher(new musicsdk.MgLyricFetcher());
-
-registry.registerLeaderboardProvider(new musicsdk.KgLeaderboardProvider());
-registry.registerLeaderboardProvider(new musicsdk.KwLeaderboardProvider());
-registry.registerLeaderboardProvider(new musicsdk.TxLeaderboardProvider());
-registry.registerLeaderboardProvider(new musicsdk.WyLeaderboardProvider());
-registry.registerLeaderboardProvider(new musicsdk.MgLeaderboardProvider());
-
-registry.registerHotSearchFetcher(new musicsdk.KgHotSearchFetcher());
-registry.registerHotSearchFetcher(new musicsdk.KwHotSearchFetcher());
-registry.registerHotSearchFetcher(new musicsdk.TxHotSearchFetcher());
-registry.registerHotSearchFetcher(new musicsdk.WyHotSearchFetcher());
-registry.registerHotSearchFetcher(new musicsdk.MgHotSearchFetcher());
-
-registry.registerTipSearchProvider(new musicsdk.KgTipSearchProvider());
-registry.registerTipSearchProvider(new musicsdk.KwTipSearchProvider());
-registry.registerTipSearchProvider(new musicsdk.TxTipSearchProvider());
-registry.registerTipSearchProvider(new musicsdk.WyTipSearchProvider());
-registry.registerTipSearchProvider(new musicsdk.MgTipSearchProvider());
-""");
-    if (result.isError) {
-      print('js: ${result.toString()}');
-    } else {
-      print('musicsdk插件注册成功');
-    }
   }
 
+  /// 动态加载 JS 脚本内容
+  ///
+  /// 接受脚本字符串，在 quickjs 中执行。
+  /// 脚本需要遵循 musicsdk Registry 协议，自行注册 Searcher/Provider 等。
+  ///
+  /// 返回是否加载成功。
+  bool loadScript(String scriptContent) {
+    final result = jsEngine.jsRuntime.evaluate(scriptContent);
+    if (result.isError) {
+      print('LxJsEngine: 脚本加载失败: ${result.toString()}');
+      return false;
+    }
+    print('LxJsEngine: 脚本加载成功');
+
+    // 调用脚本初始化方法
+    final resultSetup = jsEngine.jsRuntime.evaluate('musicsdk.setup()');
+    if (resultSetup.isError) {
+      print('LxJsEngine: 脚本初始化方法: ${result.toString()}');
+      return false;
+    }
+    print('LxJsEngine: 脚本初始化成功');
+    return true;
+  }
+
+  /// 执行 JS 搜索
   Future<PaginationResponse<Song>> search(
     String keyword, {
     int page = 1,
@@ -79,8 +60,7 @@ registry.registerTipSearchProvider(new musicsdk.MgTipSearchProvider());
     type = 'tx',
   }) async {
     final result = await jsEngine.jsRuntime.evaluateAsync(
-      "registry.get(`$type`)?.search(`$keyword`, $page, $limit)",
-      // "typeof `$keyword`",
+      "musicsdk.registry.get(`$type`)?.search(`$keyword`, $page, $limit)",
     );
     jsEngine.jsRuntime.executePendingJob();
     if (result.isError) {
@@ -88,9 +68,6 @@ registry.registerTipSearchProvider(new musicsdk.MgTipSearchProvider());
     }
     final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
     final json = Map<String, dynamic>.from(await asyncResult.rawResult);
-    // final json = Map<String, dynamic>.from(
-    //   jsonDecode(asyncResult.stringResult),
-    // );
 
     final total = json['total'] ?? 0;
     final items = (json['list'] ?? []) as List<dynamic>;
@@ -115,109 +92,9 @@ registry.registerTipSearchProvider(new musicsdk.MgTipSearchProvider());
   }
 }
 
-class MusicsdkNotifier extends Notifier<JavascriptRuntime> {
-  @override
-  JavascriptRuntime build() {
-    var jsEngine = JsEngine();
-    Future.microtask(() => init());
-    ref.onDispose(jsEngine.dispose);
-    return jsEngine.jsRuntime;
-  }
-
-  Future<void> init() async {
-    // 加载 sdk
-    final musicsdk = await rootBundle.loadString('assets/js/musicsdk.umd.js');
-    final resultSdk = state.evaluate(musicsdk);
-    if (resultSdk.isError) {
-      print('js: ${resultSdk.toString()}');
-    } else {
-      print('musicsdk加载成功');
-    }
-
-    // 加载插件
-    final result = state.evaluate("""
-const registry = new globalThis.musicsdk.Registry();
-registry.register(new musicsdk.KgSearcher());
-registry.register(new musicsdk.KwSearcher());
-registry.register(new musicsdk.TxSearcher());
-registry.register(new musicsdk.WySearcher());
-registry.register(new musicsdk.MgSearcher());
-
-registry.registerSongListProvider(new musicsdk.KgSongListProvider());
-registry.registerSongListProvider(new musicsdk.KwSongListProvider());
-registry.registerSongListProvider(new musicsdk.TxSongListProvider());
-registry.registerSongListProvider(new musicsdk.WySongListProvider());
-registry.registerSongListProvider(new musicsdk.MgSongListProvider());
-
-registry.registerLyricFetcher(new musicsdk.KgLyricFetcher());
-registry.registerLyricFetcher(new musicsdk.KwLyricFetcher());
-registry.registerLyricFetcher(new musicsdk.TxLyricFetcher());
-registry.registerLyricFetcher(new musicsdk.WyLyricFetcher());
-registry.registerLyricFetcher(new musicsdk.MgLyricFetcher());
-
-registry.registerLeaderboardProvider(new musicsdk.KgLeaderboardProvider());
-registry.registerLeaderboardProvider(new musicsdk.KwLeaderboardProvider());
-registry.registerLeaderboardProvider(new musicsdk.TxLeaderboardProvider());
-registry.registerLeaderboardProvider(new musicsdk.WyLeaderboardProvider());
-registry.registerLeaderboardProvider(new musicsdk.MgLeaderboardProvider());
-
-registry.registerHotSearchFetcher(new musicsdk.KgHotSearchFetcher());
-registry.registerHotSearchFetcher(new musicsdk.KwHotSearchFetcher());
-registry.registerHotSearchFetcher(new musicsdk.TxHotSearchFetcher());
-registry.registerHotSearchFetcher(new musicsdk.WyHotSearchFetcher());
-registry.registerHotSearchFetcher(new musicsdk.MgHotSearchFetcher());
-
-registry.registerTipSearchProvider(new musicsdk.KgTipSearchProvider());
-registry.registerTipSearchProvider(new musicsdk.KwTipSearchProvider());
-registry.registerTipSearchProvider(new musicsdk.TxTipSearchProvider());
-registry.registerTipSearchProvider(new musicsdk.WyTipSearchProvider());
-registry.registerTipSearchProvider(new musicsdk.MgTipSearchProvider());
-""");
-    if (result.isError) {
-      print('js: ${result.toString()}');
-    } else {
-      print('musicsdk插件注册成功');
-    }
-  }
-
-  Future<PaginationResponse<Song>> search(
-    String keyword, {
-    int page = 1,
-    int limit = 20,
-    type = 'tx',
-  }) async {
-    final result = await state.evaluateAsync(
-      "registry.get(`$type`)?.search(`$keyword`, $page, $limit)",
-      // "typeof `$keyword`",
-    );
-    state.executePendingJob();
-    if (result.isError) {
-      print(result.toString());
-    }
-    final asyncResult = await state.handlePromise(result);
-    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
-    final total = json['total'] ?? 0;
-    final items = (json['list'] ?? []) as List<dynamic>;
-    final res = PaginationResponse<Song>(
-      limit: limit,
-      page: page,
-      total: total,
-      hasMore: (page * limit) < total,
-      items: items
-          .map(
-            (item) => PomeloTrackObjectMeta.fromJson(
-              Map<String, dynamic>.from(item),
-            ).toSong(),
-          )
-          .toList(),
-    );
-    return res;
-  }
-}
-
-final musicsdkProvider = NotifierProvider<MusicsdkNotifier, JavascriptRuntime>(
-  MusicsdkNotifier.new,
-);
+// ============================================================
+// 音乐元数据模型（用于 JS SDK 返回数据的解析）
+// ============================================================
 
 class PomeloTrackExtraType {
   final String type; // 音质类型: "128k", "320k", "flac", "flac24bit"
