@@ -1,10 +1,7 @@
-import 'song.dart';
-import 'album.dart';
-import 'playlist.dart';
-
 /// 分页查询结果
 ///
 /// 所有分页接口统一使用此模型返回。
+/// 作为 M.A.R.S. 基础能力，供所有模块使用。
 class PaginationResponse<T> {
   /// 当前页码，从 1 开始
   final int page;
@@ -53,12 +50,3 @@ class PaginationResponse<T> {
     return PaginationResponse(page: page, limit: limit);
   }
 }
-
-/// 分页歌曲结果
-typedef SongPageResult = PaginationResponse<Song>;
-
-/// 分页专辑结果
-typedef AlbumPageResult = PaginationResponse<Album>;
-
-/// 分页歌单结果
-typedef PlaylistPageResult = PaginationResponse<Playlist>;

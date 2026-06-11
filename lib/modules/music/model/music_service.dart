@@ -1,23 +1,23 @@
+import 'package:pomelo/core/mars.dart';
 import 'song.dart';
 import 'album.dart';
 import 'playlist.dart';
-import 'pagination_response.dart';
 
-/// 音乐数据提供者接口
+/// 音乐服务接口
 ///
 /// 由各音乐平台模块实现，注册到 [MusicModule] 后统一对外提供服务。
-/// 每个提供者有自己的 [sourceId] 和 [sourceName]，用于标识数据来源。
-/// 可选的 [categoryId] 和 [categoryName] 用于对提供者进行二级分类分组。
-abstract class MusicProvider {
-  /// 提供者唯一标识，如 'local', 'netease'
+/// 每个服务有自己的 [sourceId] 和 [sourceName]，用于标识数据来源。
+/// 可选的 [categoryId] 和 [categoryName] 用于对服务进行二级分类分组。
+abstract class MusicService {
+  /// 服务唯一标识，如 'local', 'netease'
   String get sourceId;
 
-  /// 提供者显示名称，如 '本地音乐', '网易云音乐'
+  /// 服务显示名称，如 '本地音乐', '网易云音乐'
   String get sourceName;
 
-  /// 分类标识，用于对提供者进行分组，如 'lx'（在线音乐平台）
+  /// 分类标识，用于对服务进行分组，如 'lx'（在线音乐平台）
   ///
-  /// 相同 [categoryId] 的提供者会在 UI 上分到同一组。
+  /// 相同 [categoryId] 的服务会在 UI 上分到同一组。
   /// 未提供时归入默认分类 'default'。
   String get categoryId => 'default';
 
@@ -29,21 +29,21 @@ abstract class MusicProvider {
   // ========== 搜索 ==========
 
   /// 搜索歌曲
-  Future<SongPageResult> searchSongs(
+  Future<PaginationResponse<Song>> searchSongs(
     String keyword, {
     int page = 1,
     int limit = 20,
   });
 
   /// 搜索专辑
-  Future<AlbumPageResult> searchAlbums(
+  Future<PaginationResponse<Album>> searchAlbums(
     String keyword, {
     int page = 1,
     int limit = 20,
   });
 
   /// 搜索歌单
-  Future<PlaylistPageResult> searchPlaylists(
+  Future<PaginationResponse<Playlist>> searchPlaylists(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -55,7 +55,7 @@ abstract class MusicProvider {
   Future<Song?> getSong(String id);
 
   /// 获取歌曲列表（如最近播放、本地所有歌曲）
-  Future<SongPageResult> getSongs({int page = 1, int limit = 20});
+  Future<PaginationResponse<Song>> getSongs({int page = 1, int limit = 20});
 
   // ========== 专辑 ==========
 
@@ -63,7 +63,7 @@ abstract class MusicProvider {
   Future<Album?> getAlbum(String id);
 
   /// 获取专辑中的歌曲
-  Future<SongPageResult> getAlbumSongs(
+  Future<PaginationResponse<Song>> getAlbumSongs(
     String albumId, {
     int page = 1,
     int limit = 20,
@@ -75,7 +75,7 @@ abstract class MusicProvider {
   Future<Playlist?> getPlaylist(String id);
 
   /// 获取歌单列表（推荐/默认）
-  Future<PlaylistPageResult> getPlaylists({int page = 1, int limit = 20});
+  Future<PaginationResponse<Playlist>> getPlaylists({int page = 1, int limit = 20});
 
   /// 获取歌曲播放链接 用于音乐信息和播放链接分步获取
   Future<String> getMusicUrl(Song song) {

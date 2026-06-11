@@ -1,1 +1,1 @@
-export 'lx_music_provider.dart';
+export 'lx_music_service.dart';

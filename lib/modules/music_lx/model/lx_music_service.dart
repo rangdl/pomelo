@@ -1,11 +1,12 @@
+import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
 
-/// Lx 音乐提供者基类
+/// Lx 音乐服务基类
 ///
-/// 为 [MusicProvider] 提供默认的空实现（抛出 [UnimplementedError]）。
+/// 为 [MusicService] 提供默认的空实现（抛出 [UnimplementedError]）。
 /// 各子类只需重写 [sourceId]、[sourceName]，按需实现具体方法。
-abstract class LxMusicProvider extends MusicProvider {
+abstract class LxMusicService extends MusicService {
   @override
   String get categoryId => 'lx';
 
@@ -14,9 +15,9 @@ abstract class LxMusicProvider extends MusicProvider {
 
   final LxJsEngine jsEngine;
 
-  LxMusicProvider({required this.jsEngine});
+  LxMusicService({required this.jsEngine});
   @override
-  Future<SongPageResult> searchSongs(
+  Future<PaginationResponse<Song>> searchSongs(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -26,7 +27,7 @@ abstract class LxMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<AlbumPageResult> searchAlbums(
+  Future<PaginationResponse<Album>> searchAlbums(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -35,7 +36,7 @@ abstract class LxMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<PlaylistPageResult> searchPlaylists(
+  Future<PaginationResponse<Playlist>> searchPlaylists(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -49,7 +50,7 @@ abstract class LxMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<SongPageResult> getSongs({int page = 1, int limit = 20}) {
+  Future<PaginationResponse<Song>> getSongs({int page = 1, int limit = 20}) {
     throw UnimplementedError('$sourceName(getSongs) 尚未实现');
   }
 
@@ -59,7 +60,7 @@ abstract class LxMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<SongPageResult> getAlbumSongs(
+  Future<PaginationResponse<Song>> getAlbumSongs(
     String albumId, {
     int page = 1,
     int limit = 20,
@@ -73,7 +74,7 @@ abstract class LxMusicProvider extends MusicProvider {
   }
 
   @override
-  Future<PlaylistPageResult> getPlaylists({int page = 1, int limit = 20}) {
+  Future<PaginationResponse<Playlist>> getPlaylists({int page = 1, int limit = 20}) {
     throw UnimplementedError('$sourceName(getPlaylists) 尚未实现');
   }
 }

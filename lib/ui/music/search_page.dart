@@ -8,10 +8,11 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/model/merged_song.dart';
-import 'package:pomelo/ui/music/model/provider_result.dart';
+import 'package:pomelo/ui/music/model/service_result.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 
@@ -111,13 +112,13 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
   @override
   Widget build(BuildContext context) {
     final module = ref.watch(musicModuleProvider);
-    final providers = module?.providers ?? [];
+    final services = module?.services ?? [];
     final categories = module?.categories ?? [];
-    final byCategory = module?.providersByCategory() ?? {};
+    final byCategory = module?.servicesByCategory() ?? {};
 
     final filtered = _tabSourceId == null
-        ? providers
-        : providers.where((p) => p.sourceId == _tabSourceId).toList();
+        ? services
+        : services.where((s) => s.sourceId == _tabSourceId).toList();
 
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -166,7 +167,7 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
         Expanded(
           child: _SearchResultsList(
             key: ValueKey('${_tabSourceId}_${widget.keyword}'),
-            providers: filtered,
+            services: filtered,
             keyword: widget.keyword,
           ),
         ),
@@ -218,12 +219,12 @@ class _TabChip extends StatelessWidget {
 
 /// 搜索结果列表
 class _SearchResultsList extends ConsumerStatefulWidget {
-  final List<MusicProvider> providers;
+  final List<MusicService> services;
   final String keyword;
 
   const _SearchResultsList({
     super.key,
-    required this.providers,
+    required this.services,
     required this.keyword,
   });
 
@@ -246,7 +247,7 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
   void didUpdateWidget(covariant _SearchResultsList oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.keyword != widget.keyword ||
-        oldWidget.providers != widget.providers) {
+        oldWidget.services != widget.services) {
       _allResults = null;
       _isLoading = true;
       _errors = [];
@@ -255,7 +256,7 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
   }
 
   Future<void> _performSearch() async {
-    if (widget.providers.isEmpty) {
+    if (widget.services.isEmpty) {
       setState(() {
         _allResults = [];
         _isLoading = false;
@@ -265,11 +266,11 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
 
     setState(() => _isLoading = true);
 
-    final results = await safeCallProviders<SongPageResult>(
-      widget.providers,
-      (p) => (p as MusicProvider).searchSongs(widget.keyword),
-      getId: (p) => (p as MusicProvider).sourceId,
-      getName: (p) => (p as MusicProvider).sourceName,
+    final results = await safeCallServices<PaginationResponse<Song>>(
+      widget.services,
+      (s) => (s as MusicService).searchSongs(widget.keyword),
+      getId: (s) => (s as MusicService).sourceId,
+      getName: (s) => (s as MusicService).sourceName,
     );
 
     final allSongs = <Song>[];

@@ -1,12 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/storage/settings.dart';
-import 'package:pomelo/modules/music/model/pagination_response.dart';
+import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
-import 'package:pomelo/modules/music/model/music_provider.dart';
+import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/model/song.dart';
-import 'package:pomelo/ui/music/model/provider_result.dart';
+import 'package:pomelo/modules/music_local/providers/local_music_providers.dart';
+import 'package:pomelo/ui/music/model/service_result.dart';
 
 /// 持久化 key
 const _kSelectedSource = 'music_selected_source';
@@ -40,7 +41,7 @@ final selectedSourceProvider =
       SelectedSourceNotifier.new,
     );
 
-/// 音乐列表数据：歌曲列表 + 出错的提供者
+/// 音乐列表数据：歌曲列表 + 出错的服务
 class MusicListData {
   final List<Song> songs;
   final List<({String sourceId, String sourceName, Object error})> errors;
@@ -48,25 +49,27 @@ class MusicListData {
   const MusicListData({this.songs = const [], this.errors = const []});
 }
 
-/// 获取当前来源的歌曲列表（逐提供者隔离异常）
+/// 获取当前来源的歌曲列表（逐服务隔离异常）
 final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
+  // 监听本地音乐数据版本，目录/扫描变更后自动刷新歌曲列表
+  ref.watch(localMusicVersionProvider);
   final sourceId = ref.watch(selectedSourceProvider);
-  final providers = await ref.watch(musicProvidersProvider.future);
+  final services = await ref.watch(musicServicesProvider.future);
 
-  Iterable<MusicProvider> targets = providers;
+  Iterable<MusicService> targets = services;
   if (sourceId != null) {
     final module = ModuleManager().find<MusicModule>('music');
-    final p = module?.provider(sourceId);
-    targets = p != null ? [p] : [];
+    final s = module?.service(sourceId);
+    targets = s != null ? [s] : [];
   }
 
   if (targets.isEmpty) return const MusicListData();
 
-  final results = await safeCallProviders<SongPageResult>(
+  final results = await safeCallServices<PaginationResponse<Song>>(
     targets.toList(),
-    (p) => (p as MusicProvider).getSongs(),
-    getId: (p) => (p as MusicProvider).sourceId,
-    getName: (p) => (p as MusicProvider).sourceName,
+    (s) => (s as MusicService).getSongs(),
+    getId: (s) => (s as MusicService).sourceId,
+    getName: (s) => (s as MusicService).sourceName,
   );
 
   final songs = <Song>[];

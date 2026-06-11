@@ -3,5 +3,4 @@
 export 'song.dart';
 export 'album.dart';
 export 'playlist.dart';
-export 'music_provider.dart';
-export 'pagination_response.dart';
+export 'music_service.dart';

@@ -1,5 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/modules/music/model/music_provider.dart';
+import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/song_list.dart';
@@ -12,15 +12,15 @@ class SourceSwitchButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final providersAsync = ref.watch(musicProvidersProvider);
+    final servicesAsync = ref.watch(musicServicesProvider);
     final selectedSourceId = ref.watch(selectedSourceProvider);
 
-    return providersAsync.when(
-      data: (providers) {
+    return servicesAsync.when(
+      data: (services) {
         final selectedName = selectedSourceId == null
             ? '全部'
-            : providers
-                      .where((p) => p.sourceId == selectedSourceId)
+            : services
+                      .where((s) => s.sourceId == selectedSourceId)
                       .firstOrNull
                       ?.sourceName ??
                   '全部';
@@ -28,7 +28,7 @@ class SourceSwitchButton extends ConsumerWidget {
         return GhostButton(
           size: ButtonSize.small,
           onPressed: () =>
-              _showSourcePicker(context, ref, providers, selectedSourceId),
+              _showSourcePicker(context, ref, services, selectedSourceId),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -47,12 +47,12 @@ class SourceSwitchButton extends ConsumerWidget {
   void _showSourcePicker(
     BuildContext context,
     WidgetRef ref,
-    List<MusicProvider> providers,
+    List<MusicService> services,
     String? selectedSourceId,
   ) {
     final module = ref.read(musicModuleProvider);
     final categories = module?.categories ?? [];
-    final byCategory = module?.providersByCategory() ?? {};
+    final byCategory = module?.servicesByCategory() ?? {};
 
     showDialog(
       context: context,
@@ -78,7 +78,7 @@ class SourceSwitchButton extends ConsumerWidget {
                 ),
                 const Divider(),
                 ...categories.expand((category) {
-                  final catProviders = byCategory[category.id] ?? [];
+                  final catServices = byCategory[category.id] ?? [];
                   return [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
@@ -92,18 +92,18 @@ class SourceSwitchButton extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    ...catProviders.map(
-                      (p) => GhostButton(
+                    ...catServices.map(
+                      (s) => GhostButton(
                         onPressed: () {
                           ref
                               .read(selectedSourceProvider.notifier)
-                              .select(p.sourceId);
+                              .select(s.sourceId);
                           Navigator.of(dialogContext).pop();
                         },
                         child: Text(
-                          p.sourceName,
+                          s.sourceName,
                           style: TextStyle(
-                            fontWeight: selectedSourceId == p.sourceId
+                            fontWeight: selectedSourceId == s.sourceId
                                 ? FontWeight.bold
                                 : null,
                           ),

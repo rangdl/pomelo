@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_js/flutter_js.dart';
+import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 
 import '../model/js_engine.dart';
