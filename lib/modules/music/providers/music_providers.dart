@@ -12,6 +12,9 @@ final musicReadyProvider = FutureProvider<bool>((ref) async {
   if (mm.modules.containsKey('music_lx')) {
     await mm.lazyInit('music_lx');
   }
+  if (mm.modules.containsKey('music_subsonic')) {
+    await mm.lazyInit('music_subsonic');
+  }
   return true;
 });
 

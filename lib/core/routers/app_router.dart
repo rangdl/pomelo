@@ -5,8 +5,8 @@ import 'app_router.gr.dart';
 ///
 /// 路由结构:
 ///   /             → RootPage (底部导航)
-///     /home       → HomeView (首页)
-///     /favorite   → FavoritePage (收藏)
+///   /home       → HomeView (首页)
+///     /favorite   → FavoritePage (平台)
 ///     /statistics → StatisticsPage (统计)
 ///     /my         → MyPage (我的)
 ///   /ex           → ExListView (示例列表)

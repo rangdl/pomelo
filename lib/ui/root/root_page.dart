@@ -11,7 +11,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 /// 导航标签定义
 const _navDestinations = [
   (key: ValueKey(0), icon: Icons.home, label: '首页'),
-  (key: ValueKey(1), icon: Icons.favorite, label: '收藏'),
+  (key: ValueKey(1), icon: Icons.layers, label: '平台'),
   (key: ValueKey(2), icon: Icons.bar_chart, label: '统计'),
   (key: ValueKey(3), icon: Icons.person, label: '我的'),
 ];
