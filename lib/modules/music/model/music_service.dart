@@ -1,4 +1,5 @@
 import 'package:pomelo/core/mars.dart';
+import 'music_source.dart';
 import 'song.dart';
 import 'album.dart';
 import 'playlist.dart';
@@ -15,16 +16,21 @@ abstract class MusicService {
   /// 服务显示名称，如 '本地音乐', '网易云音乐'
   String get sourceName;
 
-  /// 分类标识，用于对服务进行分组，如 'lx'（在线音乐平台）
+  /// 来源类型，如 [MusicSourceType.local]、[MusicSourceType.lx]
+  ///
+  /// 用于按类型对服务进行分组管理。
+  MusicSourceType get sourceType;
+
+  /// 分类标识，用于对服务进行二级分组，如 'lx'（在线音乐平台）
   ///
   /// 相同 [categoryId] 的服务会在 UI 上分到同一组。
-  /// 未提供时归入默认分类 'default'。
-  String get categoryId => 'default';
+  /// 默认使用 [sourceType] 的名称作为分类标识。
+  String get categoryId => sourceType.name;
 
   /// 分类显示名称，如 '在线音乐'
   ///
-  /// 未提供时显示 '默认'。
-  String get categoryName => '默认';
+  /// 默认使用 [sourceType] 的显示名称。
+  String get categoryName => sourceType.displayName;
 
   // ========== 搜索 ==========
 

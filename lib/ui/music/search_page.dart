@@ -113,8 +113,14 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
   Widget build(BuildContext context) {
     final module = ref.watch(musicModuleProvider);
     final services = module?.services ?? [];
-    final categories = module?.categories ?? [];
-    final byCategory = module?.servicesByCategory() ?? {};
+    final sources = module?.sources ?? [];
+
+    // 按来源类型分组
+    final byType = <MusicSourceType, List<MusicSource>>{};
+    for (final s in sources) {
+      byType.putIfAbsent(s.type, () => []).add(s);
+    }
+    final types = byType.keys.toList();
 
     final filtered = _tabSourceId == null
         ? services
@@ -135,15 +141,15 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
                 selected: _tabSourceId == null,
                 onTap: () => setState(() => _tabSourceId = null),
               ),
-              ...categories.expand((cat) {
-                final catProviders = byCategory[cat.id] ?? [];
-                if (catProviders.isEmpty) return <Widget>[];
+              ...types.expand((type) {
+                final typeSources = byType[type] ?? [];
+                if (typeSources.isEmpty) return <Widget>[];
                 return [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Center(
                       child: Text(
-                        cat.name,
+                        type.displayName,
                         style: TextStyle(
                           fontSize: 11,
                           color: colorScheme.foreground.withValues(alpha: 0.4),
@@ -151,13 +157,15 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
                       ),
                     ),
                   ),
-                  ...catProviders.map(
-                    (p) => _TabChip(
-                      label: p.sourceName,
-                      selected: _tabSourceId == p.sourceId,
-                      onTap: () => setState(() => _tabSourceId = p.sourceId),
-                    ),
-                  ),
+                  ...typeSources.expand((source) {
+                    return source.services.map(
+                      (p) => _TabChip(
+                        label: p.sourceName,
+                        selected: _tabSourceId == p.sourceId,
+                        onTap: () => setState(() => _tabSourceId = p.sourceId),
+                      ),
+                    );
+                  }),
                 ];
               }),
             ],

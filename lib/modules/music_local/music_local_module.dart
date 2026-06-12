@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/music_module.dart';
+import 'local_music_source.dart';
 import 'repository/local_music_service.dart';
 
 /// Settings key: 本地音乐目录列表（JSON 数组字符串）
@@ -14,7 +15,7 @@ const _kLocalMusicDirs = 'music_local_directories';
 ///
 /// 启动时从 Settings 读取已保存的目录列表，扫描后加载到内存。
 class MusicLocalModule extends Module {
-  late final LocalMusicService _service;
+  late final LocalMusicSource _source;
 
   @override
   String get id => 'music_local';
@@ -28,19 +29,23 @@ class MusicLocalModule extends Module {
   @override
   List<String> get dependencies => ['music'];
 
-  /// 对外暴露服务实例
-  LocalMusicService get service => _service;
+  /// 对外暴露来源实例
+  LocalMusicSource get source => _source;
+
+  /// 对外暴露服务实例（便捷访问）
+  LocalMusicService get service => _source.service;
 
   @override
   Future<void> onInit() async {
-    _service = LocalMusicService();
+    final localService = LocalMusicService();
+    _source = LocalMusicSource(service: localService);
     // 从 Settings 读取已保存的目录列表并扫描
     final dirsJson = Settings.get(_kLocalMusicDirs);
     if (dirsJson != null) {
       try {
         final dirs = (jsonDecode(dirsJson) as List).cast<String>();
         for (final dir in dirs) {
-          await _service.addDirectory(dir);
+          await localService.addDirectory(dir);
         }
       } catch (_) {
         // JSON 解析失败，忽略
@@ -50,15 +55,14 @@ class MusicLocalModule extends Module {
 
   @override
   Future<void> onReady() async {
-    // 在 onReady 中将服务注册到 MusicModule
-    // 此时 MusicModule 已就绪，可以接收注册
+    // 在 onReady 中将来源注册到 MusicModule
     final musicModule = ModuleManager().find<MusicModule>('music');
-    musicModule?.register(_service);
+    await musicModule?.addSource(_source);
   }
 
   @override
   Future<void> onDispose() async {
-    // 不需要额外清理
+    // 由 MusicModule.removeSource / dispose 负责清理
   }
 
   /// 保存当前目录列表到 Settings

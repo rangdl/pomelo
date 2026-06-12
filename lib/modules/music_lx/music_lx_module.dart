@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/music_module.dart';
-import 'package:pomelo/modules/music_lx/model/lx_music_service.dart';
 import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
-import 'package:pomelo/modules/music_lx/providers/providers.dart';
+import 'lx_script_source.dart';
 
 /// Settings key: Lx 音乐脚本文件路径列表（JSON 数组字符串）
 const _kLxScriptPaths = 'music_lx_script_paths';
@@ -13,18 +11,15 @@ const _kLxScriptPaths = 'music_lx_script_paths';
 /// Lx 音乐模块
 ///
 /// 通过 quickjs 动态加载用户上传的 JS 脚本文件，
-/// 提供 tx/kg/wy/kw/mg 五个音乐平台的 [MusicService] 实现。
-/// 初始化完成后通过 [MusicModule.register] 注册自身为数据服务。
+/// 每个脚本文件作为一个 [LxScriptSource] 来源，
+/// 自动检测脚本注册的平台并创建对应的 [MusicService]。
+///
+/// 所有脚本共享同一个 [LxJsEngine] 实例。
 class LxMusicModule extends Module {
   late final LxJsEngine _jsEngine;
-  late final TxMusicService _txMusicService;
-  late final KgMusicService _kgMusicService;
-  late final WyMusicService _wyMusicService;
-  late final KwMusicService _kwMusicService;
-  late final MgMusicService _mgMusicService;
 
-  /// 已加载的脚本路径列表
-  final List<String> _scriptPaths = [];
+  /// 已加载的脚本来源列表
+  final List<LxScriptSource> _scriptSources = [];
 
   @override
   String get id => 'music_lx';
@@ -41,32 +36,17 @@ class LxMusicModule extends Module {
   /// 对外暴露 JS 引擎
   LxJsEngine get jsEngine => _jsEngine;
 
-  /// 已加载的脚本路径列表（只读）
-  List<String> get scriptPaths => List.unmodifiable(_scriptPaths);
+  /// 已加载的脚本来源列表（只读）
+  List<LxScriptSource> get scriptSources => List.unmodifiable(_scriptSources);
 
-  /// 获取指定平台的服务
-  LxMusicService? service(String platformId) {
-    return switch (platformId) {
-      'tx' => _txMusicService,
-      'kg' => _kgMusicService,
-      'wy' => _wyMusicService,
-      'kw' => _kwMusicService,
-      'mg' => _mgMusicService,
-      _ => null,
-    };
-  }
+  /// 已加载的脚本路径列表
+  List<String> get scriptPaths =>
+      _scriptSources.map((s) => s.scriptPath).toList();
 
   @override
   Future<void> onInit() async {
     _jsEngine = LxJsEngine();
     await _jsEngine.init();
-
-    // 创建各平台服务
-    _txMusicService = TxMusicService(jsEngine: _jsEngine);
-    _kgMusicService = KgMusicService(jsEngine: _jsEngine);
-    _wyMusicService = WyMusicService(jsEngine: _jsEngine);
-    _kwMusicService = KwMusicService(jsEngine: _jsEngine);
-    _mgMusicService = MgMusicService(jsEngine: _jsEngine);
 
     // 从 Settings 读取已保存的脚本文件路径并加载
     final pathsJson = Settings.get(_kLxScriptPaths);
@@ -74,7 +54,7 @@ class LxMusicModule extends Module {
       try {
         final paths = (jsonDecode(pathsJson) as List).cast<String>();
         for (final path in paths) {
-          await _loadScriptFile(path);
+          await _createScriptSource(path);
         }
       } catch (_) {
         // JSON 解析失败，忽略
@@ -86,53 +66,68 @@ class LxMusicModule extends Module {
   Future<void> onReady() async {
     final musicModule = ModuleManager().find<MusicModule>('music');
     if (musicModule == null) return;
-    musicModule.register(_txMusicService);
-    musicModule.register(_kgMusicService);
-    musicModule.register(_wyMusicService);
-    musicModule.register(_kwMusicService);
-    musicModule.register(_mgMusicService);
+    // 将每个脚本来源注册到 MusicModule
+    for (final source in _scriptSources) {
+      await musicModule.addSource(source);
+    }
   }
 
   @override
   Future<void> onDispose() async {
     _jsEngine.dispose();
-  }
-
-  /// 加载脚本文件
-  Future<bool> _loadScriptFile(String path) async {
-    try {
-      final file = File(path);
-      if (!await file.exists()) return false;
-      final content = await file.readAsString();
-      final success = _jsEngine.loadScript(content);
-      if (success && !_scriptPaths.contains(path)) {
-        _scriptPaths.add(path);
-      }
-      return success;
-    } catch (e) {
-      print('LxMusicModule: 加载脚本失败 $path: $e');
-      return false;
-    }
+    _scriptSources.clear();
   }
 
   /// 添加并加载脚本文件
+  ///
+  /// 加载脚本、检测平台、创建服务，并注册到 MusicModule。
+  /// 返回是否加载成功。
   Future<bool> addScript(String path) async {
-    final success = await _loadScriptFile(path);
-    if (success) {
-      await saveScriptPaths();
+    // 避免重复添加
+    if (_scriptSources.any((s) => s.scriptPath == path)) return false;
+    final source = await _createScriptSource(path);
+    if (source == null) return false;
+    // 如果模块已就绪，立即注册到 MusicModule
+    if (isInitialized) {
+      final musicModule = ModuleManager().find<MusicModule>('music');
+      await musicModule?.addSource(source);
     }
-    return success;
+    await saveScriptPaths();
+    return true;
   }
 
-  /// 移除脚本（从列表移除，JS 引擎需重新初始化才能完全卸载）
-  void removeScript(String path) {
-    _scriptPaths.remove(path);
-    saveScriptPaths();
+  /// 移除脚本
+  ///
+  /// 从 MusicModule 注销其服务，并移除来源。
+  Future<void> removeScript(String path) async {
+    final idx = _scriptSources.indexWhere((s) => s.scriptPath == path);
+    if (idx == -1) return;
+    final source = _scriptSources.removeAt(idx);
+    // 从 MusicModule 注销
+    final musicModule = ModuleManager().find<MusicModule>('music');
+    await musicModule?.removeSource(source.id);
+    await saveScriptPaths();
+  }
+
+  /// 创建脚本来源并尝试初始化
+  Future<LxScriptSource?> _createScriptSource(String path) async {
+    final source = LxScriptSource(
+      scriptPath: path,
+      jsEngine: _jsEngine,
+    );
+    await source.init();
+    if (source.services.isEmpty) {
+      print('LxMusicModule: 脚本 $path 未注册任何平台，跳过');
+      await source.dispose();
+      return null;
+    }
+    _scriptSources.add(source);
+    return source;
   }
 
   /// 保存脚本路径列表到 Settings
   Future<void> saveScriptPaths() async {
-    await Settings.set(_kLxScriptPaths, jsonEncode(_scriptPaths));
+    await Settings.set(_kLxScriptPaths, jsonEncode(scriptPaths));
   }
 
   /// 从 Settings 读取已保存的脚本路径列表

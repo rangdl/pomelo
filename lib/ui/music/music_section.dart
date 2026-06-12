@@ -1,4 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/modules/music/model/music_source.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
@@ -51,8 +52,16 @@ class SourceSwitchButton extends ConsumerWidget {
     String? selectedSourceId,
   ) {
     final module = ref.read(musicModuleProvider);
-    final categories = module?.categories ?? [];
-    final byCategory = module?.servicesByCategory() ?? {};
+    final sources = module?.sources ?? [];
+
+    // 按来源类型分组
+    final byType = <MusicSourceType, List<MusicSource>>{};
+    for (final s in sources) {
+      byType.putIfAbsent(s.type, () => []).add(s);
+    }
+
+    // 按类型顺序展示
+    final types = byType.keys.toList();
 
     showDialog(
       context: context,
@@ -77,13 +86,13 @@ class SourceSwitchButton extends ConsumerWidget {
                   ),
                 ),
                 const Divider(),
-                ...categories.expand((category) {
-                  final catServices = byCategory[category.id] ?? [];
+                ...types.expand((type) {
+                  final typeSources = byType[type] ?? [];
                   return [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
                       child: Text(
-                        category.name,
+                        type.displayName,
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(
@@ -92,24 +101,26 @@ class SourceSwitchButton extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    ...catServices.map(
-                      (s) => GhostButton(
-                        onPressed: () {
-                          ref
-                              .read(selectedSourceProvider.notifier)
-                              .select(s.sourceId);
-                          Navigator.of(dialogContext).pop();
-                        },
-                        child: Text(
-                          s.sourceName,
-                          style: TextStyle(
-                            fontWeight: selectedSourceId == s.sourceId
-                                ? FontWeight.bold
-                                : null,
+                    ...typeSources.expand((source) {
+                      return source.services.map(
+                        (s) => GhostButton(
+                          onPressed: () {
+                            ref
+                                .read(selectedSourceProvider.notifier)
+                                .select(s.sourceId);
+                            Navigator.of(dialogContext).pop();
+                          },
+                          child: Text(
+                            s.sourceName,
+                            style: TextStyle(
+                              fontWeight: selectedSourceId == s.sourceId
+                                  ? FontWeight.bold
+                                  : null,
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   ];
                 }),
               ],

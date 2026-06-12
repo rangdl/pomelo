@@ -2,28 +2,49 @@ import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
 
-/// Lx 音乐服务基类
+/// Lx 音乐服务
 ///
-/// 为 [MusicService] 提供默认的空实现（抛出 [UnimplementedError]）。
-/// 各子类只需重写 [sourceId]、[sourceName]，按需实现具体方法。
-abstract class LxMusicService extends MusicService {
+/// 通过 JS 脚本动态加载的音乐平台服务。
+/// 每个实例对应一个脚本中的一个平台（如 tx、kg、wy 等）。
+///
+/// [scriptId] 用于区分不同脚本提供的同平台服务，
+/// 确保多脚本场景下 sourceId 不冲突。
+/// [platform] 和 [platformName] 来自 JS 端 `registry.all()` 返回的 id 和 name。
+class LxMusicService extends MusicService {
   @override
-  String get categoryId => 'lx';
-
-  @override
-  String get categoryName => '在线音乐';
+  MusicSourceType get sourceType => MusicSourceType.lx;
 
   final LxJsEngine jsEngine;
 
-  LxMusicService({required this.jsEngine});
+  /// 脚本标识，用于区分不同脚本来源
+  final String scriptId;
+
+  /// 平台标识（如 'tx', 'kg', 'wy', 'kw', 'mg'）
+  final String platform;
+
+  /// 平台显示名称（如 '腾讯音乐', '酷狗音乐'）
+  final String platformName;
+
+  LxMusicService({
+    required this.jsEngine,
+    required this.scriptId,
+    required this.platform,
+    required this.platformName,
+  });
+
+  @override
+  String get sourceId => 'lx-$scriptId-$platform';
+
+  @override
+  String get sourceName => platformName;
+
   @override
   Future<PaginationResponse<Song>> searchSongs(
     String keyword, {
     int page = 1,
     int limit = 20,
   }) {
-    return jsEngine.search(keyword, page: page, limit: limit, type: sourceId);
-    // throw UnimplementedError('$sourceName(searchSongs) 尚未实现');
+    return jsEngine.search(keyword, page: page, limit: limit, type: platform);
   }
 
   @override
@@ -74,7 +95,8 @@ abstract class LxMusicService extends MusicService {
   }
 
   @override
-  Future<PaginationResponse<Playlist>> getPlaylists({int page = 1, int limit = 20}) {
+  Future<PaginationResponse<Playlist>> getPlaylists(
+      {int page = 1, int limit = 20}) {
     throw UnimplementedError('$sourceName(getPlaylists) 尚未实现');
   }
 }
