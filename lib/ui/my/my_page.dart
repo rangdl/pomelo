@@ -266,9 +266,9 @@ class LxScriptPathsNotifier extends Notifier<List<String>> {
   }
 
   /// 移除脚本
-  void removeScript(String path) {
+  Future<void> removeScript(String path) async {
     final module = ModuleManager().find<LxMusicModule>('music_lx');
-    module?.removeScript(path);
+    await module?.removeScript(path);
     state = state.where((p) => p != path).toList();
     _save();
   }

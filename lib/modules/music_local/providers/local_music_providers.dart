@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/modules/music_local/music_local_module.dart';
+import '../local_music_source.dart';
 import '../repository/local_music_service.dart';
 
 /// Settings key: 本地音乐目录列表（JSON 数组字符串）
@@ -18,6 +19,11 @@ final musicLocalModuleProvider = Provider<MusicLocalModule?>((ref) {
 /// 本地音乐服务实例
 final localMusicServiceProvider = Provider<LocalMusicService?>((ref) {
   return ref.watch(musicLocalModuleProvider)?.service;
+});
+
+/// 本地音乐来源实例
+final localMusicSourceProvider = Provider<LocalMusicSource?>((ref) {
+  return ref.watch(musicLocalModuleProvider)?.source;
 });
 
 /// 本地音乐数据版本号 Notifier

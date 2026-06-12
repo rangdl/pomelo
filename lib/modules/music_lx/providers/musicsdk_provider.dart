@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_js/flutter_js.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/model/models.dart';
@@ -50,6 +52,47 @@ class LxJsEngine {
     }
     print('LxJsEngine: 脚本初始化成功');
     return true;
+  }
+
+  /// 获取 registry 中已注册的所有平台信息
+  ///
+  /// 返回 `(id, name)` 列表，如 `[(id: 'tx', name: '腾讯音乐')]`。
+  Future<List<({String id, String name})>> getRegisteredSources() async {
+    try {
+      final result = await jsEngine.jsRuntime.evaluateAsync(
+        'JSON.stringify(Array.from(registry.all()))',
+      );
+      jsEngine.jsRuntime.executePendingJob();
+      if (result.isError) return [];
+      final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
+      final raw = asyncResult.rawResult;
+      if (raw is String) {
+        final items = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+        return items
+            .map((v) => (
+                  id: v['id'] as String? ?? '',
+                  name: v['name'] as String? ?? v['id'] as String? ?? '',
+                ))
+            .toList();
+      }
+      return [];
+    } catch (e) {
+      print(e);
+      return [];
+    }
+  }
+
+  /// 加载脚本并返回新注册的平台信息列表
+  ///
+  /// 加载前记录已有的平台，加载后对比得出新增的平台。
+  Future<List<({String id, String name})>> loadScriptWithSources(
+      String scriptContent) async {
+    final before = await getRegisteredSources();
+    final beforeIds = before.map((e) => e.id).toSet();
+    final success = loadScript(scriptContent);
+    if (!success) return [];
+    final after = await getRegisteredSources();
+    return after.where((e) => !beforeIds.contains(e.id)).toList();
   }
 
   /// 执行 JS 搜索

@@ -18,10 +18,7 @@ class LocalMusicService extends MusicService {
   String get sourceName => '本地音乐';
 
   @override
-  String get categoryId => 'local';
-
-  @override
-  String get categoryName => '本地';
+  MusicSourceType get sourceType => MusicSourceType.local;
 
   final _source = (id: 'local', name: '本地音乐');
 

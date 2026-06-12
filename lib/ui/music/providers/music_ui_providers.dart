@@ -3,6 +3,7 @@ import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/music_module.dart';
+import 'package:pomelo/modules/music/model/music_source.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/model/song.dart';
@@ -86,4 +87,26 @@ final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
     }
   }
   return MusicListData(songs: songs, errors: errors);
+});
+
+/// 所有已注册的音乐来源列表
+final musicSourcesProvider = FutureProvider<List<MusicSource>>((ref) async {
+  await ref.watch(musicReadyProvider.future);
+  final module = ModuleManager().find<MusicModule>('music');
+  return module?.sources ?? [];
+});
+
+/// 按来源类型分组的音乐来源
+///
+/// 返回 Map，key 为 [MusicSourceType]，value 为该类型下的来源列表。
+final musicSourcesByTypeProvider =
+    FutureProvider<Map<MusicSourceType, List<MusicSource>>>((ref) async {
+  await ref.watch(musicReadyProvider.future);
+  final module = ModuleManager().find<MusicModule>('music');
+  final sources = module?.sources ?? [];
+  final map = <MusicSourceType, List<MusicSource>>{};
+  for (final s in sources) {
+    map.putIfAbsent(s.type, () => []).add(s);
+  }
+  return map;
 });
