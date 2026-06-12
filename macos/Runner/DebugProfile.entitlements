@@ -6,7 +6,19 @@
 	<true/>
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
+	<!-- Flutter debug 热重载需要 -->
 	<key>com.apple.security.network.server</key>
 	<true/>
+	<!-- 文件读写 -->
+    <key>com.apple.security.files.user-selected.read-only</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <!-- 下载/文稿目录（可选但建议加） -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <!-- 网络（Pomelo 连服务器必须） -->
+    <key>com.apple.security.network.client</key>
+    <true/>
 </dict>
 </plist>
