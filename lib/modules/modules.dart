@@ -8,4 +8,5 @@ export 'package:pomelo/modules/statistics/statistics_module.dart';
 export 'package:pomelo/modules/music/music_module.dart';
 export 'package:pomelo/modules/music_local/music_local_module.dart';
 export 'package:pomelo/modules/music_lx/music_lx_module.dart';
+export 'package:pomelo/modules/music_subsonic/music_subsonic_module.dart';
 export 'package:pomelo/modules/audio_player/audio_player_module.dart';

@@ -8,6 +8,7 @@ import 'package:media_kit/media_kit.dart' show MediaKit;
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/routers/app_router.dart';
 import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/theme/app_theme.dart';
 import 'package:pomelo/modules/log/log_module.dart';
 import 'package:pomelo/modules/log/providers/log_providers.dart';
 import 'package:pomelo/modules/audio_player/audio_player_module.dart';
@@ -17,6 +18,7 @@ import 'package:pomelo/modules/my/my_module.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music_local/music_local_module.dart';
 import 'package:pomelo/modules/music_lx/music_lx_module.dart';
+import 'package:pomelo/modules/music_subsonic/music_subsonic_module.dart';
 import 'package:pomelo/modules/statistics/statistics_module.dart';
 import 'package:pomelo/modules/home/home_module.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
@@ -54,6 +56,7 @@ void main() async {
     MusicModule(),
     MusicLocalModule(),
     LxMusicModule(),
+    MusicSubsonicModule(),
     logModule,
     audioPlayerModule,
   ]);
@@ -109,8 +112,8 @@ class _AppShell extends ConsumerWidget {
 
     return ShadcnApp.router(
       themeMode: themeMode,
-      theme: ThemeData(colorScheme: ColorSchemes.lightSlate),
-      darkTheme: ThemeData(colorScheme: ColorSchemes.darkSlate),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
       routerConfig: appRouter.config(),
       builder: (context, child) {
         return BotToastInit()(context, child ?? const SizedBox.shrink());
