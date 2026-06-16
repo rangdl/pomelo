@@ -1,19 +1,11 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:math';
 
 import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
-// import 'package:file_type_dart/file_type_dart.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-// import 'package:metadata_god/metadata_god.dart';
-import 'package:path/path.dart';
 import 'package:path/path.dart' as path;
-import 'package:pomelo/modules/audio_player/model/state.dart';
-import 'package:pomelo/modules/audio_player/module_providers.dart';
+import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/modules/music/model/song.dart';
-// import 'package:pomelo/services/audio_processor.dart';
 import 'package:shelf/shelf.dart';
 // import 'package:pomelo/models/metadata/metadata.dart';
 // import 'package:pomelo/models/parser/range_headers.dart';
@@ -41,12 +33,16 @@ import 'package:shelf/shelf.dart';
 //     .payload["context"]["client"]["userAgent"];
 
 class ServerPlaybackRoutes {
-  final Ref ref;
-  // UserPreferences get userPreferences => ref.read(userPreferencesProvider);
-  AudioPlayerState get playlist => ref.read(audioPlayerProvider);
+  final AudioPlayerService audioPlayer;
   final Dio dio;
 
-  ServerPlaybackRoutes(this.ref) : dio = Dio();
+  /// 获取当前活跃曲目（由外部注入，避免对 Riverpod Ref 的依赖）
+  final Song? Function() getActiveTrack;
+
+  ServerPlaybackRoutes({
+    required this.audioPlayer,
+    required this.getActiveTrack,
+  }) : dio = Dio();
 
   // Future<String> _getTrackCacheFilePath(SourcedTrack track) async {
   //   String filePath = join(
@@ -330,10 +326,11 @@ class ServerPlaybackRoutes {
       //   return Response.notFound("Track not found in the current queue");
       // }
 
-      final res = await streamTrackInformation(
-        request,
-        playlist.activeTrack! as SongFull,
-      );
+      final activeTrack = getActiveTrack();
+      if (activeTrack == null || activeTrack is! SongFull) {
+        return Response.notFound('No active track or track is not streamable');
+      }
+      final res = await streamTrackInformation(request, activeTrack);
 
       return Response(res.statusCode!, headers: res.headers.map);
     } catch (e, stack) {
@@ -352,9 +349,13 @@ class ServerPlaybackRoutes {
       //   return Response.notFound("Track not found in the current queue");
       // }
 
+      final activeTrack = getActiveTrack();
+      if (activeTrack == null || activeTrack is! SongFull) {
+        return Response.notFound('No active track or track is not streamable');
+      }
       final res = await streamTrack(
         request,
-        playlist.activeTrack! as SongFull,
+        activeTrack,
         request.headers,
       );
 
@@ -380,26 +381,23 @@ class ServerPlaybackRoutes {
 
   /// @get('/playback/toggle-playback')
   Future<Response> togglePlayback(Request request) async {
-    // audioPlayer.isPlaying
-    //     ? await audioPlayer.pause()
-    //     : await audioPlayer.resume();
-
-    return Response.ok("Playback toggled");
+    if (audioPlayer.isPlaying) {
+      await audioPlayer.pause();
+    } else {
+      await audioPlayer.resume();
+    }
+    return Response.ok('Playback toggled');
   }
 
   /// @get('/playback/previous')
   Future<Response> previousTrack(Request request) async {
-    // await audioPlayer.skipToPrevious();
-    return Response.ok("Previous track");
+    await audioPlayer.skipToPrevious();
+    return Response.ok('Previous track');
   }
 
   /// @get('/playback/next')
   Future<Response> nextTrack(Request request) async {
-    // await audioPlayer.skipToNext();
-    return Response.ok("Next track");
+    await audioPlayer.skipToNext();
+    return Response.ok('Next track');
   }
 }
-
-final serverPlaybackRoutesProvider = Provider(
-  (ref) => ServerPlaybackRoutes(ref),
-);

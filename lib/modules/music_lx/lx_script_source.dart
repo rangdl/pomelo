@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:pomelo/modules/music/model/models.dart';
+import 'model/lx_js_source_engine.dart';
 import 'model/lx_music_service.dart';
 import 'providers/musicsdk_provider.dart';
 
@@ -15,6 +16,9 @@ class LxScriptSource extends MusicSource {
 
   /// 共享的 JS 引擎（由 LxMusicModule 统一管理）
   final LxJsEngine jsEngine;
+
+  /// 音乐源引擎（用于获取播放链接），可选
+  final LxJsSourceEngine? sourceEngine;
 
   /// 脚本标识（基于文件名生成）
   final String scriptId;
@@ -31,6 +35,7 @@ class LxScriptSource extends MusicSource {
   LxScriptSource({
     required this.scriptPath,
     required this.jsEngine,
+    this.sourceEngine,
   }) : scriptId = _deriveScriptId(scriptPath);
 
   @override
@@ -68,6 +73,7 @@ class LxScriptSource extends MusicSource {
         .map(
           (p) => LxMusicService(
             jsEngine: jsEngine,
+            sourceEngine: sourceEngine,
             scriptId: scriptId,
             platform: p.id,
             platformName: p.name,
