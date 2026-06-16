@@ -89,7 +89,11 @@ class LxJsSourceEngine {
       print('需要更新: $updateUrl');
       completer.complete(false);
     });
-
+    //     engine.jsRuntime.evaluate("""
+    //  new Promise(function(resolve,reject){
+    //  resolve('a123')
+    //  }).then(async a=>console.log(a))
+    // """);
     // 执行脚本
     final result = engine.jsRuntime.evaluate(
       '!(function (){$scriptContent})();',
@@ -99,6 +103,10 @@ class LxJsSourceEngine {
       engine.dispose();
       return [];
     }
+
+    Timer.periodic(const Duration(seconds: 1), (timer) {
+      engine.jsRuntime.executePendingJob();
+    });
     // 等待初始化完成
     await completer.future;
 
@@ -132,13 +140,15 @@ class LxJsSourceEngine {
       final info = entry.value;
       if (info is! Map) continue;
       final infoMap = Map<String, dynamic>.from(info);
-      platforms.add(LxSourcePlatform(
-        id: id,
-        name: (infoMap['name'] as String?) ?? id,
-        qualitys: (infoMap['qualitys'] as List<dynamic>?)
-                ?.cast<String>() ??
-            <String>[],
-      ));
+      platforms.add(
+        LxSourcePlatform(
+          id: id,
+          name: (infoMap['name'] as String?) ?? id,
+          qualitys:
+              (infoMap['qualitys'] as List<dynamic>?)?.cast<String>() ??
+              <String>[],
+        ),
+      );
     }
     return platforms;
   }
