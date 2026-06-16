@@ -98,16 +98,16 @@ class LxMusicModule extends Module {
     _scriptSources.clear();
   }
 
-  /// 添加并加载脚本文件
+  // ========== 搜索脚本管理（仅允许一份） ==========
+
+  /// 添加搜索脚本
   ///
-  /// 加载脚本、检测平台、创建服务，并注册到 MusicModule。
-  /// 返回是否加载成功。
+  /// 仅允许上传一份搜索脚本。若已有脚本则返回 false。
+  /// 如需替换请使用 [replaceScript]。
   Future<bool> addScript(String path) async {
-    // 避免重复添加
-    if (_scriptSources.any((s) => s.scriptPath == path)) return false;
+    if (_scriptSources.isNotEmpty) return false;
     final source = await _createScriptSource(path);
     if (source == null) return false;
-    // 如果模块已就绪，立即注册到 MusicModule
     if (isInitialized) {
       final musicModule = ModuleManager().find<MusicModule>('music');
       await musicModule?.addSource(source);
@@ -116,14 +116,35 @@ class LxMusicModule extends Module {
     return true;
   }
 
-  /// 移除脚本
+  /// 替换搜索脚本
   ///
-  /// 从 MusicModule 注销其服务，并移除来源。
+  /// 移除现有搜索脚本，加载新的脚本文件。
+  /// 返回是否替换成功。
+  Future<bool> replaceScript(String newPath) async {
+    if (_scriptSources.isEmpty) return false;
+    final oldSource = _scriptSources.first;
+    // 从 MusicModule 注销旧脚本
+    final musicModule = ModuleManager().find<MusicModule>('music');
+    await musicModule?.removeSource(oldSource.id);
+    _scriptSources.clear();
+    // 加载新脚本
+    final source = await _createScriptSource(newPath);
+    if (source == null) {
+      await saveScriptPaths();
+      return false;
+    }
+    if (isInitialized) {
+      await musicModule?.addSource(source);
+    }
+    await saveScriptPaths();
+    return true;
+  }
+
+  /// 移除搜索脚本
   Future<void> removeScript(String path) async {
     final idx = _scriptSources.indexWhere((s) => s.scriptPath == path);
     if (idx == -1) return;
     final source = _scriptSources.removeAt(idx);
-    // 从 MusicModule 注销
     final musicModule = ModuleManager().find<MusicModule>('music');
     await musicModule?.removeSource(source.id);
     await saveScriptPaths();
@@ -146,12 +167,12 @@ class LxMusicModule extends Module {
     return source;
   }
 
-  /// 保存脚本路径列表到 Settings
+  /// 保存搜索脚本路径列表到 Settings
   Future<void> saveScriptPaths() async {
     await Settings.set(_kLxScriptPaths, jsonEncode(scriptPaths));
   }
 
-  /// 从 Settings 读取已保存的脚本路径列表
+  /// 从 Settings 读取已保存的搜索脚本路径列表
   static List<String> loadScriptPaths() {
     final pathsJson = Settings.get(_kLxScriptPaths);
     if (pathsJson == null) return [];
@@ -162,7 +183,7 @@ class LxMusicModule extends Module {
     }
   }
 
-  // ========== 源脚本管理 ==========
+  // ========== 源脚本管理（支持多份） ==========
 
   /// 加载已保存的源脚本
   Future<void> _loadSavedSourceScripts() async {
@@ -185,8 +206,8 @@ class LxMusicModule extends Module {
   ///
   /// [path] 源脚本文件路径
   /// 加载脚本后自动检测其支持的平台。
-  /// 返回脚本支持的平台列表，加载失败返回空列表。
-  Future<List<String>> addSourceScript(String path) async {
+  /// 返回脚本支持的平台信息列表，加载失败返回空列表。
+  Future<List<LxSourcePlatform>> addSourceScript(String path) async {
     if (_sourceScriptPaths.contains(path)) return [];
     final platforms = await _loadSourceScriptFile(path);
     if (platforms.isNotEmpty) {
@@ -196,15 +217,38 @@ class LxMusicModule extends Module {
     return platforms;
   }
 
+  /// 替换源脚本
+  ///
+  /// 重建源引擎，用新文件替换旧脚本，重新加载所有源脚本。
+  /// 返回新脚本支持的平台信息列表，加载失败返回空列表。
+  Future<List<LxSourcePlatform>> replaceSourceScript(
+    String oldPath,
+    String newPath,
+  ) async {
+    final idx = _sourceScriptPaths.indexOf(oldPath);
+    if (idx == -1) return [];
+    // 重建源引擎
+    _sourceEngine.dispose();
+    _sourceEngine = LxJsSourceEngine();
+    // 替换路径
+    _sourceScriptPaths[idx] = newPath;
+    List<LxSourcePlatform> newPlatforms = [];
+    // 重新加载所有源脚本
+    for (final p in _sourceScriptPaths) {
+      final platforms = await _loadSourceScriptFile(p);
+      if (p == newPath) newPlatforms = platforms;
+    }
+    await _saveSourceScriptPaths();
+    return newPlatforms;
+  }
+
   /// 移除源脚本
   ///
   /// 重建源引擎并重新加载剩余的源脚本。
   Future<void> removeSourceScript(String path) async {
     if (!_sourceScriptPaths.remove(path)) return;
-    // 重建源引擎
     _sourceEngine.dispose();
     _sourceEngine = LxJsSourceEngine();
-    // 重新加载剩余的源脚本
     for (final p in _sourceScriptPaths) {
       await _loadSourceScriptFile(p);
     }
@@ -212,7 +256,7 @@ class LxMusicModule extends Module {
   }
 
   /// 加载单个源脚本文件
-  Future<List<String>> _loadSourceScriptFile(String path) async {
+  Future<List<LxSourcePlatform>> _loadSourceScriptFile(String path) async {
     final file = File(path);
     if (!await file.exists()) {
       print('LxMusicModule: 源脚本文件不存在 $path');

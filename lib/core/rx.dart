@@ -67,6 +67,38 @@ class Rx {
     );
   }
 
+  /// 响应式动作
+  ///
+  /// 与 [layout] 不同，此方法不创建 Widget，而是根据当前屏幕宽度
+  /// 立即执行对应的回调函数。适用于导航跳转、弹窗显示等动作场景。
+  ///
+  /// 用法:
+  /// ```dart
+  /// Rx.action(
+  ///   context,
+  ///   mobile: () => Navigator.push(context, ...),
+  ///   tablet: () => showDialog(context, ...),
+  /// );
+  /// ```
+  static void action(
+    BuildContext context, {
+    void Function()? mobile,
+    void Function()? tablet,
+    void Function()? desktop,
+    void Function()? tv,
+  }) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < ResponsiveBreakpoints.mobile) {
+      (mobile ?? tablet ?? desktop ?? tv)?.call();
+    } else if (width < ResponsiveBreakpoints.tablet) {
+      (tablet ?? desktop ?? mobile ?? tv)?.call();
+    } else if (width < ResponsiveBreakpoints.desktop) {
+      (desktop ?? tablet ?? tv ?? mobile)?.call();
+    } else {
+      (tv ?? desktop ?? tablet ?? mobile)?.call();
+    }
+  }
+
   static Widget _resolve(
     double width, {
     Widget Function()? mobile,
