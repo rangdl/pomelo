@@ -29,6 +29,28 @@ class LxScriptPathsNotifier extends Notifier<List<String>> {
     }
   }
 
+  /// 批量添加脚本
+  Future<void> addScripts(List<String> paths) async {
+    final newPaths = paths.where((path) => !state.contains(path)).toList();
+    if (newPaths.isEmpty) return;
+    final module = ModuleManager().find<LxMusicModule>('music_lx');
+    final addedPaths = <String>[];
+    for (final path in newPaths) {
+      if (module != null) {
+        final success = await module.addScript(path);
+        if (success) {
+          addedPaths.add(path);
+        }
+      } else {
+        addedPaths.add(path);
+      }
+    }
+    if (addedPaths.isNotEmpty) {
+      state = [...state, ...addedPaths];
+      await _save();
+    }
+  }
+
   /// 移除脚本
   Future<void> removeScript(String path) async {
     final module = ModuleManager().find<LxMusicModule>('music_lx');
@@ -38,8 +60,10 @@ class LxScriptPathsNotifier extends Notifier<List<String>> {
   }
 
   Future<void> _save() async {
-    await Settings.set('music_lx_script_paths',
-        '[${state.map((p) => '"$p"').join(',')}]');
+    await Settings.set(
+      'music_lx_script_paths',
+      '[${state.map((p) => '"$p"').join(',')}]',
+    );
   }
 }
 

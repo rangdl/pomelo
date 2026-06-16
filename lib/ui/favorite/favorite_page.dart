@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/core/framework/framework.dart';
@@ -233,13 +234,27 @@ class FavoritePage extends ConsumerWidget {
   /// 是否允许删除（local 不可删除）
   bool _canRemove(MusicSourceType type) => type != MusicSourceType.local;
 
-  /// 显示添加平台对话框
+  /// 显示添加平台页面/对话框
   void _showAddDialog(BuildContext context, _PlatformType type) {
     switch (type) {
       case _PlatformType.lx:
-        showDialog(
-          context: context,
-          builder: (_) => const AddLxScriptDialog(),
+        Rx.layout(
+          context,
+          mobile: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const LxScriptPage(),
+              ),
+            );
+            return const SizedBox.shrink();
+          },
+          tablet: () {
+            showDialog(
+              context: context,
+              builder: (_) => const AddLxScriptDialog(),
+            );
+            return const SizedBox.shrink();
+          },
         );
       case _PlatformType.subsonic:
         showDialog(
