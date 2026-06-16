@@ -1,5 +1,6 @@
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/modules/music_lx/model/lx_js_source_engine.dart';
 import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
 
 /// Lx 音乐服务
@@ -16,6 +17,9 @@ class LxMusicService extends MusicService {
 
   final LxJsEngine jsEngine;
 
+  /// 音乐源引擎（用于获取播放链接），可选
+  final LxJsSourceEngine? sourceEngine;
+
   /// 脚本标识，用于区分不同脚本来源
   final String scriptId;
 
@@ -27,6 +31,7 @@ class LxMusicService extends MusicService {
 
   LxMusicService({
     required this.jsEngine,
+    this.sourceEngine,
     required this.scriptId,
     required this.platform,
     required this.platformName,
@@ -98,5 +103,16 @@ class LxMusicService extends MusicService {
   Future<PaginationResponse<Playlist>> getPlaylists(
       {int page = 1, int limit = 20}) {
     throw UnimplementedError('$sourceName(getPlaylists) 尚未实现');
+  }
+
+  // ========== 播放链接 ==========
+
+  @override
+  Future<String> getMusicUrl(Song song) async {
+    if (sourceEngine == null || !sourceEngine!.hasPlatform(platform)) {
+      throw UnimplementedError(
+          '$sourceName(getMusicUrl) 未加载源脚本，无法获取播放链接');
+    }
+    return sourceEngine!.getMusicUrl(platform, song);
   }
 }

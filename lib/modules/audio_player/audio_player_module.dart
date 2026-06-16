@@ -8,8 +8,17 @@
 /// - Service/State: AudioPlayerService / Riverpod Provider
 library;
 
-import 'package:pomelo/core/mars.dart';
+import 'dart:io';
+import 'dart:math';
 
+import 'package:flutter/foundation.dart';
+import 'package:pomelo/core/mars.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as shelf_io;
+
+import 'model/media.dart';
+import 'providers/router.dart';
+import 'providers/playback.dart';
 import 'repository/audio_player_repository.dart';
 import 'service/audio_player_service.dart';
 
@@ -18,6 +27,7 @@ class AudioPlayerModule extends Module {
 
   final AudioPlayerRepository _repository;
   late final AudioPlayerService _service;
+  HttpServer? _server;
 
   @override
   String get id => 'audio_player';
@@ -39,6 +49,9 @@ class AudioPlayerModule extends Module {
     // 初始化服务
     _service = AudioPlayerService(_repository);
     await _service.onInit();
+
+    // 启动本地 HTTP 代理服务
+    await _startServer();
   }
 
   @override
@@ -48,8 +61,56 @@ class AudioPlayerModule extends Module {
 
   @override
   Future<void> onDispose() async {
+    await _stopServer();
     await _repository.onDispose();
     await _service.onDispose();
+  }
+
+  /// 启动本地 HTTP 代理服务（用于在线曲目流式转发）
+  Future<void> _startServer() async {
+    // 分配端口（优先使用已配置的端口，否则随机生成）
+    if (PomeloMedia.serverPort == 0) {
+      PomeloMedia.serverPort = Random().nextInt(17500) + 5000;
+    }
+
+    // 构建播放路由（注入 AudioPlayerService 和活跃曲目获取器）
+    final playbackRoutes = ServerPlaybackRoutes(
+      audioPlayer: _service,
+      getActiveTrack: () {
+        // 从底层播放器获取当前曲目信息
+        final playlist = _service.playlist;
+        if (playlist.index < 0 || playlist.medias.isEmpty) return null;
+        final media = playlist.medias.elementAtOrNull(playlist.index);
+        if (media == null) return null;
+        return PomeloMedia.media(media).track;
+      },
+    );
+
+    final router = buildServerRouter(playbackRoutes);
+
+    // 构建 pipeline（调试模式下启用请求日志）
+    var pipeline = const Pipeline();
+    if (kDebugMode) {
+      pipeline = pipeline.addMiddleware(logRequests());
+    }
+
+    _server = await shelf_io.serve(
+      pipeline.addHandler(router.call),
+      InternetAddress.anyIPv4,
+      PomeloMedia.serverPort,
+    );
+
+    print(
+      '[AudioPlayer] HTTP server started at '
+      'http://${_server!.address.host}:${_server!.port}',
+    );
+  }
+
+  /// 停止本地 HTTP 代理服务
+  Future<void> _stopServer() async {
+    await _server?.close();
+    _server = null;
+    print('[AudioPlayer] HTTP server stopped');
   }
 
   /// 获取仓储实例（供外部使用）
@@ -57,4 +118,7 @@ class AudioPlayerModule extends Module {
 
   /// 获取服务实例（供外部使用）
   AudioPlayerService get service => _service;
+
+  /// 获取服务器端口
+  int get serverPort => PomeloMedia.serverPort;
 }
