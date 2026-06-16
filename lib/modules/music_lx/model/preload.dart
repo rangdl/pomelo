@@ -74,27 +74,21 @@ final preloadJS = """
           }
         }
       }
-
-      __native_send_request(method, url, data, options, (err, resp, body) => {
+      fetch(url, {method: method, body: data, headers: options.headers})
+      .then(async resp => {
+      console.log(resp)
+      console.log(typeof resp.text)
+      console.log(typeof resp.json)
         if (aborted) return;
-        if (err) {
-          safeCallback(new Error(err), null, null);
-          return;
-        }
         console.error('[lx.request] fetch resolved, status=' + resp.status + ' url=' + url.substring(0, 100));
         try {
-          body = resp.body = resp.raw.toString()
-          try {
-            resp.body = JSON.parse(resp.body)
-          } catch (_) {}
-          body = resp.body
-
+          body = options.json?await resp.json():await resp.text()
           var response = {
-            statusCode: resp.statusCode,
-            statusMessage: resp.statusMessage,
+            statusCode: resp.status,
+            statusMessage: resp.statusText,
             headers: resp.headers,
-            bytes: resp.bytes,
-            raw: resp.raw,
+            // bytes: resp.arrayBuffer(),
+            // raw: resp.arrayBuffer(),
             body,
           };
           console.error('[lx.request] calling safeCallback, statusCode=' + response.statusCode);
@@ -103,10 +97,47 @@ final preloadJS = """
         } catch (err) {
           if (aborted) return;
           var errMsg = (err && err.message) ? err.message : String(err);
-          console.error('[lx.request] fetch/text catch: ' + errMsg);
+          console.error('[lx.request2] fetch/text catch: ' + errMsg);
           safeCallback(new Error(errMsg), null, null);
         }
+      }).catch((err)=>{
+        if (aborted) return;
+        var errMsg = (err && err.message) ? err.message : String(err);
+        console.error('[lx.request] fetch/text catch: ' + errMsg);
+        safeCallback(new Error(errMsg), null, null);
       })
+      // __native_send_request(method, url, data, options, (err, resp, body) => {
+      //   if (aborted) return;
+      //   if (err) {
+      //     safeCallback(new Error(err), null, null);
+      //     return;
+      //   }
+      //   console.error('[lx.request] fetch resolved, status=' + resp.status + ' url=' + url.substring(0, 100));
+      //   try {
+      //     body = resp.body = resp.raw.toString()
+      //     try {
+      //       resp.body = JSON.parse(resp.body)
+      //     } catch (_) {}
+      //     body = resp.body
+      //
+      //     var response = {
+      //       statusCode: resp.statusCode,
+      //       statusMessage: resp.statusMessage,
+      //       headers: resp.headers,
+      //       bytes: resp.bytes,
+      //       raw: resp.raw,
+      //       body,
+      //     };
+      //     console.error('[lx.request] calling safeCallback, statusCode=' + response.statusCode);
+      //     safeCallback(null, response, body);
+      //     console.error('[lx.request] safeCallback returned');
+      //   } catch (err) {
+      //     if (aborted) return;
+      //     var errMsg = (err && err.message) ? err.message : String(err);
+      //     console.error('[lx.request] fetch/text catch: ' + errMsg);
+      //     safeCallback(new Error(errMsg), null, null);
+      //   }
+      // })
 
       return () => {
         aborted = true;
