@@ -10,6 +10,8 @@ import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/modules/music_local/providers/local_music_providers.dart';
 import 'package:pomelo/ui/music/model/service_result.dart';
 
+import 'package:pomelo/ui/platform/providers/lx_script_paths_provider.dart';
+
 /// 持久化 key
 const _kSelectedSource = 'music_selected_source';
 
@@ -92,6 +94,8 @@ final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
 /// 所有已注册的音乐来源列表
 final musicSourcesProvider = FutureProvider<List<MusicSource>>((ref) async {
   await ref.watch(musicReadyProvider.future);
+  // 监听 lx 脚本路径变化，脚本增删时触发重新计算
+  ref.watch(lxScriptPathsProvider);
   final module = ModuleManager().find<MusicModule>('music');
   return module?.sources ?? [];
 });
@@ -102,6 +106,8 @@ final musicSourcesProvider = FutureProvider<List<MusicSource>>((ref) async {
 final musicSourcesByTypeProvider =
     FutureProvider<Map<MusicSourceType, List<MusicSource>>>((ref) async {
   await ref.watch(musicReadyProvider.future);
+  // 监听 lx 脚本路径变化，脚本增删时触发重新计算
+  ref.watch(lxScriptPathsProvider);
   final module = ModuleManager().find<MusicModule>('music');
   final sources = module?.sources ?? [];
   final map = <MusicSourceType, List<MusicSource>>{};

@@ -1,7 +1,11 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/modules/music_lx/lx_script_source.dart';
+import 'package:pomelo/ui/platform/providers/lx_script_paths_provider.dart';
+import 'package:pomelo/ui/platform/providers/lx_source_script_paths_provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/core/framework/framework.dart';
@@ -14,7 +18,7 @@ import 'package:pomelo/ui/platform/widgets/add_subsonic_account_dialog.dart';
 
 /// 支持添加的平台类型
 enum _PlatformType {
-  lx('Lx 音乐脚本', Icons.code, '通过 JS 脚本加载在线音乐平台'),
+  lx('Lx 音乐脚本', Icons.code, '搜索与播放链接脚本管理'),
   subsonic('Subsonic', Icons.cloud, '连接 Subsonic 兼容的音乐服务器');
 
   final String label;
@@ -35,6 +39,7 @@ class FavoritePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final sourcesAsync = ref.watch(musicSourcesByTypeProvider);
     final subsonicAccounts = ref.watch(subsonicAccountsProvider);
+    final sourceScripts = ref.watch(lxSourceScriptPathsProvider);
 
     return Scaffold(
       headers: [
@@ -81,6 +86,7 @@ class FavoritePage extends ConsumerWidget {
           ref,
           sourcesByType,
           subsonicAccounts,
+          sourceScripts,
         ),
       ),
     );
@@ -91,6 +97,7 @@ class FavoritePage extends ConsumerWidget {
     WidgetRef ref,
     Map<MusicSourceType, List<MusicSource>> sourcesByType,
     List<SubsonicSource> subsonicAccounts,
+    List<String> sourceScripts,
   ) {
     // 定义展示顺序
     const typeOrder = [
@@ -101,7 +108,8 @@ class FavoritePage extends ConsumerWidget {
       MusicSourceType.emby,
     ];
 
-    final hasAny = sourcesByType.values.any((list) => list.isNotEmpty);
+    final hasAny = sourcesByType.values.any((list) => list.isNotEmpty) ||
+        sourceScripts.isNotEmpty;
 
     if (!hasAny) {
       return Center(
@@ -144,6 +152,10 @@ class FavoritePage extends ConsumerWidget {
               sourcesByType[type]!,
               subsonicAccounts,
             ),
+
+        // 源脚本独立区域
+        if (sourceScripts.isNotEmpty)
+          ..._buildSourceScriptsSection(context, ref, sourceScripts),
       ],
     );
   }
@@ -198,6 +210,67 @@ class FavoritePage extends ConsumerWidget {
     ];
   }
 
+  /// 构建源脚本区域
+  List<Widget> _buildSourceScriptsSection(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> scripts,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+        child: Row(
+          children: [
+            Icon(Icons.link, size: 18, color: colorScheme.mutedForeground),
+            const SizedBox(width: 8),
+            Text(
+              '源脚本',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: colorScheme.mutedForeground,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${scripts.length}',
+              style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
+            ),
+          ],
+        ),
+      ),
+      Card(
+        child: Column(
+          children: [
+            for (int i = 0; i < scripts.length; i++) ...[
+              if (i > 0) const Divider(height: 1),
+              ListTile(
+                leading: Icon(Icons.description, size: 20, color: colorScheme.primary),
+                title: Text(
+                  p.basename(scripts[i]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  scripts[i],
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: IconButton.text(
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  onPressed: () =>
+                      ref.read(lxSourceScriptPathsProvider.notifier).removeScript(scripts[i]),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+    ];
+  }
+
   /// 构建单个来源的 ListTile
   Widget _buildSourceTile(
     BuildContext context,
@@ -238,7 +311,7 @@ class FavoritePage extends ConsumerWidget {
   void _showAddDialog(BuildContext context, _PlatformType type) {
     switch (type) {
       case _PlatformType.lx:
-        Rx.layout(
+        Rx.action(
           context,
           mobile: () {
             Navigator.of(context).push(
@@ -246,14 +319,12 @@ class FavoritePage extends ConsumerWidget {
                 builder: (_) => const LxScriptPage(),
               ),
             );
-            return const SizedBox.shrink();
           },
           tablet: () {
             showDialog(
               context: context,
               builder: (_) => const AddLxScriptDialog(),
             );
-            return const SizedBox.shrink();
           },
         );
       case _PlatformType.subsonic:
@@ -271,6 +342,12 @@ class FavoritePage extends ConsumerWidget {
     MusicSource source,
   ) {
     switch (source.type) {
+      case MusicSourceType.lx:
+        if (source is LxScriptSource) {
+          ref
+              .read(lxScriptPathsProvider.notifier)
+              .removeScript(source.scriptPath);
+        }
       case MusicSourceType.subsonic:
         ref.read(subsonicAccountsProvider.notifier).removeAccount(source.id);
       default:
