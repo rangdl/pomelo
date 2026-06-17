@@ -104,9 +104,9 @@ class LxJsSourceEngine {
       return [];
     }
 
-    Timer.periodic(const Duration(seconds: 1), (timer) {
-      engine.jsRuntime.executePendingJob();
-    });
+    // Timer.periodic(const Duration(seconds: 1), (timer) {
+    //   engine.jsRuntime.executePendingJob();
+    // });
     // 等待初始化完成
     await completer.future;
 
