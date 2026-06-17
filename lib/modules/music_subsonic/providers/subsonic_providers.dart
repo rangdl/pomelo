@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 
 import '../music_subsonic_module.dart';
-import '../subsonic_source.dart';
+import '../repository/subsonic_music_service.dart';
 
 /// 持有 MusicSubsonicModule 实例的 Provider
 final musicSubsonicModuleProvider = Provider<MusicSubsonicModule?>((ref) {
@@ -18,30 +18,30 @@ typedef SubsonicAccountConfig = ({
   String? displayName,
 });
 
-/// 已配置的 Subsonic 账号来源列表 Notifier
-class SubsonicAccountsNotifier extends Notifier<List<SubsonicSource>> {
+/// 已配置的 Subsonic 账号服务列表 Notifier
+class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicService>> {
   @override
-  List<SubsonicSource> build() {
+  List<SubsonicMusicService> build() {
     final module = ref.read(musicSubsonicModuleProvider);
-    return module?.sources ?? [];
+    return module?.services ?? [];
   }
 
   /// 添加账号
   ///
   /// 连接成功后刷新列表并持久化。
-  Future<SubsonicSource> addAccount(SubsonicAccountConfig config) async {
+  Future<SubsonicMusicService> addAccount(SubsonicAccountConfig config) async {
     final module = ref.read(musicSubsonicModuleProvider);
     if (module == null) {
       throw StateError('MusicSubsonicModule 未注册');
     }
-    final source = await module.addAccount(
+    final service = await module.addAccount(
       serverUrl: config.serverUrl,
       username: config.username,
       password: config.password,
       displayName: config.displayName,
     );
-    state = module.sources;
-    return source;
+    state = module.services;
+    return service;
   }
 
   /// 移除账号
@@ -49,12 +49,12 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicSource>> {
     final module = ref.read(musicSubsonicModuleProvider);
     if (module == null) return;
     await module.removeAccount(sourceId);
-    state = module.sources;
+    state = module.services;
   }
 }
 
-/// 已配置的 Subsonic 账号来源列表
+/// 已配置的 Subsonic 账号服务列表
 final subsonicAccountsProvider =
-    NotifierProvider<SubsonicAccountsNotifier, List<SubsonicSource>>(
+    NotifierProvider<SubsonicAccountsNotifier, List<SubsonicMusicService>>(
       SubsonicAccountsNotifier.new,
     );

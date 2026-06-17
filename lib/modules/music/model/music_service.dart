@@ -1,5 +1,5 @@
 import 'package:pomelo/core/mars.dart';
-import 'music_source.dart';
+import 'music_source_type.dart';
 import 'song.dart';
 import 'album.dart';
 import 'playlist.dart';
@@ -21,6 +21,25 @@ abstract class MusicService {
   /// 用于按类型对服务进行分组管理。
   MusicSourceType get sourceType;
 
+  /// 该服务提供的库列表
+  ///
+  /// 默认返回空列表，表示该服务不区分库。
+  /// 多库服务（如 Lx 在线音乐）覆写此属性返回所有可用库。
+  List<({String id, String name})> get libraries => [];
+
+  /// 默认使用的库标识
+  ///
+  /// 默认返回 null，表示无需选择库。
+  /// 多库服务覆写此属性，在搜索/播放时使用该库。
+  String? get defaultLibraryId => null;
+
+  /// 同类型服务的最大注册数量
+  ///
+  /// 用于限制同一 [sourceType] 的服务注册上限。
+  /// 默认 1（如本地音乐、Lx 音乐各只能注册一个），
+  /// Subsonic 等支持多账号的模块可覆写为更大的值。
+  int get maxServiceCount => 1;
+
   /// 分类标识，用于对服务进行二级分组，如 'lx'（在线音乐平台）
   ///
   /// 相同 [categoryId] 的服务会在 UI 上分到同一组。
@@ -35,10 +54,14 @@ abstract class MusicService {
   // ========== 搜索 ==========
 
   /// 搜索歌曲
+  ///
+  /// [libraryId] 可选，用于指定在哪个库中搜索。
+  /// 对于多库服务（如 Lx 在线音乐），若未指定则使用 [defaultLibraryId]。
   Future<PaginationResponse<Song>> searchSongs(
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   });
 
   /// 搜索专辑
@@ -46,6 +69,7 @@ abstract class MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   });
 
   /// 搜索歌单
@@ -53,6 +77,7 @@ abstract class MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   });
 
   // ========== 歌曲 ==========

@@ -107,19 +107,20 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
   void initState() {
     super.initState();
     // 初始 tab 默认选中持久化来源
-    _tabSourceId = ref.read(selectedSourceProvider);
+    _tabSourceId = ref.read(selectedSourceProvider).sourceId;
   }
 
   @override
   Widget build(BuildContext context) {
     final module = ref.watch(musicModuleProvider);
     final services = module?.services ?? [];
-    final sources = module?.sources ?? [];
+    final selection = ref.watch(selectedSourceProvider);
+    final selectedSourceId = selection.sourceId;
 
     // 按来源类型分组
-    final byType = <MusicSourceType, List<MusicSource>>{};
-    for (final s in sources) {
-      byType.putIfAbsent(s.type, () => []).add(s);
+    final byType = <MusicSourceType, List<MusicService>>{};
+    for (final s in services) {
+      byType.putIfAbsent(s.sourceType, () => []).add(s);
     }
     final types = byType.keys.toList();
 
@@ -139,12 +140,15 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
             children: [
               _TabChip(
                 label: '全部',
-                selected: _tabSourceId == null,
-                onTap: () => setState(() => _tabSourceId = null),
+                selected: selectedSourceId == null,
+                onTap: () {
+                  setState(() => _tabSourceId = null);
+                  ref.read(selectedSourceProvider.notifier).selectAll();
+                },
               ),
               ...types.expand((type) {
-                final typeSources = byType[type] ?? [];
-                if (typeSources.isEmpty) return <Widget>[];
+                final typeServices = byType[type] ?? [];
+                if (typeServices.isEmpty) return <Widget>[];
                 return [
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -158,14 +162,36 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
                       ),
                     ),
                   ),
-                  ...typeSources.expand((source) {
-                    return source.services.map(
-                      (p) => _TabChip(
-                        label: p.sourceName,
-                        selected: _tabSourceId == p.sourceId,
-                        onTap: () => setState(() => _tabSourceId = p.sourceId),
+                  ...typeServices.expand((service) {
+                    // 多库服务：展示每个库作为 tab
+                    if (service.libraries.isNotEmpty) {
+                      return service.libraries.map(
+                        (lib) => _TabChip(
+                          label: lib.name,
+                          selected: _tabSourceId == service.sourceId &&
+                              service.defaultLibraryId == lib.id,
+                          onTap: () {
+                            setState(() => _tabSourceId = service.sourceId);
+                            ref.read(selectedSourceProvider.notifier).select(
+                                  service.sourceId,
+                                  libraryId: lib.id,
+                                );
+                          },
+                        ),
+                      );
+                    }
+                    return [
+                      _TabChip(
+                        label: service.sourceName,
+                        selected: _tabSourceId == service.sourceId,
+                        onTap: () {
+                          setState(() => _tabSourceId = service.sourceId);
+                          ref.read(selectedSourceProvider.notifier).select(
+                                service.sourceId,
+                              );
+                        },
                       ),
-                    );
+                    ];
                   }),
                 ];
               }),

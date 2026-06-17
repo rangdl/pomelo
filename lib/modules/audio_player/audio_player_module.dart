@@ -14,7 +14,9 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/music_module.dart';
+import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music_lx/model/lx_music_service.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
@@ -90,7 +92,17 @@ class AudioPlayerModule extends Module {
         // 通过 MusicModule 找到对应的 MusicService，调用 getMusicUrl 获取播放链接
         final musicModule = ModuleManager().find<MusicModule>('music');
         if (musicModule == null) return track.map(full: (f) => f.src, local: (l) => l.path);
-        final service = musicModule.service(track.source.id);
+        // 先尝试精确匹配 sourceId
+        MusicService? service = musicModule.service(track.source.id);
+        // 若无精确匹配，尝试找到拥有该 library 的 Lx 服务
+        if (service == null) {
+          for (final s in musicModule.services) {
+            if (s is LxMusicService && s.libraries.any((l) => l.id == track.source.id)) {
+              service = s;
+              break;
+            }
+          }
+        }
         if (service == null) return track.map(full: (f) => f.src, local: (l) => l.path);
         return service.getMusicUrl(track as SongFull);
       },

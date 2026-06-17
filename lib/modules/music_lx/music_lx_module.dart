@@ -3,32 +3,39 @@ import 'dart:io';
 
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/music_module.dart';
-import 'package:pomelo/modules/music_lx/model/lx_js_source_engine.dart';
+import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
 import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
-import 'lx_script_source.dart';
+import 'model/lx_music_service.dart';
 
-/// Settings key: Lx 音乐脚本文件路径列表（JSON 数组字符串）
-const _kLxScriptPaths = 'music_lx_script_paths';
+/// Settings key: Lx 元数据插件文件路径（单路径字符串，仅支持一份）
+const _kLxMetadataPluginPath = 'music_lx_metadata_plugin_path';
 
-/// Settings key: Lx 音乐源脚本文件路径列表（JSON 数组字符串）
-const _kLxSourceScriptPaths = 'music_lx_source_script_paths';
+/// Settings key: Lx 音源插件文件路径列表（JSON 数组字符串）
+const _kLxSourcePluginPaths = 'music_lx_source_plugin_paths';
 
 /// Lx 音乐模块
 ///
-/// 通过 quickjs 动态加载用户上传的 JS 脚本文件，
-/// 每个脚本文件作为一个 [LxScriptSource] 来源，
-/// 自动检测脚本注册的平台并创建对应的 [MusicService]。
+/// 通过 quickjs 动态加载用户上传的 JS 插件文件，
+/// 支持两种插件类型：
+/// - **元数据插件**：提供音乐搜索、歌曲详情等元信息，仅允许一份，注册若干库（tx/wy/kg 等）
+/// - **音源插件**：提供音乐播放链接查询能力，支持多份叠加
 ///
-/// 所有脚本共享同一个 [LxJsEngine] 实例。
+/// 元数据插件 + 关联的音源插件组成一个统一的 [LxMusicService]，
+/// 注册为单个音乐服务到 [MusicModule]。
+///
+/// 所有元数据插件共享同一个 [LxMetadataEngine] 实例。
 class LxMusicModule extends Module {
-  late final LxJsEngine _jsEngine;
-  late LxJsSourceEngine _sourceEngine;
+  late final LxMetadataEngine _metadataEngine;
+  late LxSourceEngine _sourceEngine;
 
-  /// 已加载的源脚本路径列表
-  final List<String> _sourceScriptPaths = [];
+  /// 当前元数据插件文件路径
+  String? _metadataPluginPath;
 
-  /// 已加载的脚本来源列表
-  final List<LxScriptSource> _scriptSources = [];
+  /// 当前 Lx 音乐服务实例（元数据插件加载后创建）
+  LxMusicService? _service;
+
+  /// 已加载的音源插件路径列表
+  final List<String> _sourcePluginPaths = [];
 
   @override
   String get id => 'music_lx';
@@ -42,159 +49,163 @@ class LxMusicModule extends Module {
   @override
   List<String> get dependencies => ['music'];
 
-  /// 对外暴露 JS 引擎
-  LxJsEngine get jsEngine => _jsEngine;
+  /// 对外暴露元数据引擎
+  LxMetadataEngine get metadataEngine => _metadataEngine;
 
-  /// 对外暴露音乐源引擎
-  LxJsSourceEngine get sourceEngine => _sourceEngine;
+  /// 对外暴露音源插件引擎
+  LxSourceEngine get sourceEngine => _sourceEngine;
 
-  /// 已加载的源脚本路径列表（只读）
-  List<String> get sourcePaths => List.unmodifiable(_sourceScriptPaths);
+  /// 当前 Lx 音乐服务（可能为 null，元数据插件未加载时）
+  LxMusicService? get service => _service;
 
-  /// 已加载的脚本来源列表（只读）
-  List<LxScriptSource> get scriptSources => List.unmodifiable(_scriptSources);
+  /// 已加载的音源插件路径列表（只读）
+  List<String> get sourcePluginPaths => List.unmodifiable(_sourcePluginPaths);
 
-  /// 已加载的脚本路径列表
-  List<String> get scriptPaths =>
-      _scriptSources.map((s) => s.scriptPath).toList();
+  /// 当前元数据插件文件路径
+  String? get metadataPluginPath => _metadataPluginPath;
 
   @override
   Future<void> onInit() async {
-    _jsEngine = LxJsEngine();
-    await _jsEngine.init();
-    _sourceEngine = LxJsSourceEngine();
+    _metadataEngine = LxMetadataEngine();
+    await _metadataEngine.init();
+    _sourceEngine = LxSourceEngine();
 
-    // 加载已保存的源脚本
-    await _loadSavedSourceScripts();
+    // 加载已保存的音源插件
+    await _loadSavedSourcePlugins();
 
-    // 从 Settings 读取已保存的脚本文件路径并加载
-    final pathsJson = Settings.get(_kLxScriptPaths);
-    if (pathsJson != null) {
-      try {
-        final paths = (jsonDecode(pathsJson) as List).cast<String>();
-        for (final path in paths) {
-          await _createScriptSource(path);
-        }
-      } catch (_) {
-        // JSON 解析失败，忽略
-      }
+    // 从 Settings 读取已保存的元数据插件路径并加载
+    final savedPath = Settings.get(_kLxMetadataPluginPath);
+    if (savedPath != null && savedPath.isNotEmpty) {
+      await _loadMetadataPlugin(savedPath);
     }
   }
 
   @override
   Future<void> onReady() async {
     final musicModule = ModuleManager().find<MusicModule>('music');
-    if (musicModule == null) return;
-    // 将每个脚本来源注册到 MusicModule
-    for (final source in _scriptSources) {
-      await musicModule.addSource(source);
-    }
+    if (musicModule == null || _service == null) return;
+    musicModule.register(_service!);
   }
 
   @override
   Future<void> onDispose() async {
-    _jsEngine.dispose();
+    _metadataEngine.dispose();
     _sourceEngine.dispose();
-    _scriptSources.clear();
+    _service = null;
   }
 
-  // ========== 搜索脚本管理（仅允许一份） ==========
+  // ========== 元数据插件管理（仅允许一份） ==========
 
-  /// 添加搜索脚本
+  /// 添加元数据插件
   ///
-  /// 仅允许上传一份搜索脚本。若已有脚本则返回 false。
-  /// 如需替换请使用 [replaceScript]。
-  Future<bool> addScript(String path) async {
-    if (_scriptSources.isNotEmpty) return false;
-    final source = await _createScriptSource(path);
-    if (source == null) return false;
+  /// 仅允许上传一份元数据插件。若已有插件则返回 false。
+  /// 如需替换请使用 [replaceMetadataPlugin]。
+  Future<bool> addMetadataPlugin(String path) async {
+    if (_service != null) return false;
+    final loaded = await _loadMetadataPlugin(path);
+    if (!loaded) return false;
     if (isInitialized) {
       final musicModule = ModuleManager().find<MusicModule>('music');
-      await musicModule?.addSource(source);
+      musicModule?.register(_service!);
     }
-    await saveScriptPaths();
     return true;
   }
 
-  /// 替换搜索脚本
+  /// 替换元数据插件
   ///
-  /// 移除现有搜索脚本，加载新的脚本文件。
+  /// 移除现有元数据插件，加载新的插件文件。
   /// 返回是否替换成功。
-  Future<bool> replaceScript(String newPath) async {
-    if (_scriptSources.isEmpty) return false;
-    final oldSource = _scriptSources.first;
-    // 从 MusicModule 注销旧脚本
+  Future<bool> replaceMetadataPlugin(String newPath) async {
+    if (_service == null) return false;
+    // 从 MusicModule 注销旧服务
     final musicModule = ModuleManager().find<MusicModule>('music');
-    await musicModule?.removeSource(oldSource.id);
-    _scriptSources.clear();
-    // 加载新脚本
-    final source = await _createScriptSource(newPath);
-    if (source == null) {
-      await saveScriptPaths();
+    musicModule?.unregister(_service!.sourceId);
+    _service = null;
+
+    // 加载新插件
+    final loaded = await _loadMetadataPlugin(newPath);
+    if (!loaded) {
+      await _saveMetadataPluginPath();
       return false;
     }
     if (isInitialized) {
-      await musicModule?.addSource(source);
+      musicModule?.register(_service!);
     }
-    await saveScriptPaths();
+    await _saveMetadataPluginPath();
     return true;
   }
 
-  /// 移除搜索脚本
-  Future<void> removeScript(String path) async {
-    final idx = _scriptSources.indexWhere((s) => s.scriptPath == path);
-    if (idx == -1) return;
-    final source = _scriptSources.removeAt(idx);
+  /// 移除元数据插件
+  Future<void> removeMetadataPlugin() async {
+    if (_service == null) return;
     final musicModule = ModuleManager().find<MusicModule>('music');
-    await musicModule?.removeSource(source.id);
-    await saveScriptPaths();
+    musicModule?.unregister(_service!.sourceId);
+    _service = null;
+    _metadataPluginPath = null;
+    await _saveMetadataPluginPath();
   }
 
-  /// 创建脚本来源并尝试初始化
-  Future<LxScriptSource?> _createScriptSource(String path) async {
-    final source = LxScriptSource(
-      scriptPath: path,
-      jsEngine: _jsEngine,
+  /// 加载元数据插件文件并创建服务
+  Future<bool> _loadMetadataPlugin(String path) async {
+    final file = File(path);
+    if (!await file.exists()) {
+      print('LxMusicModule: 元数据插件文件不存在 $path');
+      return false;
+    }
+    final content = await file.readAsString();
+    final libraries = await _metadataEngine.loadPluginWithLibraries(content);
+    if (libraries.isEmpty) {
+      print('LxMusicModule: 元数据插件 $path 未注册任何库，跳过');
+      return false;
+    }
+    _metadataPluginPath = path;
+
+    // 生成 pluginId（基于文件名 hash）
+    final pluginId = _derivePluginId(path);
+
+    _service = LxMusicService(
+      metadataEngine: _metadataEngine,
       sourceEngine: _sourceEngine,
+      pluginId: pluginId,
+      libraries: libraries,
     );
-    await source.init();
-    if (source.services.isEmpty) {
-      print('LxMusicModule: 脚本 $path 未注册任何平台，跳过');
-      await source.dispose();
-      return null;
-    }
-    _scriptSources.add(source);
-    return source;
+
+    await _saveMetadataPluginPath();
+    print(
+        'LxMusicModule: 插件加载成功，注册了 ${libraries.length} 个库: '
+        '${libraries.map((l) => l.id).join(", ")}');
+    return true;
   }
 
-  /// 保存搜索脚本路径列表到 Settings
-  Future<void> saveScriptPaths() async {
-    await Settings.set(_kLxScriptPaths, jsonEncode(scriptPaths));
+  /// 保存元数据插件路径到 Settings
+  Future<void> _saveMetadataPluginPath() async {
+    await Settings.set(_kLxMetadataPluginPath, _metadataPluginPath ?? '');
   }
 
-  /// 从 Settings 读取已保存的搜索脚本路径列表
-  static List<String> loadScriptPaths() {
-    final pathsJson = Settings.get(_kLxScriptPaths);
-    if (pathsJson == null) return [];
-    try {
-      return (jsonDecode(pathsJson) as List).cast<String>();
-    } catch (_) {
-      return [];
-    }
+  /// 从 Settings 读取已保存的元数据插件路径
+  static String? loadMetadataPluginPath() {
+    final path = Settings.get(_kLxMetadataPluginPath);
+    return (path != null && path.isNotEmpty) ? path : null;
   }
 
-  // ========== 源脚本管理（支持多份） ==========
+  /// 从插件路径生成 pluginId（取文件名的 hash）
+  static String _derivePluginId(String path) {
+    final fileName = path.split(RegExp(r'[/\\]')).last.replaceAll(RegExp(r'\.[^.]+$'), '');
+    return '${fileName}_${path.hashCode.abs()}';
+  }
 
-  /// 加载已保存的源脚本
-  Future<void> _loadSavedSourceScripts() async {
-    final pathsJson = Settings.get(_kLxSourceScriptPaths);
+  // ========== 音源插件管理（支持多份） ==========
+
+  /// 加载已保存的音源插件
+  Future<void> _loadSavedSourcePlugins() async {
+    final pathsJson = Settings.get(_kLxSourcePluginPaths);
     if (pathsJson == null) return;
     try {
       final paths = (jsonDecode(pathsJson) as List).cast<String>();
       for (final path in paths) {
-        final platforms = await _loadSourceScriptFile(path);
-        if (platforms.isNotEmpty) {
-          _sourceScriptPaths.add(path);
+        final libraries = await _loadSourcePluginFile(path);
+        if (libraries.isNotEmpty) {
+          _sourcePluginPaths.add(path);
         }
       }
     } catch (_) {
@@ -202,78 +213,82 @@ class LxMusicModule extends Module {
     }
   }
 
-  /// 添加源脚本
+  /// 添加音源插件
   ///
-  /// [path] 源脚本文件路径
-  /// 加载脚本后自动检测其支持的平台。
-  /// 返回脚本支持的平台信息列表，加载失败返回空列表。
-  Future<List<LxSourcePlatform>> addSourceScript(String path) async {
-    if (_sourceScriptPaths.contains(path)) return [];
-    final platforms = await _loadSourceScriptFile(path);
-    if (platforms.isNotEmpty) {
-      _sourceScriptPaths.add(path);
-      await _saveSourceScriptPaths();
+  /// [path] 音源插件文件路径
+  /// 加载插件后自动检测其支持的库。
+  /// 返回插件支持的库信息列表，加载失败返回空列表。
+  Future<List<LxSourceLibrary>> addSourcePlugin(String path) async {
+    if (_sourcePluginPaths.contains(path)) return [];
+    final libraries = await _loadSourcePluginFile(path);
+    if (libraries.isNotEmpty) {
+      _sourcePluginPaths.add(path);
+      await _saveSourcePluginPaths();
     }
-    return platforms;
+    return libraries;
   }
 
-  /// 替换源脚本
+  /// 替换音源插件
   ///
-  /// 重建源引擎，用新文件替换旧脚本，重新加载所有源脚本。
-  /// 返回新脚本支持的平台信息列表，加载失败返回空列表。
-  Future<List<LxSourcePlatform>> replaceSourceScript(
+  /// 重建音源引擎，用新文件替换旧插件，重新加载所有音源插件。
+  /// 返回新插件支持的库信息列表，加载失败返回空列表。
+  Future<List<LxSourceLibrary>> replaceSourcePlugin(
     String oldPath,
     String newPath,
   ) async {
-    final idx = _sourceScriptPaths.indexOf(oldPath);
+    final idx = _sourcePluginPaths.indexOf(oldPath);
     if (idx == -1) return [];
-    // 重建源引擎
+    // 重建音源引擎
     _sourceEngine.dispose();
-    _sourceEngine = LxJsSourceEngine();
+    _sourceEngine = LxSourceEngine();
+    // 更新服务中的 sourceEngine 引用
+    _service?.sourceEngine = _sourceEngine;
     // 替换路径
-    _sourceScriptPaths[idx] = newPath;
-    List<LxSourcePlatform> newPlatforms = [];
-    // 重新加载所有源脚本
-    for (final p in _sourceScriptPaths) {
-      final platforms = await _loadSourceScriptFile(p);
-      if (p == newPath) newPlatforms = platforms;
+    _sourcePluginPaths[idx] = newPath;
+    List<LxSourceLibrary> newLibraries = [];
+    // 重新加载所有音源插件
+    for (final p in _sourcePluginPaths) {
+      final libraries = await _loadSourcePluginFile(p);
+      if (p == newPath) newLibraries = libraries;
     }
-    await _saveSourceScriptPaths();
-    return newPlatforms;
+    await _saveSourcePluginPaths();
+    return newLibraries;
   }
 
-  /// 移除源脚本
+  /// 移除音源插件
   ///
-  /// 重建源引擎并重新加载剩余的源脚本。
-  Future<void> removeSourceScript(String path) async {
-    if (!_sourceScriptPaths.remove(path)) return;
+  /// 重建音源引擎并重新加载剩余的音源插件。
+  Future<void> removeSourcePlugin(String path) async {
+    if (!_sourcePluginPaths.remove(path)) return;
     _sourceEngine.dispose();
-    _sourceEngine = LxJsSourceEngine();
-    for (final p in _sourceScriptPaths) {
-      await _loadSourceScriptFile(p);
+    _sourceEngine = LxSourceEngine();
+    // 更新服务中的 sourceEngine 引用
+    _service?.sourceEngine = _sourceEngine;
+    for (final p in _sourcePluginPaths) {
+      await _loadSourcePluginFile(p);
     }
-    await _saveSourceScriptPaths();
+    await _saveSourcePluginPaths();
   }
 
-  /// 加载单个源脚本文件
-  Future<List<LxSourcePlatform>> _loadSourceScriptFile(String path) async {
+  /// 加载单个音源插件文件
+  Future<List<LxSourceLibrary>> _loadSourcePluginFile(String path) async {
     final file = File(path);
     if (!await file.exists()) {
-      print('LxMusicModule: 源脚本文件不存在 $path');
+      print('LxMusicModule: 音源插件文件不存在 $path');
       return [];
     }
     final content = await file.readAsString();
-    return _sourceEngine.loadScript(content);
+    return _sourceEngine.loadPlugin(content);
   }
 
-  /// 保存源脚本路径列表到 Settings
-  Future<void> _saveSourceScriptPaths() async {
-    await Settings.set(_kLxSourceScriptPaths, jsonEncode(_sourceScriptPaths));
+  /// 保存音源插件路径列表到 Settings
+  Future<void> _saveSourcePluginPaths() async {
+    await Settings.set(_kLxSourcePluginPaths, jsonEncode(_sourcePluginPaths));
   }
 
-  /// 从 Settings 读取已保存的源脚本路径列表
-  static List<String> loadSourceScriptPaths() {
-    final pathsJson = Settings.get(_kLxSourceScriptPaths);
+  /// 从 Settings 读取已保存的音源插件路径列表
+  static List<String> loadSourcePluginPaths() {
+    final pathsJson = Settings.get(_kLxSourcePluginPaths);
     if (pathsJson == null) return [];
     try {
       return (jsonDecode(pathsJson) as List).cast<String>();

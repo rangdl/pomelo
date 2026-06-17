@@ -6,14 +6,15 @@ import 'package:pomelo/modules/music/model/models.dart';
 
 import '../model/js_engine.dart';
 
-/// Lx JS 引擎封装
+/// Lx 元数据引擎
 ///
 /// 负责管理 quickjs 运行时，注入基础能力（fetch/crypto/AES），
-/// 并支持动态加载用户上传的 JS 脚本文件内容。
-class LxJsEngine {
+/// 并支持动态加载用户上传的元数据插件脚本。
+/// 元数据插件提供音乐搜索、歌曲详情等元信息能力。
+class LxMetadataEngine {
   final JsEngine jsEngine;
 
-  LxJsEngine() : jsEngine = JsEngine();
+  LxMetadataEngine() : jsEngine = JsEngine();
 
   /// 初始化引擎（注入 fetch/crypto/AES 基础能力）
   ///
@@ -30,34 +31,34 @@ class LxJsEngine {
     // }
   }
 
-  /// 动态加载 JS 脚本内容
+  /// 加载元数据插件脚本
   ///
   /// 接受脚本字符串，在 quickjs 中执行。
   /// 脚本需要遵循 musicsdk Registry 协议，自行注册 Searcher/Provider 等。
   ///
   /// 返回是否加载成功。
-  bool loadScript(String scriptContent) {
+  bool loadPlugin(String scriptContent) {
     final result = jsEngine.jsRuntime.evaluate(scriptContent);
     if (result.isError) {
-      print('LxJsEngine: 脚本加载失败: ${result.toString()}');
+      print('LxMetadataEngine: 元数据插件加载失败: ${result.toString()}');
       return false;
     }
-    print('LxJsEngine: 脚本加载成功');
+    print('LxMetadataEngine: 元数据插件加载成功');
 
     // 调用脚本初始化方法
     final resultSetup = jsEngine.jsRuntime.evaluate('setup()');
     if (resultSetup.isError) {
-      print('LxJsEngine: 脚本初始化失败: ${result.toString()}');
+      print('LxMetadataEngine: 元数据插件初始化失败: ${result.toString()}');
       return false;
     }
-    print('LxJsEngine: 脚本初始化成功');
+    print('LxMetadataEngine: 元数据插件初始化成功');
     return true;
   }
 
-  /// 获取 registry 中已注册的所有平台信息
+  /// 获取 registry 中已注册的所有库信息
   ///
   /// 返回 `(id, name)` 列表，如 `[(id: 'tx', name: '腾讯音乐')]`。
-  Future<List<({String id, String name})>> getRegisteredSources() async {
+  Future<List<({String id, String name})>> getRegisteredLibraries() async {
     try {
       final result = await jsEngine.jsRuntime.evaluateAsync(
         'JSON.stringify(Array.from(registry.all()))',
@@ -82,16 +83,16 @@ class LxJsEngine {
     }
   }
 
-  /// 加载脚本并返回新注册的平台信息列表
+  /// 加载元数据插件并返回新注册的库信息列表
   ///
-  /// 加载前记录已有的平台，加载后对比得出新增的平台。
-  Future<List<({String id, String name})>> loadScriptWithSources(
+  /// 加载前记录已有的库，加载后对比得出新增的库。
+  Future<List<({String id, String name})>> loadPluginWithLibraries(
       String scriptContent) async {
-    final before = await getRegisteredSources();
+    final before = await getRegisteredLibraries();
     final beforeIds = before.map((e) => e.id).toSet();
-    final success = loadScript(scriptContent);
+    final success = loadPlugin(scriptContent);
     if (!success) return [];
-    final after = await getRegisteredSources();
+    final after = await getRegisteredLibraries();
     return after.where((e) => !beforeIds.contains(e.id)).toList();
   }
 

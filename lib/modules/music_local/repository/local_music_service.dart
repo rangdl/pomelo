@@ -150,6 +150,7 @@ class LocalMusicService extends MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) async {
     if (keyword.isEmpty) {
       return PaginationResponse.empty(page: page, limit: limit);
@@ -170,6 +171,7 @@ class LocalMusicService extends MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) async {
     if (keyword.isEmpty) {
       return PaginationResponse.empty(page: page, limit: limit);
@@ -190,6 +192,7 @@ class LocalMusicService extends MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) async {
     if (keyword.isEmpty) {
       return PaginationResponse.empty(page: page, limit: limit);

@@ -1,55 +1,96 @@
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/model/models.dart';
-import 'package:pomelo/modules/music_lx/model/lx_js_source_engine.dart';
+import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
 import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
 
 /// Lx 音乐服务
 ///
-/// 通过 JS 脚本动态加载的音乐平台服务。
-/// 每个实例对应一个脚本中的一个平台（如 tx、kg、wy 等）。
+/// 通过元数据插件动态加载的音乐平台服务。
+/// 单个实例管理所有库（如 tx、kg、wy 等），对外统一提供服务。
 ///
-/// [scriptId] 用于区分不同脚本提供的同平台服务，
-/// 确保多脚本场景下 sourceId 不冲突。
-/// [platform] 和 [platformName] 来自 JS 端 `registry.all()` 返回的 id 和 name。
+/// [metadataEngine] 用于音乐搜索和元信息查询，
+/// [sourceEngine] 用于获取播放链接（可选）。
+///
+/// 库列表由元数据插件加载后通过构造函数传入，
+/// [defaultLibraryId] 默认为第一个库的 id，
+/// 搜索和播放时若未指定库则使用默认库。
 class LxMusicService extends MusicService {
   @override
   MusicSourceType get sourceType => MusicSourceType.lx;
 
-  final LxJsEngine jsEngine;
+  /// 共享的元数据引擎
+  final LxMetadataEngine metadataEngine;
 
-  /// 音乐源引擎（用于获取播放链接），可选
-  final LxJsSourceEngine? sourceEngine;
+  /// 音源插件引擎（用于获取播放链接），可选
+  LxSourceEngine? sourceEngine;
 
-  /// 脚本标识，用于区分不同脚本来源
-  final String scriptId;
+  /// 插件标识，用于区分不同插件来源
+  final String pluginId;
 
-  /// 平台标识（如 'tx', 'kg', 'wy', 'kw', 'mg'）
-  final String platform;
+  /// 所有可用库信息列表
+  final List<({String id, String name})> _libraries;
 
-  /// 平台显示名称（如 '腾讯音乐', '酷狗音乐'）
-  final String platformName;
+  /// 当前默认使用的库标识
+  String? _defaultLibraryId;
 
   LxMusicService({
-    required this.jsEngine,
+    required this.metadataEngine,
     this.sourceEngine,
-    required this.scriptId,
-    required this.platform,
-    required this.platformName,
-  });
+    required this.pluginId,
+    required List<({String id, String name})> libraries,
+  }) : _libraries = List.from(libraries) {
+    _defaultLibraryId = _libraries.isNotEmpty ? _libraries.first.id : null;
+  }
 
   @override
-  String get sourceId => platform;
+  String get sourceId => 'lx-$pluginId';
 
   @override
-  String get sourceName => platformName;
+  String get sourceName => '在线音乐';
+
+  @override
+  int get maxServiceCount => 1;
+
+  @override
+  List<({String id, String name})> get libraries =>
+      List.unmodifiable(_libraries);
+
+  @override
+  String? get defaultLibraryId => _defaultLibraryId;
+
+  /// 设置默认库
+  void setDefaultLibrary(String libraryId) {
+    if (_libraries.any((l) => l.id == libraryId)) {
+      _defaultLibraryId = libraryId;
+    }
+  }
+
+  /// 更新库列表（元数据插件替换后调用）
+  void updateLibraries(List<({String id, String name})> libraries) {
+    _libraries
+      ..clear()
+      ..addAll(libraries);
+    // 如果当前默认库不在新列表中，重置为第一个
+    if (_defaultLibraryId == null ||
+        !_libraries.any((l) => l.id == _defaultLibraryId)) {
+      _defaultLibraryId = _libraries.isNotEmpty ? _libraries.first.id : null;
+    }
+  }
+
+  // ========== 搜索 ==========
 
   @override
   Future<PaginationResponse<Song>> searchSongs(
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) {
-    return jsEngine.search(keyword, page: page, limit: limit, type: platform);
+    final libId = libraryId ?? _defaultLibraryId;
+    if (libId == null) {
+      return Future.value(PaginationResponse.empty(page: page, limit: limit));
+    }
+    return metadataEngine.search(keyword, page: page, limit: limit, type: libId);
   }
 
   @override
@@ -57,6 +98,7 @@ class LxMusicService extends MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) {
     throw UnimplementedError('$sourceName(searchAlbums) 尚未实现');
   }
@@ -66,9 +108,12 @@ class LxMusicService extends MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) {
     throw UnimplementedError('$sourceName(searchPlaylists) 尚未实现');
   }
+
+  // ========== 歌曲 ==========
 
   @override
   Future<Song?> getSong(String id) {
@@ -79,6 +124,8 @@ class LxMusicService extends MusicService {
   Future<PaginationResponse<Song>> getSongs({int page = 1, int limit = 20}) {
     throw UnimplementedError('$sourceName(getSongs) 尚未实现');
   }
+
+  // ========== 专辑 ==========
 
   @override
   Future<Album?> getAlbum(String id) {
@@ -93,6 +140,8 @@ class LxMusicService extends MusicService {
   }) {
     throw UnimplementedError('$sourceName(getAlbumSongs) 尚未实现');
   }
+
+  // ========== 歌单 ==========
 
   @override
   Future<Playlist?> getPlaylist(String id) {
@@ -109,10 +158,21 @@ class LxMusicService extends MusicService {
 
   @override
   Future<String> getMusicUrl(SongFull song) async {
-    if (sourceEngine == null || !sourceEngine!.hasPlatform(platform)) {
+    if (sourceEngine == null) {
       throw UnimplementedError(
-          '$sourceName(getMusicUrl) 未加载源脚本，无法获取播放链接');
+          '$sourceName(getMusicUrl) 未加载音源插件，无法获取播放链接');
     }
-    return sourceEngine!.getMusicUrl(platform, song);
+    // 根据 song.source.id 路由到对应库获取播放链接
+    final libraryId = song.source.id;
+    if (!sourceEngine!.hasLibrary(libraryId)) {
+      // 回退到默认库
+      final fallback = _defaultLibraryId;
+      if (fallback == null || !sourceEngine!.hasLibrary(fallback)) {
+        throw UnimplementedError(
+            '$sourceName(getMusicUrl) 音源插件不支持库 $libraryId，且无可用回退库');
+      }
+      return sourceEngine!.getMusicUrl(fallback, song);
+    }
+    return sourceEngine!.getMusicUrl(libraryId, song);
   }
 }

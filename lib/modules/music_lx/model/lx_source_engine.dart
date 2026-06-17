@@ -7,58 +7,61 @@ import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/modules/music_lx/model/preload.dart';
 import 'js_engine.dart';
 
-/// 已注册的平台信息
-class LxSourcePlatform {
+/// 音源插件声明的库能力
+///
+/// 每个音源插件通过 `globalThis.lx.sources` 暴露其支持的平台信息，
+/// 本类描述其中一个库（如 kg、tx）的能力声明。
+class LxSourceLibrary {
   final String id;
   final String name;
   final List<String> qualitys;
 
-  const LxSourcePlatform({
+  const LxSourceLibrary({
     required this.id,
     required this.name,
     required this.qualitys,
   });
 }
 
-/// 已加载的源脚本条目
+/// 已加载的音源插件条目
 ///
-/// 每个条目对应一个独立的 [JsEngine] 实例及其支持的平台列表。
-class _SourceScriptEntry {
+/// 每个条目对应一个独立的 [JsEngine] 实例及其支持的库列表。
+class _SourcePluginEntry {
   final JsEngine engine;
-  final List<LxSourcePlatform> platforms;
+  final List<LxSourceLibrary> libraries;
 
-  _SourceScriptEntry({required this.engine, required this.platforms});
+  _SourcePluginEntry({required this.engine, required this.libraries});
 }
 
-/// Lx 音乐源引擎
+/// Lx 音源插件引擎
 ///
-/// 负责加载源脚本（source script），提供查询音乐播放链接的能力。
-/// 与 [LxJsEngine]（负责搜索音乐元数据）不同，本引擎专注于获取歌曲的实际播放 URL。
+/// 负责加载音源插件（source plugin），提供查询音乐播放链接的能力。
+/// 与 [LxMetadataEngine]（负责搜索音乐元数据）不同，本引擎专注于获取歌曲的实际播放 URL。
 ///
-/// 支持导入多个源脚本，每个脚本使用独立的 [JsEngine] 实例。
-/// 脚本加载后会通过 `globalThis.lx.sources` 自动检测其支持的平台列表。
-/// 查询播放链接时，根据平台标识路由到对应的脚本引擎。
+/// 支持导入多个音源插件，每个插件使用独立的 [JsEngine] 实例。
+/// 插件加载后会通过 `globalThis.lx.sources` 自动检测其支持的库列表。
+/// 查询播放链接时，根据库标识路由到对应的插件引擎。
 ///
-/// 源脚本需遵循以下协议：
-/// - 通过 `globalThis.lx.sources` 暴露平台信息，格式为 `{kg: {actions, name, qualitys, type}, ...}`
+/// 音源插件需遵循以下协议：
+/// - 通过 `globalThis.lx.sources` 暴露库信息，格式为 `{kg: {actions, name, qualitys, type}, ...}`
 /// - 通过 `globalThis.lx._dispatch(key, action, data)` 调度播放链接请求
-class LxJsSourceEngine {
-  /// 已加载的源脚本条目列表
-  final List<_SourceScriptEntry> _scripts = [];
+class LxSourceEngine {
+  /// 已加载的音源插件条目列表
+  final List<_SourcePluginEntry> _plugins = [];
 
-  /// 加载源脚本并返回其支持的平台列表
+  /// 加载音源插件并返回其支持的库列表
   ///
-  /// 每个脚本在独立的 [JsEngine] 中运行。
-  /// 加载后通过 `globalThis.lx.sources` 获取该平台支持的平台信息。
+  /// 每个插件在独立的 [JsEngine] 中运行。
+  /// 加载后通过 `globalThis.lx.sources` 获取该插件支持的库信息。
   ///
-  /// 返回脚本支持的平台信息列表，加载失败返回空列表。
-  Future<List<LxSourcePlatform>> loadScript(String scriptContent) async {
+  /// 返回插件支持的库信息列表，加载失败返回空列表。
+  Future<List<LxSourceLibrary>> loadPlugin(String scriptContent) async {
     final engine = JsEngine();
 
     // 加载Preloadjs
     final resultPreload = engine.jsRuntime.evaluate(preloadJS);
     if (resultPreload.isError) {
-      print('LxJsSourceEngine: preloadJS加载失败: ${resultPreload.toString()}');
+      print('LxSourceEngine: preloadJS加载失败: ${resultPreload.toString()}');
       engine.dispose();
       return [];
     }
@@ -70,17 +73,17 @@ class LxJsSourceEngine {
     // 初始化脚本运行环境
     final resultEnv = engine.jsRuntime.evaluate('initEnv($userApiText)');
     if (resultEnv.isError) {
-      print('LxJsSourceEngine: Env初始化失败: ${resultEnv.toString()}');
+      print('LxSourceEngine: Env初始化失败: ${resultEnv.toString()}');
       engine.dispose();
       return [];
     }
 
     final completer = Completer<bool>();
-    List<LxSourcePlatform> platforms = [];
-    // 桥接 事件监听 inited — 从 sources 参数直接解析平台列表
+    List<LxSourceLibrary> libraries = [];
+    // 桥接 事件监听 inited — 从 sources 参数直接解析库列表
     engine.jsRuntime.onMessage('inited', (arguments) {
       final sources = (arguments['sources'] ?? {}) as Map<String, dynamic>;
-      platforms = _parseSources(sources);
+      libraries = _parseSources(sources);
       completer.complete(true);
     });
     // 桥接 事件监听 updateAlert
@@ -89,41 +92,33 @@ class LxJsSourceEngine {
       print('需要更新: $updateUrl');
       completer.complete(false);
     });
-    //     engine.jsRuntime.evaluate("""
-    //  new Promise(function(resolve,reject){
-    //  resolve('a123')
-    //  }).then(async a=>console.log(a))
-    // """);
     // 执行脚本
     final result = engine.jsRuntime.evaluate(
       '!(function (){$scriptContent})();',
     );
     if (result.isError) {
-      print('LxJsSourceEngine: 源脚本加载失败: ${result.toString()}');
+      print('LxSourceEngine: 音源插件加载失败: ${result.toString()}');
       engine.dispose();
       return [];
     }
 
-    // Timer.periodic(const Duration(seconds: 1), (timer) {
-    //   engine.jsRuntime.executePendingJob();
-    // });
     // 等待初始化完成
     await completer.future;
 
-    if (platforms.isEmpty) {
-      print('LxJsSourceEngine: 源脚本未注册任何平台');
+    if (libraries.isEmpty) {
+      print('LxSourceEngine: 音源插件未注册任何库');
       engine.dispose();
       return [];
     }
 
-    _scripts.add(_SourceScriptEntry(engine: engine, platforms: platforms));
+    _plugins.add(_SourcePluginEntry(engine: engine, libraries: libraries));
     print(
-      'LxJsSourceEngine: 源脚本加载成功，支持平台: ${platforms.map((p) => p.id).join(", ")}',
+      'LxSourceEngine: 音源插件加载成功，支持库: ${libraries.map((l) => l.id).join(", ")}',
     );
-    return platforms;
+    return libraries;
   }
 
-  /// 从 inited 事件的 sources 参数解析平台列表
+  /// 从 inited 事件的 sources 参数解析库列表
   ///
   /// `sources` 结构为对象：
   /// ```json
@@ -132,16 +127,16 @@ class LxJsSourceEngine {
   ///   ...
   /// }
   /// ```
-  static List<LxSourcePlatform> _parseSources(Map<String, dynamic> sources) {
-    final platforms = <LxSourcePlatform>[];
+  static List<LxSourceLibrary> _parseSources(Map<String, dynamic> sources) {
+    final libraries = <LxSourceLibrary>[];
     for (final entry in sources.entries) {
       final id = entry.key;
       if (id.isEmpty) continue;
       final info = entry.value;
       if (info is! Map) continue;
       final infoMap = Map<String, dynamic>.from(info);
-      platforms.add(
-        LxSourcePlatform(
+      libraries.add(
+        LxSourceLibrary(
           id: id,
           name: (infoMap['name'] as String?) ?? id,
           qualitys:
@@ -150,22 +145,22 @@ class LxJsSourceEngine {
         ),
       );
     }
-    return platforms;
+    return libraries;
   }
 
   /// 查询音乐播放链接
   ///
-  /// 根据 [platform] 找到对应的脚本引擎，调用其 `getMusicUrl` 函数。
+  /// 根据 [libraryId] 找到对应的音源插件引擎，调用其 `getMusicUrl` 函数。
   /// 返回播放链接 URL，若查询失败则返回空字符串。
   Future<String> getMusicUrl(
-    String platform,
+    String libraryId,
     Song song, {
     quality = '128k',
   }) async {
-    // 找到支持该平台的脚本引擎
-    final entry = _findEntry(platform);
+    // 找到支持该库的音源插件引擎
+    final entry = _findEntry(libraryId);
     if (entry == null) {
-      print('LxJsSourceEngine: 平台 $platform 未找到对应的源脚本');
+      print('LxSourceEngine: 库 $libraryId 未找到对应的音源插件');
       return '';
     }
 
@@ -173,7 +168,7 @@ class LxJsSourceEngine {
     final requestKey =
         "request__${Random().nextDouble().toString().substring(2)}";
     final data = {
-      'source': platform,
+      'source': libraryId,
       'action': 'musicUrl',
       'info': {
         'type': quality,
@@ -189,7 +184,7 @@ class LxJsSourceEngine {
       entry.engine.jsRuntime.executePendingJob();
 
       if (result.isError) {
-        print('LxJsSourceEngine: 获取 $platform 播放链接失败: ${result.toString()}');
+        print('LxSourceEngine: 获取 $libraryId 播放链接失败: ${result.toString()}');
         return '';
       }
 
@@ -201,38 +196,38 @@ class LxJsSourceEngine {
       final url = dynamicUrl.toString();
       return url;
     } catch (e) {
-      print('LxJsSourceEngine: 获取 $platform 播放链接异常: $e');
+      print('LxSourceEngine: 获取 $libraryId 播放链接异常: $e');
       return '';
     }
   }
 
-  /// 查找支持指定平台的脚本条目
-  _SourceScriptEntry? _findEntry(String platform) {
-    for (final entry in _scripts) {
-      if (entry.platforms.any((p) => p.id == platform)) return entry;
+  /// 查找支持指定库的音源插件条目
+  _SourcePluginEntry? _findEntry(String libraryId) {
+    for (final entry in _plugins) {
+      if (entry.libraries.any((l) => l.id == libraryId)) return entry;
     }
     return null;
   }
 
-  /// 检查指定平台是否已有源脚本支持
-  bool hasPlatform(String platform) => _findEntry(platform) != null;
+  /// 检查指定库是否已有音源插件支持
+  bool hasLibrary(String libraryId) => _findEntry(libraryId) != null;
 
-  /// 所有已加载的平台信息列表
-  List<LxSourcePlatform> get platforms =>
-      _scripts.expand((e) => e.platforms).toList();
+  /// 所有已加载的库信息列表
+  List<LxSourceLibrary> get libraries =>
+      _plugins.expand((e) => e.libraries).toList();
 
-  /// 所有已加载的平台 ID 列表
-  List<String> get platformIds =>
-      _scripts.expand((e) => e.platforms.map((p) => p.id)).toList();
+  /// 所有已加载的库 ID 列表
+  List<String> get libraryIds =>
+      _plugins.expand((e) => e.libraries.map((l) => l.id)).toList();
 
-  /// 已加载的脚本数量
-  int get scriptCount => _scripts.length;
+  /// 已加载的插件数量
+  int get pluginCount => _plugins.length;
 
   void dispose() {
-    for (final entry in _scripts) {
+    for (final entry in _plugins) {
       entry.engine.dispose();
     }
-    _scripts.clear();
+    _plugins.clear();
   }
 
   static Map<String, String> parseLxMusicScriptInfo(String script) {

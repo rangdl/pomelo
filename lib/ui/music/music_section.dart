@@ -1,5 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/modules/music/model/music_source.dart';
+import 'package:pomelo/modules/music/model/music_source_type.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
@@ -8,23 +8,37 @@ import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 音乐来源切换按钮（右上角）
+///
+/// 遍历 MusicModule.services，按 sourceType 分组展示。
+/// 多库服务（如 LxMusicService）展示子库选项。
 class SourceSwitchButton extends ConsumerWidget {
   const SourceSwitchButton({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final servicesAsync = ref.watch(musicServicesProvider);
-    final selectedSourceId = ref.watch(selectedSourceProvider);
+    final selection = ref.watch(selectedSourceProvider);
+    final selectedSourceId = selection.sourceId;
 
     return servicesAsync.when(
       data: (services) {
+        // 确定显示名称：如果有 libraryId 则显示库名，否则显示服务名
         final selectedName = selectedSourceId == null
             ? '全部'
-            : services
-                      .where((s) => s.sourceId == selectedSourceId)
-                      .firstOrNull
-                      ?.sourceName ??
-                  '全部';
+            : () {
+                final service = services
+                    .where((s) => s.sourceId == selectedSourceId)
+                    .firstOrNull;
+                if (service == null) return '全部';
+                if (selection.libraryId != null &&
+                    service.libraries.isNotEmpty) {
+                  final lib = service.libraries
+                      .where((l) => l.id == selection.libraryId)
+                      .firstOrNull;
+                  return lib?.name ?? service.sourceName;
+                }
+                return service.sourceName;
+              }();
 
         return GhostButton(
           size: ButtonSize.small,
@@ -51,16 +65,12 @@ class SourceSwitchButton extends ConsumerWidget {
     List<MusicService> services,
     String? selectedSourceId,
   ) {
-    final module = ref.read(musicModuleProvider);
-    final sources = module?.sources ?? [];
-
     // 按来源类型分组
-    final byType = <MusicSourceType, List<MusicSource>>{};
-    for (final s in sources) {
-      byType.putIfAbsent(s.type, () => []).add(s);
+    final byType = <MusicSourceType, List<MusicService>>{};
+    for (final s in services) {
+      byType.putIfAbsent(s.sourceType, () => []).add(s);
     }
 
-    // 按类型顺序展示
     final types = byType.keys.toList();
 
     showDialog(
@@ -87,7 +97,7 @@ class SourceSwitchButton extends ConsumerWidget {
                 ),
                 const Divider(),
                 ...types.expand((type) {
-                  final typeSources = byType[type] ?? [];
+                  final typeServices = byType[type] ?? [];
                   return [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
@@ -101,25 +111,50 @@ class SourceSwitchButton extends ConsumerWidget {
                         ),
                       ),
                     ),
-                    ...typeSources.expand((source) {
-                      return source.services.map(
-                        (s) => GhostButton(
+                    ...typeServices.expand((service) {
+                      // 如果服务有多个库，展示每个库作为子选项
+                      if (service.libraries.isNotEmpty) {
+                        return service.libraries.map(
+                          (lib) => GhostButton(
+                            onPressed: () {
+                              // 选中库对应的 sourceId（对于多库服务，sourceId 是服务级别的）
+                              // 同时设置服务的默认库
+                              ref
+                                  .read(selectedSourceProvider.notifier)
+                                  .select(service.sourceId, libraryId: lib.id);
+                              Navigator.of(dialogContext).pop();
+                            },
+                            child: Text(
+                              lib.name,
+                              style: TextStyle(
+                                fontWeight: selectedSourceId == service.sourceId &&
+                                      service.defaultLibraryId == lib.id
+                                  ? FontWeight.bold
+                                  : null,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      // 单库/无库服务，直接展示
+                      return [
+                        GhostButton(
                           onPressed: () {
                             ref
                                 .read(selectedSourceProvider.notifier)
-                                .select(s.sourceId);
+                                .select(service.sourceId);
                             Navigator.of(dialogContext).pop();
                           },
                           child: Text(
-                            s.sourceName,
+                            service.sourceName,
                             style: TextStyle(
-                              fontWeight: selectedSourceId == s.sourceId
+                              fontWeight: selectedSourceId == service.sourceId
                                   ? FontWeight.bold
                                   : null,
                             ),
                           ),
                         ),
-                      );
+                      ];
                     }),
                   ];
                 }),
