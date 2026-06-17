@@ -14,6 +14,7 @@ import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/model/merged_song.dart';
 import 'package:pomelo/ui/music/model/service_result.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
+import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 
 /// 歌曲搜索结果页面
@@ -362,9 +363,14 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            trailing: Text(
-                              merged.displaySources,
-                              style: const TextStyle(fontSize: 12),
+                            trailing: Row(
+                              children: [
+                                Text(
+                                  merged.displaySources,
+                                  style: const TextStyle(fontSize: 12),
+                                ).muted,
+                                PlayPauseButton(song: merged.primary),
+                              ],
                             ),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                           ),

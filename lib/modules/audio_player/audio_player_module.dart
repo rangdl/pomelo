@@ -13,6 +13,8 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/modules/music/music_module.dart';
+import 'package:pomelo/modules/music/model/song.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
@@ -73,7 +75,7 @@ class AudioPlayerModule extends Module {
       PomeloMedia.serverPort = Random().nextInt(17500) + 5000;
     }
 
-    // 构建播放路由（注入 AudioPlayerService 和活跃曲目获取器）
+    // 构建播放路由（注入 AudioPlayerService、活跃曲目获取器和 URL 解析器）
     final playbackRoutes = ServerPlaybackRoutes(
       audioPlayer: _service,
       getActiveTrack: () {
@@ -83,6 +85,14 @@ class AudioPlayerModule extends Module {
         final media = playlist.medias.elementAtOrNull(playlist.index);
         if (media == null) return null;
         return PomeloMedia.media(media).track;
+      },
+      getTrackUrl: (Song track) async {
+        // 通过 MusicModule 找到对应的 MusicService，调用 getMusicUrl 获取播放链接
+        final musicModule = ModuleManager().find<MusicModule>('music');
+        if (musicModule == null) return track.map(full: (f) => f.src, local: (l) => l.path);
+        final service = musicModule.service(track.source.id);
+        if (service == null) return track.map(full: (f) => f.src, local: (l) => l.path);
+        return service.getMusicUrl(track as SongFull);
       },
     );
 

@@ -76,9 +76,6 @@ final preloadJS = """
       }
       fetch(url, {method: method, body: data, headers: options.headers})
       .then(async resp => {
-      console.log(resp)
-      console.log(typeof resp.text)
-      console.log(typeof resp.json)
         if (aborted) return;
         console.error('[lx.request] fetch resolved, status=' + resp.status + ' url=' + url.substring(0, 100));
         try {

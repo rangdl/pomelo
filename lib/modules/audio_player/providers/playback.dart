@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as path;
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/modules/music/model/song.dart';
 import 'package:shelf/shelf.dart';
@@ -39,10 +38,50 @@ class ServerPlaybackRoutes {
   /// 获取当前活跃曲目（由外部注入，避免对 Riverpod Ref 的依赖）
   final Song? Function() getActiveTrack;
 
+  /// 根据歌曲信息解析实际播放链接
+  ///
+  /// 由外部注入，内部调用对应 [MusicService.getMusicUrl]。
+  /// 若未注入或解析失败，回退到 `track.src`。
+  final Future<String> Function(Song track)? getTrackUrl;
+
   ServerPlaybackRoutes({
     required this.audioPlayer,
     required this.getActiveTrack,
+    this.getTrackUrl,
   }) : dio = Dio();
+
+  /// 已解析的播放链接缓存（key: track.id）
+  ///
+  /// 保证同一首歌曲的 URL 仅解析一次，
+  /// HEAD 和 GET 请求共享缓存结果。
+  final Map<String, String> _urlCache = {};
+
+  /// 解析曲目的实际播放链接
+  ///
+  /// 优先返回缓存，未缓存时通过 [getTrackUrl] 回调获取，
+  /// 若回调未注入或返回空则回退到 `track.src`。
+  Future<String> _resolveUrl(Song track) async {
+    final cached = _urlCache[track.id];
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    String url = track.map(full: (f) => f.src, local: (l) => l.path);
+    if (getTrackUrl != null) {
+      try {
+        final resolved = await getTrackUrl!(track);
+        if (resolved.isNotEmpty) url = resolved;
+      } catch (e) {
+        print('ServerPlaybackRoutes: getMusicUrl 失败: $e');
+      }
+    }
+    _urlCache[track.id] = url;
+    return url;
+  }
+
+  /// 清除指定曲目的 URL 缓存
+  void clearUrlCache(String trackId) => _urlCache.remove(trackId);
+
+  /// 清除所有 URL 缓存
+  void clearAllUrlCache() => _urlCache.clear();
 
   // Future<String> _getTrackCacheFilePath(SourcedTrack track) async {
   //   String filePath = join(
@@ -127,12 +166,7 @@ class ServerPlaybackRoutes {
     //   );
     // }
 
-    String url = track.src;
-    // track.url ??
-    // await ref
-    //     .read(sourcedTrackProvider(track.query).notifier)
-    //     .swapWithNextSibling()
-    //     .then((track) => track.url!);
+    String url = await _resolveUrl(track);
 
     final options = Options(
       headers: {
@@ -185,14 +219,7 @@ class ServerPlaybackRoutes {
     //     data: bytes,
     //   );
     // }
-
-    String url = track.src;
-    if (url.isEmpty) {
-      // url = await ref
-      //     .read(sourcedTrackProvider(track.query).notifier)
-      //     .refreshStreamingUrl()
-      //     .then((track) => track.url!);
-    }
+    String url = await _resolveUrl(track);
 
     final options = Options(
       headers: {
@@ -220,7 +247,7 @@ class ServerPlaybackRoutes {
           //     .read(sourcedTrackProvider(track.query).notifier)
           //     .refreshStreamingUrl();
 
-          url = track.src;
+          url = track.map(full: (f) => f.src, local: (l) => l.path);
 
           return dio.head(url, options: options);
         });

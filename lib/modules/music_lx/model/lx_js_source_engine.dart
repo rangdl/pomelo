@@ -194,7 +194,11 @@ class LxJsSourceEngine {
       }
 
       final asyncResult = await entry.engine.jsRuntime.handlePromise(result);
-      final url = asyncResult.rawResult?.toString() ?? '';
+      dynamic dynamicUrl = asyncResult.rawResult;
+      if (asyncResult.rawResult is Future){
+        dynamicUrl = await asyncResult.rawResult;
+      }
+      final url = dynamicUrl.toString();
       return url;
     } catch (e) {
       print('LxJsSourceEngine: 获取 $platform 播放链接异常: $e');
