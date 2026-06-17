@@ -27,6 +27,9 @@ class SubsonicMusicService extends MusicService {
   MusicSourceType get sourceType => MusicSourceType.subsonic;
 
   @override
+  int get maxServiceCount => 10;
+
+  @override
   String get sourceId => 'subsonic-${_serverUrl.hashCode.abs()}-$_username';
 
   @override
@@ -39,6 +42,7 @@ class SubsonicMusicService extends MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) async {
     if (keyword.isEmpty) {
       return PaginationResponse.empty(page: page, limit: limit);
@@ -71,6 +75,7 @@ class SubsonicMusicService extends MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) async {
     if (keyword.isEmpty) {
       return PaginationResponse.empty(page: page, limit: limit);
@@ -103,6 +108,7 @@ class SubsonicMusicService extends MusicService {
     String keyword, {
     int page = 1,
     int limit = 20,
+    String? libraryId,
   }) async {
     // Subsonic API 的 playlist 没有独立搜索接口，
     // 获取全部歌单后在客户端过滤
@@ -251,7 +257,7 @@ class SubsonicMusicService extends MusicService {
   // ========== 播放链接 ==========
 
   @override
-  Future<String> getMusicUrl(Song song) async {
+  Future<String> getMusicUrl(SongFull song) async {
     return client.buildStreamUrl(song.id);
   }
 

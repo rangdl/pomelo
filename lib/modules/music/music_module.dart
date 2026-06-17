@@ -1,6 +1,6 @@
 import 'package:pomelo/core/mars.dart';
-import 'model/music_source.dart';
 import 'model/music_service.dart';
+import 'model/music_source_type.dart';
 import 'model/song.dart';
 import 'model/album.dart';
 import 'model/playlist.dart';
@@ -11,8 +11,9 @@ import 'model/playlist.dart';
 ///
 /// 职责：
 /// - 提供 [MusicService] 接口规范，供其他模块实现
-/// - 通过 [register] 接收并管理各平台模块注册的音乐服务
+/// - 通过 [register] 接收并管理各模块注册的音乐服务
 /// - 提供统一的多源聚合查询能力（搜索歌曲/专辑/歌单）
+/// - 通过 [maxServiceCount] 限制同类型服务的注册数量
 ///
 /// 本模块不包含播放功能，播放由 audio_player 模块负责。
 ///
@@ -23,7 +24,6 @@ import 'model/playlist.dart';
 /// - Service/State: Riverpod Provider
 class MusicModule extends Module {
   final List<MusicService> _services = [];
-  final List<MusicSource> _sources = [];
 
   @override
   String get id => 'music';
@@ -40,57 +40,21 @@ class MusicModule extends Module {
   /// 所有已注册的音乐服务（只读）
   List<MusicService> get services => List.unmodifiable(_services);
 
-  /// 所有已注册的音乐来源（只读）
-  List<MusicSource> get sources => List.unmodifiable(_sources);
-
-  // ========== 来源管理 ==========
-
-  /// 添加一个音乐来源
-  ///
-  /// 会先调用 [MusicSource.init] 初始化来源，
-  /// 然后将其提供的所有 [MusicService] 注册到本模块。
-  Future<void> addSource(MusicSource source) async {
-    await source.init();
-    _sources.add(source);
-    for (final service in source.services) {
-      _services.add(service);
-    }
-  }
-
-  /// 移除一个音乐来源
-  ///
-  /// 会注销其提供的所有 [MusicService]，然后调用 [MusicSource.dispose]。
-  /// 返回是否找到并移除了该来源。
-  Future<bool> removeSource(String sourceId) async {
-    final idx = _sources.indexWhere((s) => s.id == sourceId);
-    if (idx == -1) return false;
-    final source = _sources.removeAt(idx);
-    // 注销该来源提供的所有服务
-    for (final service in source.services) {
-      _services.removeWhere((s) => s.sourceId == service.sourceId);
-    }
-    await source.dispose();
-    return true;
-  }
-
-  /// 获取指定类型的来源列表
-  List<MusicSource> sourcesOfType(MusicSourceType type) {
-    return _sources.where((s) => s.type == type).toList();
-  }
-
-  /// 根据来源 id 获取来源
-  MusicSource? source(String sourceId) {
-    try {
-      return _sources.firstWhere((s) => s.id == sourceId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ========== 服务管理（保留原有 API） ==========
+  // ========== 服务管理 ==========
 
   /// 注册一个音乐服务
+  ///
+  /// 会检查同 [MusicSourceType] 已注册的数量是否达到
+  /// [MusicService.maxServiceCount] 上限，达到则抛出 [StateError]。
   void register(MusicService service) {
+    final sameTypeCount =
+        _services.where((s) => s.sourceType == service.sourceType).length;
+    if (sameTypeCount >= service.maxServiceCount) {
+      throw StateError(
+        '无法注册 ${service.sourceType.displayName} 服务: '
+        '已达到最大注册数量 ${service.maxServiceCount}',
+      );
+    }
     _services.add(service);
   }
 
@@ -119,6 +83,11 @@ class MusicModule extends Module {
   /// 获取所有符合类型的服务
   List<T> servicesOf<T extends MusicService>() {
     return _services.whereType<T>().toList();
+  }
+
+  /// 获取指定来源类型的所有服务
+  List<MusicService> servicesByType(MusicSourceType type) {
+    return _services.where((s) => s.sourceType == type).toList();
   }
 
   /// 按分类分组所有服务
@@ -197,7 +166,7 @@ class MusicModule extends Module {
 
   @override
   Future<void> onInit() async {
-    // 等待各平台模块注册 MusicService
+    // 等待各音乐模块注册 MusicService
   }
 
   @override
@@ -207,11 +176,6 @@ class MusicModule extends Module {
 
   @override
   Future<void> onDispose() async {
-    // 先注销所有来源
-    for (final source in List<MusicSource>.from(_sources)) {
-      await source.dispose();
-    }
-    _sources.clear();
     _services.clear();
   }
 }
