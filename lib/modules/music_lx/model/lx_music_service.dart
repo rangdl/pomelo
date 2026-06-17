@@ -38,7 +38,7 @@ class LxMusicService extends MusicService {
   });
 
   @override
-  String get sourceId => 'lx-$scriptId-$platform';
+  String get sourceId => platform;
 
   @override
   String get sourceName => platformName;
@@ -108,7 +108,7 @@ class LxMusicService extends MusicService {
   // ========== 播放链接 ==========
 
   @override
-  Future<String> getMusicUrl(Song song) async {
+  Future<String> getMusicUrl(SongFull song) async {
     if (sourceEngine == null || !sourceEngine!.hasPlatform(platform)) {
       throw UnimplementedError(
           '$sourceName(getMusicUrl) 未加载源脚本，无法获取播放链接');

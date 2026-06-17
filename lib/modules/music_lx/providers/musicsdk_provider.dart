@@ -264,6 +264,7 @@ class PomeloTrackObjectMeta {
       src: '', // 需要根据类型选择合适的链接
       duration: duration,
       source: (id: source, name: source), // 简化处理
+      meta: toMap()
     );
   }
 }

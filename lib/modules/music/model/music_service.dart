@@ -84,7 +84,7 @@ abstract class MusicService {
   Future<PaginationResponse<Playlist>> getPlaylists({int page = 1, int limit = 20});
 
   /// 获取歌曲播放链接 用于音乐信息和播放链接分步获取
-  Future<String> getMusicUrl(Song song) {
+  Future<String> getMusicUrl(SongFull song) {
     throw UnimplementedError('$sourceName(getMusicUrl) 尚未实现');
   }
 }

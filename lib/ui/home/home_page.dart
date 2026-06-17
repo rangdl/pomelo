@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
-import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:pomelo/ui/music/music_section.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -16,7 +15,7 @@ class HomeView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repository = ref.watch(homeRepositoryProvider);
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context);
 
     return Scaffold(
       headers: [
@@ -47,30 +46,9 @@ class HomeView extends ConsumerWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final items = snapshot.data!;
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              // 原有卡片列表
-              ...items.map(
-                (item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Card(
-                    child: ListTile(
-                      leading: Icon(
-                        _iconMap[item.icon] ?? Icons.circle,
-                        color: theme.colorScheme.primary,
-                        size: 24,
-                      ),
-                      title: Text(item.title),
-                      subtitle: item.subtitle.isNotEmpty
-                          ? Text(item.subtitle)
-                          : null,
-                      trailing: const Icon(Icons.chevron_right, size: 16),
-                    ),
-                  ),
-                ),
-              ),
 
               // 分隔线
               const Padding(
@@ -88,11 +66,11 @@ class HomeView extends ConsumerWidget {
   }
 }
 
-const _iconMap = {
-  'home': Icons.home,
-  'layers': Icons.layers,
-  'bolt': Icons.bolt,
-  'route': Icons.route,
-  'favorite': Icons.favorite,
-  'star': Icons.star,
-};
+// const _iconMap = {
+//   'home': Icons.home,
+//   'layers': Icons.layers,
+//   'bolt': Icons.bolt,
+//   'route': Icons.route,
+//   'favorite': Icons.favorite,
+//   'star': Icons.star,
+// };
