@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/modules/music_local/providers/local_music_providers.dart';
+import 'package:pomelo/modules/music_local/local_music_providers.dart';
 
 /// 我的页面 — 用户设置中心
 ///
@@ -89,7 +89,9 @@ class MyPage extends ConsumerWidget {
                 ListTile(
                   leading: const Icon(Icons.folder_open, size: 20),
                   title: const Text('添加音乐目录'),
-                  subtitle: Text('已扫描 ${ref.watch(localMusicSongCountProvider)} 首歌曲'),
+                  subtitle: Text(
+                    '已扫描 ${ref.watch(localMusicSongCountProvider)} 首歌曲',
+                  ),
                   trailing: const Icon(Icons.add, size: 20),
                   onTap: () async {
                     final result = await FilePicker.platform.getDirectoryPath(
@@ -108,7 +110,11 @@ class MyPage extends ConsumerWidget {
                     (dir) => ListTile(
                       leading: const Icon(Icons.folder, size: 20),
                       title: Text(p.basename(dir)),
-                      subtitle: Text(dir, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                        dir,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       trailing: IconButton.text(
                         icon: const Icon(Icons.delete_outline, size: 18),
                         onPressed: () {
