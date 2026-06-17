@@ -6,7 +6,7 @@ import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music/model/song.dart';
-import 'package:pomelo/modules/music_local/providers/local_music_providers.dart';
+import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:pomelo/modules/music_lx/model/lx_music_service.dart';
 import 'package:pomelo/ui/music/model/service_result.dart';
 
@@ -21,14 +21,19 @@ const _kSelectedLibrary = 'music_selected_library';
 /// sourceId 为 null 表示"全部来源"。
 /// libraryId 用于多库服务（如 Lx），指定当前使用的库。
 /// 选中的来源会自动持久化到 Settings，应用重启后自动恢复。
-class SelectedSourceNotifier extends Notifier<({String? sourceId, String? libraryId})> {
+class SelectedSourceNotifier
+    extends Notifier<({String? sourceId, String? libraryId})> {
   @override
   ({String? sourceId, String? libraryId}) build() {
     final savedSource = Settings.get(_kSelectedSource);
     final savedLibrary = Settings.get(_kSelectedLibrary);
     return (
-      sourceId: (savedSource != null && savedSource.isNotEmpty) ? savedSource : null,
-      libraryId: (savedLibrary != null && savedLibrary.isNotEmpty) ? savedLibrary : null,
+      sourceId: (savedSource != null && savedSource.isNotEmpty)
+          ? savedSource
+          : null,
+      libraryId: (savedLibrary != null && savedLibrary.isNotEmpty)
+          ? savedLibrary
+          : null,
     );
   }
 
@@ -57,9 +62,10 @@ class SelectedSourceNotifier extends Notifier<({String? sourceId, String? librar
 ///
 /// 返回 `(sourceId, libraryId)` 记录，sourceId 为 null 表示"全部来源"。
 final selectedSourceProvider =
-    NotifierProvider<SelectedSourceNotifier, ({String? sourceId, String? libraryId})>(
-      SelectedSourceNotifier.new,
-    );
+    NotifierProvider<
+      SelectedSourceNotifier,
+      ({String? sourceId, String? libraryId})
+    >(SelectedSourceNotifier.new);
 
 /// 音乐列表数据：歌曲列表 + 出错的服务
 class MusicListData {
@@ -109,7 +115,9 @@ final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
 });
 
 /// 所有已注册的音乐服务列表
-final musicServicesListProvider = FutureProvider<List<MusicService>>((ref) async {
+final musicServicesListProvider = FutureProvider<List<MusicService>>((
+  ref,
+) async {
   await ref.watch(musicReadyProvider.future);
   // 监听 lx 元数据插件路径变化，插件增删时触发重新计算
   ref.watch(lxMetadataPluginPathsProvider);

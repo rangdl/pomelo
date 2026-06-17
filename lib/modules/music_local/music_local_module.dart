@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/music_module.dart';
-import 'repository/local_music_service.dart';
+import 'service/local_music_service.dart';
 
 /// Settings key: 本地音乐目录列表（JSON 数组字符串）
 const _kLocalMusicDirs = 'music_local_directories';
