@@ -145,6 +145,10 @@ function fetch(url, options) {
             _jsRuntime.evaluate(
               "globalThis.__native_fetch_callback[$nativeFetchId].callback(`${err.response.toString()}`,null)",
             );
+          })
+          .whenComplete(() {
+            // 请求成功后刷新quickjs的Promise
+            _jsRuntime.executePendingJob();
           });
     });
   }
