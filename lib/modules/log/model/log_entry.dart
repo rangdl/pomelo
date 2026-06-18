@@ -62,6 +62,29 @@ class LogEntry {
     if (metadata != null) 'metadata': metadata,
   };
 
+  /// 从 JSON 创建
+  factory LogEntry.fromJson(Map<String, dynamic> json) {
+    return LogEntry(
+      level: LogLevel.values.firstWhere(
+        (e) => e.name == json['level'],
+        orElse: () => LogLevel.info,
+      ),
+      tag: json['tag'] as String? ?? '',
+      message: json['message'] as String? ?? '',
+      timestamp: json['timestamp'] != null
+          ? DateTime.tryParse(json['timestamp'] as String)
+          : null,
+      error: json['error'] as Object?,
+      stackTrace: json['stackTrace'] != null
+          ? StackTrace.fromString(json['stackTrace'] as String)
+          : null,
+      sourceModuleId: json['sourceModuleId'] as String?,
+      metadata: json['metadata'] != null
+          ? Map<String, dynamic>.from(json['metadata'] as Map)
+          : null,
+    );
+  }
+
   LogEntry copyWith({
     LogLevel? level,
     String? tag,
@@ -168,8 +191,9 @@ class LogQuery {
     if (levels != null && !levels!.contains(entry.level)) return false;
     if (tags != null && !tags!.contains(entry.tag)) return false;
     if (sourceModuleIds != null &&
-        !sourceModuleIds!.contains(entry.sourceModuleId))
+        !sourceModuleIds!.contains(entry.sourceModuleId)) {
       return false;
+    }
     if (from != null && entry.timestamp.isBefore(from!)) return false;
     if (to != null && entry.timestamp.isAfter(to!)) return false;
     if (keyword != null &&

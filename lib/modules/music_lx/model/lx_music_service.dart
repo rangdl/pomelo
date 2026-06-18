@@ -144,8 +144,45 @@ class LxMusicService extends MusicService {
   // ========== 歌单 ==========
 
   @override
+  Future<List<PlaylistCategory>> getPlaylistCategories() {
+    final libId = _defaultLibraryId;
+    if (libId == null) return Future.value([]);
+    return metadataEngine.getPlaylistCategories(type: libId);
+  }
+
+  @override
+  Future<PaginationResponse<Playlist>> getPlaylistsByCategory(
+    String categoryId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final libId = _defaultLibraryId;
+    if (libId == null) {
+      return PaginationResponse.empty(page: page, limit: limit);
+    }
+    final items = await metadataEngine.getPlaylistsByCategory(
+      categoryId,
+      type: libId,
+    );
+    return PaginationResponse<Playlist>(
+      page: page,
+      limit: limit,
+      total: items.length,
+      hasMore: false,
+      items: items,
+    );
+  }
+
+  @override
   Future<Playlist?> getPlaylist(String id) {
     throw UnimplementedError('$sourceName(getPlaylist) 尚未实现');
+  }
+
+  @override
+  Future<List<Song>> getPlaylistSongs(String id) {
+    final libId = _defaultLibraryId;
+    if (libId == null) return Future.value([]);
+    return metadataEngine.getPlaylistsDetail(id, type: libId);
   }
 
   @override

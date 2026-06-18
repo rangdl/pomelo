@@ -102,8 +102,34 @@ abstract class MusicService {
 
   // ========== 歌单 ==========
 
+  /// 获取歌单分类列表
+  ///
+  /// 返回该服务支持的所有歌单分类（如“推荐”“流行”“摇滚”等）。
+  /// 默认返回空列表，表示该服务不支持歌单分类。
+  /// 可通过 [getPlaylistsByCategory] 获取指定分类下的歌单。
+  Future<List<PlaylistCategory>> getPlaylistCategories() async => [];
+
+  /// 获取指定分类下的歌单列表
+  ///
+  /// [categoryId] 来自 [PlaylistCategory.id]。
+  /// 默认实现调用 [getPlaylists]，忽略分类参数。
+  /// 支持分类的服务应覆写此方法。
+  Future<PaginationResponse<Playlist>> getPlaylistsByCategory(
+    String categoryId, {
+    int page = 1,
+    int limit = 20,
+  }) {
+    return getPlaylists(page: page, limit: limit);
+  }
+
   /// 获取歌单详情
   Future<Playlist?> getPlaylist(String id);
+
+  /// 获取歌单中的歌曲列表
+  ///
+  /// [id] 为歌单标识。
+  /// 默认返回空列表，支持歌单详情的服务应覆写此方法。
+  Future<List<Song>> getPlaylistSongs(String id) async => [];
 
   /// 获取歌单列表（推荐/默认）
   Future<PaginationResponse<Playlist>> getPlaylists({int page = 1, int limit = 20});

@@ -13,6 +13,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/model/song.dart';
@@ -122,9 +123,9 @@ class AudioPlayerModule extends Module {
       PomeloMedia.serverPort,
     );
 
-    print(
-      '[AudioPlayer] HTTP server started at '
-      'http://${_server!.address.host}:${_server!.port}',
+    log.info(
+      'AudioPlayer',
+      'HTTP server started at http://${_server!.address.host}:${_server!.port}',
     );
   }
 
@@ -132,7 +133,7 @@ class AudioPlayerModule extends Module {
   Future<void> _stopServer() async {
     await _server?.close();
     _server = null;
-    print('[AudioPlayer] HTTP server stopped');
+    log.info('AudioPlayer', 'HTTP server stopped');
   }
 
   /// 获取仓储实例（供外部使用）

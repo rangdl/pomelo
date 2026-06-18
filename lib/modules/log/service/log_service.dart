@@ -111,6 +111,21 @@ class LogService extends Service {
     );
   }
 
+  /// 获取当前文件存储的最低日志级别
+  LogLevel get storageLevel => repository.storageLevel;
+
+  /// 设置文件存储的最低日志级别
+  ///
+  /// 低于此级别的日志仅存内存，不写入文件。
+  Future<void> setStorageLevel(LogLevel level) =>
+      repository.setStorageLevel(level);
+
+  /// 日志文件路径
+  String? get logFilePath => repository.logFilePath;
+
+  /// 导出日志文件内容
+  Future<String> exportFileContent() => repository.exportFileContent();
+
   /// 统一的日志记录内部方法
   void _record(
     LogLevel level,

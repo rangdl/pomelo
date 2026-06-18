@@ -4,6 +4,7 @@ import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
+import 'package:pomelo/modules/music/model/playlist.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
@@ -123,4 +124,69 @@ final musicServicesListProvider = FutureProvider<List<MusicService>>((
   ref.watch(lxMetadataPluginPathsProvider);
   final module = ModuleManager().find<MusicModule>('music');
   return module?.services ?? [];
+});
+
+/// 当前选中服务的歌单分类列表
+///
+/// 根据 selectedSourceProvider 找到对应 MusicService，调用 getPlaylistCategories()。
+/// 若服务不支持歌单分类，返回空列表。
+final playlistCategoriesProvider = FutureProvider<List<PlaylistCategory>>(
+  (ref) async {
+    await ref.watch(musicReadyProvider.future);
+    final selection = ref.watch(selectedSourceProvider);
+    if (selection.sourceId == null) return [];
+
+    final module = ModuleManager().find<MusicModule>('music');
+    final service = module?.service(selection.sourceId!);
+    if (service == null) return [];
+
+    return service.getPlaylistCategories();
+  },
+);
+
+/// 当前选中的父分类 id
+///
+/// 为 null 时显示第一个父分类。仅用于切换子分类列表，不触发歌单查询。
+class SelectedPlaylistParentNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? parentId) => state = parentId;
+}
+
+final selectedPlaylistParentProvider =
+    NotifierProvider<SelectedPlaylistParentNotifier, String?>(
+  SelectedPlaylistParentNotifier.new,
+);
+
+/// 当前选中的子分类 id
+///
+/// 为 null 时不查询歌单列表。只有点击子分类才会设置此值并触发查询。
+class SelectedPlaylistCategoryNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? categoryId) => state = categoryId;
+}
+
+final selectedPlaylistCategoryProvider =
+    NotifierProvider<SelectedPlaylistCategoryNotifier, String?>(
+  SelectedPlaylistCategoryNotifier.new,
+);
+
+/// 当前选中分类下的歌单列表
+final playlistsByCategoryProvider =
+    FutureProvider<PaginationResponse<Playlist>>((ref) async {
+  await ref.watch(musicReadyProvider.future);
+  final selection = ref.watch(selectedSourceProvider);
+  final categoryId = ref.watch(selectedPlaylistCategoryProvider);
+  if (selection.sourceId == null || categoryId == null) {
+    return PaginationResponse.empty();
+  }
+
+  final module = ModuleManager().find<MusicModule>('music');
+  final service = module?.service(selection.sourceId!);
+  if (service == null) return PaginationResponse.empty();
+
+  return service.getPlaylistsByCategory(categoryId);
 });

@@ -8,6 +8,7 @@
 /// - Service/State: LogService / Riverpod Provider
 library;
 
+import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/mars.dart';
 
 import 'repository/log_repository.dart';
@@ -35,6 +36,14 @@ class LogModule extends Module {
   Future<void> onInit() async {
     // 初始化仓储
     await _repository.onInit();
+
+    // 初始化文件存储（应用文档目录/logs/）
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      await _repository.initFileStorage('${appDir.path}/logs');
+    } catch (_) {
+      // 文件存储初始化失败不影响内存日志
+    }
 
     // 初始化服务
     _service = LogService(_repository);

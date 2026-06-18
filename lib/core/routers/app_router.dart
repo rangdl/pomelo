@@ -41,6 +41,9 @@ class AppRouter extends RootStackRouter {
     /// 音乐搜索
     AutoRoute(path: '/search', page: MusicSearchRoute.page),
 
+    /// 歌单详情
+    AutoRoute(path: '/playlist', page: PlaylistDetailRoute.page),
+
     /// 示例模块（无底部导航）
     AutoRoute(
       path: '/ex',

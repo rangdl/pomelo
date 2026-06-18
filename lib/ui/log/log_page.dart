@@ -1,6 +1,7 @@
 /// 日志模块 - UI 视图
 ///
-/// 提供日志列表浏览、筛选和查看详情的界面。
+/// 提供日志列表浏览、筛选、搜索和详情的界面。
+/// 支持级别筛选、标签筛选、关键词搜索和存储级别设置。
 library;
 
 import 'package:auto_route/auto_route.dart';
@@ -8,6 +9,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/log/model/log_entry.dart';
 import 'package:pomelo/modules/log/providers/log_providers.dart';
+import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 日志主页面
@@ -17,13 +19,24 @@ class LogPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final logsAsync = ref.watch(latestLogsProvider);
-
     return Scaffold(
       headers: [
         AppBar(
+          leading: [
+            GhostButton(
+              onPressed: () => context.router.maybePop(),
+              child: const Icon(Icons.arrow_back, size: 20),
+            ),
+          ],
           title: const Text('应用日志'),
           trailing: [
+            // 存储设置按钮
+            GhostButton(
+              size: ButtonSize.small,
+              onPressed: () => _showStorageSettings(context, ref),
+              child: const Icon(Icons.settings, size: 16),
+            ),
+            // 清空按钮
             GhostButton(
               size: ButtonSize.small,
               onPressed: () {
@@ -37,35 +50,342 @@ class LogPage extends ConsumerWidget {
         ),
         const Divider(),
       ],
-      child: logsAsync.when(
-        data: (logs) => _LogListView(logs: logs),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(child: Text('加载失败: $error')),
+      child: const _LogContent(),
+    );
+  }
+
+  /// 显示存储级别设置对话框
+  void _showStorageSettings(BuildContext context, WidgetRef ref) {
+    final currentLevel = ref.read(logStorageLevelProvider);
+    final filePath = ref.read(logFilePathProvider);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('日志存储设置'),
+        content: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '文件存储最低级别',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '低于此级别的日志仅存内存，重启后丢失。',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.mutedForeground,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...LogLevel.values.map((level) {
+              return GhostButton(
+                onPressed: () {
+                  ref
+                      .read(logStorageLevelProvider.notifier)
+                      .setLevel(level);
+                  Navigator.of(dialogContext).pop();
+                },
+                child: Row(
+                  children: [
+                    _LogLevelDot(level: level),
+                    const SizedBox(width: 8),
+                    Text(_levelDisplayName(level)),
+                    if (level == currentLevel) ...[
+                      const Spacer(),
+                      const Icon(Icons.check, size: 16),
+                    ],
+                  ],
+                ),
+              );
+            }),
+            if (filePath != null) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                '日志文件路径',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.mutedForeground,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                filePath,
+                style: const TextStyle(fontSize: 11),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-/// 日志列表视图
-class _LogListView extends StatelessWidget {
-  final List<LogEntry> logs;
+/// 日志内容区域（筛选 + 列表）
+class _LogContent extends ConsumerStatefulWidget {
+  const _LogContent();
 
-  const _LogListView({required this.logs});
+  @override
+  ConsumerState<_LogContent> createState() => _LogContentState();
+}
+
+class _LogContentState extends ConsumerState<_LogContent> {
+  Set<LogLevel> _selectedLevels = {};
+  String? _selectedTag;
+  String _searchKeyword = '';
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (logs.isEmpty) {
-      return const Center(child: Text('暂无日志记录'));
-    }
+    final logsAsync = ref.watch(latestLogsProvider);
+    final statsAsync = ref.watch(logLevelStatsProvider);
+    final tagsAsync = ref.watch(logTagsProvider);
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      itemCount: logs.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final entry = logs[index];
-        return _LogTile(entry: entry);
-      },
+    return Column(
+      children: [
+        // 筛选区域
+        Container(
+          padding: const EdgeInsets.all(12),
+          color: colorScheme.muted.withAlpha(30),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 搜索框
+              TextField(
+                controller: _searchController,
+                placeholder: const Text('搜索日志...'),
+                onChanged: (value) {
+                  setState(() => _searchKeyword = value);
+                },
+                features: [
+                  InputFeature.leading(
+                    const Icon(Icons.search, size: 16),
+                  ),
+                  if (_searchKeyword.isNotEmpty)
+                    InputFeature.trailing(
+                      GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          setState(() => _searchKeyword = '');
+                        },
+                        child: const Icon(Icons.clear, size: 16),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // 级别筛选 chips
+              SizedBox(
+                height: 30,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: LogLevel.values.length + 1,
+                  separatorBuilder: (_, _) => const SizedBox(width: 6),
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      final isSelected = _selectedLevels.isEmpty;
+                      return _FilterChip(
+                        label: '全部',
+                        isSelected: isSelected,
+                        onTap: () => setState(() => _selectedLevels = {}),
+                      );
+                    }
+                    final level = LogLevel.values[index - 1];
+                    final isSelected = _selectedLevels.contains(level);
+                    return _FilterChip(
+                      label: _levelShortName(level),
+                      isSelected: isSelected,
+                      color: _levelColor(level),
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedLevels = {..._selectedLevels}..remove(level);
+                          } else {
+                            _selectedLevels = {..._selectedLevels, level};
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+                  // 标签筛选 + 统计
+                  Row(
+                    children: [
+                      // 标签下拉
+                      tagsAsync.when(
+                        data: (tags) {
+                          final tagList = tags.toList()..sort();
+                          return PopupMenuButton<String?>(
+                            initialValue: _selectedTag,
+                            onSelected: (value) {
+                              setState(() => _selectedTag = value);
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: null,
+                                child: Text('所有标签'),
+                              ),
+                              ...tagList.map(
+                                (tag) => PopupMenuItem(
+                                  value: tag,
+                                  child: Text(tag),
+                                ),
+                              ),
+                            ],
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: colorScheme.muted.withAlpha(60),
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _selectedTag ?? '标签',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.arrow_drop_down, size: 18),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, _) => const SizedBox.shrink(),
+                      ),
+                      const Spacer(),
+                      // 统计摘要
+                      statsAsync.when(
+                        data: (stats) {
+                          final total = stats.values.fold(0, (a, b) => a + b);
+                          return Text(
+                            '$total 条',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.mutedForeground,
+                            ),
+                          );
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, _) => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+            ],
+          ),
+        ),
+        // 日志列表
+        Expanded(
+          child: logsAsync.when(
+            data: (logs) {
+              // 应用筛选
+              var filtered = logs;
+              if (_selectedLevels.isNotEmpty) {
+                filtered =
+                    filtered.where((e) => _selectedLevels.contains(e.level)).toList();
+              }
+              if (_selectedTag != null) {
+                filtered =
+                    filtered.where((e) => e.tag == _selectedTag).toList();
+              }
+              if (_searchKeyword.isNotEmpty) {
+                final kw = _searchKeyword.toLowerCase();
+                filtered = filtered
+                    .where(
+                      (e) =>
+                          e.message.toLowerCase().contains(kw) ||
+                          e.tag.toLowerCase().contains(kw),
+                    )
+                    .toList();
+              }
+
+              if (filtered.isEmpty) {
+                return Center(
+                  child: Text(
+                    logs.isEmpty ? '暂无日志记录' : '无匹配日志',
+                    style: TextStyle(color: colorScheme.mutedForeground),
+                  ),
+                );
+              }
+
+              return ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: filtered.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  return _LogTile(entry: filtered[index]);
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => Center(child: Text('加载失败: $error')),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 筛选 chip
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final Color? color;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final chipColor = color ?? colorScheme.primary;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? chipColor.withAlpha(30) : colorScheme.muted.withAlpha(30),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? chipColor.withAlpha(80) : colorScheme.muted.withAlpha(60),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+            color: isSelected ? chipColor : colorScheme.mutedForeground,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -195,24 +515,10 @@ class _LogLevelBadge extends StatelessWidget {
 
   const _LogLevelBadge({required this.level});
 
-  static const _levelColors = {
-    LogLevel.debug: Color(0xFF9E9E9E),
-    LogLevel.info: Color(0xFF2196F3),
-    LogLevel.warning: Color(0xFFFF9800),
-    LogLevel.error: Color(0xFFEF4444),
-    LogLevel.fatal: Color(0xFF9C27B0),
-  };
-
   @override
   Widget build(BuildContext context) {
-    final color = _levelColors[level]!;
-    final label = switch (level) {
-      LogLevel.debug => 'DBG',
-      LogLevel.info => 'INF',
-      LogLevel.warning => 'WRN',
-      LogLevel.error => 'ERR',
-      LogLevel.fatal => 'FTL',
-    };
+    final color = _levelColor(level);
+    final label = _levelShortName(level);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -231,4 +537,56 @@ class _LogLevelBadge extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 日志级别小圆点
+class _LogLevelDot extends StatelessWidget {
+  final LogLevel level;
+
+  const _LogLevelDot({required this.level});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: _levelColor(level),
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+/// 级别显示名称
+String _levelDisplayName(LogLevel level) {
+  return switch (level) {
+    LogLevel.debug => '调试 (Debug)',
+    LogLevel.info => '信息 (Info)',
+    LogLevel.warning => '警告 (Warning)',
+    LogLevel.error => '错误 (Error)',
+    LogLevel.fatal => '严重 (Fatal)',
+  };
+}
+
+/// 级别短名称
+String _levelShortName(LogLevel level) {
+  return switch (level) {
+    LogLevel.debug => 'DBG',
+    LogLevel.info => 'INF',
+    LogLevel.warning => 'WRN',
+    LogLevel.error => 'ERR',
+    LogLevel.fatal => 'FTL',
+  };
+}
+
+/// 级别对应颜色
+Color _levelColor(LogLevel level) {
+  return switch (level) {
+    LogLevel.debug => const Color(0xFF9E9E9E),
+    LogLevel.info => const Color(0xFF2196F3),
+    LogLevel.warning => const Color(0xFFFF9800),
+    LogLevel.error => const Color(0xFFEF4444),
+    LogLevel.fatal => const Color(0xFF9C27B0),
+  };
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
 import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
@@ -149,13 +150,13 @@ class LxMusicModule extends Module {
   Future<bool> _loadMetadataPlugin(String path) async {
     final file = File(path);
     if (!await file.exists()) {
-      print('LxMusicModule: 元数据插件文件不存在 $path');
+      log.warning('LxMusic', '元数据插件文件不存在 $path');
       return false;
     }
     final content = await file.readAsString();
     final libraries = await _metadataEngine.loadPluginWithLibraries(content);
     if (libraries.isEmpty) {
-      print('LxMusicModule: 元数据插件 $path 未注册任何库，跳过');
+      log.warning('LxMusic', '元数据插件 $path 未注册任何库，跳过');
       return false;
     }
     _metadataPluginPath = path;
@@ -171,9 +172,11 @@ class LxMusicModule extends Module {
     );
 
     await _saveMetadataPluginPath();
-    print(
-        'LxMusicModule: 插件加载成功，注册了 ${libraries.length} 个库: '
-        '${libraries.map((l) => l.id).join(", ")}');
+    log.info(
+      'LxMusic',
+      '插件加载成功，注册了 ${libraries.length} 个库: '
+      '${libraries.map((l) => l.id).join(", ")}',
+    );
     return true;
   }
 
@@ -274,7 +277,7 @@ class LxMusicModule extends Module {
   Future<List<LxSourceLibrary>> _loadSourcePluginFile(String path) async {
     final file = File(path);
     if (!await file.exists()) {
-      print('LxMusicModule: 音源插件文件不存在 $path');
+      log.warning('LxMusic', '音源插件文件不存在 $path');
       return [];
     }
     final content = await file.readAsString();

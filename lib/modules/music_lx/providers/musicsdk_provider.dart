@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_js/flutter_js.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 
@@ -40,18 +41,18 @@ class LxMetadataEngine {
   bool loadPlugin(String scriptContent) {
     final result = jsEngine.jsRuntime.evaluate(scriptContent);
     if (result.isError) {
-      print('LxMetadataEngine: 元数据插件加载失败: ${result.toString()}');
+      log.error('LxMetadataEngine', '元数据插件加载失败: ${result.toString()}');
       return false;
     }
-    print('LxMetadataEngine: 元数据插件加载成功');
+    log.info('LxMetadataEngine', '元数据插件加载成功');
 
     // 调用脚本初始化方法
     final resultSetup = jsEngine.jsRuntime.evaluate('setup()');
     if (resultSetup.isError) {
-      print('LxMetadataEngine: 元数据插件初始化失败: ${result.toString()}');
+      log.error('LxMetadataEngine', '元数据插件初始化失败: ${result.toString()}');
       return false;
     }
-    print('LxMetadataEngine: 元数据插件初始化成功');
+    log.info('LxMetadataEngine', '元数据插件初始化成功');
     return true;
   }
 
@@ -78,7 +79,7 @@ class LxMetadataEngine {
       }
       return [];
     } catch (e) {
-      print(e);
+      log.error('LxMetadataEngine', e.toString(), error: e);
       return [];
     }
   }
@@ -108,7 +109,7 @@ class LxMetadataEngine {
     );
     jsEngine.jsRuntime.executePendingJob();
     if (result.isError) {
-      print(result.toString());
+      log.error('LxMetadataEngine', '搜索失败: ${result.toString()}');
     }
     final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
     final json = Map<String, dynamic>.from(await asyncResult.rawResult);
@@ -129,6 +130,135 @@ class LxMetadataEngine {
           .toList(),
     );
     return res;
+  }
+
+  /// 获取歌单分类
+  ///
+  /// 从元数据插件获取歌单分类列表。
+  /// 返回结果包含 tags（分类组 + 子分类）和 hot（热门排行榜）。
+  /// tags 中的组（如“风格”“语种”）作为父分类，其 list 中的项作为子分类。
+  /// hot 作为特殊的“排行榜”父分类，其项作为子分类。
+  Future<List<PlaylistCategory>> getPlaylistCategories({
+    String type = 'tx',
+  }) async {
+    final result = await jsEngine.jsRuntime.evaluateAsync(
+      "registry.getSongListProvider(`$type`)?.getTags()",
+    );
+    jsEngine.jsRuntime.executePendingJob();
+    if (result.isError) {
+      log.error('LxMetadataEngine', '获取歌单分类失败: ${result.toString()}');
+      return [];
+    }
+    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
+    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
+    
+    final categories = <PlaylistCategory>[];
+
+    // 解析 hot: 作为“排行榜”分类组
+    final hot = json['hot'] as List<dynamic>?;
+    if (hot != null && hot.isNotEmpty) {
+      const hotGroupId = 'hot';
+      categories.add(const PlaylistCategory(id: hotGroupId, name: '排行榜'));
+      for (final item in hot) {
+        final itemMap = Map<String, dynamic>.from(item as Map);
+        categories.add(PlaylistCategory(
+          id: itemMap['id'] as String? ?? '',
+          name: itemMap['name'] as String? ?? '',
+          parentId: hotGroupId,
+        ));
+      }
+    }
+
+    // 解析 tags: 每个 tag 组作为父分类，其 list 作为子分类
+    final tags = json['tags'] as List<dynamic>?;
+    if (tags != null) {
+      for (final tag in tags) {
+        final tagMap = Map<String, dynamic>.from(tag as Map);
+        final groupId = tagMap['id'] as String? ?? '';
+        final groupName = tagMap['name'] as String? ?? '';
+        // 添加父分类（歌单分组）
+        categories.add(PlaylistCategory(id: groupId, name: groupName));
+        // 添加子分类
+        final list = tagMap['list'] as List<dynamic>?;
+        if (list != null) {
+          for (final item in list) {
+            final itemMap = Map<String, dynamic>.from(item as Map);
+            categories.add(PlaylistCategory(
+              id: itemMap['id'] as String? ?? '',
+              name: itemMap['name'] as String? ?? '',
+              parentId: groupId,
+            ));
+          }
+        }
+      }
+    }
+
+    return categories;
+  }
+
+  /// 获取指定分类下的歌单列表
+  ///
+  /// 调用元数据插件的 getSongList 方法，按分类 id 获取歌单。
+  /// 返回 [PaginationResponse<Playlist>]。
+  Future<List<Playlist>> getPlaylistsByCategory(
+    String categoryId, {
+    String type = 'tx',
+  }) async {
+    final result = await jsEngine.jsRuntime.evaluateAsync(
+      "registry.getSongListProvider(`$type`)?.getList('', `$categoryId`, 1)",
+    );
+    jsEngine.jsRuntime.executePendingJob();
+    if (result.isError) {
+      log.error('LxMetadataEngine', '获取歌单列表失败: ${result.toString()}');
+      return [];
+    }
+    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
+    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
+    final list = (json['list'] ?? []) as List<dynamic>;
+    final source = (id: type, name: type);
+    final items = list.map((item) {
+      final m = Map<String, dynamic>.from(item as Map);
+      return Playlist(
+        id: '$type-${m['id']}',
+        name: m['name'] as String? ?? '',
+        coverUrl: m['img'] as String?,
+        creator: m['author'] as String? ?? '',
+        description: m['desc'] as String?,
+        source: source,
+        meta: m,
+      );
+    }).toList();
+
+    return items;
+  }
+
+  Future<List<Song>> getPlaylistsDetail(
+    String id, {
+    String type = 'tx',
+  }) async {
+    // 提取原始 id（去掉 `${type}-` 前缀）
+    final prefix = '$type-';
+    final originalId = id.startsWith(prefix) ? id.substring(prefix.length) : id;
+
+    final result = await jsEngine.jsRuntime.evaluateAsync(
+      "registry.getSongListProvider(`$type`)?.getListDetail(`$originalId`)",
+    );
+    jsEngine.jsRuntime.executePendingJob();
+    if (result.isError) {
+      log.error('LxMetadataEngine', '获取歌单详情失败: ${result.toString()}');
+      return [];
+    }
+    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
+    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
+    final list = (json['list'] ?? []) as List<dynamic>;
+
+    return list
+        .map(
+          (item) => PomeloTrackObjectMeta.fromJson(
+            Map<String, dynamic>.from(item),
+          ).toSong(),
+        )
+        .toList();
   }
 
   void dispose() {

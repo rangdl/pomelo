@@ -10,6 +10,7 @@ import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit/media_kit.dart' hide Track;
 
 import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/audio_player/model/media.dart';
 import 'package:pomelo/modules/audio_player/model/custom_player.dart';
 import 'package:pomelo/modules/audio_player/model/playback_state.dart';
@@ -175,7 +176,7 @@ class AudioPlayerInterface extends Service {
       ) {
     _mkPlayer.stream.error.listen((event) {
       // AppLogger.reportError(event, StackTrace.current);
-      print(event);
+      log.error('AudioPlayer', event.toString());
     });
   }
 

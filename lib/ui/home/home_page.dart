@@ -3,6 +3,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:pomelo/ui/music/music_section.dart';
+import 'package:pomelo/ui/music/playlist_section.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Home 页面
@@ -49,6 +50,8 @@ class HomeView extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // 歌单分类版块
+              const PlaylistSection(),
 
               // 分隔线
               const Padding(
