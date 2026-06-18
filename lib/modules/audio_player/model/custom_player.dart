@@ -5,6 +5,7 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_broadcasts/flutter_broadcasts.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 // import '../logger/logger.dart';
@@ -50,7 +51,7 @@ class CustomPlayer extends Player {
       }),
       stream.error.listen((event) {
         // AppLogger.reportError('[MediaKitError] \n$event', StackTrace.current);
-        print('[MediaKitError] \n$event');
+        log.error('MediaKit', event.toString());
       }),
     ];
     PackageInfo.fromPlatform().then((packageInfo) {

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:flutter/foundation.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/modules/music/model/song.dart';
 import 'package:shelf/shelf.dart';
@@ -70,7 +71,7 @@ class ServerPlaybackRoutes {
         final resolved = await getTrackUrl!(track);
         if (resolved.isNotEmpty) url = resolved;
       } catch (e) {
-        print('ServerPlaybackRoutes: getMusicUrl 失败: $e');
+        log.error('Playback', 'getMusicUrl 失败: $e', error: e);
       }
     }
     _urlCache[track.id] = url;
@@ -136,9 +137,9 @@ class ServerPlaybackRoutes {
     Request request,
     SongFull track,
   ) async {
-    print(
-      "HEAD request for track: ${track.name}\n"
-      "Headers: ${request.headers}",
+    log.debug(
+      'Playback',
+      'HEAD request for track: ${track.name}, Headers: ${request.headers}',
     );
     // AppLogger.log.i(
     //   "HEAD request for track: ${track.query.name}\n"
@@ -188,9 +189,9 @@ class ServerPlaybackRoutes {
     SongFull track,
     Map<String, dynamic> headers,
   ) async {
-    print(
-      "GET request for track: ${track.name}\n"
-      "Headers: ${request.headers}",
+    log.debug(
+      'Playback',
+      'GET request for track: ${track.name}, Headers: ${request.headers}',
     );
     // AppLogger.log.i(
     //   "GET request for track: ${track.query.name}\n"
@@ -240,7 +241,7 @@ class ServerPlaybackRoutes {
             options: options.copyWith(responseType: ResponseType.bytes),
           ),
         ).catchError((e, stack) async {
-          print(e.toString());
+          log.error('Playback', e.toString(), error: e, stackTrace: stack);
           // AppLogger.reportError(e, stack);
 
           // final sourcedTrack = await ref
@@ -269,10 +270,10 @@ class ServerPlaybackRoutes {
 
     final res = await dio.get<ResponseBody>(url, options: options);
 
-    print(
-      "Response for track: ${track.name}\n"
-      "Status Code: ${res.statusCode}\n"
-      "Headers: ${res.headers.map}",
+    log.debug(
+      'Playback',
+      'Response for track: ${track.name}, '
+      'Status: ${res.statusCode}, Headers: ${res.headers.map}',
     );
 
     // if (!userPreferences.cacheMusic) {
@@ -361,7 +362,7 @@ class ServerPlaybackRoutes {
 
       return Response(res.statusCode!, headers: res.headers.map);
     } catch (e, stack) {
-      print(e.toString());
+      log.error('Playback', e.toString(), error: e, stackTrace: stack);
       // AppLogger.reportError(e, stack);
       return Response.internalServerError();
     }
@@ -400,7 +401,7 @@ class ServerPlaybackRoutes {
         headers: res.headers.map,
       );
     } catch (e, stack) {
-      print(e.toString());
+      log.error('Playback', e.toString(), error: e, stackTrace: stack);
       // AppLogger.reportError(e, stack);
       return Response.internalServerError();
     }

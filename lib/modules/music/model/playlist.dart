@@ -1,5 +1,28 @@
 import 'song.dart';
 
+/// 歌单分类
+///
+/// 用于对歌单进行分组浏览，如“推荐”“流行”“摇滚”等。
+class PlaylistCategory {
+  /// 分类唯一标识
+  final String id;
+
+  /// 分类显示名称
+  final String name;
+
+  /// 可选的父分类标识（用于二级分类）
+  final String? parentId;
+
+  const PlaylistCategory({
+    required this.id,
+    required this.name,
+    this.parentId,
+  });
+
+  @override
+  String toString() => 'PlaylistCategory(id: $id, name: $name)';
+}
+
 /// 歌单模型
 class Playlist {
   /// 歌单唯一标识

@@ -1,0 +1,230 @@
+/// 歌单详情页面
+///
+/// 展示歌单信息（封面、名称、创建者）及其中的歌曲列表。
+library;
+
+import 'package:auto_route/auto_route.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/module/module_manager.dart';
+import 'package:pomelo/modules/music/music_module.dart';
+import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/modules/music/providers/music_providers.dart';
+import 'package:pomelo/ui/music/song_list.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
+
+/// 歌单详情 Provider
+///
+/// 根据 (sourceId, playlistId) 获取歌单歌曲列表。
+final playlistSongsProvider =
+    FutureProvider.family<List<Song>, ({String sourceId, String playlistId})>(
+  (ref, params) async {
+    await ref.watch(musicReadyProvider.future);
+    final module = ModuleManager().find<MusicModule>('music');
+    final service = module?.service(params.sourceId);
+    if (service == null) return [];
+    return service.getPlaylistSongs(params.playlistId);
+  },
+);
+
+/// 歌单详情页面
+@RoutePage()
+class PlaylistDetailPage extends ConsumerWidget {
+  final String playlistId;
+  final String sourceId;
+  final String playlistName;
+  final String? coverUrl;
+  final String creator;
+
+  const PlaylistDetailPage({
+    super.key,
+    required this.playlistId,
+    required this.sourceId,
+    required this.playlistName,
+    this.coverUrl,
+    this.creator = '',
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final songsAsync = ref.watch(
+      playlistSongsProvider((sourceId: sourceId, playlistId: playlistId)),
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          leading: [
+            GhostButton(
+              onPressed: () => context.router.maybePop(),
+              child: const Icon(Icons.arrow_back, size: 20),
+            ),
+          ],
+          title: Text(
+            playlistName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        const Divider(),
+      ],
+      child: songsAsync.when(
+        data: (songs) {
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // 歌单头部信息
+              _PlaylistHeader(
+                name: playlistName,
+                coverUrl: coverUrl,
+                creator: creator,
+                songCount: songs.length,
+              ),
+              const SizedBox(height: 16),
+              // 歌曲列表
+              if (songs.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 48),
+                  child: Center(
+                    child: Text(
+                      '暂无歌曲',
+                      style: TextStyle(color: colorScheme.mutedForeground),
+                    ),
+                  ),
+                )
+              else
+                SongList(songs: songs),
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: colorScheme.destructive),
+              const SizedBox(height: 12),
+              Text('加载失败: $err'),
+              const SizedBox(height: 12),
+              GhostButton(
+                onPressed: () {
+                  ref.invalidate(
+                    playlistSongsProvider(
+                      (sourceId: sourceId, playlistId: playlistId),
+                    ),
+                  );
+                },
+                child: const Text('重试'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 歌单头部信息组件
+class _PlaylistHeader extends StatelessWidget {
+  final String name;
+  final String? coverUrl;
+  final String creator;
+  final int songCount;
+
+  const _PlaylistHeader({
+    required this.name,
+    this.coverUrl,
+    required this.creator,
+    required this.songCount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 封面图
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: coverUrl != null && coverUrl!.isNotEmpty
+                  ? Image.network(
+                      coverUrl!,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _CoverPlaceholder(
+                        colorScheme: colorScheme,
+                      ),
+                    )
+                  : _CoverPlaceholder(colorScheme: colorScheme),
+            ),
+            const SizedBox(width: 16),
+            // 歌单信息
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: colorScheme.foreground,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  if (creator.isNotEmpty)
+                    Text(
+                      creator,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.mutedForeground,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$songCount 首歌曲',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.mutedForeground,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 封面占位图
+class _CoverPlaceholder extends StatelessWidget {
+  final ColorScheme colorScheme;
+
+  const _CoverPlaceholder({required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 100,
+      height: 100,
+      color: colorScheme.muted,
+      child: Center(
+        child: Icon(
+          Icons.queue_music,
+          size: 36,
+          color: colorScheme.mutedForeground,
+        ),
+      ),
+    );
+  }
+}

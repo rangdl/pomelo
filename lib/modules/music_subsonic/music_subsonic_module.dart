@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 
 import 'repository/subsonic_client.dart';
@@ -158,7 +159,7 @@ class MusicSubsonicModule extends Module {
     try {
       await client.ping();
     } catch (e) {
-      print('MusicSubsonicModule: 账号 $username@$cleanUrl 连接失败: $e');
+      log.error('MusicSubsonic', '账号 $username@$cleanUrl 连接失败: $e', error: e);
       if (!silent) rethrow;
       return null;
     }
@@ -172,7 +173,7 @@ class MusicSubsonicModule extends Module {
 
     final account = (client: client, service: service);
     _accounts.add(account);
-    print('MusicSubsonicModule: 已连接 ${service.sourceName}');
+    log.info('MusicSubsonic', '已连接 ${service.sourceName}');
     return account;
   }
 

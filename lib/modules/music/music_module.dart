@@ -1,3 +1,4 @@
+import 'package:flutter_js/quickjs/ffi.dart';
 import 'package:pomelo/core/mars.dart';
 import 'model/music_service.dart';
 import 'model/music_source_type.dart';
@@ -68,7 +69,8 @@ class MusicModule extends Module {
   /// 根据 sourceId 获取对应的服务
   MusicService? service(String sourceId) {
     try {
-      return _services.firstWhere((s) => s.sourceId == sourceId);
+      return _services.firstWhereOrNull((s) => s.sourceId == sourceId)
+      ?? _services.firstWhereOrNull((s) => s.libraries.firstWhereOrNull((v) => v.id == sourceId) != null);
     } catch (_) {
       return null;
     }

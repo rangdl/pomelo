@@ -36,8 +36,29 @@ final logLevelStatsProvider = FutureProvider<Map<LogLevel, int>>((ref) async {
   return service.getLevelStats();
 });
 
-/// 最新日志（实时最近 50 条）
+/// 最新日志（实时最近 100 条）
 final latestLogsProvider = FutureProvider<List<LogEntry>>((ref) async {
   final service = ref.watch(logServiceProvider);
-  return service.query(const LogQuery(limit: 50));
+  return service.query(const LogQuery(limit: 100));
+});
+
+/// 文件存储的最低日志级别
+class LogStorageLevelNotifier extends Notifier<LogLevel> {
+  @override
+  LogLevel build() => ref.read(logServiceProvider).storageLevel;
+
+  Future<void> setLevel(LogLevel level) async {
+    await ref.read(logServiceProvider).setStorageLevel(level);
+    state = level;
+  }
+}
+
+final logStorageLevelProvider =
+    NotifierProvider<LogStorageLevelNotifier, LogLevel>(
+  LogStorageLevelNotifier.new,
+);
+
+/// 日志文件路径
+final logFilePathProvider = Provider<String?>((ref) {
+  return ref.watch(logServiceProvider).logFilePath;
 });

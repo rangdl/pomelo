@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 
 /// 我的页面 — 用户设置中心
@@ -28,7 +29,18 @@ class MyPage extends ConsumerWidget {
     final localDirs = ref.watch(localMusicDirsProvider);
 
     return Scaffold(
-      headers: [AppBar(title: const Text('设置'))],
+      headers: [
+        AppBar(
+          title: const Text('设置'),
+          trailing: [
+            GhostButton(
+              size: ButtonSize.small,
+              onPressed: () => context.pushRoute(const LogRoute()),
+              child: const Icon(Icons.article_outlined, size: 18),
+            ),
+          ],
+        ),
+      ],
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
