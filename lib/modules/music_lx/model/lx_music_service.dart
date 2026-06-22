@@ -1,7 +1,7 @@
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
-import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
+import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 
 /// Lx 音乐服务
 ///
@@ -151,8 +151,16 @@ class LxMusicService extends MusicService {
   }
 
   @override
+  Future<List<({String id, String name})>> getPlaylistSortOrders() {
+    final libId = _defaultLibraryId;
+    if (libId == null) return Future.value([]);
+    return metadataEngine.getPlaylistSortOrders(type: libId);
+  }
+
+  @override
   Future<PaginationResponse<Playlist>> getPlaylistsByCategory(
     String categoryId, {
+    String? sortId,
     int page = 1,
     int limit = 20,
   }) async {
@@ -162,6 +170,7 @@ class LxMusicService extends MusicService {
     }
     final items = await metadataEngine.getPlaylistsByCategory(
       categoryId,
+      sortId: sortId,
       type: libId,
     );
     return PaginationResponse<Playlist>(
@@ -199,8 +208,12 @@ class LxMusicService extends MusicService {
       throw UnimplementedError(
           '$sourceName(getMusicUrl) 未加载音源插件，无法获取播放链接');
     }
-    // 根据 song.source.id 路由到对应库获取播放链接
-    final libraryId = song.source.id;
+    // 根据 song.source.libraryId 路由到对应库获取播放链接
+    final libraryId = song.source.libraryId ?? _defaultLibraryId;
+    if (libraryId == null) {
+      throw UnimplementedError(
+          '$sourceName(getMusicUrl) 无法确定歌曲所属库，且无默认库');
+    }
     if (!sourceEngine!.hasLibrary(libraryId)) {
       // 回退到默认库
       final fallback = _defaultLibraryId;
@@ -211,5 +224,21 @@ class LxMusicService extends MusicService {
       return sourceEngine!.getMusicUrl(fallback, song);
     }
     return sourceEngine!.getMusicUrl(libraryId, song);
+  }
+
+  // ========== 排行榜 ==========
+
+  @override
+  Future<List<Leaderboard>> getBoards() {
+    final libId = _defaultLibraryId;
+    if (libId == null) return Future.value([]);
+    return metadataEngine.getBoards(type: libId);
+  }
+
+  @override
+  Future<List<Song>> getLeaderboardSongs(String leaderboardId) {
+    final libId = _defaultLibraryId;
+    if (libId == null) return Future.value([]);
+    return metadataEngine.getLeaderboardSongs(leaderboardId, type: libId);
   }
 }

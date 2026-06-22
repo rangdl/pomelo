@@ -8,7 +8,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
+import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {

@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/storage/settings.dart';
@@ -13,7 +13,7 @@ import 'package:pomelo/modules/music_local/local_music_providers.dart';
 /// 包含应用全局设置项，各设置直接通过 Settings 读写，
 /// 其他模块可通过 ref.watch(settingWatcherProvider('key')) 响应式监听。
 @RoutePage()
-class MyPage extends ConsumerWidget {
+class MyPage extends HookConsumerWidget {
   const MyPage({super.key});
 
   static const _themeOptions = [

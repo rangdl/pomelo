@@ -5,6 +5,7 @@ import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/model/playlist.dart';
+import 'package:pomelo/modules/music/model/leaderboard.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
@@ -174,12 +175,42 @@ final selectedPlaylistCategoryProvider =
   SelectedPlaylistCategoryNotifier.new,
 );
 
+/// 当前选中的歌单排序方式 id
+///
+/// 为 null 时使用默认排序。
+class SelectedPlaylistSortNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? sortId) => state = sortId;
+}
+
+final selectedPlaylistSortProvider =
+    NotifierProvider<SelectedPlaylistSortNotifier, String?>(
+  SelectedPlaylistSortNotifier.new,
+);
+
+/// 当前选中服务的歌单排序方式列表
+final playlistSortOrdersProvider =
+    FutureProvider<List<({String id, String name})>>((ref) async {
+  await ref.watch(musicReadyProvider.future);
+  final selection = ref.watch(selectedSourceProvider);
+  if (selection.sourceId == null) return [];
+
+  final module = ModuleManager().find<MusicModule>('music');
+  final service = module?.service(selection.sourceId!);
+  if (service == null) return [];
+
+  return service.getPlaylistSortOrders();
+});
+
 /// 当前选中分类下的歌单列表
 final playlistsByCategoryProvider =
     FutureProvider<PaginationResponse<Playlist>>((ref) async {
   await ref.watch(musicReadyProvider.future);
   final selection = ref.watch(selectedSourceProvider);
   final categoryId = ref.watch(selectedPlaylistCategoryProvider);
+  final sortId = ref.watch(selectedPlaylistSortProvider);
   if (selection.sourceId == null || categoryId == null) {
     return PaginationResponse.empty();
   }
@@ -188,5 +219,32 @@ final playlistsByCategoryProvider =
   final service = module?.service(selection.sourceId!);
   if (service == null) return PaginationResponse.empty();
 
-  return service.getPlaylistsByCategory(categoryId);
+  return service.getPlaylistsByCategory(categoryId, sortId: sortId);
+});
+
+/// 当前选中服务的排行榜列表
+final leaderboardsProvider = FutureProvider<List<Leaderboard>>((ref) async {
+  await ref.watch(musicReadyProvider.future);
+  final selection = ref.watch(selectedSourceProvider);
+  if (selection.sourceId == null) return [];
+
+  final module = ModuleManager().find<MusicModule>('music');
+  final service = module?.service(selection.sourceId!);
+  if (service == null) return [];
+
+  return service.getBoards();
+});
+
+/// 指定排行榜的歌曲列表
+final leaderboardSongsProvider =
+    FutureProvider.family<List<Song>, String>((ref, leaderboardId) async {
+  await ref.watch(musicReadyProvider.future);
+  final selection = ref.watch(selectedSourceProvider);
+  if (selection.sourceId == null) return [];
+
+  final module = ModuleManager().find<MusicModule>('music');
+  final service = module?.service(selection.sourceId!);
+  if (service == null) return [];
+
+  return service.getLeaderboardSongs(leaderboardId);
 });

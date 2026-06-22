@@ -4,13 +4,14 @@ import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:pomelo/ui/music/music_section.dart';
 import 'package:pomelo/ui/music/playlist_section.dart';
+import 'package:pomelo/ui/music/leaderboard_section.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Home 页面
 ///
 /// 通过 M.A.R.S. 模块的 Provider 获取数据，不直接依赖 Repository。
 @RoutePage()
-class HomeView extends ConsumerWidget {
+class HomeView extends HookConsumerWidget {
   const HomeView({super.key});
 
   @override
@@ -50,6 +51,15 @@ class HomeView extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // 排行榜版块
+              const LeaderboardSection(),
+
+              // 分隔线
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Divider(),
+              ),
+
               // 歌单分类版块
               const PlaylistSection(),
 

@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/framework/framework.dart';
@@ -13,112 +14,117 @@ import '../providers/lx_source_plugin_paths_provider.dart';
 /// Lx 插件管理内容组件（桌面端对话框和移动端页面共享）
 ///
 /// 不使用 Tab，元数据插件和音源插件作为两个独立区域依次展示。
-class _LxPluginContent extends ConsumerStatefulWidget {
+class _LxPluginContent extends HookConsumerWidget {
   const _LxPluginContent();
 
   @override
-  ConsumerState<_LxPluginContent> createState() => _LxPluginContentState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLoading = useState(false);
 
-class _LxPluginContentState extends ConsumerState<_LxPluginContent> {
-  bool _isLoading = false;
+    // ========== 文件选择 ==========
 
-  // ========== 文件选择 ==========
+    Future<List<String>> pickFiles({bool allowMultiple = false}) async {
+      final result = await FilePicker.platform.pickFiles(
+        dialogTitle: '选择 JS 插件文件',
+        type: FileType.custom,
+        allowedExtensions: ['js'],
+        allowMultiple: allowMultiple,
+      );
 
-  Future<List<String>> _pickFiles({bool allowMultiple = false}) async {
-    final result = await FilePicker.platform.pickFiles(
-      dialogTitle: '选择 JS 插件文件',
-      type: FileType.custom,
-      allowedExtensions: ['js'],
-      allowMultiple: allowMultiple,
-    );
+      if (result == null || result.files.isEmpty) return [];
 
-    if (result == null || result.files.isEmpty) return [];
-
-    final appDir = await getApplicationSupportDirectory();
-    final pluginsDir = Directory(p.join(appDir.path, 'lx_scripts'));
-    if (!await pluginsDir.exists()) {
-      await pluginsDir.create(recursive: true);
-    }
-
-    final paths = <String>[];
-    for (final pickedFile in result.files) {
-      if (pickedFile.path == null) continue;
-      final destPath = p.join(pluginsDir.path, p.basename(pickedFile.path!));
-      if (!await File(destPath).exists()) {
-        await File(pickedFile.path!).copy(destPath);
+      final appDir = await getApplicationSupportDirectory();
+      final pluginsDir = Directory(p.join(appDir.path, 'lx_scripts'));
+      if (!await pluginsDir.exists()) {
+        await pluginsDir.create(recursive: true);
       }
-      paths.add(destPath);
+
+      final paths = <String>[];
+      for (final pickedFile in result.files) {
+        if (pickedFile.path == null) continue;
+        final destPath = p.join(pluginsDir.path, p.basename(pickedFile.path!));
+        if (!await File(destPath).exists()) {
+          await File(pickedFile.path!).copy(destPath);
+        }
+        paths.add(destPath);
+      }
+      return paths;
     }
-    return paths;
-  }
 
-  // ========== 元数据插件操作 ==========
+    // ========== 元数据插件操作 ==========
 
-  Future<void> _addMetadataPlugin() async {
-    setState(() => _isLoading = true);
-    final paths = await _pickFiles();
-    if (paths.isNotEmpty) {
-      await ref.read(lxMetadataPluginPathsProvider.notifier).addPlugin(paths.first);
+    Future<void> addMetadataPlugin() async {
+      isLoading.value = true;
+      final paths = await pickFiles();
+      if (paths.isNotEmpty) {
+        await ref.read(lxMetadataPluginPathsProvider.notifier).addPlugin(paths.first);
+      }
+      isLoading.value = false;
     }
-    setState(() => _isLoading = false);
-  }
 
-  Future<void> _replaceMetadataPlugin() async {
-    setState(() => _isLoading = true);
-    final paths = await _pickFiles();
-    if (paths.isNotEmpty) {
-      await ref.read(lxMetadataPluginPathsProvider.notifier).replacePlugin(paths.first);
+    Future<void> replaceMetadataPlugin() async {
+      isLoading.value = true;
+      final paths = await pickFiles();
+      if (paths.isNotEmpty) {
+        await ref.read(lxMetadataPluginPathsProvider.notifier).replacePlugin(paths.first);
+      }
+      isLoading.value = false;
     }
-    setState(() => _isLoading = false);
-  }
 
-  Future<void> _removeMetadataPlugin(String path) async {
-    await ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin(path);
-  }
-
-  // ========== 音源插件操作 ==========
-
-  Future<void> _addSourcePlugins() async {
-    setState(() => _isLoading = true);
-    final paths = await _pickFiles(allowMultiple: true);
-    for (final path in paths) {
-      await ref.read(lxSourcePluginPathsProvider.notifier).addPlugin(path);
+    Future<void> removeMetadataPlugin(String path) async {
+      await ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin(path);
     }
-    setState(() => _isLoading = false);
-  }
 
-  Future<void> _replaceSourcePlugin(String oldPath) async {
-    setState(() => _isLoading = true);
-    final paths = await _pickFiles();
-    if (paths.isNotEmpty) {
-      await ref
-          .read(lxSourcePluginPathsProvider.notifier)
-          .replacePlugin(oldPath, paths.first);
+    // ========== 音源插件操作 ==========
+
+    Future<void> addSourcePlugins() async {
+      isLoading.value = true;
+      final paths = await pickFiles(allowMultiple: true);
+      for (final path in paths) {
+        await ref.read(lxSourcePluginPathsProvider.notifier).addPlugin(path);
+      }
+      isLoading.value = false;
     }
-    setState(() => _isLoading = false);
-  }
 
-  Future<void> _removeSourcePlugin(String path) async {
-    await ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(path);
-  }
+    Future<void> replaceSourcePlugin(String oldPath) async {
+      isLoading.value = true;
+      final paths = await pickFiles();
+      if (paths.isNotEmpty) {
+        await ref
+            .read(lxSourcePluginPathsProvider.notifier)
+            .replacePlugin(oldPath, paths.first);
+      }
+      isLoading.value = false;
+    }
 
-  @override
-  Widget build(BuildContext context) {
+    Future<void> removeSourcePlugin(String path) async {
+      await ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(path);
+    }
+
     final colorScheme = Theme.of(context).colorScheme;
 
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        _buildMetadataPluginSection(colorScheme),
+        _buildMetadataPluginSection(colorScheme, ref, isLoading.value,
+            addMetadataPlugin, replaceMetadataPlugin, removeMetadataPlugin, isLoading),
         const Gap(24),
-        _buildSourcePluginSection(colorScheme),
+        _buildSourcePluginSection(colorScheme, ref, isLoading.value,
+            addSourcePlugins, replaceSourcePlugin, removeSourcePlugin, isLoading),
       ],
     );
   }
 
   /// 元数据插件区域
-  Widget _buildMetadataPluginSection(ColorScheme colorScheme) {
+  Widget _buildMetadataPluginSection(
+    ColorScheme colorScheme,
+    WidgetRef ref,
+    bool isLoadingValue,
+    Future<void> Function() addMetadataPlugin,
+    Future<void> Function() replaceMetadataPlugin,
+    Future<void> Function(String) removeMetadataPlugin,
+    ValueNotifier<bool> isLoading,
+  ) {
     final plugins = ref.watch(lxMetadataPluginPathsProvider);
     final hasPlugin = plugins.isNotEmpty;
 
@@ -172,11 +178,11 @@ class _LxPluginContentState extends ConsumerState<_LxPluginContent> {
                 children: [
                   IconButton.text(
                     icon: const Icon(Icons.edit_outlined, size: 18),
-                    onPressed: _isLoading ? null : _replaceMetadataPlugin,
+                    onPressed: isLoadingValue ? null : replaceMetadataPlugin,
                   ),
                   IconButton.text(
                     icon: const Icon(Icons.close, size: 18),
-                    onPressed: () => _removeMetadataPlugin(plugins.first),
+                    onPressed: () => removeMetadataPlugin(plugins.first),
                   ),
                 ],
               ),
@@ -205,8 +211,8 @@ class _LxPluginContentState extends ConsumerState<_LxPluginContent> {
         // 添加按钮（仅有插件时隐藏）
         if (!hasPlugin)
           PrimaryButton(
-            onPressed: _isLoading ? null : _addMetadataPlugin,
-            child: _isLoading
+            onPressed: isLoadingValue ? null : addMetadataPlugin,
+            child: isLoadingValue
                 ? const SizedBox(
                     width: 16,
                     height: 16,
@@ -219,7 +225,15 @@ class _LxPluginContentState extends ConsumerState<_LxPluginContent> {
   }
 
   /// 音源插件区域
-  Widget _buildSourcePluginSection(ColorScheme colorScheme) {
+  Widget _buildSourcePluginSection(
+    ColorScheme colorScheme,
+    WidgetRef ref,
+    bool isLoadingValue,
+    Future<void> Function() addSourcePlugins,
+    Future<void> Function(String) replaceSourcePlugin,
+    Future<void> Function(String) removeSourcePlugin,
+    ValueNotifier<bool> isLoading,
+  ) {
     final plugins = ref.watch(lxSourcePluginPathsProvider);
 
     return Column(
@@ -281,13 +295,13 @@ class _LxPluginContentState extends ConsumerState<_LxPluginContent> {
                       children: [
                         IconButton.text(
                           icon: const Icon(Icons.edit_outlined, size: 18),
-                          onPressed: _isLoading
+                          onPressed: isLoadingValue
                               ? null
-                              : () => _replaceSourcePlugin(plugins[i]),
+                              : () => replaceSourcePlugin(plugins[i]),
                         ),
                         IconButton.text(
                           icon: const Icon(Icons.close, size: 18),
-                          onPressed: () => _removeSourcePlugin(plugins[i]),
+                          onPressed: () => removeSourcePlugin(plugins[i]),
                         ),
                       ],
                     ),
@@ -319,8 +333,8 @@ class _LxPluginContentState extends ConsumerState<_LxPluginContent> {
 
         // 添加按钮
         PrimaryButton(
-          onPressed: _isLoading ? null : _addSourcePlugins,
-          child: _isLoading
+          onPressed: isLoadingValue ? null : addSourcePlugins,
+          child: isLoadingValue
               ? const SizedBox(
                   width: 16,
                   height: 16,

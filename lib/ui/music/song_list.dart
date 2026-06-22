@@ -5,7 +5,7 @@ import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌曲列表组件
-class SongList extends ConsumerWidget {
+class SongList extends HookConsumerWidget {
   final List<Song> songs;
 
   const SongList({super.key, required this.songs});
