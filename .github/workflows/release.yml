@@ -63,6 +63,8 @@ jobs:
           cd build/ios/iphoneos/
           zip -q -r "$APP_NAME-$APP_VERSION-ios.ipa" Payload
           cd ../../..
+          mkdir dist
+          mv "build/ios/iphoneos/$APP_NAME-$APP_VERSION-ios.ipa" dist/
 
       - name: Install fastforge
         if: ${{matrix.platform != 'ios'}}
