@@ -112,14 +112,14 @@ jobs:
 
       - name: Push changes and tag
         run: |
-          # Push the commit first (e.g., to main branch - adjust if needed)
-          # Handle potential conflicts if main changed since checkout? (More advanced setup)
+          # Push the commit first (e.g., to master branch - adjust if needed)
+          # Handle potential conflicts if master changed since checkout? (More advanced setup)
           # Check if there are commits to push before pushing branch
           if ! git diff --quiet HEAD^ HEAD; then
-             echo "Pushing commit to main..."
-             git push origin HEAD:main
+             echo "Pushing commit to master..."
+             git push origin HEAD:master
           else
-             echo "No new commits to push to main."
+             echo "No new commits to push to master."
           fi
 
           # Always push the tag
