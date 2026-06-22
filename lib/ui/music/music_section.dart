@@ -11,7 +11,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 ///
 /// 遍历 MusicModule.services，按 sourceType 分组展示。
 /// 多库服务（如 LxMusicService）展示子库选项。
-class SourceSwitchButton extends ConsumerWidget {
+class SourceSwitchButton extends HookConsumerWidget {
   const SourceSwitchButton({super.key});
 
   @override
@@ -168,7 +168,7 @@ class SourceSwitchButton extends ConsumerWidget {
 }
 
 /// 音乐列表版块
-class MusicSection extends ConsumerWidget {
+class MusicSection extends HookConsumerWidget {
   const MusicSection({super.key});
 
   @override

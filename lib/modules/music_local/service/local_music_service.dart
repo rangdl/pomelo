@@ -20,7 +20,7 @@ class LocalMusicService extends MusicService {
   @override
   MusicSourceType get sourceType => MusicSourceType.local;
 
-  final _source = (id: 'local', name: '本地音乐');
+  final _source = (id: 'local', name: '本地音乐', libraryId: null);
 
   /// 内存中的歌曲列表
   final List<Song> _songs = [];

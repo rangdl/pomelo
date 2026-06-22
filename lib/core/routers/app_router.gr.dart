@@ -10,7 +10,6 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i11;
-import 'package:flutter/material.dart' as _i12;
 import 'package:pomelo/ui/example/example_page.dart' as _i1;
 import 'package:pomelo/ui/example/js_engine_test_page.dart' as _i4;
 import 'package:pomelo/ui/favorite/favorite_page.dart' as _i2;
@@ -21,7 +20,7 @@ import 'package:pomelo/ui/music/search_page.dart' as _i6;
 import 'package:pomelo/ui/my/my_page.dart' as _i7;
 import 'package:pomelo/ui/root/root_page.dart' as _i9;
 import 'package:pomelo/ui/statistics/statistics_page.dart' as _i10;
-import 'package:shadcn_flutter/shadcn_flutter.dart' as _i13;
+import 'package:shadcn_flutter/shadcn_flutter.dart' as _i12;
 
 /// generated route for
 /// [_i1.Ex1DetailView]
@@ -192,7 +191,7 @@ class MyRoute extends _i11.PageRouteInfo<void> {
 /// [_i8.PlaylistDetailPage]
 class PlaylistDetailRoute extends _i11.PageRouteInfo<PlaylistDetailRouteArgs> {
   PlaylistDetailRoute({
-    _i13.Key? key,
+    _i12.Key? key,
     required String playlistId,
     required String sourceId,
     required String playlistName,
@@ -240,7 +239,7 @@ class PlaylistDetailRouteArgs {
     this.creator = '',
   });
 
-  final _i13.Key? key;
+  final _i12.Key? key;
 
   final String playlistId;
 

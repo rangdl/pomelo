@@ -5,6 +5,7 @@
 library;
 
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/log/model/log_entry.dart';
@@ -14,7 +15,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 日志主页面
 @RoutePage()
-class LogPage extends ConsumerWidget {
+class LogPage extends HookConsumerWidget {
   const LogPage({super.key});
 
   @override
@@ -127,27 +128,16 @@ class LogPage extends ConsumerWidget {
 }
 
 /// 日志内容区域（筛选 + 列表）
-class _LogContent extends ConsumerStatefulWidget {
+class _LogContent extends HookConsumerWidget {
   const _LogContent();
 
   @override
-  ConsumerState<_LogContent> createState() => _LogContentState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedLevels = useState<Set<LogLevel>>({});
+    final selectedTag = useState<String?>(null);
+    final searchKeyword = useState('');
+    final searchController = useTextEditingController();
 
-class _LogContentState extends ConsumerState<_LogContent> {
-  Set<LogLevel> _selectedLevels = {};
-  String? _selectedTag;
-  String _searchKeyword = '';
-  final _searchController = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     final logsAsync = ref.watch(latestLogsProvider);
     final statsAsync = ref.watch(logLevelStatsProvider);
     final tagsAsync = ref.watch(logTagsProvider);
@@ -164,21 +154,21 @@ class _LogContentState extends ConsumerState<_LogContent> {
             children: [
               // 搜索框
               TextField(
-                controller: _searchController,
+                controller: searchController,
                 placeholder: const Text('搜索日志...'),
                 onChanged: (value) {
-                  setState(() => _searchKeyword = value);
+                  searchKeyword.value = value;
                 },
                 features: [
                   InputFeature.leading(
                     const Icon(Icons.search, size: 16),
                   ),
-                  if (_searchKeyword.isNotEmpty)
+                  if (searchKeyword.value.isNotEmpty)
                     InputFeature.trailing(
                       GestureDetector(
                         onTap: () {
-                          _searchController.clear();
-                          setState(() => _searchKeyword = '');
+                          searchController.clear();
+                          searchKeyword.value = '';
                         },
                         child: const Icon(Icons.clear, size: 16),
                       ),
@@ -195,27 +185,25 @@ class _LogContentState extends ConsumerState<_LogContent> {
                   separatorBuilder: (_, _) => const SizedBox(width: 6),
                   itemBuilder: (context, index) {
                     if (index == 0) {
-                      final isSelected = _selectedLevels.isEmpty;
+                      final isSelected = selectedLevels.value.isEmpty;
                       return _FilterChip(
                         label: '全部',
                         isSelected: isSelected,
-                        onTap: () => setState(() => _selectedLevels = {}),
+                        onTap: () => selectedLevels.value = {},
                       );
                     }
                     final level = LogLevel.values[index - 1];
-                    final isSelected = _selectedLevels.contains(level);
+                    final isSelected = selectedLevels.value.contains(level);
                     return _FilterChip(
                       label: _levelShortName(level),
                       isSelected: isSelected,
                       color: _levelColor(level),
                       onTap: () {
-                        setState(() {
-                          if (isSelected) {
-                            _selectedLevels = {..._selectedLevels}..remove(level);
-                          } else {
-                            _selectedLevels = {..._selectedLevels, level};
-                          }
-                        });
+                        if (isSelected) {
+                          selectedLevels.value = {...selectedLevels.value}..remove(level);
+                        } else {
+                          selectedLevels.value = {...selectedLevels.value, level};
+                        }
                       },
                     );
                   },
@@ -230,9 +218,9 @@ class _LogContentState extends ConsumerState<_LogContent> {
                         data: (tags) {
                           final tagList = tags.toList()..sort();
                           return PopupMenuButton<String?>(
-                            initialValue: _selectedTag,
+                            initialValue: selectedTag.value,
                             onSelected: (value) {
-                              setState(() => _selectedTag = value);
+                              selectedTag.value = value;
                             },
                             itemBuilder: (context) => [
                               const PopupMenuItem(
@@ -261,7 +249,7 @@ class _LogContentState extends ConsumerState<_LogContent> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    _selectedTag ?? '标签',
+                                    selectedTag.value ?? '标签',
                                     style: const TextStyle(fontSize: 13),
                                   ),
                                   const SizedBox(width: 4),
@@ -301,16 +289,16 @@ class _LogContentState extends ConsumerState<_LogContent> {
             data: (logs) {
               // 应用筛选
               var filtered = logs;
-              if (_selectedLevels.isNotEmpty) {
+              if (selectedLevels.value.isNotEmpty) {
                 filtered =
-                    filtered.where((e) => _selectedLevels.contains(e.level)).toList();
+                    filtered.where((e) => selectedLevels.value.contains(e.level)).toList();
               }
-              if (_selectedTag != null) {
+              if (selectedTag.value != null) {
                 filtered =
-                    filtered.where((e) => e.tag == _selectedTag).toList();
+                    filtered.where((e) => e.tag == selectedTag.value).toList();
               }
-              if (_searchKeyword.isNotEmpty) {
-                final kw = _searchKeyword.toLowerCase();
+              if (searchKeyword.value.isNotEmpty) {
+                final kw = searchKeyword.value.toLowerCase();
                 filtered = filtered
                     .where(
                       (e) =>

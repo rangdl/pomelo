@@ -21,8 +21,8 @@ class Album {
   /// 简介
   final String? description;
 
-  /// 数据来源 (标识, 名称)
-  final ({String id, String name}) source;
+  /// 数据来源 (服务标识, 名称, 库标识)
+  final ({String id, String name, String? libraryId}) source;
 
   /// 来源原始数据
   final Map<String, dynamic>? meta;
@@ -57,8 +57,9 @@ class Album {
           ? (
               id: (json['source'] as Map<String, dynamic>)['id'] as String,
               name: (json['source'] as Map<String, dynamic>)['name'] as String,
+              libraryId: (json['source'] as Map<String, dynamic>)['libraryId'] as String?,
             )
-          : (id: 'local', name: '本地'),
+          : (id: 'local', name: '本地', libraryId: null),
       meta: json['meta'] as Map<String, dynamic>?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -76,7 +77,7 @@ class Album {
       'year': year,
       'song_count': songCount,
       'description': description,
-      'source': {'id': source.id, 'name': source.name},
+      'source': {'id': source.id, 'name': source.name, if (source.libraryId != null) 'libraryId': source.libraryId},
       'meta': meta,
       'created_at': createdAt.toIso8601String(),
     };

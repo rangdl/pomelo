@@ -28,7 +28,7 @@ final playlistSongsProvider =
 
 /// 歌单详情页面
 @RoutePage()
-class PlaylistDetailPage extends ConsumerWidget {
+class PlaylistDetailPage extends HookConsumerWidget {
   final String playlistId;
   final String sourceId;
   final String playlistName;

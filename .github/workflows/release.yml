@@ -1,0 +1,84 @@
+name: Fluxy Cloud Deployment
+
+on:
+  push:
+    # branches:
+    #   - main
+    tags: ["v*.*.*"]
+  # pull_request:
+  #   branches:
+  #     - main
+  workflow_dispatch:
+    inputs:
+      # build_linux:
+      #   description: '构建 Linux (x64)'
+      #   type: boolean
+      #   default: true
+      build_windows:
+        description: '构建 Windows (x64)'
+        type: boolean
+        default: true
+      # build_macos:
+      #   description: '构建 macOS (Universal)'
+      #   type: boolean
+      #   default: true
+      # build_android:
+      #   description: '构建 Android (APK)'
+      #   type: boolean
+      #   default: true
+      # build_ios:
+      #   description: '构建 iOS (No Codesign)'
+      #   type: boolean
+      #   default: true
+      # build_web:
+      #   description: '构建 Web (standalone + embedded)'
+      #   type: boolean
+      #   default: true
+
+jobs:
+  build_and_deploy:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            arch: x86
+            files: |
+              dist/
+
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2.18.0
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml # path to pubspec.yaml or .fvmrc or .fvm/fvm_config.json
+          cache: true
+
+      # - name: Setup Rust toolchain
+      #   uses: dtolnay/rust-toolchain@stable
+      #   with:
+      #     toolchain: stable
+
+      - name: Install Xcode
+        if: ${{matrix.platform == 'ios'}}
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.2"
+
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      - name: Install fastforge
+        run: dart pub global activate fastforge
+
+      - name: Build Windows ZIP
+        run: fastforge package --platform windows --targets exe,zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: ${{matrix.platform}}-${{matrix.arch}}
+          path: ${{matrix.files}}
+

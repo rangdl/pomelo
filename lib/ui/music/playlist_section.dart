@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/music/model/playlist.dart';
@@ -10,7 +11,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 /// 展示歌单分类导航和对应分类下的歌单列表。
 /// 分类分两级：父分类（如"风格""排行榜"）和子分类（如"流行""网络热歌"）。
 /// 仅当有子分类时显示子分类导航行。
-class PlaylistSection extends ConsumerWidget {
+class PlaylistSection extends HookConsumerWidget {
   const PlaylistSection({super.key});
 
   @override
@@ -19,6 +20,8 @@ class PlaylistSection extends ConsumerWidget {
     final selectedParentId = ref.watch(selectedPlaylistParentProvider);
     final selectedChildId = ref.watch(selectedPlaylistCategoryProvider);
     final playlistsAsync = ref.watch(playlistsByCategoryProvider);
+    final sortOrdersAsync = ref.watch(playlistSortOrdersProvider);
+    final selectedSortId = ref.watch(selectedPlaylistSortProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     return categoriesAsync.when(
@@ -36,6 +39,20 @@ class PlaylistSection extends ConsumerWidget {
         final childCategories = allCategories
             .where((c) => c.parentId == activeParentId)
             .toList();
+
+        // 默认选中第一个子分类
+        final effectiveChildId = selectedChildId ??
+            (childCategories.isNotEmpty ? childCategories.first.id : null);
+        useEffect(() {
+          if (selectedChildId == null && childCategories.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              ref
+                  .read(selectedPlaylistCategoryProvider.notifier)
+                  .select(childCategories.first.id);
+            });
+          }
+          return null;
+        }, [activeParentId, selectedChildId, childCategories.length]);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -88,7 +105,7 @@ class PlaylistSection extends ConsumerWidget {
                   separatorBuilder: (_, _) => const SizedBox(width: 6),
                   itemBuilder: (context, index) {
                     final cat = childCategories[index];
-                    final isSelected = cat.id == selectedChildId;
+                    final isSelected = cat.id == effectiveChildId;
                     return _SubCategoryChip(
                       label: cat.name,
                       isSelected: isSelected,
@@ -103,9 +120,41 @@ class PlaylistSection extends ConsumerWidget {
                 ),
               ),
             ],
+            // 排序方式选择行
+            sortOrdersAsync.when(
+              data: (sortOrders) {
+                if (sortOrders.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: SizedBox(
+                    height: 28,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: sortOrders.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 4),
+                      itemBuilder: (context, index) {
+                        final sort = sortOrders[index];
+                        final isSelected = sort.id == (selectedSortId ?? sortOrders.first.id);
+                        return _SortChip(
+                          label: sort.name,
+                          isSelected: isSelected,
+                          onTap: () {
+                            ref
+                                .read(selectedPlaylistSortProvider.notifier)
+                                .select(sort.id);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
             const SizedBox(height: 12),
             // 歌单网格（仅当选中子分类时显示）
-            if (selectedChildId != null)
+            if (effectiveChildId != null)
               playlistsAsync.when(
                 data: (data) {
                   if (data.items.isEmpty) {
@@ -236,6 +285,62 @@ class _SubCategoryChip extends StatelessWidget {
   }
 }
 
+/// 歌单排序方式选择标签
+class _SortChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _SortChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorScheme.secondary.withValues(alpha: 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: isSelected
+              ? Border.all(color: colorScheme.secondary.withValues(alpha: 0.5))
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.sort,
+              size: 14,
+              color: isSelected
+                  ? colorScheme.secondary
+                  : colorScheme.mutedForeground,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected
+                    ? colorScheme.secondary
+                    : colorScheme.mutedForeground,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// 歌单网格（2列布局）
 class _PlaylistGrid extends StatelessWidget {
   final List<Playlist> playlists;
@@ -255,7 +360,7 @@ class _PlaylistGrid extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
-            childAspectRatio: 0.72,
+            childAspectRatio: 0.85,
           ),
           itemCount: playlists.length,
           itemBuilder: (context, index) {
