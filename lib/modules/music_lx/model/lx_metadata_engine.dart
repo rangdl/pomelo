@@ -71,10 +71,12 @@ class LxMetadataEngine {
       if (raw is String) {
         final items = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
         return items
-            .map((v) => (
-                  id: v['id'] as String? ?? '',
-                  name: v['name'] as String? ?? v['id'] as String? ?? '',
-                ))
+            .map(
+              (v) => (
+                id: v['id'] as String? ?? '',
+                name: v['name'] as String? ?? v['id'] as String? ?? '',
+              ),
+            )
             .toList();
       }
       return [];
@@ -88,7 +90,8 @@ class LxMetadataEngine {
   ///
   /// 加载前记录已有的库，加载后对比得出新增的库。
   Future<List<({String id, String name})>> loadPluginWithLibraries(
-      String scriptContent) async {
+    String scriptContent,
+  ) async {
     final before = await getRegisteredLibraries();
     final beforeIds = before.map((e) => e.id).toSet();
     final success = loadPlugin(scriptContent);
@@ -151,7 +154,7 @@ class LxMetadataEngine {
     }
     final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
     final json = Map<String, dynamic>.from(await asyncResult.rawResult);
-    
+
     final categories = <PlaylistCategory>[];
 
     // 解析 hot: 作为“排行榜”分类组
@@ -161,11 +164,13 @@ class LxMetadataEngine {
       categories.add(const PlaylistCategory(id: hotGroupId, name: '排行榜'));
       for (final item in hot) {
         final itemMap = Map<String, dynamic>.from(item as Map);
-        categories.add(PlaylistCategory(
-          id: itemMap['id'] as String? ?? '',
-          name: itemMap['name'] as String? ?? '',
-          parentId: hotGroupId,
-        ));
+        categories.add(
+          PlaylistCategory(
+            id: itemMap['id'] as String? ?? '',
+            name: itemMap['name'] as String? ?? '',
+            parentId: hotGroupId,
+          ),
+        );
       }
     }
 
@@ -183,11 +188,13 @@ class LxMetadataEngine {
         if (list != null) {
           for (final item in list) {
             final itemMap = Map<String, dynamic>.from(item as Map);
-            categories.add(PlaylistCategory(
-              id: itemMap['id'] as String? ?? '',
-              name: itemMap['name'] as String? ?? '',
-              parentId: groupId,
-            ));
+            categories.add(
+              PlaylistCategory(
+                id: itemMap['id'] as String? ?? '',
+                name: itemMap['name'] as String? ?? '',
+                parentId: groupId,
+              ),
+            );
           }
         }
       }
@@ -205,7 +212,7 @@ class LxMetadataEngine {
   }) async {
     try {
       final result = await jsEngine.jsRuntime.evaluateAsync(
-        "registry.getSongListProvider(`$type`)?.getTags()",
+        "registry.getSongListProvider(`$type`)?.getSortList()",
       );
       jsEngine.jsRuntime.executePendingJob();
       if (result.isError) return [];
@@ -214,15 +221,13 @@ class LxMetadataEngine {
 
       final sort = json['sort'] as List<dynamic>?;
       if (sort == null || sort.isEmpty) return [];
-      return sort
-          .map((item) {
-            final m = Map<String, dynamic>.from(item as Map);
-            return (
-              id: m['id'] as String? ?? '',
-              name: m['name'] as String? ?? m['id'] as String? ?? '',
-            );
-          })
-          .toList();
+      return sort.map((item) {
+        final m = Map<String, dynamic>.from(item as Map);
+        return (
+          id: m['id'] as String? ?? '',
+          name: m['name'] as String? ?? m['id'] as String? ?? '',
+        );
+      }).toList();
     } catch (e) {
       log.error('LxMetadataEngine', '获取歌单排序方式失败: $e', error: e);
       return [];
@@ -272,10 +277,7 @@ class LxMetadataEngine {
   ///
   /// 调用元数据插件的 getListDetail 方法，按歌单 id 获取歌曲列表。
   /// 返回 [List<Song>]。
-  Future<List<Song>> getPlaylistsDetail(
-    String id, {
-    String type = 'tx',
-  }) async {
+  Future<List<Song>> getPlaylistsDetail(String id, {String type = 'tx'}) async {
     // 提取原始 id（去掉 `${type}-` 前缀）
     final prefix = '$type-';
     final originalId = id.startsWith(prefix) ? id.substring(prefix.length) : id;
@@ -311,9 +313,7 @@ class LxMetadataEngine {
   ///
   /// 从元数据插件获取排行榜列表。
   /// 返回 [List<Leaderboard>]，每个排行榜包含 id 和 name。
-  Future<List<Leaderboard>> getBoards({
-    String type = 'tx',
-  }) async {
+  Future<List<Leaderboard>> getBoards({String type = 'tx'}) async {
     final result = await jsEngine.jsRuntime.evaluateAsync(
       "registry.getLeaderboardProvider(`$type`)?.getBoards()",
     );
@@ -327,12 +327,14 @@ class LxMetadataEngine {
 
     final leaderboards = <Leaderboard>[];
     for (final item in json) {
-        final itemMap = Map<String, dynamic>.from(item as Map);
-        leaderboards.add(Leaderboard(
+      final itemMap = Map<String, dynamic>.from(item as Map);
+      leaderboards.add(
+        Leaderboard(
           id: itemMap['id'] as String? ?? '',
           name: itemMap['name'] as String? ?? '',
-        ));
-      }
+        ),
+      );
+    }
     return leaderboards;
   }
 
@@ -498,7 +500,7 @@ class PomeloTrackObjectMeta {
       src: '', // 需要根据类型选择合适的链接
       duration: duration,
       source: (id: source, name: source, libraryId: libraryId ?? source),
-      meta: toMap()
+      meta: toMap(),
     );
   }
 }
