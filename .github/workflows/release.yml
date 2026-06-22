@@ -40,7 +40,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-latest
+          - os: windows-2022
             platform: windows
             arch: x86
             files: |
@@ -81,6 +81,8 @@ jobs:
       - name: Build Windows ZIP
         if: ${{matrix.platform == 'windows'}}
         run: fastforge package --platform windows --targets exe,zip
+        env:
+          CMAKE_GENERATOR: Ninja
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
@@ -132,3 +134,61 @@ jobs:
           omitPrereleaseDuringUpdate: true
           allowUpdates: true
           artifacts: Release-Binaries/**/*,RELEASE.sha256sum,RELEASE.md5sum
+
+  cleanup:
+    runs-on: ubuntu-latest
+    needs:
+      - build_platform
+    strategy:
+      matrix:
+        keep: [5, 10, 20]  # 不同保留策略
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Clean Releases
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            
+            // 配置
+            const keepLatest = ${{ matrix.keep }};
+            const keepYoungerThanDays = 30;
+            const now = new Date();
+            
+            // 过滤和排序
+            const sortedReleases = releases
+              .filter(release => !release.draft)  // 跳过草稿
+              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            
+            let deleted = 0;
+            for (let i = 0; i < sortedReleases.length; i++) {
+              const release = sortedReleases[i];
+              const created = new Date(release.created_at);
+              const ageDays = (now - created) / (1000 * 60 * 60 * 24);
+              
+              // 保留条件
+              if (i < keepLatest || ageDays < keepYoungerThanDays) {
+                console.log(`保留: ${release.tag_name} (${ageDays.toFixed(0)} 天)`);
+                continue;
+              }
+              
+              // 删除
+              console.log(`删除: ${release.tag_name} (${ageDays.toFixed(0)} 天)`);
+              try {
+                await github.rest.repos.deleteRelease({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  release_id: release.id
+                });
+                deleted++;
+              } catch (error) {
+                console.error(`删除失败: ${error.message}`);
+              }
+            }
+            
+            console.log(`总计删除了 ${deleted} 个 release`);
