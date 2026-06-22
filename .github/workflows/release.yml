@@ -1,4 +1,4 @@
-name: Fluxy Cloud Deployment
+name: Release
 
 on:
   push:
@@ -36,7 +36,7 @@ on:
       #   default: true
 
 jobs:
-  build_and_deploy:
+  build_platform:
     strategy:
       matrix:
         include:
@@ -82,3 +82,46 @@ jobs:
           name: ${{matrix.platform}}-${{matrix.arch}}
           path: ${{matrix.files}}
 
+  upload:
+    runs-on: ubuntu-22.04
+    needs:
+      - build_platform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./Release-Binaries
+
+      - name: Install dependencies
+        run: sudo apt-get install tree -y
+
+      - name: Generate Checksums
+        run: |
+          tree .
+          find Release-Binaries -type f -exec md5sum {} \; >> RELEASE.md5sum
+          find Release-Binaries -type f -exec sha256sum {} \; >> RELEASE.sha256sum
+          sed -i 's|Release-Binaries/.*/\([^/]*\)$|\1|' RELEASE.sha256sum RELEASE.md5sum
+          sed -i 's|Release-Binaries/||' RELEASE.sha256sum RELEASE.md5sum
+
+      - name: Extract pubspec version
+        run: |
+          echo "PUBSPEC_VERSION=$(grep -oP 'version:\s*\K[^+]+(?=\+)' pubspec.yaml)" >> $GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: sums
+          path: |
+            RELEASE.md5sum
+            RELEASE.sha256sum
+
+      - name: Upload Release Binaries (stable)
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: v${{ env.PUBSPEC_VERSION }} # mind the "v" prefix
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
+          omitPrereleaseDuringUpdate: true
+          allowUpdates: true
+          artifacts: Release-Binaries/**/*,RELEASE.sha256sum,RELEASE.md5sum
