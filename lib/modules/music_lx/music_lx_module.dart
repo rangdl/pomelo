@@ -5,7 +5,7 @@ import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
-import 'package:pomelo/modules/music_lx/providers/musicsdk_provider.dart';
+import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 import 'model/lx_music_service.dart';
 
 /// Settings key: Lx 元数据插件文件路径（单路径字符串，仅支持一份）

@@ -1,4 +1,5 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
 
@@ -6,68 +7,48 @@ import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart'
 ///
 /// 包含服务器地址、用户名、密码三个必填字段，
 /// 可选的显示名称字段。点击确定后尝试连接验证。
-class AddSubsonicAccountDialog extends ConsumerStatefulWidget {
+class AddSubsonicAccountDialog extends HookConsumerWidget {
   const AddSubsonicAccountDialog({super.key});
 
   @override
-  ConsumerState<AddSubsonicAccountDialog> createState() =>
-      _AddSubsonicAccountDialogState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final serverUrlController = useTextEditingController();
+    final usernameController = useTextEditingController();
+    final passwordController = useTextEditingController();
+    final displayNameController = useTextEditingController();
 
-class _AddSubsonicAccountDialogState
-    extends ConsumerState<AddSubsonicAccountDialog> {
-  final _serverUrlController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _displayNameController = TextEditingController();
+    final isLoading = useState(false);
+    final error = useState<String?>(null);
 
-  bool _isLoading = false;
-  String? _error;
+    Future<void> submit() async {
+      final serverUrl = serverUrlController.text.trim();
+      final username = usernameController.text.trim();
+      final password = passwordController.text;
 
-  @override
-  void dispose() {
-    _serverUrlController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
-    _displayNameController.dispose();
-    super.dispose();
-  }
+      if (serverUrl.isEmpty || username.isEmpty || password.isEmpty) {
+        error.value = '服务器地址、用户名和密码为必填项';
+        return;
+      }
 
-  Future<void> _submit() async {
-    final serverUrl = _serverUrlController.text.trim();
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text;
+      isLoading.value = true;
+      error.value = null;
 
-    if (serverUrl.isEmpty || username.isEmpty || password.isEmpty) {
-      setState(() => _error = '服务器地址、用户名和密码为必填项');
-      return;
+      try {
+        await ref.read(subsonicAccountsProvider.notifier).addAccount((
+          serverUrl: serverUrl,
+          username: username,
+          password: password,
+          displayName: displayNameController.text.trim().isEmpty
+              ? null
+              : displayNameController.text.trim(),
+        ));
+        if (context.mounted) Navigator.of(context).pop(true);
+      } catch (e) {
+        isLoading.value = false;
+        error.value = e.toString().replaceFirst('StateError: ', '').replaceFirst('Exception: ', '');
+      }
     }
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
-    try {
-      await ref.read(subsonicAccountsProvider.notifier).addAccount((
-        serverUrl: serverUrl,
-        username: username,
-        password: password,
-        displayName: _displayNameController.text.trim().isEmpty
-            ? null
-            : _displayNameController.text.trim(),
-      ));
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _error = e.toString().replaceFirst('StateError: ', '').replaceFirst('Exception: ', '');
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('添加 Subsonic 账号'),
       content: SizedBox(
@@ -77,9 +58,9 @@ class _AddSubsonicAccountDialogState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
-              controller: _serverUrlController,
+              controller: serverUrlController,
               placeholder: const Text('https://music.example.com'),
-              onChanged: (_) => _error != null ? setState(() => _error = null) : null,
+              onChanged: (_) => error.value != null ? error.value = null : null,
             ),
             const Gap(4),
             Text(
@@ -91,9 +72,9 @@ class _AddSubsonicAccountDialogState
             ),
             const Gap(12),
             TextField(
-              controller: _usernameController,
+              controller: usernameController,
               placeholder: const Text('用户名'),
-              onChanged: (_) => _error != null ? setState(() => _error = null) : null,
+              onChanged: (_) => error.value != null ? error.value = null : null,
             ),
             const Gap(4),
             Text(
@@ -105,10 +86,10 @@ class _AddSubsonicAccountDialogState
             ),
             const Gap(12),
             TextField(
-              controller: _passwordController,
+              controller: passwordController,
               placeholder: const Text('密码'),
               obscureText: true,
-              onChanged: (_) => _error != null ? setState(() => _error = null) : null,
+              onChanged: (_) => error.value != null ? error.value = null : null,
             ),
             const Gap(4),
             Text(
@@ -120,7 +101,7 @@ class _AddSubsonicAccountDialogState
             ),
             const Gap(12),
             TextField(
-              controller: _displayNameController,
+              controller: displayNameController,
               placeholder: const Text('显示名称（可选）'),
             ),
             const Gap(4),
@@ -131,10 +112,10 @@ class _AddSubsonicAccountDialogState
                 color: Theme.of(context).colorScheme.mutedForeground,
               ),
             ),
-            if (_error != null) ...[
+            if (error.value != null) ...[
               const Gap(12),
               Text(
-                _error!,
+                error.value!,
                 style: TextStyle(
                   fontSize: 13,
                   color: Theme.of(context).colorScheme.destructive,
@@ -146,12 +127,12 @@ class _AddSubsonicAccountDialogState
       ),
       actions: [
         GhostButton(
-          onPressed: _isLoading ? null : () => Navigator.of(context).pop(false),
+          onPressed: isLoading.value ? null : () => Navigator.of(context).pop(false),
           child: const Text('取消'),
         ),
         PrimaryButton(
-          onPressed: _isLoading ? null : _submit,
-          child: _isLoading
+          onPressed: isLoading.value ? null : submit,
+          child: isLoading.value
               ? const SizedBox(
                   width: 16,
                   height: 16,

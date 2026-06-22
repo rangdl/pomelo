@@ -19,9 +19,9 @@ class Song with _$Song {
     @Default(0) int duration, // 时长（秒）
     /// 数据来源
     ///
-    /// 如 `(id: 'netease', name: '网易云音乐')`、
+    /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
     /// `(id: 'local', name: '本地')`
-    required ({String id, String name}) source,
+    required ({String id, String name, String? libraryId}) source,
 
     /// 来源原始数据
     ///
@@ -45,9 +45,9 @@ class Song with _$Song {
     @Default(0) int duration, // 时长（秒）
     /// 数据来源
     ///
-    /// 如 `(id: 'netease', name: '网易云音乐')`、
+    /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
     /// `(id: 'local', name: '本地')`
-    required ({String id, String name}) source,
+    required ({String id, String name, String? libraryId}) source,
 
     /// 来源原始数据
     ///

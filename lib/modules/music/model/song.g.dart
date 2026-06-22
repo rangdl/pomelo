@@ -16,8 +16,11 @@ _$SongFullImpl _$$SongFullImplFromJson(Map json) => _$SongFullImpl(
   duration: (json['duration'] as num?)?.toInt() ?? 0,
   source: _$recordConvertAny(
     json['source'],
-    ($jsonValue) =>
-        (id: $jsonValue['id'] as String, name: $jsonValue['name'] as String),
+    ($jsonValue) => (
+      id: $jsonValue['id'] as String,
+      libraryId: $jsonValue['libraryId'] as String?,
+      name: $jsonValue['name'] as String,
+    ),
   ),
   meta:
       (json['meta'] as Map?)?.map((k, e) => MapEntry(k as String, e)) ??
@@ -40,6 +43,7 @@ Map<String, dynamic> _$$SongFullImplToJson(_$SongFullImpl instance) =>
       'duration': instance.duration,
       'source': <String, dynamic>{
         'id': instance.source.id,
+        'libraryId': instance.source.libraryId,
         'name': instance.source.name,
       },
       'meta': instance.meta,
@@ -61,8 +65,11 @@ _$SongLocalImpl _$$SongLocalImplFromJson(Map json) => _$SongLocalImpl(
   duration: (json['duration'] as num?)?.toInt() ?? 0,
   source: _$recordConvertAny(
     json['source'],
-    ($jsonValue) =>
-        (id: $jsonValue['id'] as String, name: $jsonValue['name'] as String),
+    ($jsonValue) => (
+      id: $jsonValue['id'] as String,
+      libraryId: $jsonValue['libraryId'] as String?,
+      name: $jsonValue['name'] as String,
+    ),
   ),
   meta:
       (json['meta'] as Map?)?.map((k, e) => MapEntry(k as String, e)) ??
@@ -85,6 +92,7 @@ Map<String, dynamic> _$$SongLocalImplToJson(_$SongLocalImpl instance) =>
       'duration': instance.duration,
       'source': <String, dynamic>{
         'id': instance.source.id,
+        'libraryId': instance.source.libraryId,
         'name': instance.source.name,
       },
       'meta': instance.meta,

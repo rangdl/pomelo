@@ -1,0 +1,14 @@
+# AppId 的值唯一标识此应用。
+# 不要在其他应用的安装程序中使用相同的 AppId 值。
+app_id: 80C49364-E26E-4BAF-8C46-CD26EC4C0BB7
+publisher: Rang
+publisher_url: https://github.com/rangdl/pomelo
+display_name: 柚子音乐
+create_desktop_icon: true
+# 参见：https://jrsoftware.org/ishelp/index.php?topic=setup_defaultdirname
+# install_dir_name: "D:\\HELLO-WORLD"
+# 这里的路径是相对于项目根目录的路径；图标格式必须是 ico 格式，不能是 png 或其他格式
+setup_icon_file: windows\runner\resources\app_icon.ico
+locales:
+  - en
+  - zh

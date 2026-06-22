@@ -5,6 +5,7 @@ library;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/core/framework/framework.dart';
@@ -19,39 +20,21 @@ import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 
 /// 歌曲搜索结果页面
 @RoutePage()
-class MusicSearchPage extends ConsumerStatefulWidget {
+class MusicSearchPage extends HookConsumerWidget {
   final String keyword;
 
   const MusicSearchPage({super.key, required this.keyword});
 
   @override
-  ConsumerState<MusicSearchPage> createState() => _MusicSearchPageState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchController = useTextEditingController(text: keyword);
+    final keywordState = useState(keyword);
 
-class _MusicSearchPageState extends ConsumerState<MusicSearchPage> {
-  late final TextEditingController _searchController;
-  late String _keyword;
+    void doSearch(String kw) {
+      if (kw.trim().isEmpty) return;
+      keywordState.value = kw.trim();
+    }
 
-  @override
-  void initState() {
-    super.initState();
-    _keyword = widget.keyword;
-    _searchController = TextEditingController(text: _keyword);
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _doSearch(String keyword) {
-    if (keyword.trim().isEmpty) return;
-    setState(() => _keyword = keyword.trim());
-  }
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       headers: [
         AppBar(
@@ -64,15 +47,15 @@ class _MusicSearchPageState extends ConsumerState<MusicSearchPage> {
           title: SizedBox(
             height: 36,
             child: TextField(
-              controller: _searchController,
+              controller: searchController,
               autofocus: false,
               placeholder: const Text('搜索歌曲...'),
-              onSubmitted: _doSearch,
+              onSubmitted: doSearch,
               features: [
                 InputFeature.trailing(
                   GhostButton(
                     density: ButtonDensity.icon,
-                    onPressed: () => _doSearch(_searchController.text),
+                    onPressed: () => doSearch(searchController.text),
                     child: const Icon(Icons.search, size: 20),
                   ),
                 ),
@@ -82,36 +65,29 @@ class _MusicSearchPageState extends ConsumerState<MusicSearchPage> {
         ),
         const Divider(),
       ],
-      child: _keyword.isEmpty
+      child: keywordState.value.isEmpty
           ? const Center(child: Text('输入关键词搜索歌曲'))
-          : _SearchResults(keyword: _keyword),
+          : _SearchResults(keyword: keywordState.value),
     );
   }
 }
 
 /// 搜索结果组件
-class _SearchResults extends ConsumerStatefulWidget {
+class _SearchResults extends HookConsumerWidget {
   final String keyword;
 
   const _SearchResults({required this.keyword});
 
   @override
-  ConsumerState<_SearchResults> createState() => _SearchResultsState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tabSourceId = useState<String?>(null);
 
-class _SearchResultsState extends ConsumerState<_SearchResults> {
-  /// 当前选中的 tab 对应的 sourceId，null 表示"全部"
-  String? _tabSourceId;
-
-  @override
-  void initState() {
-    super.initState();
     // 初始 tab 默认选中持久化来源
-    _tabSourceId = ref.read(selectedSourceProvider).sourceId;
-  }
+    useEffect(() {
+      tabSourceId.value = ref.read(selectedSourceProvider).sourceId;
+      return null;
+    }, const []);
 
-  @override
-  Widget build(BuildContext context) {
     final module = ref.watch(musicModuleProvider);
     final services = module?.services ?? [];
     final selection = ref.watch(selectedSourceProvider);
@@ -124,9 +100,9 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
     }
     final types = byType.keys.toList();
 
-    final filtered = _tabSourceId == null
+    final filtered = tabSourceId.value == null
         ? services
-        : services.where((s) => s.sourceId == _tabSourceId).toList();
+        : services.where((s) => s.sourceId == tabSourceId.value).toList();
 
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -142,7 +118,7 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
                 label: '全部',
                 selected: selectedSourceId == null,
                 onTap: () {
-                  setState(() => _tabSourceId = null);
+                  tabSourceId.value = null;
                   ref.read(selectedSourceProvider.notifier).selectAll();
                 },
               ),
@@ -168,10 +144,10 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
                       return service.libraries.map(
                         (lib) => _TabChip(
                           label: lib.name,
-                          selected: _tabSourceId == service.sourceId &&
+                          selected: tabSourceId.value == service.sourceId &&
                               service.defaultLibraryId == lib.id,
                           onTap: () {
-                            setState(() => _tabSourceId = service.sourceId);
+                            tabSourceId.value = service.sourceId;
                             ref.read(selectedSourceProvider.notifier).select(
                                   service.sourceId,
                                   libraryId: lib.id,
@@ -183,9 +159,9 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
                     return [
                       _TabChip(
                         label: service.sourceName,
-                        selected: _tabSourceId == service.sourceId,
+                        selected: tabSourceId.value == service.sourceId,
                         onTap: () {
-                          setState(() => _tabSourceId = service.sourceId);
+                          tabSourceId.value = service.sourceId;
                           ref.read(selectedSourceProvider.notifier).select(
                                 service.sourceId,
                               );
@@ -201,9 +177,9 @@ class _SearchResultsState extends ConsumerState<_SearchResults> {
         const Divider(),
         Expanded(
           child: _SearchResultsList(
-            key: ValueKey('${_tabSourceId}_${widget.keyword}'),
+            key: ValueKey('${tabSourceId.value}_$keyword'),
             services: filtered,
-            keyword: widget.keyword,
+            keyword: keyword,
           ),
         ),
       ],
@@ -253,7 +229,7 @@ class _TabChip extends StatelessWidget {
 }
 
 /// 搜索结果列表
-class _SearchResultsList extends ConsumerStatefulWidget {
+class _SearchResultsList extends HookConsumerWidget {
   final List<MusicService> services;
   final String keyword;
 
@@ -264,85 +240,64 @@ class _SearchResultsList extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_SearchResultsList> createState() => _SearchResultsListState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final allResults = useState<List<MergedSong>?>(null);
+    final isLoading = useState(true);
+    final errors = useState<List<({String sourceId, String sourceName, Object error})>>([]);
 
-class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
-  List<MergedSong>? _allResults;
-  bool _isLoading = true;
-  List<({String sourceId, String sourceName, Object error})> _errors = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _performSearch();
-  }
-
-  @override
-  void didUpdateWidget(covariant _SearchResultsList oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.keyword != widget.keyword ||
-        oldWidget.services != widget.services) {
-      _allResults = null;
-      _isLoading = true;
-      _errors = [];
-      _performSearch();
-    }
-  }
-
-  Future<void> _performSearch() async {
-    if (widget.services.isEmpty) {
-      setState(() {
-        _allResults = [];
-        _isLoading = false;
-      });
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    final results = await safeCallServices<PaginationResponse<Song>>(
-      widget.services,
-      (s) => (s as MusicService).searchSongs(widget.keyword),
-      getId: (s) => (s as MusicService).sourceId,
-      getName: (s) => (s as MusicService).sourceName,
-    );
-
-    final allSongs = <Song>[];
-    final errors = <({String sourceId, String sourceName, Object error})>[];
-    for (final r in results) {
-      if (r.isSuccess && r.data != null) {
-        allSongs.addAll(r.data!.items);
-      } else if (r.isError && r.error != null) {
-        errors.add((
-          sourceId: r.sourceId,
-          sourceName: r.sourceName,
-          error: r.error!,
-        ));
+    Future<void> performSearch() async {
+      if (services.isEmpty) {
+        allResults.value = [];
+        isLoading.value = false;
+        return;
       }
+
+      isLoading.value = true;
+
+      final results = await safeCallServices<PaginationResponse<Song>>(
+        services,
+        (s) => (s as MusicService).searchSongs(keyword),
+        getId: (s) => (s as MusicService).sourceId,
+        getName: (s) => (s as MusicService).sourceName,
+      );
+
+      final allSongs = <Song>[];
+      final newErrors = <({String sourceId, String sourceName, Object error})>[];
+      for (final r in results) {
+        if (r.isSuccess && r.data != null) {
+          allSongs.addAll(r.data!.items);
+        } else if (r.isError && r.error != null) {
+          newErrors.add((
+            sourceId: r.sourceId,
+            sourceName: r.sourceName,
+            error: r.error!,
+          ));
+        }
+      }
+
+      final merged = mergeSongs(allSongs);
+
+      allResults.value = merged;
+      errors.value = newErrors;
+      isLoading.value = false;
     }
 
-    final merged = mergeSongs(allSongs);
+    // 初始化和 widget 更新时执行搜索
+    useEffect(() {
+      performSearch();
+      return null;
+    }, [keyword, services]);
 
-    setState(() {
-      _allResults = merged;
-      _errors = errors;
-      _isLoading = false;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
+    if (isLoading.value) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final songs = _allResults ?? [];
+    final songs = allResults.value ?? [];
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
       children: [
-        ProviderErrorBanner(errors: _errors),
+        ProviderErrorBanner(errors: errors.value),
         if (songs.isEmpty)
           Expanded(
             child: Center(
@@ -351,7 +306,7 @@ class _SearchResultsListState extends ConsumerState<_SearchResultsList> {
                 children: [
                   Icon(Icons.search_off, size: 48, color: colorScheme.mutedForeground),
                   const SizedBox(height: 12),
-                  Text('未找到与"${widget.keyword}"相关的歌曲'),
+                  Text('未找到与"$keyword"相关的歌曲'),
                 ],
               ),
             ),

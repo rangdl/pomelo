@@ -3,6 +3,7 @@ import 'music_source_type.dart';
 import 'song.dart';
 import 'album.dart';
 import 'playlist.dart';
+import 'leaderboard.dart';
 
 /// 音乐服务接口
 ///
@@ -109,13 +110,22 @@ abstract class MusicService {
   /// 可通过 [getPlaylistsByCategory] 获取指定分类下的歌单。
   Future<List<PlaylistCategory>> getPlaylistCategories() async => [];
 
+  /// 获取歌单排序方式列表
+  ///
+  /// 返回该服务支持的歌单排序方式（如“默认”“最热”“最新”等）。
+  /// 默认返回空列表，表示该服务不支持排序选择。
+  /// 可通过 [getPlaylistsByCategory] 的 [sortId] 参数指定排序方式。
+  Future<List<({String id, String name})>> getPlaylistSortOrders() async => [];
+
   /// 获取指定分类下的歌单列表
   ///
   /// [categoryId] 来自 [PlaylistCategory.id]。
-  /// 默认实现调用 [getPlaylists]，忽略分类参数。
+  /// [sortId] 可选，来自 [getPlaylistSortOrders] 返回的排序标识。
+  /// 默认实现调用 [getPlaylists]，忽略分类和排序参数。
   /// 支持分类的服务应覆写此方法。
   Future<PaginationResponse<Playlist>> getPlaylistsByCategory(
     String categoryId, {
+    String? sortId,
     int page = 1,
     int limit = 20,
   }) {
@@ -138,4 +148,19 @@ abstract class MusicService {
   Future<String> getMusicUrl(SongFull song) {
     throw UnimplementedError('$sourceName(getMusicUrl) 尚未实现');
   }
+
+  // ========== 排行榜 ==========
+
+  /// 获取排行榜列表
+  ///
+  /// 返回该服务支持的所有排行榜（如“热歌榜”“新歌榜”等）。
+  /// 默认返回空列表，表示该服务不支持排行榜。
+  /// 可通过 [getLeaderboardSongs] 获取指定排行榜下的歌曲。
+  Future<List<Leaderboard>> getBoards() async => [];
+
+  /// 获取指定排行榜的歌曲列表
+  ///
+  /// [leaderboardId] 来自 [Leaderboard.id]。
+  /// 默认返回空列表，支持排行榜的服务应覆写此方法。
+  Future<List<Song>> getLeaderboardSongs(String leaderboardId) async => [];
 }

@@ -140,7 +140,7 @@ class SubsonicSong {
       albumName: album,
       coverUrl: coverUrl,
       duration: duration,
-      source: (id: sourceId, name: sourceName),
+      source: (id: sourceId, name: sourceName, libraryId: null),
       meta: {
         'genre': genre,
         'track': track,
@@ -211,7 +211,7 @@ class SubsonicAlbum {
       coverUrl: coverUrl,
       year: year,
       songCount: songCount,
-      source: (id: sourceId, name: sourceName),
+      source: (id: sourceId, name: sourceName, libraryId: null),
       meta: {
         'genre': genre,
         'duration': duration,
@@ -309,7 +309,7 @@ class SubsonicPlaylist {
                 serverUrl: serverUrl,
               ))
           .toList(),
-      source: (id: sourceId, name: sourceName),
+      source: (id: sourceId, name: sourceName, libraryId: null),
       meta: {
         'duration': duration,
         'public': public,

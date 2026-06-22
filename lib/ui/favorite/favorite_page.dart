@@ -1,6 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/music_source_type.dart';
@@ -32,7 +32,7 @@ enum _PlatformType {
 /// 展示所有已注册的音乐服务，按类型分组。
 /// 右上角"+"按钮可添加新平台。
 @RoutePage()
-class FavoritePage extends ConsumerWidget {
+class FavoritePage extends HookConsumerWidget {
   const FavoritePage({super.key});
 
   @override

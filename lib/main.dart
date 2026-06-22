@@ -101,7 +101,7 @@ void main() async {
 }
 
 /// 应用壳 — 监听全局设置并响应式更新
-class _AppShell extends ConsumerWidget {
+class _AppShell extends HookConsumerWidget {
   const _AppShell();
 
   @override
