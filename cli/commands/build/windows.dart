@@ -1,7 +1,6 @@
-import 'dart:io';
-
 import 'package:args/command_runner.dart';
 import 'package:path/path.dart';
+
 import 'common.dart';
 
 class WindowsBuildCommand extends Command with BuildCommandCommonSteps {
@@ -27,16 +26,5 @@ class WindowsBuildCommand extends Command with BuildCommandCommonSteps {
     await shell.run(
       "fastforge package --platform=windows --targets=exe,zip --skip-clean",
     );
-
-    final ogExe = File(
-      join(
-        cwd.path,
-        "dist",
-        pubspec.version.toString(),
-        "pomelo-${pubspec.version}-windows-setup.exe",
-      ),
-    );
-
-    stdout.writeln("✅ Windows exe built at ${ogExe.path}");
   }
 }

@@ -1,0 +1,12 @@
+# 必填：应用程序的安装路径前缀。
+# 应用将被安装到 <install-path>/<AppName>.app。
+install-path: /Applications
+
+# 可选：用于签名的证书标识。
+# 例如 "Developer ID Installer: Your Name (TEAMID)"
+# sign-identity: <你的签名证书>
+
+# 可选：安装脚本目录路径。
+# 支持 preinstall 和 postinstall 脚本，用于在安装过程中执行
+# 自定义逻辑（如 XPC Service 注册）。
+# scripts: <你的脚本目录路径>
