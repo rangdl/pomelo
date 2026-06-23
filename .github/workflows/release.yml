@@ -84,6 +84,7 @@ jobs:
       #     arch: x64
 
       - name: Build ${{matrix.platform}} binaries
+        if: ${{matrix.platform != 'ios'}}
         run: fastforge package --platform ${{matrix.platform}} --targets ${{matrix.format}}
 
       - name: Upload Artifact
