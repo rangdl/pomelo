@@ -217,10 +217,9 @@ class LxMetadataEngine {
       jsEngine.jsRuntime.executePendingJob();
       if (result.isError) return [];
       final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-      final json = Map<String, dynamic>.from(await asyncResult.rawResult);
+      final sort = List<dynamic>.from(await asyncResult.rawResult);
 
-      final sort = json['sort'] as List<dynamic>?;
-      if (sort == null || sort.isEmpty) return [];
+      if (sort.isEmpty) return [];
       return sort.map((item) {
         final m = Map<String, dynamic>.from(item as Map);
         return (
