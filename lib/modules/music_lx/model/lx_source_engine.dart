@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:flutter_js/flutter_js.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/modules/music_lx/model/preload.dart';
@@ -180,20 +179,13 @@ class LxSourceEngine {
     final dataText = jsonEncode(data);
 
     try {
-      final result = await entry.engine.jsRuntime.evaluateAsync(
+      final raw = await entry.engine.evalAsync(
         'globalThis.lx._dispatch(`$requestKey`, `request`, $dataText)',
       );
-      entry.engine.jsRuntime.executePendingJob();
 
-      if (result.isError) {
-        log.error('LxSourceEngine', '获取 $libraryId 播放链接失败: ${result.toString()}');
-        return '';
-      }
-
-      final asyncResult = await entry.engine.jsRuntime.handlePromise(result);
-      dynamic dynamicUrl = asyncResult.rawResult;
-      if (asyncResult.rawResult is Future){
-        dynamicUrl = await asyncResult.rawResult;
+      dynamic dynamicUrl = raw;
+      if (raw is Future) {
+        dynamicUrl = await raw;
       }
       final url = dynamicUrl.toString();
       return url;

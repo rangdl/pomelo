@@ -147,8 +147,9 @@ function fetch(url, options) {
             );
           })
           .whenComplete(() {
-            // 请求成功后刷新quickjs的Promise
-            _jsRuntime.executePendingJob();
+            // 循环调用 executePendingJob() 排空所有微任务
+            // executePendingJob 返回 int，表示执行的作业数量，0 表示没有更多
+            while (_jsRuntime.executePendingJob() > 0) {}
           });
     });
   }
@@ -520,6 +521,30 @@ function __go_raw_inflate(dataHex) {
     } catch (_) {
       return '';
     }
+  }
+
+  /// 统一的异步JS执行方法
+  ///
+  /// 执行 JS 表达式并处理 Promise，循环排空微任务，带超时保护。
+  /// 返回 Promise resolve 的原始值。
+  Future<dynamic> evalAsync(String expression) async {
+    final result = await _jsRuntime.evaluateAsync(expression);
+    // 循环调用排空所有微任务（Promise resolve 会触发多个 .then() 链）
+    while (_jsRuntime.executePendingJob() > 0) {}
+
+    if (result.isError) {
+      throw Exception('JS执行错误: ${result.toString()}');
+    }
+
+    // 带超时等待 Promise 结果，防止无限等待
+    final asyncResult = await _jsRuntime
+        .handlePromise(result)
+        .timeout(const Duration(seconds: 30));
+
+    // 排空回调产生的新微任务
+    while (_jsRuntime.executePendingJob() > 0) {}
+
+    return asyncResult.rawResult;
   }
 
   void dispose() {
