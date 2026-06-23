@@ -63,14 +63,14 @@ jobs:
           flutter-version-file: pubspec.yaml # path to pubspec.yaml or .fvmrc or .fvm/fvm_config.json
           cache: true
 
-      - name: free disk space
-        if: ${{ matrix.platform == 'android' }}
-        run: |
-          sudo swapoff -a
-          sudo rm -f /swapfile
-          sudo apt clean
-          docker rmi $(docker image ls -aq)
-          df -h
+      # - name: free disk space
+      #   if: ${{ matrix.platform == 'android' }}
+      #   run: |
+      #     sudo swapoff -a
+      #     sudo rm -f /swapfile
+      #     sudo apt clean
+      #     docker rmi $(docker image ls -aq)
+      #     df -h
       - name: Setup Java
         if: ${{matrix.platform == 'android'}}
         uses: actions/setup-java@v4
