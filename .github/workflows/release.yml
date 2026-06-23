@@ -18,14 +18,25 @@ jobs:
           - os: windows-2022
             platform: windows
             arch: x86
+            format: exe,zip
             files: |
-              dist/
+              dist/*/*.exe
+              dist/*/*.zip
 
           - os: macos-14
             platform: ios
             arch: all
+            format: ipa
             files: |
               build/ios/iphoneos/*.ipa
+          
+          - os: macos-14
+            platform: macos
+            arch: all
+            format: dmg,zip
+            files: |
+              dist/*/*.dmg
+              dist/*/*.zip
 
     runs-on: ${{matrix.os}}
     steps:
@@ -47,10 +58,12 @@ jobs:
       #   with:
       #     xcode-version: "16.2"
 
-      - name: 📦 Install Dependencies
-        run: flutter pub get
-
-      - name: Build IPA
+      - name: 📦 Install ${{matrix.platform}} Dependencies
+        run: |
+          flutter pub get
+          dart pub global activate fastforge
+      
+      - name: Build ${{matrix.platform}} binaries
         if: ${{matrix.platform == 'ios'}}
         run: |
           flutter build ios --release --no-codesign
@@ -64,21 +77,14 @@ jobs:
           zip -q -r "$APP_NAME-$APP_VERSION-ios.ipa" Payload
           cd ../../..
 
-      - name: Install fastforge
-        if: ${{matrix.platform != 'ios'}}
-        run: dart pub global activate fastforge
+      # - name: Setup MSVC
+      #   if: ${{matrix.platform == 'windows'}}
+      #   uses: ilammy/msvc-dev-cmd@v1
+      #   with:
+      #     arch: x64
 
-      - name: Setup MSVC
-        if: ${{matrix.platform == 'windows'}}
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Build Windows ZIP
-        if: ${{matrix.platform == 'windows'}}
-        run: fastforge package --platform windows --targets exe,zip
-        env:
-          CMAKE_GENERATOR: Ninja
+      - name: Build ${{matrix.platform}} binaries
+        run: fastforge package --platform ${{matrix.platform}} --targets ${{matrix.format}}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
