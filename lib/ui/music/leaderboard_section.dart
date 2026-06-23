@@ -17,12 +17,17 @@ class LeaderboardSection extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final leaderboardsAsync = ref.watch(leaderboardsProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final selectedId = useState<String?>(null);
 
     return leaderboardsAsync.when(
       data: (leaderboards) {
         if (leaderboards.isEmpty) return const SizedBox.shrink();
 
-        final selectedId = useState(leaderboards.first.id);
+        // 如果没有选中或选中的不在列表中，默认选中第一个
+        if (selectedId.value == null ||
+            !leaderboards.any((l) => l.id == selectedId.value)) {
+          selectedId.value = leaderboards.first.id;
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,7 +98,8 @@ class LeaderboardSection extends HookConsumerWidget {
             ),
             // 展开的排行榜歌曲列表
             const SizedBox(height: 12),
-            _LeaderboardSongs(leaderboardId: selectedId.value),
+            if (selectedId.value != null)
+              _LeaderboardSongs(leaderboardId: selectedId.value!),
           ],
         );
       },

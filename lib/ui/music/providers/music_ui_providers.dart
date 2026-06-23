@@ -29,7 +29,7 @@ class SelectedSourceNotifier
   ({String? sourceId, String? libraryId}) build() {
     final savedSource = Settings.get(_kSelectedSource);
     final savedLibrary = Settings.get(_kSelectedLibrary);
-    return (
+    final state = (
       sourceId: (savedSource != null && savedSource.isNotEmpty)
           ? savedSource
           : null,
@@ -37,6 +37,17 @@ class SelectedSourceNotifier
           ? savedLibrary
           : null,
     );
+    
+    // 恢复状态时，同步更新服务的默认库
+    if (state.sourceId != null && state.libraryId != null) {
+      final module = ModuleManager().find<MusicModule>('music');
+      final service = module?.service(state.sourceId!);
+      if (service is LxMusicService) {
+        service.setDefaultLibrary(state.libraryId!);
+      }
+    }
+    
+    return state;
   }
 
   void selectAll() {
