@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter_js/flutter_js.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/model/models.dart';
@@ -32,6 +31,13 @@ class LxMetadataEngine {
     // }
   }
 
+  /// 统一的异步JS执行方法
+  ///
+  /// 处理 Promise 链的微任务排空和超时保护
+  Future<dynamic> _evalAsync(String expression) async {
+    return jsEngine.evalAsync(expression);
+  }
+
   /// 加载元数据插件脚本
   ///
   /// 接受脚本字符串，在 quickjs 中执行。
@@ -61,13 +67,9 @@ class LxMetadataEngine {
   /// 返回 `(id, name)` 列表，如 `[(id: 'tx', name: '腾讯音乐')]`。
   Future<List<({String id, String name})>> getRegisteredLibraries() async {
     try {
-      final result = await jsEngine.jsRuntime.evaluateAsync(
+      final raw = await _evalAsync(
         'JSON.stringify(Array.from(registry.all()))',
       );
-      jsEngine.jsRuntime.executePendingJob();
-      if (result.isError) return [];
-      final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-      final raw = asyncResult.rawResult;
       if (raw is String) {
         final items = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
         return items
@@ -107,32 +109,49 @@ class LxMetadataEngine {
     int limit = 20,
     type = 'tx',
   }) async {
-    final result = await jsEngine.jsRuntime.evaluateAsync(
-      "registry.get(`$type`)?.search(`$keyword`, $page, $limit)",
-    );
-    jsEngine.jsRuntime.executePendingJob();
-    if (result.isError) {
-      log.error('LxMetadataEngine', '搜索失败: ${result.toString()}');
-    }
-    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
+    try {
+      final raw = await _evalAsync(
+        "registry.get(`$type`)?.search(`$keyword`, $page, $limit)",
+      );
 
-    final total = json['total'] ?? 0;
-    final items = (json['list'] ?? []) as List<dynamic>;
-    final res = PaginationResponse<Song>(
-      limit: limit,
-      page: page,
-      total: total,
-      hasMore: (page * limit) < total,
-      items: items
-          .map(
-            (item) => PomeloTrackObjectMeta.fromJson(
-              Map<String, dynamic>.from(item),
-            ).toSong(libraryId: type),
-          )
-          .toList(),
-    );
-    return res;
+      if (raw == null) {
+        log.error('LxMetadataEngine', '搜索返回 null');
+        return PaginationResponse<Song>(
+          limit: limit,
+          page: page,
+          total: 0,
+          hasMore: false,
+          items: [],
+        );
+      }
+
+      final json = Map<String, dynamic>.from(raw);
+      final total = json['total'] ?? 0;
+      final items = (json['list'] ?? []) as List<dynamic>;
+      final res = PaginationResponse<Song>(
+        limit: limit,
+        page: page,
+        total: total,
+        hasMore: (page * limit) < total,
+        items: items
+            .map(
+              (item) => PomeloTrackObjectMeta.fromJson(
+                Map<String, dynamic>.from(item),
+              ).toSong(libraryId: type),
+            )
+            .toList(),
+      );
+      return res;
+    } catch (e) {
+      log.error('LxMetadataEngine', '搜索失败: $e', error: e);
+      return PaginationResponse<Song>(
+        limit: limit,
+        page: page,
+        total: 0,
+        hasMore: false,
+        items: [],
+      );
+    }
   }
 
   /// 获取歌单分类
@@ -144,63 +163,67 @@ class LxMetadataEngine {
   Future<List<PlaylistCategory>> getPlaylistCategories({
     String type = 'tx',
   }) async {
-    final result = await jsEngine.jsRuntime.evaluateAsync(
-      "registry.getSongListProvider(`$type`)?.getTags()",
-    );
-    jsEngine.jsRuntime.executePendingJob();
-    if (result.isError) {
-      log.error('LxMetadataEngine', '获取歌单分类失败: ${result.toString()}');
-      return [];
-    }
-    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
+    try {
+      final raw = await _evalAsync(
+        "registry.getSongListProvider(`$type`)?.getTags()",
+      );
 
-    final categories = <PlaylistCategory>[];
-
-    // 解析 hot: 作为“排行榜”分类组
-    final hot = json['hot'] as List<dynamic>?;
-    if (hot != null && hot.isNotEmpty) {
-      const hotGroupId = 'hot';
-      categories.add(const PlaylistCategory(id: hotGroupId, name: '排行榜'));
-      for (final item in hot) {
-        final itemMap = Map<String, dynamic>.from(item as Map);
-        categories.add(
-          PlaylistCategory(
-            id: itemMap['id'] as String? ?? '',
-            name: itemMap['name'] as String? ?? '',
-            parentId: hotGroupId,
-          ),
-        );
+      if (raw == null) {
+        log.error('LxMetadataEngine', '获取歌单分类返回 null');
+        return [];
       }
-    }
 
-    // 解析 tags: 每个 tag 组作为父分类，其 list 作为子分类
-    final tags = json['tags'] as List<dynamic>?;
-    if (tags != null) {
-      for (final tag in tags) {
-        final tagMap = Map<String, dynamic>.from(tag as Map);
-        final groupId = tagMap['id'] as String? ?? '';
-        final groupName = tagMap['name'] as String? ?? '';
-        // 添加父分类（歌单分组）
-        categories.add(PlaylistCategory(id: groupId, name: groupName));
-        // 添加子分类
-        final list = tagMap['list'] as List<dynamic>?;
-        if (list != null) {
-          for (final item in list) {
-            final itemMap = Map<String, dynamic>.from(item as Map);
-            categories.add(
-              PlaylistCategory(
-                id: itemMap['id'] as String? ?? '',
-                name: itemMap['name'] as String? ?? '',
-                parentId: groupId,
-              ),
-            );
+      final json = Map<String, dynamic>.from(raw);
+      final categories = <PlaylistCategory>[];
+
+      // 解析 hot: 作为“排行榜”分类组
+      final hot = json['hot'] as List<dynamic>?;
+      if (hot != null && hot.isNotEmpty) {
+        const hotGroupId = 'hot';
+        categories.add(const PlaylistCategory(id: hotGroupId, name: '排行榜'));
+        for (final item in hot) {
+          final itemMap = Map<String, dynamic>.from(item as Map);
+          categories.add(
+            PlaylistCategory(
+              id: itemMap['id'] as String? ?? '',
+              name: itemMap['name'] as String? ?? '',
+              parentId: hotGroupId,
+            ),
+          );
+        }
+      }
+
+      // 解析 tags: 每个 tag 组作为父分类，其 list 作为子分类
+      final tags = json['tags'] as List<dynamic>?;
+      if (tags != null) {
+        for (final tag in tags) {
+          final tagMap = Map<String, dynamic>.from(tag as Map);
+          final groupId = tagMap['id'] as String? ?? '';
+          final groupName = tagMap['name'] as String? ?? '';
+          // 添加父分类（歌单分组）
+          categories.add(PlaylistCategory(id: groupId, name: groupName));
+          // 添加子分类
+          final list = tagMap['list'] as List<dynamic>?;
+          if (list != null) {
+            for (final item in list) {
+              final itemMap = Map<String, dynamic>.from(item as Map);
+              categories.add(
+                PlaylistCategory(
+                  id: itemMap['id'] as String? ?? '',
+                  name: itemMap['name'] as String? ?? '',
+                  parentId: groupId,
+                ),
+              );
+            }
           }
         }
       }
-    }
 
-    return categories;
+      return categories;
+    } catch (e) {
+      log.error('LxMetadataEngine', '获取歌单分类失败: $e', error: e);
+      return [];
+    }
   }
 
   /// 获取歌单排序方式列表
@@ -211,15 +234,17 @@ class LxMetadataEngine {
     String type = 'tx',
   }) async {
     try {
-      final result = await jsEngine.jsRuntime.evaluateAsync(
+      final raw = await _evalAsync(
         "registry.getSongListProvider(`$type`)?.getSortList()",
       );
-      jsEngine.jsRuntime.executePendingJob();
-      if (result.isError) return [];
-      final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-      final sort = List<dynamic>.from(await asyncResult.rawResult);
 
+      if (raw == null) {
+        return [];
+      }
+
+      final sort = List<dynamic>.from(raw);
       if (sort.isEmpty) return [];
+
       return sort.map((item) {
         final m = Map<String, dynamic>.from(item as Map);
         return (
@@ -243,33 +268,38 @@ class LxMetadataEngine {
     String? sortId,
     String type = 'tx',
   }) async {
-    final sort = sortId ?? '';
-    final result = await jsEngine.jsRuntime.evaluateAsync(
-      "registry.getSongListProvider(`$type`)?.getList(`$sort`, `$categoryId`, 1)",
-    );
-    jsEngine.jsRuntime.executePendingJob();
-    if (result.isError) {
-      log.error('LxMetadataEngine', '获取歌单列表失败: ${result.toString()}');
+    try {
+      final sort = sortId ?? '';
+      final raw = await _evalAsync(
+        "registry.getSongListProvider(`$type`)?.getList(`$sort`, `$categoryId`, 1)",
+      );
+
+      if (raw == null) {
+        log.error('LxMetadataEngine', '获取歌单列表返回 null');
+        return [];
+      }
+
+      final json = Map<String, dynamic>.from(raw);
+      final list = (json['list'] ?? []) as List<dynamic>;
+      final source = (id: type, name: type, libraryId: type);
+      final items = list.map((item) {
+        final m = Map<String, dynamic>.from(item as Map);
+        return Playlist(
+          id: '$type-${m['id']}',
+          name: m['name'] as String? ?? '',
+          coverUrl: m['img'] as String?,
+          creator: m['author'] as String? ?? '',
+          description: m['desc'] as String?,
+          source: source,
+          meta: m,
+        );
+      }).toList();
+
+      return items;
+    } catch (e) {
+      log.error('LxMetadataEngine', '获取歌单列表失败: $e', error: e);
       return [];
     }
-    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
-    final list = (json['list'] ?? []) as List<dynamic>;
-    final source = (id: type, name: type, libraryId: type);
-    final items = list.map((item) {
-      final m = Map<String, dynamic>.from(item as Map);
-      return Playlist(
-        id: '$type-${m['id']}',
-        name: m['name'] as String? ?? '',
-        coverUrl: m['img'] as String?,
-        creator: m['author'] as String? ?? '',
-        description: m['desc'] as String?,
-        source: source,
-        meta: m,
-      );
-    }).toList();
-
-    return items;
   }
 
   /// 获取指定歌单下的歌曲列表
@@ -277,29 +307,36 @@ class LxMetadataEngine {
   /// 调用元数据插件的 getListDetail 方法，按歌单 id 获取歌曲列表。
   /// 返回 [List<Song>]。
   Future<List<Song>> getPlaylistsDetail(String id, {String type = 'tx'}) async {
-    // 提取原始 id（去掉 `${type}-` 前缀）
-    final prefix = '$type-';
-    final originalId = id.startsWith(prefix) ? id.substring(prefix.length) : id;
+    try {
+      // 提取原始 id（去掉 `${type}-` 前缀）
+      final prefix = '$type-';
+      final originalId = id.startsWith(prefix)
+          ? id.substring(prefix.length)
+          : id;
 
-    final result = await jsEngine.jsRuntime.evaluateAsync(
-      "registry.getSongListProvider(`$type`)?.getListDetail(`$originalId`)",
-    );
-    jsEngine.jsRuntime.executePendingJob();
-    if (result.isError) {
-      log.error('LxMetadataEngine', '获取歌单详情失败: ${result.toString()}');
+      final raw = await _evalAsync(
+        "registry.getSongListProvider(`$type`)?.getListDetail(`$originalId`)",
+      );
+
+      if (raw == null) {
+        log.error('LxMetadataEngine', '获取歌单详情返回 null');
+        return [];
+      }
+
+      final json = Map<String, dynamic>.from(raw);
+      final list = (json['list'] ?? []) as List<dynamic>;
+
+      return list
+          .map(
+            (item) => PomeloTrackObjectMeta.fromJson(
+              Map<String, dynamic>.from(item),
+            ).toSong(libraryId: type),
+          )
+          .toList();
+    } catch (e) {
+      log.error('LxMetadataEngine', '获取歌单详情失败: $e', error: e);
       return [];
     }
-    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
-    final list = (json['list'] ?? []) as List<dynamic>;
-
-    return list
-        .map(
-          (item) => PomeloTrackObjectMeta.fromJson(
-            Map<String, dynamic>.from(item),
-          ).toSong(libraryId: type),
-        )
-        .toList();
   }
 
   void dispose() {
@@ -313,28 +350,32 @@ class LxMetadataEngine {
   /// 从元数据插件获取排行榜列表。
   /// 返回 [List<Leaderboard>]，每个排行榜包含 id 和 name。
   Future<List<Leaderboard>> getBoards({String type = 'tx'}) async {
-    final result = await jsEngine.jsRuntime.evaluateAsync(
-      "registry.getLeaderboardProvider(`$type`)?.getBoards()",
-    );
-    jsEngine.jsRuntime.executePendingJob();
-    if (result.isError) {
-      log.error('LxMetadataEngine', '获取排行榜列表失败: ${result.toString()}');
+    try {
+      final raw = await _evalAsync(
+        "registry.getLeaderboardProvider(`$type`)?.getBoards()",
+      );
+
+      if (raw == null) {
+        log.error('LxMetadataEngine', '获取排行榜列表返回 null');
+        return [];
+      }
+
+      final json = List<dynamic>.from(raw);
+      final leaderboards = <Leaderboard>[];
+      for (final item in json) {
+        final itemMap = Map<String, dynamic>.from(item as Map);
+        leaderboards.add(
+          Leaderboard(
+            id: itemMap['id'] as String? ?? '',
+            name: itemMap['name'] as String? ?? '',
+          ),
+        );
+      }
+      return leaderboards;
+    } catch (e) {
+      log.error('LxMetadataEngine', '获取排行榜列表失败: $e', error: e);
       return [];
     }
-    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-    final json = List<dynamic>.from(await asyncResult.rawResult);
-
-    final leaderboards = <Leaderboard>[];
-    for (final item in json) {
-      final itemMap = Map<String, dynamic>.from(item as Map);
-      leaderboards.add(
-        Leaderboard(
-          id: itemMap['id'] as String? ?? '',
-          name: itemMap['name'] as String? ?? '',
-        ),
-      );
-    }
-    return leaderboards;
   }
 
   /// 获取指定排行榜的歌曲列表
@@ -345,28 +386,35 @@ class LxMetadataEngine {
     String id, {
     String type = 'tx',
   }) async {
-    final prefix = '${type}__';
-    final originalId = id.startsWith(prefix) ? id.substring(prefix.length) : id;
+    try {
+      final prefix = '${type}__';
+      final originalId = id.startsWith(prefix)
+          ? id.substring(prefix.length)
+          : id;
 
-    final result = await jsEngine.jsRuntime.evaluateAsync(
-      "registry.getLeaderboardProvider(`$type`)?.getList('', `$originalId`, 1)",
-    );
-    jsEngine.jsRuntime.executePendingJob();
-    if (result.isError) {
-      log.error('LxMetadataEngine', '获取排行榜歌曲失败: ${result.toString()}');
+      final raw = await _evalAsync(
+        "registry.getLeaderboardProvider(`$type`)?.getList('', `$originalId`, 1)",
+      );
+
+      if (raw == null) {
+        log.error('LxMetadataEngine', '获取排行榜歌曲返回 null');
+        return [];
+      }
+
+      final json = Map<String, dynamic>.from(raw);
+      final list = (json['list'] ?? []) as List<dynamic>;
+
+      return list
+          .map(
+            (item) => PomeloTrackObjectMeta.fromJson(
+              Map<String, dynamic>.from(item),
+            ).toSong(libraryId: type),
+          )
+          .toList();
+    } catch (e) {
+      log.error('LxMetadataEngine', '获取排行榜歌曲失败: $e', error: e);
       return [];
     }
-    final asyncResult = await jsEngine.jsRuntime.handlePromise(result);
-    final json = Map<String, dynamic>.from(await asyncResult.rawResult);
-    final list = (json['list'] ?? []) as List<dynamic>;
-
-    return list
-        .map(
-          (item) => PomeloTrackObjectMeta.fromJson(
-            Map<String, dynamic>.from(item),
-          ).toSong(libraryId: type),
-        )
-        .toList();
   }
 }
 
