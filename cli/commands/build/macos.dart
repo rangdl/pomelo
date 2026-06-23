@@ -16,7 +16,7 @@ class MacosBuildCommand extends Command with BuildCommandCommonSteps {
     await bootstrap();
 
     await shell.run("""
-      fastforge package --platform=macos --targets dmg,zip --skip-clean
+      fastforge package --platform=macos --targets pkg,dmg,zip --skip-clean
       """);
   }
 }
