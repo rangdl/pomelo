@@ -998,6 +998,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.5.0"
+  process_run:
+    dependency: "direct dev"
+    description:
+      name: process_run
+      sha256: "8d9c6198b98fbbfb511edd42e7364e24d85c163e47398919871b952dc86a423e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.14.2"
   pub_semver:
     dependency: transitive
     description:
@@ -1007,7 +1015,7 @@ packages:
     source: hosted
     version: "2.2.0"
   pubspec_parse:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: pubspec_parse
       sha256: "0560ba233314abbed0a48a2956f7f022cce7c3e1e73df540277da7544cad4082"
