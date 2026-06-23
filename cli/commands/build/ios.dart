@@ -21,8 +21,8 @@ class IosBuildCommand extends Command with BuildCommandCommonSteps {
     await shell.run("""
       flutter build ios --release --no-codesign
       ln -sf $buildDirPath Payload
-      mkdir dist/${pubspec.version}
-      zip -q -r9 dist/${pubspec.version}/pomelo-${pubspec.version}-iOS.ipa ${join("Payload", "Runner.app")}
+      mkdir dist
+      zip -q -r9 dist/pomelo-${pubspec.version}-iOS.ipa ${join("Payload", "Runner.app")}
       """);
   }
 }
