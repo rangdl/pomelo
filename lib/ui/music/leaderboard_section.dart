@@ -22,6 +22,8 @@ class LeaderboardSection extends HookConsumerWidget {
       data: (leaderboards) {
         if (leaderboards.isEmpty) return const SizedBox.shrink();
 
+        final selectedId = useState(leaderboards.first.id);
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -44,13 +46,54 @@ class LeaderboardSection extends HookConsumerWidget {
                 itemCount: leaderboards.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
-                  return _LeaderboardTab(
-                    leaderboard: leaderboards[index],
-                    isFirst: index == 0,
+                  final lb = leaderboards[index];
+                  final isSelected = lb.id == selectedId.value;
+                  return GestureDetector(
+                    onTap: () => selectedId.value = lb.id,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.primary
+                            : colorScheme.muted,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            lb.name,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? colorScheme.primaryForeground
+                                  : colorScheme.mutedForeground,
+                            ),
+                          ),
+                          if (isSelected) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.keyboard_arrow_down,
+                              size: 16,
+                              color: colorScheme.primaryForeground,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   );
                 },
               ),
             ),
+            // 展开的排行榜歌曲列表
+            const SizedBox(height: 12),
+            _LeaderboardSongs(leaderboardId: selectedId.value),
           ],
         );
       },
@@ -59,68 +102,6 @@ class LeaderboardSection extends HookConsumerWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-}
-
-/// 单个排行榜标签（点击后展开歌曲列表）
-class _LeaderboardTab extends HookConsumerWidget {
-  final Leaderboard leaderboard;
-  final bool isFirst;
-
-  const _LeaderboardTab({
-    required this.leaderboard,
-    required this.isFirst,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isExpanded = useState(isFirst);
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () => isExpanded.value = !isExpanded.value,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: isExpanded.value ? colorScheme.primary : colorScheme.muted,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  leaderboard.name,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight:
-                        isExpanded.value ? FontWeight.w600 : FontWeight.normal,
-                    color: isExpanded.value
-                        ? colorScheme.primaryForeground
-                        : colorScheme.mutedForeground,
-                  ),
-                ),
-                if (isExpanded.value) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.keyboard_arrow_down,
-                    size: 16,
-                    color: colorScheme.primaryForeground,
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-        if (isExpanded.value) ...[
-          const SizedBox(height: 12),
-          _LeaderboardSongs(leaderboardId: leaderboard.id),
-        ],
-      ],
     );
   }
 }
@@ -188,8 +169,10 @@ class _LeaderboardSongs extends HookConsumerWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: PlayPauseButton(song: song),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
             );
