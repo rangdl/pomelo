@@ -15,24 +15,27 @@ jobs:
     strategy:
       matrix:
         include:
+          # - os: ubuntu-22.04
+          #   platform: android
+          #   arch: all
+          #   files: |
+          #     dist/*/*.apk
           - os: windows-2022
             platform: windows
             arch: x86
             files: |
               dist/*/*.exe
               dist/*/*.zip
-
           - os: macos-14
             platform: ios
             arch: all
             files: |
               dist/*.ipa
-          
           - os: macos-14
             platform: macos
             arch: all
-            format: dmg,zip
             files: |
+              dist/*/*.dmg
               dist/*/*.zip
 
     runs-on: ${{matrix.os}}
@@ -43,6 +46,23 @@ jobs:
           channel: stable
           flutter-version-file: pubspec.yaml # path to pubspec.yaml or .fvmrc or .fvm/fvm_config.json
           cache: true
+
+      - name: free disk space
+        if: ${{ matrix.platform == 'android' }}
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+          docker rmi $(docker image ls -aq)
+          df -h
+      - name: Setup Java
+        if: ${{matrix.platform == 'android'}}
+        uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: "gradle"
+          check-latest: true
 
       # - name: Setup Rust toolchain
       #   uses: dtolnay/rust-toolchain@stable
@@ -59,6 +79,12 @@ jobs:
         run: |
           flutter pub get
           dart cli/cli.dart install-dependencies --platform=${{matrix.platform}} --arch=${{matrix.arch}}
+
+      - name: Sign Apk
+        if: ${{matrix.platform == 'android'}}
+        run: |
+          echo '${{ secrets.KEYSTORE }}' | base64 --decode > android/app/upload-keystore.jks
+          echo '${{ secrets.KEY_PROPERTIES }}' > android/key.properties
 
       - name: Build ${{matrix.platform}} binaries
         run: dart cli/cli.dart build --arch=${{matrix.arch}} ${{matrix.platform}}
