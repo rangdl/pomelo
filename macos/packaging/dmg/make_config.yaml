@@ -8,4 +8,4 @@ contents:
   - x: 192
     y: 344
     type: file
-    path: pomelo.app
+    path: build/macos/Build/Products/Release/pomelo.app

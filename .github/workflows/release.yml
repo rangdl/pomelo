@@ -28,17 +28,16 @@ jobs:
             files: |
               dist/*.ipa
           
-          # - os: macos-14
-          #   platform: macos
-          #   arch: all
-          #   format: dmg,zip
-          #   files: |
-          #     dist/*/*.dmg
-          #     dist/*/*.zip
+          - os: macos-14
+            platform: macos
+            arch: all
+            format: dmg,zip
+            files: |
+              dist/*/*.zip
 
     runs-on: ${{matrix.os}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2.18.0
         with:
           channel: stable
@@ -65,7 +64,7 @@ jobs:
         run: dart cli/cli.dart build --arch=${{matrix.arch}} ${{matrix.platform}}
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           if-no-files-found: error
           name: ${{matrix.platform}}-${{matrix.arch}}
@@ -93,10 +92,11 @@ jobs:
           sed -i 's|Release-Binaries/||' RELEASE.sha256sum RELEASE.md5sum
 
       - name: Extract pubspec version
+        id: version
         run: |
-          echo "PUBSPEC_VERSION=$(grep -oP 'version:\s*\K[^+]+(?=\+)' pubspec.yaml)" >> $GITHUB_ENV
+          echo "PUBSPEC_VERSION=$(grep -oP 'version:\s*\K[^+]+(?=\+)' pubspec.yaml)" >> $GITHUB_OUTPUT
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           if-no-files-found: error
           name: sums
@@ -104,11 +104,11 @@ jobs:
             RELEASE.md5sum
             RELEASE.sha256sum
 
-      - name: Upload Release Binaries (stable)
+      - name: Upload Release Binaries
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: v${{ env.PUBSPEC_VERSION }} # mind the "v" prefix
+          tag: v${{ steps.version.outputs.PUBSPEC_VERSION }} # mind the "v" prefix
           omitBodyDuringUpdate: true
           omitNameDuringUpdate: true
           omitPrereleaseDuringUpdate: true

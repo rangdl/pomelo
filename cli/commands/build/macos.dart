@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:path/path.dart';
 
 import 'common.dart';
 
@@ -17,26 +15,8 @@ class MacosBuildCommand extends Command with BuildCommandCommonSteps {
   FutureOr? run() async {
     await bootstrap();
 
-    await shell.run(
-      """
-      flutter build macos
-      appdmg appdmg.json ${join(cwd.path, "build", "Spotube-macos-universal.dmg")}
-      fastforge package --platform=macos --targets pkg --skip-clean
-      """,
-    );
-
-    final ogPkg = File(
-      join(
-        cwd.path,
-        "dist",
-        pubspec.version.toString(),
-        "spotube-${pubspec.version}-macos.pkg",
-      ),
-    );
-
-    await ogPkg.copy(
-      join(cwd.path, "build", "Spotube-macos-universal.pkg"),
-    );
-    await ogPkg.delete();
+    await shell.run("""
+      fastforge package --platform=macos --targets zip --skip-clean
+      """);
   }
 }

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:path/path.dart';
 
 // import '../../core/env.dart';
 import 'common.dart';
@@ -18,15 +17,10 @@ class AndroidBuildCommand extends Command with BuildCommandCommonSteps {
   FutureOr? run() async {
     await bootstrap();
 
-    await shell.run("flutter build apk");
-
-    final ogApkFile = File(
-      join("build", "app", "outputs", "flutter-apk", "app-release.apk"),
-    );
-
-    await ogApkFile.copy(
-      join(cwd.path, "build", "Spotube-android-all-arch.apk"),
-    );
+    // await shell.run("flutter build apk");
+    await shell.run("""
+      fastforge package --platform=android --targets apk --skip-clean
+      """);
 
     stdout.writeln("✅ Built Android Apk and Appbundle");
   }
