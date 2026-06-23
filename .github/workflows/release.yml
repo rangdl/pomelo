@@ -50,13 +50,14 @@ jobs:
             platform: macos
             arch: all
             files: |
+              dist/*/*.pkg
               dist/*/*.dmg
               dist/*/*.zip
 
     runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v5
-      - uses: subosito/flutter-action@v2.18.0
+      - uses: subosito/flutter-action@v2.23.0
         with:
           channel: stable
           flutter-version-file: pubspec.yaml # path to pubspec.yaml or .fvmrc or .fvm/fvm_config.json
@@ -116,8 +117,8 @@ jobs:
     needs:
       - build_platform
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
         with:
           path: ./Release-Binaries
 
@@ -164,10 +165,10 @@ jobs:
       matrix:
         keep: [5, 10, 20]  # 不同保留策略
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Clean Releases
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const { data: releases } = await github.rest.repos.listReleases({
