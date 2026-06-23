@@ -18,7 +18,6 @@ jobs:
           - os: windows-2022
             platform: windows
             arch: x86
-            format: exe,zip
             files: |
               dist/*/*.exe
               dist/*/*.zip
@@ -26,17 +25,16 @@ jobs:
           - os: macos-14
             platform: ios
             arch: all
-            format: ipa
             files: |
-              build/ios/iphoneos/*.ipa
+              dist/*/*.ipa
           
-          - os: macos-14
-            platform: macos
-            arch: all
-            format: dmg,zip
-            files: |
-              dist/*/*.dmg
-              dist/*/*.zip
+          # - os: macos-14
+          #   platform: macos
+          #   arch: all
+          #   format: dmg,zip
+          #   files: |
+          #     dist/*/*.dmg
+          #     dist/*/*.zip
 
     runs-on: ${{matrix.os}}
     steps:
@@ -58,38 +56,13 @@ jobs:
       #   with:
       #     xcode-version: "16.2"
 
-      - name: 📦 Install ${{matrix.platform}} Dependencies
+      - name: Install ${{matrix.platform}} dependencies
         run: |
           flutter pub get
-          dart pub global activate fastforge
-
-      - name: 📦 Install ${{matrix.platform}} appdmg
-        run: |
-          npm install -g appdmg
-      
-      - name: Build ios binaries
-        if: ${{matrix.platform == 'ios'}}
-        run: |
-          flutter build ios --release --no-codesign
-
-          APP_NAME=$(grep '^name:' pubspec.yaml | sed 's/name: //')
-          APP_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
-
-          mkdir build/ios/iphoneos/Payload
-          cp -R build/ios/iphoneos/Runner.app build/ios/iphoneos/Payload/Runner.app
-          cd build/ios/iphoneos/
-          zip -q -r "$APP_NAME-$APP_VERSION-ios.ipa" Payload
-          cd ../../..
-
-      # - name: Setup MSVC
-      #   if: ${{matrix.platform == 'windows'}}
-      #   uses: ilammy/msvc-dev-cmd@v1
-      #   with:
-      #     arch: x64
+          dart cli/cli.dart install-dependencies --platform=${{matrix.platform}} --arch=${{matrix.arch}}
 
       - name: Build ${{matrix.platform}} binaries
-        if: ${{matrix.platform != 'ios'}}
-        run: fastforge package --platform ${{matrix.platform}} --targets ${{matrix.format}}
+        run: dart cli/cli.dart build --arch=${{matrix.arch}} ${{matrix.platform}}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
