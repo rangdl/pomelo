@@ -16,21 +16,36 @@ jobs:
       matrix:
         include:
           # - os: ubuntu-22.04
+          #   platform: linux
+          #   arch: x86
+          #   files: |
+          #     dist/*/*.deb
+          #     dist/*/*.rpm
+          #     dist/*/*.AppImage
+          #     dist/*/*.tar.xz
+          # - os: ubuntu-22.04-arm
+          #   platform: linux
+          #   arch: arm64
+          #   files: |
+          #     dist/*/*.deb
+          #     dist/*/*.AppImage
+          #     dist/*/*.tar.xz
+          # - os: ubuntu-22.04
           #   platform: android
           #   arch: all
           #   files: |
           #     dist/*/*.apk
-          - os: windows-2022
-            platform: windows
-            arch: x86
-            files: |
-              dist/*/*.exe
-              dist/*/*.zip
-          - os: macos-14
-            platform: ios
-            arch: all
-            files: |
-              dist/*.ipa
+          # - os: windows-2022
+          #   platform: windows
+          #   arch: x86
+          #   files: |
+          #     dist/*/*.exe
+          #     dist/*/*.zip
+          # - os: macos-14
+          #   platform: ios
+          #   arch: all
+          #   files: |
+          #     dist/*.ipa
           - os: macos-14
             platform: macos
             arch: all
