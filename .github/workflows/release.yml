@@ -35,24 +35,24 @@ jobs:
             arch: all
             files: |
               dist/*/*.apk
-          # - os: windows-2022
-          #   platform: windows
-          #   arch: x86
-          #   files: |
-          #     dist/*/*.exe
-          #     dist/*/*.zip
-          # - os: macos-14
-          #   platform: ios
-          #   arch: all
-          #   files: |
-          #     dist/*.ipa
-          # - os: macos-14
-          #   platform: macos
-          #   arch: all
-          #   files: |
-          #     dist/*/*.pkg
-          #     dist/*/*.dmg
-          #     dist/*/*.zip
+          - os: windows-2022
+            platform: windows
+            arch: x86
+            files: |
+              dist/*/*.exe
+              dist/*/*.zip
+          - os: macos-14
+            platform: ios
+            arch: all
+            files: |
+              dist/*.ipa
+          - os: macos-14
+            platform: macos
+            arch: all
+            files: |
+              dist/*/*.pkg
+              dist/*/*.dmg
+              dist/*/*.zip
 
     runs-on: ${{matrix.os}}
     steps:
