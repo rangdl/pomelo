@@ -4,6 +4,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/music/model/playlist.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
+import 'package:pomelo/ui/music/widgets/app_chip.dart';
+import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌单版块组件
@@ -78,7 +80,7 @@ class PlaylistSection extends HookConsumerWidget {
                 itemBuilder: (context, index) {
                   final cat = parentCategories[index];
                   final isSelected = cat.id == activeParentId;
-                  return _CategoryChip(
+                  return AppChip(
                     label: cat.name,
                     isSelected: isSelected,
                     onTap: () {
@@ -90,6 +92,11 @@ class PlaylistSection extends HookConsumerWidget {
                           .read(selectedPlaylistCategoryProvider.notifier)
                           .select(null);
                     },
+                    fill: true,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    borderRadius: 18,
+                    fontSize: 13,
                   );
                 },
               ),
@@ -106,7 +113,7 @@ class PlaylistSection extends HookConsumerWidget {
                   itemBuilder: (context, index) {
                     final cat = childCategories[index];
                     final isSelected = cat.id == effectiveChildId;
-                    return _SubCategoryChip(
+                    return AppChip(
                       label: cat.name,
                       isSelected: isSelected,
                       onTap: () {
@@ -115,6 +122,11 @@ class PlaylistSection extends HookConsumerWidget {
                             .read(selectedPlaylistCategoryProvider.notifier)
                             .select(cat.id);
                       },
+                      fill: false,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      borderRadius: 14,
+                      fontSize: 12,
                     );
                   },
                 ),
@@ -135,7 +147,7 @@ class PlaylistSection extends HookConsumerWidget {
                       itemBuilder: (context, index) {
                         final sort = sortOrders[index];
                         final isSelected = sort.id == (selectedSortId ?? sortOrders.first.id);
-                        return _SortChip(
+                        return AppChip(
                           label: sort.name,
                           isSelected: isSelected,
                           onTap: () {
@@ -143,6 +155,14 @@ class PlaylistSection extends HookConsumerWidget {
                                 .read(selectedPlaylistSortProvider.notifier)
                                 .select(sort.id);
                           },
+                          fill: false,
+                          selectedColor:
+                              Theme.of(context).colorScheme.secondary,
+                          icon: Icons.sort,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          borderRadius: 14,
+                          fontSize: 12,
                         );
                       },
                     ),
@@ -202,141 +222,6 @@ class PlaylistSection extends HookConsumerWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (_, _) => const SizedBox.shrink(),
-    );
-  }
-}
-
-/// 父分类标签（较大，高亮选中态）
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? colorScheme.primary : colorScheme.muted,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? colorScheme.primaryForeground : colorScheme.mutedForeground,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 子分类标签（较小，点击后触发歌单查询）
-class _SubCategoryChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _SubCategoryChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primary.withValues(alpha: 0.15)
-              : colorScheme.muted.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(14),
-          border: isSelected
-              ? Border.all(color: colorScheme.primary.withValues(alpha: 0.5))
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected
-                ? colorScheme.primary
-                : colorScheme.mutedForeground,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 歌单排序方式选择标签
-class _SortChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _SortChip({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.secondary.withValues(alpha: 0.15)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: isSelected
-              ? Border.all(color: colorScheme.secondary.withValues(alpha: 0.5))
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.sort,
-              size: 14,
-              color: isSelected
-                  ? colorScheme.secondary
-                  : colorScheme.mutedForeground,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected
-                    ? colorScheme.secondary
-                    : colorScheme.mutedForeground,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -408,11 +293,11 @@ class _PlaylistCard extends StatelessWidget {
                       ? Image.network(
                           playlist.coverUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _CoverPlaceholder(
+                          errorBuilder: (_, _, _) => CoverPlaceholder(
                             colorScheme: colorScheme,
                           ),
                         )
-                      : _CoverPlaceholder(colorScheme: colorScheme),
+                      : CoverPlaceholder(colorScheme: colorScheme),
                 ),
               ),
             ),
@@ -441,27 +326,6 @@ class _PlaylistCard extends StatelessWidget {
                 ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 封面占位图（无图片时展示）
-class _CoverPlaceholder extends StatelessWidget {
-  final ColorScheme colorScheme;
-
-  const _CoverPlaceholder({required this.colorScheme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: colorScheme.muted,
-      child: Center(
-        child: Icon(
-          Icons.queue_music,
-          size: 36,
-          color: colorScheme.mutedForeground,
         ),
       ),
     );

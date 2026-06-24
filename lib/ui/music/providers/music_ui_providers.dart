@@ -1,8 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
-import 'package:pomelo/modules/music/music_module.dart';
+import 'package:pomelo/modules/music/model/music_source_type.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/model/playlist.dart';
 import 'package:pomelo/modules/music/model/leaderboard.dart';
@@ -11,12 +10,24 @@ import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:pomelo/modules/music_lx/model/lx_music_service.dart';
 import 'package:pomelo/ui/music/model/service_result.dart';
+import 'package:pomelo/ui/music/model/merged_song.dart';
 
 import 'package:pomelo/ui/platform/providers/lx_metadata_plugin_paths_provider.dart';
 
 /// 持久化 key
 const _kSelectedSource = 'music_selected_source';
 const _kSelectedLibrary = 'music_selected_library';
+
+/// 按来源类型分组服务
+Map<MusicSourceType, List<MusicService>> groupServicesByType(
+  List<MusicService> services,
+) {
+  final byType = <MusicSourceType, List<MusicService>>{};
+  for (final s in services) {
+    byType.putIfAbsent(s.sourceType, () => []).add(s);
+  }
+  return byType;
+}
 
 /// 当前选中的音乐来源 sourceId 和 libraryId 的 Notifier
 ///
@@ -37,16 +48,16 @@ class SelectedSourceNotifier
           ? savedLibrary
           : null,
     );
-    
+
     // 恢复状态时，同步更新服务的默认库
     if (state.sourceId != null && state.libraryId != null) {
-      final module = ModuleManager().find<MusicModule>('music');
+      final module = ref.read(musicModuleProvider);
       final service = module?.service(state.sourceId!);
       if (service is LxMusicService) {
         service.setDefaultLibrary(state.libraryId!);
       }
     }
-    
+
     return state;
   }
 
@@ -62,7 +73,7 @@ class SelectedSourceNotifier
     Settings.set(_kSelectedLibrary, libraryId ?? '');
     // 如果选中了多库服务的某个库，更新服务的默认库
     if (libraryId != null) {
-      final module = ModuleManager().find<MusicModule>('music');
+      final module = ref.read(musicModuleProvider);
       final service = module?.service(sourceId);
       if (service is LxMusicService) {
         service.setDefaultLibrary(libraryId);
@@ -97,7 +108,7 @@ final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
 
   Iterable<MusicService> targets = services;
   if (selection.sourceId != null) {
-    final module = ModuleManager().find<MusicModule>('music');
+    final module = ref.watch(musicModuleProvider);
     final s = module?.service(selection.sourceId!);
     targets = s != null ? [s] : [];
   }
@@ -127,34 +138,34 @@ final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
   return MusicListData(songs: songs, errors: errors);
 });
 
-/// 所有已注册的音乐服务列表
+/// 所有已注册的音乐服务列表（监听 Lx 插件路径变化以触发刷新）
+///
+/// 委托给 [musicServicesProvider]，额外监听 [lxMetadataPluginPathsProvider]
+/// 以在插件增删时自动重新计算。
 final musicServicesListProvider = FutureProvider<List<MusicService>>((
   ref,
 ) async {
-  await ref.watch(musicReadyProvider.future);
-  // 监听 lx 元数据插件路径变化，插件增删时触发重新计算
   ref.watch(lxMetadataPluginPathsProvider);
-  final module = ModuleManager().find<MusicModule>('music');
-  return module?.services ?? [];
+  return ref.watch(musicServicesProvider.future);
 });
 
 /// 当前选中服务的歌单分类列表
 ///
 /// 根据 selectedSourceProvider 找到对应 MusicService，调用 getPlaylistCategories()。
 /// 若服务不支持歌单分类，返回空列表。
-final playlistCategoriesProvider = FutureProvider<List<PlaylistCategory>>(
-  (ref) async {
-    await ref.watch(musicReadyProvider.future);
-    final selection = ref.watch(selectedSourceProvider);
-    if (selection.sourceId == null) return [];
+final playlistCategoriesProvider = FutureProvider<List<PlaylistCategory>>((
+  ref,
+) async {
+  await ref.watch(musicReadyProvider.future);
+  final selection = ref.watch(selectedSourceProvider);
+  if (selection.sourceId == null) return [];
 
-    final module = ModuleManager().find<MusicModule>('music');
-    final service = module?.service(selection.sourceId!);
-    if (service == null) return [];
+  final module = ref.watch(musicModuleProvider);
+  final service = module?.service(selection.sourceId!);
+  if (service == null) return [];
 
-    return service.getPlaylistCategories();
-  },
-);
+  return service.getPlaylistCategories();
+});
 
 /// 当前选中的父分类 id
 ///
@@ -168,8 +179,8 @@ class SelectedPlaylistParentNotifier extends Notifier<String?> {
 
 final selectedPlaylistParentProvider =
     NotifierProvider<SelectedPlaylistParentNotifier, String?>(
-  SelectedPlaylistParentNotifier.new,
-);
+      SelectedPlaylistParentNotifier.new,
+    );
 
 /// 当前选中的子分类 id
 ///
@@ -183,8 +194,8 @@ class SelectedPlaylistCategoryNotifier extends Notifier<String?> {
 
 final selectedPlaylistCategoryProvider =
     NotifierProvider<SelectedPlaylistCategoryNotifier, String?>(
-  SelectedPlaylistCategoryNotifier.new,
-);
+      SelectedPlaylistCategoryNotifier.new,
+    );
 
 /// 当前选中的歌单排序方式 id
 ///
@@ -198,40 +209,40 @@ class SelectedPlaylistSortNotifier extends Notifier<String?> {
 
 final selectedPlaylistSortProvider =
     NotifierProvider<SelectedPlaylistSortNotifier, String?>(
-  SelectedPlaylistSortNotifier.new,
-);
+      SelectedPlaylistSortNotifier.new,
+    );
 
 /// 当前选中服务的歌单排序方式列表
 final playlistSortOrdersProvider =
     FutureProvider<List<({String id, String name})>>((ref) async {
-  await ref.watch(musicReadyProvider.future);
-  final selection = ref.watch(selectedSourceProvider);
-  if (selection.sourceId == null) return [];
+      await ref.watch(musicReadyProvider.future);
+      final selection = ref.watch(selectedSourceProvider);
+      if (selection.sourceId == null) return [];
 
-  final module = ModuleManager().find<MusicModule>('music');
-  final service = module?.service(selection.sourceId!);
-  if (service == null) return [];
+      final module = ref.watch(musicModuleProvider);
+      final service = module?.service(selection.sourceId!);
+      if (service == null) return [];
 
-  return service.getPlaylistSortOrders();
-});
+      return service.getPlaylistSortOrders();
+    });
 
 /// 当前选中分类下的歌单列表
 final playlistsByCategoryProvider =
     FutureProvider<PaginationResponse<Playlist>>((ref) async {
-  await ref.watch(musicReadyProvider.future);
-  final selection = ref.watch(selectedSourceProvider);
-  final categoryId = ref.watch(selectedPlaylistCategoryProvider);
-  final sortId = ref.watch(selectedPlaylistSortProvider);
-  if (selection.sourceId == null || categoryId == null) {
-    return PaginationResponse.empty();
-  }
+      await ref.watch(musicReadyProvider.future);
+      final selection = ref.watch(selectedSourceProvider);
+      final categoryId = ref.watch(selectedPlaylistCategoryProvider);
+      final sortId = ref.watch(selectedPlaylistSortProvider);
+      if (selection.sourceId == null || categoryId == null) {
+        return PaginationResponse.empty();
+      }
 
-  final module = ModuleManager().find<MusicModule>('music');
-  final service = module?.service(selection.sourceId!);
-  if (service == null) return PaginationResponse.empty();
+      final module = ref.watch(musicModuleProvider);
+      final service = module?.service(selection.sourceId!);
+      if (service == null) return PaginationResponse.empty();
 
-  return service.getPlaylistsByCategory(categoryId, sortId: sortId);
-});
+      return service.getPlaylistsByCategory(categoryId, sortId: sortId);
+    });
 
 /// 当前选中服务的排行榜列表
 final leaderboardsProvider = FutureProvider<List<Leaderboard>>((ref) async {
@@ -239,23 +250,92 @@ final leaderboardsProvider = FutureProvider<List<Leaderboard>>((ref) async {
   final selection = ref.watch(selectedSourceProvider);
   if (selection.sourceId == null) return [];
 
-  final module = ModuleManager().find<MusicModule>('music');
+  final module = ref.watch(musicModuleProvider);
   final service = module?.service(selection.sourceId!);
   if (service == null) return [];
 
   return service.getBoards();
 });
 
+/// 当前选中的排行榜 id
+///
+/// 为 null 时默认选中第一个排行榜。
+class SelectedLeaderboardNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? id) => state = id;
+}
+
+final selectedLeaderboardProvider =
+    NotifierProvider<SelectedLeaderboardNotifier, String?>(
+      SelectedLeaderboardNotifier.new,
+    );
+
 /// 指定排行榜的歌曲列表
-final leaderboardSongsProvider =
-    FutureProvider.family<List<Song>, String>((ref, leaderboardId) async {
+final leaderboardSongsProvider = FutureProvider.family<List<Song>, String>((
+  ref,
+  leaderboardId,
+) async {
   await ref.watch(musicReadyProvider.future);
   final selection = ref.watch(selectedSourceProvider);
   if (selection.sourceId == null) return [];
 
-  final module = ModuleManager().find<MusicModule>('music');
+  final module = ref.watch(musicModuleProvider);
   final service = module?.service(selection.sourceId!);
   if (service == null) return [];
 
   return service.getLeaderboardSongs(leaderboardId);
 });
+
+/// 搜索结果数据：合并后的歌曲列表 + 出错的服务
+class SearchListData {
+  final List<MergedSong> songs;
+  final List<({String sourceId, String sourceName, Object error})> errors;
+
+  const SearchListData({this.songs = const [], this.errors = const []});
+}
+
+/// 搜索结果 Provider（按关键词 + sourceId 过滤）
+///
+/// sourceId 为 null 时搜索全部来源，否则仅搜索指定来源。
+final searchResultsProvider =
+    FutureProvider.family<
+      SearchListData,
+      ({String keyword, String? sourceId, String? libraryId})
+    >((ref, params) async {
+      await ref.watch(musicReadyProvider.future);
+      final services = await ref.watch(musicServicesProvider.future);
+
+      Iterable<MusicService> targets = services;
+      if (params.sourceId != null) {
+        final module = ref.watch(musicModuleProvider);
+        final s = module?.service(params.sourceId!);
+        targets = s != null ? [s] : [];
+      }
+
+      if (targets.isEmpty) return const SearchListData();
+
+      final results = await safeCallServices<PaginationResponse<Song>>(
+        targets.toList(),
+        (s) => (s as MusicService).searchSongs(params.keyword),
+        getId: (s) => (s as MusicService).sourceId,
+        getName: (s) => (s as MusicService).sourceName,
+      );
+
+      final allSongs = <Song>[];
+      final errors = <({String sourceId, String sourceName, Object error})>[];
+      for (final r in results) {
+        if (r.isSuccess && r.data != null) {
+          allSongs.addAll(r.data!.items);
+        } else if (r.isError && r.error != null) {
+          errors.add((
+            sourceId: r.sourceId,
+            sourceName: r.sourceName,
+            error: r.error!,
+          ));
+        }
+      }
+
+      return SearchListData(songs: mergeSongs(allSongs), errors: errors);
+    });

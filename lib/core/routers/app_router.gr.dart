@@ -87,7 +87,7 @@ class FavoriteRoute extends _i11.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i3.HomeView]
+/// [_i3.HomePage]
 class HomeRoute extends _i11.PageRouteInfo<void> {
   const HomeRoute({List<_i11.PageRouteInfo>? children})
     : super(HomeRoute.name, initialChildren: children);
@@ -97,13 +97,13 @@ class HomeRoute extends _i11.PageRouteInfo<void> {
   static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
-      return const _i3.HomeView();
+      return const _i3.HomePage();
     },
   );
 }
 
 /// generated route for
-/// [_i4.JsEngineTestView]
+/// [_i4.JsEngineTestPage]
 class JsEngineTestRoute extends _i11.PageRouteInfo<void> {
   const JsEngineTestRoute({List<_i11.PageRouteInfo>? children})
     : super(JsEngineTestRoute.name, initialChildren: children);
@@ -113,7 +113,7 @@ class JsEngineTestRoute extends _i11.PageRouteInfo<void> {
   static _i11.PageInfo page = _i11.PageInfo(
     name,
     builder: (data) {
-      return const _i4.JsEngineTestView();
+      return const _i4.JsEngineTestPage();
     },
   );
 }

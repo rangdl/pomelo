@@ -99,11 +99,7 @@ class FavoritePage extends HookConsumerWidget {
     List<SubsonicMusicService> subsonicAccounts,
     List<String> sourcePlugins,
   ) {
-    // 按来源类型分组
-    final byType = <MusicSourceType, List<MusicService>>{};
-    for (final s in services) {
-      byType.putIfAbsent(s.sourceType, () => []).add(s);
-    }
+    final byType = groupServicesByType(services);
 
     // 定义展示顺序
     const typeOrder = [
