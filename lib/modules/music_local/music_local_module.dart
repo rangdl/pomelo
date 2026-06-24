@@ -4,9 +4,6 @@ import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/modules/music/music_module.dart';
 import 'service/local_music_service.dart';
 
-/// Settings key: 本地音乐目录列表（JSON 数组字符串）
-const _kLocalMusicDirs = 'music_local_directories';
-
 /// 本地音乐模块
 ///
 /// 实现 [MusicService] 接口，提供本地音乐数据。
@@ -36,7 +33,7 @@ class MusicLocalModule extends Module {
   Future<void> onInit() async {
     _service = LocalMusicService();
     // 从 Settings 读取已保存的目录列表并扫描
-    final dirsJson = Settings.get(_kLocalMusicDirs);
+    final dirsJson = Settings.get(StorageKeys.musicLocalDirectories);
     if (dirsJson != null) {
       try {
         final dirs = (jsonDecode(dirsJson) as List).cast<String>();
@@ -63,12 +60,12 @@ class MusicLocalModule extends Module {
 
   /// 保存当前目录列表到 Settings
   static Future<void> saveDirectories(List<String> dirs) async {
-    await Settings.set(_kLocalMusicDirs, jsonEncode(dirs));
+    await Settings.set(StorageKeys.musicLocalDirectories, jsonEncode(dirs));
   }
 
   /// 从 Settings 读取已保存的目录列表
   static List<String> loadDirectories() {
-    final dirsJson = Settings.get(_kLocalMusicDirs);
+    final dirsJson = Settings.get(StorageKeys.musicLocalDirectories);
     if (dirsJson == null) return [];
     try {
       return (jsonDecode(dirsJson) as List).cast<String>();

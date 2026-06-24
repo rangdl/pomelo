@@ -9,6 +9,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
@@ -101,20 +102,166 @@ class _SearchResults extends HookConsumerWidget {
 
         final colorScheme = Theme.of(context).colorScheme;
 
-        return Column(
-          children: [
-            SizedBox(
-              height: 44,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                children: [
-                  AppChip(
-                    label: '全部',
-                    isSelected: selectedSourceId == null,
+        // 来源筛选 chips 组件
+        final sourceChips = _SourceChips(
+          types: types,
+          byType: byType,
+          selectedSourceId: selectedSourceId,
+          tabSourceId: tabSourceId,
+          selection: selection,
+          colorScheme: colorScheme,
+          ref: ref,
+        );
+
+        // 结果列表组件
+        final resultsList = Expanded(
+          child: _SearchResultsList(
+            key: ValueKey('${tabSourceId.value}_$keyword'),
+            keyword: keyword,
+            sourceId: tabSourceId.value,
+            libraryId: tabSourceId.value == selection.sourceId
+                ? selection.libraryId
+                : null,
+            services: filtered,
+          ),
+        );
+
+        return Rx.layout(
+          context,
+          mobile: () => Column(
+            children: [
+              SizedBox(height: 44, child: sourceChips),
+              const Divider(),
+              resultsList,
+            ],
+          ),
+          tablet: () => Row(
+            children: [
+              SizedBox(
+                width: 220,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('来源', style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.mutedForeground,
+                        )),
+                      ),
+                    ),
+                    Expanded(child: SingleChildScrollView(child: sourceChips)),
+                    const Divider(),
+                  ],
+                ),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: Column(children: [resultsList])),
+            ],
+          ),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('加载失败: $e')),
+    );
+  }
+}
+
+/// 来源筛选 chips 组件
+class _SourceChips extends StatelessWidget {
+  final List<dynamic> types;
+  final Map<dynamic, List<MusicService>> byType;
+  final String? selectedSourceId;
+  final ValueNotifier<String?> tabSourceId;
+  final ({String? sourceId, String? libraryId}) selection;
+  final ColorScheme colorScheme;
+  final WidgetRef ref;
+
+  const _SourceChips({
+    required this.types,
+    required this.byType,
+    required this.selectedSourceId,
+    required this.tabSourceId,
+    required this.selection,
+    required this.colorScheme,
+    required this.ref,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      children: [
+        AppChip(
+          label: '全部',
+          isSelected: selectedSourceId == null,
+          onTap: () {
+            tabSourceId.value = null;
+            ref.read(selectedSourceProvider.notifier).selectAll();
+          },
+          fill: true,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          borderRadius: 8,
+          fontSize: 13,
+        ),
+        ...types.expand((type) {
+          final typeServices = byType[type] ?? [];
+          if (typeServices.isEmpty) return <Widget>[];
+          return [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Center(
+                child: Text(
+                  (type as dynamic).displayName as String,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.foreground.withValues(alpha: 0.4),
+                  ),
+                ),
+              ),
+            ),
+            ...typeServices.expand((service) {
+              if (service.libraries.isNotEmpty) {
+                return service.libraries.map(
+                  (lib) => Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: AppChip(
+                      label: lib.name,
+                      isSelected:
+                          tabSourceId.value == service.sourceId &&
+                          service.defaultLibraryId == lib.id,
+                      onTap: () {
+                        tabSourceId.value = service.sourceId;
+                        ref.read(selectedSourceProvider.notifier).select(
+                          service.sourceId,
+                          libraryId: lib.id,
+                        );
+                      },
+                      fill: true,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      borderRadius: 8,
+                      fontSize: 13,
+                    ),
+                  ),
+                );
+              }
+              return [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: AppChip(
+                    label: service.sourceName,
+                    isSelected: tabSourceId.value == service.sourceId,
                     onTap: () {
-                      tabSourceId.value = null;
-                      ref.read(selectedSourceProvider.notifier).selectAll();
+                      tabSourceId.value = service.sourceId;
+                      ref
+                          .read(selectedSourceProvider.notifier)
+                          .select(service.sourceId);
                     },
                     fill: true,
                     padding: const EdgeInsets.symmetric(
@@ -124,102 +271,12 @@ class _SearchResults extends HookConsumerWidget {
                     borderRadius: 8,
                     fontSize: 13,
                   ),
-                  ...types.expand((type) {
-                    final typeServices = byType[type] ?? [];
-                    if (typeServices.isEmpty) return <Widget>[];
-                    return [
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Center(
-                          child: Text(
-                            type.displayName,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: colorScheme.foreground.withValues(
-                                alpha: 0.4,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      ...typeServices.expand((service) {
-                        // 多库服务：展示每个库作为 tab
-                        if (service.libraries.isNotEmpty) {
-                          return service.libraries.map(
-                            (lib) => Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 3,
-                              ),
-                              child: AppChip(
-                                label: lib.name,
-                                isSelected:
-                                    tabSourceId.value == service.sourceId &&
-                                    service.defaultLibraryId == lib.id,
-                                onTap: () {
-                                  tabSourceId.value = service.sourceId;
-                                  ref
-                                      .read(selectedSourceProvider.notifier)
-                                      .select(
-                                        service.sourceId,
-                                        libraryId: lib.id,
-                                      );
-                                },
-                                fill: true,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 6,
-                                ),
-                                borderRadius: 8,
-                                fontSize: 13,
-                              ),
-                            ),
-                          );
-                        }
-                        return [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: AppChip(
-                              label: service.sourceName,
-                              isSelected: tabSourceId.value == service.sourceId,
-                              onTap: () {
-                                tabSourceId.value = service.sourceId;
-                                ref
-                                    .read(selectedSourceProvider.notifier)
-                                    .select(service.sourceId);
-                              },
-                              fill: true,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 6,
-                              ),
-                              borderRadius: 8,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ];
-                      }),
-                    ];
-                  }),
-                ],
-              ),
-            ),
-            const Divider(),
-            Expanded(
-              child: _SearchResultsList(
-                key: ValueKey('${tabSourceId.value}_$keyword'),
-                keyword: keyword,
-                sourceId: tabSourceId.value,
-                libraryId: tabSourceId.value == selection.sourceId
-                    ? selection.libraryId
-                    : null,
-                services: filtered,
-              ),
-            ),
-          ],
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('加载失败: $e')),
+                ),
+              ];
+            }),
+          ];
+        }),
+      ],
     );
   }
 }

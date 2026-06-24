@@ -5,6 +5,7 @@ library;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/song_list.dart';
@@ -69,20 +70,16 @@ class PlaylistDetailPage extends HookConsumerWidget {
       ],
       child: songsAsync.when(
         data: (songs) {
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // 歌单头部信息
-              _PlaylistHeader(
-                name: playlistName,
-                coverUrl: coverUrl,
-                creator: creator,
-                songCount: songs.length,
-              ),
-              const SizedBox(height: 16),
-              // 歌曲列表
-              if (songs.isEmpty)
-                Padding(
+          // 歌单头部信息
+          final header = _PlaylistHeader(
+            name: playlistName,
+            coverUrl: coverUrl,
+            creator: creator,
+            songCount: songs.length,
+          );
+          // 歌曲列表内容
+          final songListContent = songs.isEmpty
+              ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 48),
                   child: Center(
                     child: Text(
@@ -91,9 +88,34 @@ class PlaylistDetailPage extends HookConsumerWidget {
                     ),
                   ),
                 )
-              else
-                SongList(songs: songs),
-            ],
+              : SongList(songs: songs);
+
+          return Rx.layout(
+            context,
+            // 移动端：纵向布局（封面信息在上，歌曲列表在下）
+            mobile: () => ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                header,
+                const Gap(16),
+                songListContent,
+              ],
+            ),
+            // 桌面端（tablet 及以上）：左侧封面信息，右侧歌曲列表
+            tablet: () => Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: 300,
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [header],
+                  ),
+                ),
+                const VerticalDivider(width: 1),
+                Expanded(child: songListContent),
+              ],
+            ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),

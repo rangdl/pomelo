@@ -8,12 +8,6 @@ import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
 import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 import 'model/lx_music_service.dart';
 
-/// Settings key: Lx 元数据插件文件路径（单路径字符串，仅支持一份）
-const _kLxMetadataPluginPath = 'music_lx_metadata_plugin_path';
-
-/// Settings key: Lx 音源插件文件路径列表（JSON 数组字符串）
-const _kLxSourcePluginPaths = 'music_lx_source_plugin_paths';
-
 /// Lx 音乐模块
 ///
 /// 通过 quickjs 动态加载用户上传的 JS 插件文件，
@@ -75,7 +69,7 @@ class LxMusicModule extends Module {
     await _loadSavedSourcePlugins();
 
     // 从 Settings 读取已保存的元数据插件路径并加载
-    final savedPath = Settings.get(_kLxMetadataPluginPath);
+    final savedPath = Settings.get(StorageKeys.musicLxMetadataPluginPath);
     if (savedPath != null && savedPath.isNotEmpty) {
       await _loadMetadataPlugin(savedPath);
     }
@@ -182,12 +176,12 @@ class LxMusicModule extends Module {
 
   /// 保存元数据插件路径到 Settings
   Future<void> _saveMetadataPluginPath() async {
-    await Settings.set(_kLxMetadataPluginPath, _metadataPluginPath ?? '');
+    await Settings.set(StorageKeys.musicLxMetadataPluginPath, _metadataPluginPath ?? '');
   }
 
   /// 从 Settings 读取已保存的元数据插件路径
   static String? loadMetadataPluginPath() {
-    final path = Settings.get(_kLxMetadataPluginPath);
+    final path = Settings.get(StorageKeys.musicLxMetadataPluginPath);
     return (path != null && path.isNotEmpty) ? path : null;
   }
 
@@ -201,7 +195,7 @@ class LxMusicModule extends Module {
 
   /// 加载已保存的音源插件
   Future<void> _loadSavedSourcePlugins() async {
-    final pathsJson = Settings.get(_kLxSourcePluginPaths);
+    final pathsJson = Settings.get(StorageKeys.musicLxSourcePluginPaths);
     if (pathsJson == null) return;
     try {
       final paths = (jsonDecode(pathsJson) as List).cast<String>();
@@ -286,12 +280,12 @@ class LxMusicModule extends Module {
 
   /// 保存音源插件路径列表到 Settings
   Future<void> _saveSourcePluginPaths() async {
-    await Settings.set(_kLxSourcePluginPaths, jsonEncode(_sourcePluginPaths));
+    await Settings.set(StorageKeys.musicLxSourcePluginPaths, jsonEncode(_sourcePluginPaths));
   }
 
   /// 从 Settings 读取已保存的音源插件路径列表
   static List<String> loadSourcePluginPaths() {
-    final pathsJson = Settings.get(_kLxSourcePluginPaths);
+    final pathsJson = Settings.get(StorageKeys.musicLxSourcePluginPaths);
     if (pathsJson == null) return [];
     try {
       return (jsonDecode(pathsJson) as List).cast<String>();

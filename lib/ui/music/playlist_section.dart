@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/playlist.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
@@ -226,7 +227,7 @@ class PlaylistSection extends HookConsumerWidget {
   }
 }
 
-/// 歌单网格（2列布局）
+/// 歌单网格（响应式列数布局）
 class _PlaylistGrid extends StatelessWidget {
   final List<Playlist> playlists;
 
@@ -236,8 +237,22 @@ class _PlaylistGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // 响应式：宽度足够时显示3列，否则2列
-        final crossAxisCount = constraints.maxWidth > 600 ? 3 : 2;
+        // 响应式列数，对齐项目 Rx 断点：
+        // < 600px (mobile): 2 列
+        // 600~1024px (tablet): 3 列
+        // 1024~1440px (desktop): 4 列
+        // >= 1440px (tv): 5 列
+        final width = constraints.maxWidth;
+        final crossAxisCount;
+        if (width < ResponsiveBreakpoints.mobile) {
+          crossAxisCount = 2;
+        } else if (width < ResponsiveBreakpoints.tablet) {
+          crossAxisCount = 3;
+        } else if (width < ResponsiveBreakpoints.desktop) {
+          crossAxisCount = 4;
+        } else {
+          crossAxisCount = 5;
+        }
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

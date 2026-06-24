@@ -8,6 +8,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/log/model/log_entry.dart';
 import 'package:pomelo/modules/log/providers/log_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
@@ -144,196 +145,322 @@ class _LogContent extends HookConsumerWidget {
     final tagsAsync = ref.watch(logTagsProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Column(
-      children: [
-        // 筛选区域
-        Container(
-          padding: const EdgeInsets.all(12),
-          color: colorScheme.muted.withAlpha(30),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 搜索框
-              TextField(
-                controller: searchController,
-                placeholder: const Text('搜索日志...'),
-                onChanged: (value) {
-                  searchKeyword.value = value;
-                },
-                features: [
-                  InputFeature.leading(
-                    const Icon(Icons.search, size: 16),
-                  ),
-                  if (searchKeyword.value.isNotEmpty)
-                    InputFeature.trailing(
-                      GestureDetector(
-                        onTap: () {
-                          searchController.clear();
-                          searchKeyword.value = '';
-                        },
-                        child: const Icon(Icons.clear, size: 16),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // 级别筛选 chips
-              SizedBox(
-                height: 30,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: LogLevel.values.length + 1,
-                  separatorBuilder: (_, _) => const SizedBox(width: 6),
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      final isSelected = selectedLevels.value.isEmpty;
-                      return AppChip(
-                        label: '全部',
-                        isSelected: isSelected,
-                        onTap: () => selectedLevels.value = {},
-                        borderWhenUnselected: true,
-                      );
-                    }
-                    final level = LogLevel.values[index - 1];
-                    final isSelected = selectedLevels.value.contains(level);
-                    return AppChip(
-                      label: _levelShortName(level),
-                      isSelected: isSelected,
-                      selectedColor: _levelColor(level),
-                      onTap: () {
-                        if (isSelected) {
-                          selectedLevels.value = {...selectedLevels.value}..remove(level);
-                        } else {
-                          selectedLevels.value = {...selectedLevels.value, level};
-                        }
-                      },
-                      borderWhenUnselected: true,
-                    );
-                  },
+    return Rx.layout(
+      context,
+      mobile: () => Column(
+        children: [
+          _FilterPanel(
+            selectedLevels: selectedLevels,
+            selectedTag: selectedTag,
+            searchKeyword: searchKeyword,
+            searchController: searchController,
+            statsAsync: statsAsync,
+            tagsAsync: tagsAsync,
+            colorScheme: colorScheme,
+            isSidebar: false,
+          ),
+          Expanded(child: _LogListView(
+            logsAsync: logsAsync,
+            selectedLevels: selectedLevels,
+            selectedTag: selectedTag,
+            searchKeyword: searchKeyword,
+            colorScheme: colorScheme,
+          )),
+        ],
+      ),
+      tablet: () => Row(
+        children: [
+          SizedBox(
+            width: 240,
+            child: Column(
+              children: [
+                _FilterPanel(
+                  selectedLevels: selectedLevels,
+                  selectedTag: selectedTag,
+                  searchKeyword: searchKeyword,
+                  searchController: searchController,
+                  statsAsync: statsAsync,
+                  tagsAsync: tagsAsync,
+                  colorScheme: colorScheme,
+                  isSidebar: true,
                 ),
+              ],
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          Expanded(child: _LogListView(
+            logsAsync: logsAsync,
+            selectedLevels: selectedLevels,
+            selectedTag: selectedTag,
+            searchKeyword: searchKeyword,
+            colorScheme: colorScheme,
+          )),
+        ],
+      ),
+    );
+  }
+}
+
+/// 筛选面板
+class _FilterPanel extends StatelessWidget {
+  final ValueNotifier<Set<LogLevel>> selectedLevels;
+  final ValueNotifier<String?> selectedTag;
+  final ValueNotifier<String> searchKeyword;
+  final TextEditingController searchController;
+  final AsyncValue<Map<LogLevel, int>> statsAsync;
+  final AsyncValue<Set<String>> tagsAsync;
+  final ColorScheme colorScheme;
+  final bool isSidebar;
+
+  const _FilterPanel({
+    required this.selectedLevels,
+    required this.selectedTag,
+    required this.searchKeyword,
+    required this.searchController,
+    required this.statsAsync,
+    required this.tagsAsync,
+    required this.colorScheme,
+    required this.isSidebar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      color: colorScheme.muted.withAlpha(30),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: isSidebar ? MainAxisSize.max : MainAxisSize.min,
+        children: [
+          // 搜索框
+          TextField(
+            controller: searchController,
+            placeholder: const Text('搜索日志...'),
+            onChanged: (value) {
+              searchKeyword.value = value;
+            },
+            features: [
+              InputFeature.leading(
+                const Icon(Icons.search, size: 16),
               ),
-              const SizedBox(height: 8),
-                  // 标签筛选 + 统计
-                  Row(
-                    children: [
-                      // 标签下拉
-                      tagsAsync.when(
-                        data: (tags) {
-                          final tagList = tags.toList()..sort();
-                          return PopupMenuButton<String?>(
-                            initialValue: selectedTag.value,
-                            onSelected: (value) {
-                              selectedTag.value = value;
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: null,
-                                child: Text('所有标签'),
-                              ),
-                              ...tagList.map(
-                                (tag) => PopupMenuItem(
-                                  value: tag,
-                                  child: Text(tag),
-                                ),
-                              ),
-                            ],
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: colorScheme.muted.withAlpha(60),
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    selectedTag.value ?? '标签',
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.arrow_drop_down, size: 18),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, _) => const SizedBox.shrink(),
-                      ),
-                      const Spacer(),
-                      // 统计摘要
-                      statsAsync.when(
-                        data: (stats) {
-                          final total = stats.values.fold(0, (a, b) => a + b);
-                          return Text(
-                            '$total 条',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: colorScheme.mutedForeground,
-                            ),
-                          );
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, _) => const SizedBox.shrink(),
-                      ),
-                    ],
+              if (searchKeyword.value.isNotEmpty)
+                InputFeature.trailing(
+                  GestureDetector(
+                    onTap: () {
+                      searchController.clear();
+                      searchKeyword.value = '';
+                    },
+                    child: const Icon(Icons.clear, size: 16),
                   ),
+                ),
             ],
           ),
-        ),
-        // 日志列表
-        Expanded(
-          child: logsAsync.when(
-            data: (logs) {
-              // 应用筛选
-              var filtered = logs;
-              if (selectedLevels.value.isNotEmpty) {
-                filtered =
-                    filtered.where((e) => selectedLevels.value.contains(e.level)).toList();
-              }
-              if (selectedTag.value != null) {
-                filtered =
-                    filtered.where((e) => e.tag == selectedTag.value).toList();
-              }
-              if (searchKeyword.value.isNotEmpty) {
-                final kw = searchKeyword.value.toLowerCase();
-                filtered = filtered
-                    .where(
-                      (e) =>
-                          e.message.toLowerCase().contains(kw) ||
-                          e.tag.toLowerCase().contains(kw),
-                    )
-                    .toList();
-              }
-
-              if (filtered.isEmpty) {
-                return Center(
-                  child: Text(
-                    logs.isEmpty ? '暂无日志记录' : '无匹配日志',
-                    style: TextStyle(color: colorScheme.mutedForeground),
-                  ),
-                );
-              }
-
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                itemCount: filtered.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
+          const SizedBox(height: 8),
+          // 级别筛选 chips
+          if (isSidebar)
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _buildLevelChips(),
+            )
+          else
+            SizedBox(
+              height: 30,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: LogLevel.values.length + 1,
+                separatorBuilder: (_, _) => const SizedBox(width: 6),
                 itemBuilder: (context, index) {
-                  return _LogTile(entry: filtered[index]);
+                  if (index == 0) {
+                    final isSelected = selectedLevels.value.isEmpty;
+                    return AppChip(
+                      label: '全部',
+                      isSelected: isSelected,
+                      onTap: () => selectedLevels.value = {},
+                      borderWhenUnselected: true,
+                    );
+                  }
+                  final level = LogLevel.values[index - 1];
+                  final isSelected = selectedLevels.value.contains(level);
+                  return AppChip(
+                    label: _levelShortName(level),
+                    isSelected: isSelected,
+                    selectedColor: _levelColor(level),
+                    onTap: () {
+                      if (isSelected) {
+                        selectedLevels.value = {...selectedLevels.value}..remove(level);
+                      } else {
+                        selectedLevels.value = {...selectedLevels.value, level};
+                      }
+                    },
+                    borderWhenUnselected: true,
+                  );
                 },
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (error, _) => Center(child: Text('加载失败: $error')),
+              ),
+            ),
+          const SizedBox(height: 8),
+          // 标签筛选 + 统计
+          Row(
+            children: [
+              tagsAsync.when(
+                data: (tags) {
+                  final tagList = tags.toList()..sort();
+                  return PopupMenuButton<String?>(
+                    initialValue: selectedTag.value,
+                    onSelected: (value) {
+                      selectedTag.value = value;
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: null,
+                        child: Text('所有标签'),
+                      ),
+                      ...tagList.map(
+                        (tag) => PopupMenuItem(
+                          value: tag,
+                          child: Text(tag),
+                        ),
+                      ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: colorScheme.muted.withAlpha(60),
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            selectedTag.value ?? '标签',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.arrow_drop_down, size: 18),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+              const Spacer(),
+              statsAsync.when(
+                data: (stats) {
+                  final total = stats.values.fold(0, (a, b) => a + b);
+                  return Text(
+                    '$total 条',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: colorScheme.mutedForeground,
+                    ),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, _) => const SizedBox.shrink(),
+              ),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildLevelChips() {
+    final chips = <Widget>[
+      AppChip(
+        label: '全部',
+        isSelected: selectedLevels.value.isEmpty,
+        onTap: () => selectedLevels.value = {},
+        borderWhenUnselected: true,
+      ),
+    ];
+    for (final level in LogLevel.values) {
+      final isSelected = selectedLevels.value.contains(level);
+      chips.add(AppChip(
+        label: _levelShortName(level),
+        isSelected: isSelected,
+        selectedColor: _levelColor(level),
+        onTap: () {
+          if (isSelected) {
+            selectedLevels.value = {...selectedLevels.value}..remove(level);
+          } else {
+            selectedLevels.value = {...selectedLevels.value, level};
+          }
+        },
+        borderWhenUnselected: true,
+      ));
+    }
+    return chips;
+  }
+}
+
+/// 日志列表视图
+class _LogListView extends StatelessWidget {
+  final AsyncValue<List<LogEntry>> logsAsync;
+  final ValueNotifier<Set<LogLevel>> selectedLevels;
+  final ValueNotifier<String?> selectedTag;
+  final ValueNotifier<String> searchKeyword;
+  final ColorScheme colorScheme;
+
+  const _LogListView({
+    required this.logsAsync,
+    required this.selectedLevels,
+    required this.selectedTag,
+    required this.searchKeyword,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return logsAsync.when(
+      data: (logs) {
+        var filtered = logs;
+        if (selectedLevels.value.isNotEmpty) {
+          filtered =
+              filtered.where((e) => selectedLevels.value.contains(e.level)).toList();
+        }
+        if (selectedTag.value != null) {
+          filtered =
+              filtered.where((e) => e.tag == selectedTag.value).toList();
+        }
+        if (searchKeyword.value.isNotEmpty) {
+          final kw = searchKeyword.value.toLowerCase();
+          filtered = filtered
+              .where(
+                (e) =>
+                    e.message.toLowerCase().contains(kw) ||
+                    e.tag.toLowerCase().contains(kw),
+              )
+              .toList();
+        }
+
+        if (filtered.isEmpty) {
+          return Center(
+            child: Text(
+              logs.isEmpty ? '暂无日志记录' : '无匹配日志',
+              style: TextStyle(color: colorScheme.mutedForeground),
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          itemCount: filtered.length,
+          separatorBuilder: (_, _) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            return _LogTile(entry: filtered[index]);
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(child: Text('加载失败: $error')),
     );
   }
 }
