@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/storage/storage_keys.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/model/music_source_type.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
@@ -13,10 +14,6 @@ import 'package:pomelo/ui/music/model/service_result.dart';
 import 'package:pomelo/ui/music/model/merged_song.dart';
 
 import 'package:pomelo/ui/platform/providers/lx_metadata_plugin_paths_provider.dart';
-
-/// 持久化 key
-const _kSelectedSource = 'music_selected_source';
-const _kSelectedLibrary = 'music_selected_library';
 
 /// 按来源类型分组服务
 Map<MusicSourceType, List<MusicService>> groupServicesByType(
@@ -38,8 +35,8 @@ class SelectedSourceNotifier
     extends Notifier<({String? sourceId, String? libraryId})> {
   @override
   ({String? sourceId, String? libraryId}) build() {
-    final savedSource = Settings.get(_kSelectedSource);
-    final savedLibrary = Settings.get(_kSelectedLibrary);
+    final savedSource = Settings.get(StorageKeys.musicSelectedSource);
+    final savedLibrary = Settings.get(StorageKeys.musicSelectedLibrary);
     final state = (
       sourceId: (savedSource != null && savedSource.isNotEmpty)
           ? savedSource
@@ -63,14 +60,14 @@ class SelectedSourceNotifier
 
   void selectAll() {
     state = (sourceId: null, libraryId: null);
-    Settings.set(_kSelectedSource, '');
-    Settings.set(_kSelectedLibrary, '');
+    Settings.set(StorageKeys.musicSelectedSource, '');
+    Settings.set(StorageKeys.musicSelectedLibrary, '');
   }
 
   void select(String sourceId, {String? libraryId}) {
     state = (sourceId: sourceId, libraryId: libraryId);
-    Settings.set(_kSelectedSource, sourceId);
-    Settings.set(_kSelectedLibrary, libraryId ?? '');
+    Settings.set(StorageKeys.musicSelectedSource, sourceId);
+    Settings.set(StorageKeys.musicSelectedLibrary, libraryId ?? '');
     // 如果选中了多库服务的某个库，更新服务的默认库
     if (libraryId != null) {
       final module = ref.read(musicModuleProvider);

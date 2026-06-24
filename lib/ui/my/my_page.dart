@@ -4,7 +4,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/storage/storage_keys.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 
@@ -24,26 +26,13 @@ class MyPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeModeAsync = ref.watch(settingWatcherProvider('my_theme_mode'));
+    final themeModeAsync = ref.watch(settingWatcherProvider(StorageKeys.myThemeMode));
     final themeMode = themeModeAsync.value ?? 'system';
     final localDirs = ref.watch(localMusicDirsProvider);
 
-    return Scaffold(
-      headers: [
-        AppBar(
-          title: const Text('设置'),
-          trailing: [
-            GhostButton(
-              size: ButtonSize.small,
-              onPressed: () => context.pushRoute(const LogRoute()),
-              child: const Icon(Icons.article_outlined, size: 18),
-            ),
-          ],
-        ),
-      ],
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
+    final listView = ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
           // ===== 外观 =====
           Text(
             '外观',
@@ -61,7 +50,7 @@ class MyPage extends HookConsumerWidget {
               trailing: Select<String>(
                 value: themeMode,
                 onChanged: (value) {
-                  if (value != null) Settings.set('my_theme_mode', value);
+                  if (value != null) Settings.set(StorageKeys.myThemeMode, value);
                 },
                 popup: SelectPopup(
                   items: SelectItemList(
@@ -171,6 +160,30 @@ class MyPage extends HookConsumerWidget {
             ),
           ),
         ],
+      );
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: const Text('设置'),
+          trailing: [
+            GhostButton(
+              size: ButtonSize.small,
+              onPressed: () => context.pushRoute(const LogRoute()),
+              child: const Icon(Icons.article_outlined, size: 18),
+            ),
+          ],
+        ),
+      ],
+      child: Rx.layout(
+        context,
+        mobile: () => listView,
+        tablet: () => Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: listView,
+          ),
+        ),
       ),
     );
   }

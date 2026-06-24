@@ -142,135 +142,169 @@ class FavoritePage extends HookConsumerWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        for (final type in typeOrder)
-          if (byType[type] != null && byType[type]!.isNotEmpty)
-            ..._buildTypeSection(
-              context,
-              ref,
-              type,
-              byType[type]!,
-              subsonicAccounts,
-            ),
+    // 收集所有分区为独立 widget
+    final sections = <Widget>[];
+    for (final type in typeOrder) {
+      if (byType[type] != null && byType[type]!.isNotEmpty) {
+        sections.add(
+          _buildTypeSection(context, ref, type, byType[type]!, subsonicAccounts),
+        );
+      }
+    }
+    if (sourcePlugins.isNotEmpty) {
+      sections.add(_buildSourcePluginsSection(context, ref, sourcePlugins));
+    }
 
-        // 音源插件独立区域
-        if (sourcePlugins.isNotEmpty)
-          ..._buildSourcePluginsSection(context, ref, sourcePlugins),
-      ],
+    // 桌面端双栏：将分区均分到左右两列
+    final half = (sections.length + 1) ~/ 2;
+    final leftSections = sections.sublist(0, half);
+    final rightSections = sections.sublist(half);
+
+    return Rx.layout(
+      context,
+      mobile: () => ListView(
+        padding: const EdgeInsets.all(16),
+        children: sections,
+      ),
+      tablet: () => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: leftSections,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: rightSections,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   /// 构建某个类型下的服务分组
-  List<Widget> _buildTypeSection(
+  Widget _buildTypeSection(
     BuildContext context,
     WidgetRef ref,
     MusicSourceType type,
     List<MusicService> services,
     List<SubsonicMusicService> subsonicAccounts,
   ) {
-    return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-        child: Row(
-          children: [
-            Icon(_typeIcon(type),
-                size: 18,
-                color: Theme.of(context).colorScheme.mutedForeground),
-            const SizedBox(width: 8),
-            Text(
-              type.displayName,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.mutedForeground,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+          child: Row(
+            children: [
+              Icon(_typeIcon(type),
+                  size: 18,
+                  color: Theme.of(context).colorScheme.mutedForeground),
+              const SizedBox(width: 8),
+              Text(
+                type.displayName,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.mutedForeground,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${services.length}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.mutedForeground,
+              const SizedBox(width: 8),
+              Text(
+                '${services.length}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.mutedForeground,
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-      Card(
-        child: Column(
-          children: [
-            for (int i = 0; i < services.length; i++) ...[
-              if (i > 0) const Divider(height: 1),
-              _buildServiceTile(context, ref, services[i], subsonicAccounts),
             ],
-          ],
+          ),
         ),
-      ),
-      const SizedBox(height: 16),
-    ];
+        Card(
+          child: Column(
+            children: [
+              for (int i = 0; i < services.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                _buildServiceTile(context, ref, services[i], subsonicAccounts),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   /// 构建音源插件区域
-  List<Widget> _buildSourcePluginsSection(
+  Widget _buildSourcePluginsSection(
     BuildContext context,
     WidgetRef ref,
     List<String> plugins,
   ) {
     final colorScheme = Theme.of(context).colorScheme;
-    return [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-        child: Row(
-          children: [
-            Icon(Icons.audiotrack, size: 18, color: colorScheme.mutedForeground),
-            const SizedBox(width: 8),
-            Text(
-              '音源插件',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: colorScheme.mutedForeground,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+          child: Row(
+            children: [
+              Icon(Icons.audiotrack, size: 18, color: colorScheme.mutedForeground),
+              const SizedBox(width: 8),
+              Text(
+                '音源插件',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.mutedForeground,
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              '${plugins.length}',
-              style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
-            ),
-          ],
-        ),
-      ),
-      Card(
-        child: Column(
-          children: [
-            for (int i = 0; i < plugins.length; i++) ...[
-              if (i > 0) const Divider(height: 1),
-              ListTile(
-                leading: Icon(Icons.description, size: 20, color: colorScheme.primary),
-                title: Text(
-                  p.basename(plugins[i]),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  plugins[i],
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: IconButton.text(
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  onPressed: () =>
-                      ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(plugins[i]),
-                ),
+              const SizedBox(width: 8),
+              Text(
+                '${plugins.length}',
+                style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
               ),
             ],
-          ],
+          ),
         ),
-      ),
-      const SizedBox(height: 16),
-    ];
+        Card(
+          child: Column(
+            children: [
+              for (int i = 0; i < plugins.length; i++) ...[
+                if (i > 0) const Divider(height: 1),
+                ListTile(
+                  leading: Icon(Icons.description, size: 20, color: colorScheme.primary),
+                  title: Text(
+                    p.basename(plugins[i]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    plugins[i],
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: IconButton.text(
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    onPressed: () =>
+                        ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(plugins[i]),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
   }
 
   /// 构建单个服务的 ListTile
@@ -331,9 +365,21 @@ class FavoritePage extends HookConsumerWidget {
           },
         );
       case _PlatformType.subsonic:
-        showDialog(
-          context: context,
-          builder: (_) => const AddSubsonicAccountDialog(),
+        Rx.action(
+          context,
+          mobile: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AddSubsonicAccountPage(),
+              ),
+            );
+          },
+          tablet: () {
+            showDialog(
+              context: context,
+              builder: (_) => const AddSubsonicAccountDialog(),
+            );
+          },
         );
     }
   }

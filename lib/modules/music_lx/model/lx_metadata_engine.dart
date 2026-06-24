@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/modules/music/model/models.dart';
@@ -67,21 +65,16 @@ class LxMetadataEngine {
   /// 返回 `(id, name)` 列表，如 `[(id: 'tx', name: '腾讯音乐')]`。
   Future<List<({String id, String name})>> getRegisteredLibraries() async {
     try {
-      final raw = await _evalAsync(
-        'JSON.stringify(Array.from(registry.all()))',
-      );
-      if (raw is String) {
-        final items = (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
-        return items
-            .map(
-              (v) => (
-                id: v['id'] as String? ?? '',
-                name: v['name'] as String? ?? v['id'] as String? ?? '',
-              ),
-            )
-            .toList();
-      }
-      return [];
+      final raw = await _evalAsync('registry.all()');
+      final items = List<dynamic>.from(raw);
+      return items
+          .map(
+            (v) => (
+              id: v['id'] as String? ?? '',
+              name: v['name'] as String? ?? v['id'] as String? ?? '',
+            ),
+          )
+          .toList();
     } catch (e) {
       log.error('LxMetadataEngine', e.toString(), error: e);
       return [];
@@ -94,12 +87,10 @@ class LxMetadataEngine {
   Future<List<({String id, String name})>> loadPluginWithLibraries(
     String scriptContent,
   ) async {
-    final before = await getRegisteredLibraries();
-    final beforeIds = before.map((e) => e.id).toSet();
     final success = loadPlugin(scriptContent);
     if (!success) return [];
     final after = await getRegisteredLibraries();
-    return after.where((e) => !beforeIds.contains(e.id)).toList();
+    return after;
   }
 
   /// 搜索歌曲
@@ -235,11 +226,11 @@ class LxMetadataEngine {
       final json = Map<String, dynamic>.from(raw);
       final categories = <PlaylistCategory>[];
 
-      // 解析 hot: 作为“排行榜”分类组
+      // 解析 hot: 作为“热门”分类组
       final hot = json['hot'] as List<dynamic>?;
       if (hot != null && hot.isNotEmpty) {
         const hotGroupId = 'hot';
-        categories.add(const PlaylistCategory(id: hotGroupId, name: '排行榜'));
+        categories.add(const PlaylistCategory(id: hotGroupId, name: '热门'));
         for (final item in hot) {
           final itemMap = Map<String, dynamic>.from(item as Map);
           categories.add(

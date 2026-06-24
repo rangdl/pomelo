@@ -22,22 +22,22 @@ class MyService extends Service {
 
   /// 保存用户偏好的主题模式
   Future<void> setThemeMode(String mode) async {
-    await Settings.set('my_theme_mode', mode);
+    await Settings.set(StorageKeys.myThemeMode, mode);
   }
 
   /// 读取用户偏好的主题模式
   String getThemeMode() {
-    return Settings.get('my_theme_mode', defaultValue: 'system')!;
+    return Settings.get(StorageKeys.myThemeMode, defaultValue: 'system')!;
   }
 
   /// 保存歌词字体大小
   Future<void> setLyricFontSize(int size) async {
-    await Settings.setInt('my_lyric_font_size', size);
+    await Settings.setInt(StorageKeys.myLyricFontSize, size);
   }
 
   /// 读取歌词字体大小
   int getLyricFontSize() {
-    return Settings.getInt('my_lyric_font_size', defaultValue: 14)!;
+    return Settings.getInt(StorageKeys.myLyricFontSize, defaultValue: 14)!;
   }
 
   /// 批量更新用户设置
@@ -47,14 +47,14 @@ class MyService extends Service {
     bool? autoPlay,
   }) async {
     await Settings.setAll({
-      'my_theme_mode': themeMode,
-      'my_lyric_font_size': lyricFontSize?.toString(),
-      'my_auto_play': autoPlay?.toString(),
+      StorageKeys.myThemeMode: themeMode,
+      StorageKeys.myLyricFontSize: lyricFontSize?.toString(),
+      StorageKeys.myAutoPlay: autoPlay?.toString(),
     });
   }
 
   /// 读取用户设置的自动播放
   bool getAutoPlay() {
-    return Settings.getBool('my_auto_play', defaultValue: true)!;
+    return Settings.getBool(StorageKeys.myAutoPlay, defaultValue: true)!;
   }
 }
