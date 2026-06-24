@@ -132,15 +132,15 @@ class RxToast {
   final Duration _duration = Duration(seconds: 2);
 
   CancelFunc success(String msg, {Duration? duration}) {
-    return info(msg, contentColor: Color(0xFF22C55E));
+    return info(msg, duration: duration, contentColor: Color(0xFF22C55E));
   }
 
   CancelFunc error(String msg, {Duration? duration}) {
-    return info(msg, contentColor: Color(0xFFEF4444));
+    return info(msg, duration: duration, contentColor: Color(0xFFEF4444));
   }
 
   CancelFunc warning(String msg, {Duration? duration}) {
-    return info(msg, contentColor: Color(0xFFF59E0B));
+    return info(msg, duration: duration, contentColor: Color(0xFFF59E0B));
   }
 
   CancelFunc info(String msg, {Duration? duration, Color? contentColor}) {

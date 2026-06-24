@@ -65,11 +65,7 @@ class SourceSwitchButton extends HookConsumerWidget {
     List<MusicService> services,
     String? selectedSourceId,
   ) {
-    // 按来源类型分组
-    final byType = <MusicSourceType, List<MusicService>>{};
-    for (final s in services) {
-      byType.putIfAbsent(s.sourceType, () => []).add(s);
-    }
+    final byType = groupServicesByType(services);
 
     final types = byType.keys.toList();
 

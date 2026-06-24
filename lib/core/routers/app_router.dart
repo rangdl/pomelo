@@ -5,20 +5,20 @@ import 'app_router.gr.dart';
 ///
 /// 路由结构:
 ///   /             → RootPage (底部导航)
-///   /home       → HomeView (首页)
+///   /home       → HomePage (首页)
 ///     /favorite   → FavoritePage (平台)
 ///     /statistics → StatisticsPage (统计)
 ///     /my         → MyPage (我的)
-///   /ex           → ExListView (示例列表)
-///     /ex1        → Ex1DetailView (示例1)
-///     /ex2        → Ex2DetailView (示例2)
+///   /ex           → ExListPage (示例列表)
+///     /ex1        → Ex1DetailPage (示例1)
+///     /ex2        → Ex2DetailPage (示例2)
 ///
 /// 生成规则: `replaceInRouteName: 'Page|View,Route'`
 ///   - RootPage → RootRoute
-///   - HomeView → HomeRoute
+///   - HomePage → HomeRoute
 ///   - FavoritePage → FavoriteRoute
-///   - ExListView → ExListRoute
-///   - Ex1DetailView → Ex1DetailRoute
+///   - ExListPage → ExListRoute
+///   - Ex1DetailPage → Ex1DetailRoute
 @AutoRouterConfig(replaceInRouteName: 'Page|View,Route')
 class AppRouter extends RootStackRouter {
   @override

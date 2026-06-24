@@ -102,12 +102,12 @@ class LxMetadataEngine {
     return after.where((e) => !beforeIds.contains(e.id)).toList();
   }
 
-  /// 执行 JS 搜索
+  /// 搜索歌曲
   Future<PaginationResponse<Song>> search(
     String keyword, {
     int page = 1,
     int limit = 20,
-    type = 'tx',
+    String type = 'tx',
   }) async {
     try {
       final raw = await _evalAsync(
@@ -115,7 +115,7 @@ class LxMetadataEngine {
       );
 
       if (raw == null) {
-        log.error('LxMetadataEngine', '搜索返回 null');
+        log.error('LxMetadataEngine', '搜索歌曲返回 null');
         return PaginationResponse<Song>(
           limit: limit,
           page: page,
@@ -143,8 +143,67 @@ class LxMetadataEngine {
       );
       return res;
     } catch (e) {
-      log.error('LxMetadataEngine', '搜索失败: $e', error: e);
+      log.error('LxMetadataEngine', '搜索歌曲失败: $e', error: e);
       return PaginationResponse<Song>(
+        limit: limit,
+        page: page,
+        total: 0,
+        hasMore: false,
+        items: [],
+      );
+    }
+  }
+
+  /// 搜索歌单
+  Future<PaginationResponse<Playlist>> searchPlaylists(
+    String keyword, {
+    int page = 1,
+    int limit = 20,
+    String type = 'tx',
+  }) async {
+    try {
+      final raw = await _evalAsync(
+        "registry.getSongListProvider(`$type`)?.searchSongList(`$keyword`, $page, $limit)",
+      );
+
+      if (raw == null) {
+        log.error('LxMetadataEngine', '搜索歌单返回 null');
+        return PaginationResponse<Playlist>(
+          limit: limit,
+          page: page,
+          total: 0,
+          hasMore: false,
+          items: [],
+        );
+      }
+
+      final json = Map<String, dynamic>.from(raw);
+      final total = json['total'] ?? 0;
+      final list = (json['list'] ?? []) as List<dynamic>;
+      final source = (id: type, name: type, libraryId: type);
+      final items = list.map((item) {
+        final m = Map<String, dynamic>.from(item as Map);
+        return Playlist(
+          id: '$type-${m['id']}',
+          name: m['name'] as String? ?? '',
+          coverUrl: m['img'] as String?,
+          creator: m['author'] as String? ?? '',
+          description: m['desc'] as String?,
+          source: source,
+          meta: m,
+        );
+      }).toList();
+
+      return PaginationResponse<Playlist>(
+        limit: limit,
+        page: page,
+        total: total,
+        hasMore: (page * limit) < total,
+        items: items,
+      );
+    } catch (e) {
+      log.error('LxMetadataEngine', '搜索歌单失败: $e', error: e);
+      return PaginationResponse<Playlist>(
         limit: limit,
         page: page,
         total: 0,

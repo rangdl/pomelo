@@ -10,6 +10,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/log/model/log_entry.dart';
 import 'package:pomelo/modules/log/providers/log_providers.dart';
+import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -186,18 +187,19 @@ class _LogContent extends HookConsumerWidget {
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       final isSelected = selectedLevels.value.isEmpty;
-                      return _FilterChip(
+                      return AppChip(
                         label: '全部',
                         isSelected: isSelected,
                         onTap: () => selectedLevels.value = {},
+                        borderWhenUnselected: true,
                       );
                     }
                     final level = LogLevel.values[index - 1];
                     final isSelected = selectedLevels.value.contains(level);
-                    return _FilterChip(
+                    return AppChip(
                       label: _levelShortName(level),
                       isSelected: isSelected,
-                      color: _levelColor(level),
+                      selectedColor: _levelColor(level),
                       onTap: () {
                         if (isSelected) {
                           selectedLevels.value = {...selectedLevels.value}..remove(level);
@@ -205,6 +207,7 @@ class _LogContent extends HookConsumerWidget {
                           selectedLevels.value = {...selectedLevels.value, level};
                         }
                       },
+                      borderWhenUnselected: true,
                     );
                   },
                 ),
@@ -331,49 +334,6 @@ class _LogContent extends HookConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 筛选 chip
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final Color? color;
-  final VoidCallback onTap;
-
-  const _FilterChip({
-    required this.label,
-    required this.isSelected,
-    this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final chipColor = color ?? colorScheme.primary;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? chipColor.withAlpha(30) : colorScheme.muted.withAlpha(30),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? chipColor.withAlpha(80) : colorScheme.muted.withAlpha(60),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? chipColor : colorScheme.mutedForeground,
-          ),
-        ),
-      ),
     );
   }
 }
