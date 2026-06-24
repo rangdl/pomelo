@@ -13,9 +13,6 @@ import 'package:pomelo/core/mars.dart';
 
 import '../model/log_entry.dart';
 
-/// 存储日志级别的 Settings key
-const _kLogStorageLevel = 'log_storage_level';
-
 class LogRepository extends Repository<LogEntry> {
   /// 最大内存日志条数（超过时自动清理旧日志）
   static const int defaultMaxEntries = 10000;
@@ -44,7 +41,7 @@ class LogRepository extends Repository<LogEntry> {
   /// 设置文件存储的最低日志级别并持久化
   Future<void> setStorageLevel(LogLevel level) async {
     _storageLevel = level;
-    await Settings.set(_kLogStorageLevel, level.name);
+    await Settings.set(StorageKeys.logStorageLevel, level.name);
   }
 
   /// 初始化文件存储
@@ -53,7 +50,7 @@ class LogRepository extends Repository<LogEntry> {
   /// 加载已有的日志文件，并从 Settings 读取存储级别。
   Future<void> initFileStorage(String logDir) async {
     // 从 Settings 读取存储级别
-    final savedLevel = Settings.get(_kLogStorageLevel);
+    final savedLevel = Settings.get(StorageKeys.logStorageLevel);
     if (savedLevel != null) {
       _storageLevel = LogLevel.values.firstWhere(
         (e) => e.name == savedLevel,

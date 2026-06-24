@@ -7,9 +7,6 @@ import 'package:pomelo/modules/music/music_module.dart';
 import 'repository/subsonic_client.dart';
 import 'repository/subsonic_music_service.dart';
 
-/// Settings key: Subsonic 账号配置列表（JSON 数组字符串）
-const _kSubsonicAccounts = 'music_subsonic_accounts';
-
 /// Subsonic 音乐模块
 ///
 /// 管理多个 Subsonic 账号，每个账号对应一个 [SubsonicMusicService]。
@@ -181,12 +178,12 @@ class MusicSubsonicModule extends Module {
 
   /// 保存账号配置到 Settings
   Future<void> _saveAccountConfigs() async {
-    await Settings.set(_kSubsonicAccounts, jsonEncode(_configs));
+    await Settings.set(StorageKeys.musicSubsonicAccounts, jsonEncode(_configs));
   }
 
   /// 从 Settings 读取账号配置列表
   static List<Map<String, dynamic>> loadAccountConfigs() {
-    final json = Settings.get(_kSubsonicAccounts);
+    final json = Settings.get(StorageKeys.musicSubsonicAccounts);
     if (json == null) return [];
     try {
       return (jsonDecode(json) as List)

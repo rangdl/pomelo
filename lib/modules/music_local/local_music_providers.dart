@@ -3,11 +3,9 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/storage/storage_keys.dart';
 import 'package:pomelo/modules/music_local/music_local_module.dart';
 import 'service/local_music_service.dart';
-
-/// Settings key: 本地音乐目录列表（JSON 数组字符串）
-const _kLocalMusicDirs = 'music_local_directories';
 
 /// 持有 MusicLocalModule 实例的 Provider
 final musicLocalModuleProvider = Provider<MusicLocalModule?>((ref) {
@@ -76,7 +74,7 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
   }
 
   Future<void> _save() async {
-    await Settings.set(_kLocalMusicDirs, jsonEncode(state));
+    await Settings.set(StorageKeys.musicLocalDirectories, jsonEncode(state));
   }
 }
 
