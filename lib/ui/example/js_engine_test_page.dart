@@ -7,8 +7,8 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// JsEngine 测试页面
 @RoutePage()
-class JsEngineTestView extends HookWidget {
-  const JsEngineTestView({super.key});
+class JsEngineTestPage extends HookWidget {
+  const JsEngineTestPage({super.key});
 
   @override
   Widget build(BuildContext context) {

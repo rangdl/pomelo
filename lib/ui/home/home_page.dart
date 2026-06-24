@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
-import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:pomelo/ui/music/music_section.dart';
 import 'package:pomelo/ui/music/playlist_section.dart';
 import 'package:pomelo/ui/music/leaderboard_section.dart';
@@ -9,16 +8,13 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Home 页面
 ///
-/// 通过 M.A.R.S. 模块的 Provider 获取数据，不直接依赖 Repository。
+/// 展示排行榜、歌单推荐、我的音乐三大版块。
 @RoutePage()
-class HomeView extends HookConsumerWidget {
-  const HomeView({super.key});
+class HomePage extends HookConsumerWidget {
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final repository = ref.watch(homeRepositoryProvider);
-    // final theme = Theme.of(context);
-
     return Scaffold(
       headers: [
         AppBar(
@@ -41,49 +37,31 @@ class HomeView extends HookConsumerWidget {
           trailing: [const SourceSwitchButton()],
         ),
       ],
-      child: FutureBuilder(
-        future: repository.fetchAll(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // 排行榜版块
+          const LeaderboardSection(),
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // 排行榜版块
-              const LeaderboardSection(),
+          // 分隔线
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(),
+          ),
 
-              // 分隔线
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Divider(),
-              ),
+          // 歌单分类版块
+          const PlaylistSection(),
 
-              // 歌单分类版块
-              const PlaylistSection(),
+          // 分隔线
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Divider(),
+          ),
 
-              // 分隔线
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Divider(),
-              ),
-
-              // 音乐列表版块
-              const MusicSection(),
-            ],
-          );
-        },
+          // 音乐列表版块
+          const MusicSection(),
+        ],
       ),
     );
   }
 }
-
-// const _iconMap = {
-//   'home': Icons.home,
-//   'layers': Icons.layers,
-//   'bolt': Icons.bolt,
-//   'route': Icons.route,
-//   'favorite': Icons.favorite,
-//   'star': Icons.star,
-// };

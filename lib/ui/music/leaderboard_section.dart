@@ -1,8 +1,8 @@
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
+import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -17,17 +17,17 @@ class LeaderboardSection extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final leaderboardsAsync = ref.watch(leaderboardsProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    final selectedId = useState<String?>(null);
+    final selectedId = ref.watch(selectedLeaderboardProvider);
 
     return leaderboardsAsync.when(
       data: (leaderboards) {
         if (leaderboards.isEmpty) return const SizedBox.shrink();
 
         // 如果没有选中或选中的不在列表中，默认选中第一个
-        if (selectedId.value == null ||
-            !leaderboards.any((l) => l.id == selectedId.value)) {
-          selectedId.value = leaderboards.first.id;
-        }
+        final effectiveId = (selectedId == null ||
+                !leaderboards.any((l) => l.id == selectedId))
+            ? leaderboards.first.id
+            : selectedId;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,54 +52,24 @@ class LeaderboardSection extends HookConsumerWidget {
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final lb = leaderboards[index];
-                  final isSelected = lb.id == selectedId.value;
-                  return GestureDetector(
-                    onTap: () => selectedId.value = lb.id,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? colorScheme.primary
-                            : colorScheme.muted,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            lb.name,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.normal,
-                              color: isSelected
-                                  ? colorScheme.primaryForeground
-                                  : colorScheme.mutedForeground,
-                            ),
-                          ),
-                          if (isSelected) ...[
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.keyboard_arrow_down,
-                              size: 16,
-                              color: colorScheme.primaryForeground,
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
+                  final isSelected = lb.id == effectiveId;
+                  return AppChip(
+                    label: lb.name,
+                    isSelected: isSelected,
+                    onTap: () => ref
+                        .read(selectedLeaderboardProvider.notifier)
+                        .select(lb.id),
+                    fill: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    borderRadius: 18,
+                    fontSize: 13,
                   );
                 },
               ),
             ),
             // 展开的排行榜歌曲列表
             const SizedBox(height: 12),
-            if (selectedId.value != null)
-              _LeaderboardSongs(leaderboardId: selectedId.value!),
+            _LeaderboardSongs(leaderboardId: effectiveId),
           ],
         );
       },
@@ -113,7 +83,7 @@ class LeaderboardSection extends HookConsumerWidget {
 }
 
 /// 排行榜歌曲列表
-class _LeaderboardSongs extends HookConsumerWidget {
+class _LeaderboardSongs extends ConsumerWidget {
   final String leaderboardId;
 
   const _LeaderboardSongs({required this.leaderboardId});

@@ -5,11 +5,10 @@ library;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/module/module_manager.dart';
-import 'package:pomelo/modules/music/music_module.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/song_list.dart';
+import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌单详情 Provider
@@ -19,7 +18,7 @@ final playlistSongsProvider =
     FutureProvider.family<List<Song>, ({String sourceId, String playlistId})>(
   (ref, params) async {
     await ref.watch(musicReadyProvider.future);
-    final module = ModuleManager().find<MusicModule>('music');
+    final module = ref.watch(musicModuleProvider);
     final service = module?.service(params.sourceId);
     if (service == null) return [];
     return service.getPlaylistSongs(params.playlistId);
@@ -157,11 +156,17 @@ class _PlaylistHeader extends StatelessWidget {
                       width: 100,
                       height: 100,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _CoverPlaceholder(
+                      errorBuilder: (_, _, _) => CoverPlaceholder(
                         colorScheme: colorScheme,
+                        width: 100,
+                        height: 100,
                       ),
                     )
-                  : _CoverPlaceholder(colorScheme: colorScheme),
+                  : CoverPlaceholder(
+                      colorScheme: colorScheme,
+                      width: 100,
+                      height: 100,
+                    ),
             ),
             const SizedBox(width: 16),
             // 歌单信息
@@ -206,25 +211,3 @@ class _PlaylistHeader extends StatelessWidget {
   }
 }
 
-/// 封面占位图
-class _CoverPlaceholder extends StatelessWidget {
-  final ColorScheme colorScheme;
-
-  const _CoverPlaceholder({required this.colorScheme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 100,
-      height: 100,
-      color: colorScheme.muted,
-      child: Center(
-        child: Icon(
-          Icons.queue_music,
-          size: 36,
-          color: colorScheme.mutedForeground,
-        ),
-      ),
-    );
-  }
-}
