@@ -4,7 +4,6 @@
 /// 其他模块可通过此服务记录日志。
 library;
 
-import 'package:flutter/foundation.dart';
 import 'package:pomelo/core/mars.dart';
 
 import '../model/log_entry.dart';
@@ -127,6 +126,9 @@ class LogService extends Service {
   Future<String> exportFileContent() => repository.exportFileContent();
 
   /// 统一的日志记录内部方法
+  ///
+  /// 仅负责持久化（内存 + 文件）和监听器通知。
+  /// 控制台输出由 [Logger] 入口类处理，避免重复打印。
   void _record(
     LogLevel level,
     String tag,
@@ -149,14 +151,9 @@ class LogService extends Service {
     // 保存到仓储
     repository.save(entry);
 
-    // 通知监听器（用于控制台输出等）
+    // 通知监听器（用于 UI 实时展示等）
     for (final listener in _listeners) {
       listener(entry);
-    }
-
-    // 严重级别以上同时输出到控制台
-    if (level == LogLevel.error || level == LogLevel.fatal) {
-      debugPrint('[Pomelo] ${entry.formatted}');
     }
   }
 

@@ -8,6 +8,8 @@ import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import '../player/mini_player.dart';
+
 /// 导航标签定义
 const _navDestinations = [
   (key: ValueKey(0), icon: Icons.home, label: '首页'),
@@ -97,6 +99,7 @@ class _PhoneLayout extends HookConsumerWidget {
 
     return Scaffold(
       footers: [
+        const MiniPlayer(),
         NavigationBar(
           alignment: NavigationBarAlignment.spaceAround,
           labelType: NavigationLabelType.none,
@@ -173,7 +176,14 @@ class _NavigationRailLayout extends HookConsumerWidget {
                 .toList(),
           ),
           const VerticalDivider(width: 1, thickness: 1),
-          Expanded(child: children[tabsRouter.activeIndex]),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(child: children[tabsRouter.activeIndex]),
+                const MiniPlayer(),
+              ],
+            ),
+          ),
         ],
       ),
     );

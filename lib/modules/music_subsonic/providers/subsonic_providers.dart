@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
+import 'package:pomelo/modules/music/providers/music_providers.dart';
 
 import '../music_subsonic_module.dart';
 import '../repository/subsonic_music_service.dart';
@@ -41,6 +42,8 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicService>> {
       displayName: config.displayName,
     );
     state = module.services;
+    // 主动失效上游 Provider，使首页切换按钮和平台列表刷新
+    ref.invalidate(musicServicesProvider);
     return service;
   }
 
@@ -50,6 +53,8 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicService>> {
     if (module == null) return;
     await module.removeAccount(sourceId);
     state = module.services;
+    // 主动失效上游 Provider，使首页切换按钮和平台列表刷新
+    ref.invalidate(musicServicesProvider);
   }
 }
 

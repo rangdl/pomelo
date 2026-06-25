@@ -24,6 +24,9 @@ class StorageKeys {
   static const musicLxMetadataPluginPath = 'music_lx_metadata_plugin_path';
   static const musicLxSourcePluginPaths = 'music_lx_source_plugin_paths';
 
+  // ======================== music_lx_server ========================
+  static const musicLxServerConfig = 'music_lx_server_config';
+
   // ======================== music_subsonic ========================
   static const musicSubsonicAccounts = 'music_subsonic_accounts';
 
