@@ -2,6 +2,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
+import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/music/model/song.dart';
@@ -10,6 +11,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import '../music/widgets/cover_placeholder.dart';
 import 'lyric_parser.dart';
 import 'lyric_view.dart';
+import 'widgets/play_queue_content.dart';
 
 /// 全屏播放页面
 ///
@@ -63,8 +65,8 @@ class PlaybackPage extends HookConsumerWidget {
           title: const Text('正在播放'),
           trailing: [
             IconButton.text(
-              icon: const Icon(Icons.more_horiz),
-              onPressed: () {},
+              icon: const Icon(Icons.queue_music, size: 22),
+              onPressed: () => _openPlayQueue(context),
             ),
           ],
         ),
@@ -107,6 +109,25 @@ class PlaybackPage extends HookConsumerWidget {
                 onSeek: onSeek,
               ),
             ),
+    );
+  }
+
+  /// 响应式打开播放队列
+  ///
+  /// 移动端：pushRoute 进入全屏页
+  /// 桌面端：openSheet 从右侧滑出 360px 宽面板
+  void _openPlayQueue(BuildContext context) {
+    Rx.action(
+      context,
+      mobile: () => context.pushRoute(const PlayQueueRoute()),
+      tablet: () => openSheet(
+        context: context,
+        position: OverlayPosition.right,
+        builder: (_) => const SizedBox(
+          width: 360,
+          child: PlayQueueContent(),
+        ),
+      ),
     );
   }
 }
