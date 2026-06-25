@@ -155,6 +155,12 @@ abstract class MusicService {
     throw UnimplementedError('$sourceName(getMusicUrl) 尚未实现');
   }
 
+  /// 获取歌词（LRC 文本）
+  ///
+  /// [song] 当前播放歌曲。
+  /// 默认返回 null，表示不支持歌词。各平台覆写以提供歌词获取能力。
+  Future<String?> getLyric(SongFull song) async => null;
+
   // ========== 排行榜 ==========
 
   /// 获取排行榜列表
