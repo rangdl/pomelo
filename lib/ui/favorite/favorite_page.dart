@@ -7,6 +7,7 @@ import 'package:pomelo/modules/music/model/music_source_type.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_service.dart';
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
+import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/platform/providers/lx_metadata_plugin_paths_provider.dart';
 import 'package:pomelo/ui/platform/providers/lx_source_plugin_paths_provider.dart';
@@ -15,10 +16,12 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/ui/platform/widgets/add_lx_script_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/add_subsonic_account_dialog.dart';
+import 'package:pomelo/ui/platform/widgets/add_lx_server_dialog.dart';
 
 /// 支持添加的平台类型
 enum _PlatformType {
   lx('Lx 音乐插件', Icons.code, '元数据与音源插件管理'),
+  lxServer('Lx Server', Icons.dns, '连接 lx-server HTTP API 服务'),
   subsonic('Subsonic', Icons.cloud, '连接 Subsonic 兼容的音乐服务器');
 
   final String label;
@@ -40,6 +43,8 @@ class FavoritePage extends HookConsumerWidget {
     final servicesAsync = ref.watch(musicServicesListProvider);
     final subsonicAccounts = ref.watch(subsonicAccountsProvider);
     final sourcePlugins = ref.watch(lxSourcePluginPathsProvider);
+    // 监听 lx-server 连接状态变化以触发服务列表刷新
+    ref.watch(lxServerConnectionProvider);
 
     return Scaffold(
       headers: [
@@ -105,6 +110,7 @@ class FavoritePage extends HookConsumerWidget {
     const typeOrder = [
       MusicSourceType.local,
       MusicSourceType.lx,
+      MusicSourceType.lxServer,
       MusicSourceType.subsonic,
       MusicSourceType.navidrome,
       MusicSourceType.emby,
@@ -336,6 +342,7 @@ class FavoritePage extends HookConsumerWidget {
   IconData _typeIcon(MusicSourceType type) => switch (type) {
         MusicSourceType.local => Icons.folder,
         MusicSourceType.lx => Icons.code,
+        MusicSourceType.lxServer => Icons.dns,
         MusicSourceType.subsonic => Icons.cloud,
         MusicSourceType.navidrome => Icons.navigation,
         MusicSourceType.emby => Icons.play_circle,
@@ -364,6 +371,23 @@ class FavoritePage extends HookConsumerWidget {
             );
           },
         );
+      case _PlatformType.lxServer:
+        Rx.action(
+          context,
+          mobile: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AddLxServerAccountPage(),
+              ),
+            );
+          },
+          tablet: () {
+            showDialog(
+              context: context,
+              builder: (_) => const AddLxServerAccountDialog(),
+            );
+          },
+        );
       case _PlatformType.subsonic:
         Rx.action(
           context,
@@ -385,19 +409,26 @@ class FavoritePage extends HookConsumerWidget {
   }
 
   /// 删除服务
-  void _removeService(
+  Future<void> _removeService(
     BuildContext context,
     WidgetRef ref,
     MusicService service,
     List<SubsonicMusicService> subsonicAccounts,
-  ) {
-    switch (service.sourceType) {
-      case MusicSourceType.lx:
-        ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin('');
-      case MusicSourceType.subsonic:
-        ref.read(subsonicAccountsProvider.notifier).removeAccount(service.sourceId);
-      default:
-        break;
+  ) async {
+    try {
+      switch (service.sourceType) {
+        case MusicSourceType.lx:
+          await ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin('');
+        case MusicSourceType.lxServer:
+          await ref.read(lxServerConnectionProvider.notifier).disconnect();
+        case MusicSourceType.subsonic:
+          await ref.read(subsonicAccountsProvider.notifier).removeAccount(service.sourceId);
+        default:
+          break;
+      }
+      Rx.toast.success('已移除 ${service.sourceName}');
+    } catch (e) {
+      Rx.toast.error('移除失败: $e');
     }
   }
 }

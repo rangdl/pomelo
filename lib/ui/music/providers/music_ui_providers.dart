@@ -9,7 +9,7 @@ import 'package:pomelo/modules/music/model/leaderboard.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
-import 'package:pomelo/modules/music_lx/model/lx_music_service.dart';
+import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 import 'package:pomelo/ui/music/model/service_result.dart';
 import 'package:pomelo/ui/music/model/merged_song.dart';
 
@@ -50,7 +50,7 @@ class SelectedSourceNotifier
     if (state.sourceId != null && state.libraryId != null) {
       final module = ref.read(musicModuleProvider);
       final service = module?.service(state.sourceId!);
-      if (service is LxMusicService) {
+      if (service != null) {
         service.setDefaultLibrary(state.libraryId!);
       }
     }
@@ -72,9 +72,7 @@ class SelectedSourceNotifier
     if (libraryId != null) {
       final module = ref.read(musicModuleProvider);
       final service = module?.service(sourceId);
-      if (service is LxMusicService) {
-        service.setDefaultLibrary(libraryId);
-      }
+      service?.setDefaultLibrary(libraryId);
     }
   }
 }
@@ -138,11 +136,12 @@ final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
 /// 所有已注册的音乐服务列表（监听 Lx 插件路径变化以触发刷新）
 ///
 /// 委托给 [musicServicesProvider]，额外监听 [lxMetadataPluginPathsProvider]
-/// 以在插件增删时自动重新计算。
+/// 和 [lxServerConnectionProvider] 以在插件增删或 lx-server 连接变化时自动重新计算。
 final musicServicesListProvider = FutureProvider<List<MusicService>>((
   ref,
 ) async {
   ref.watch(lxMetadataPluginPathsProvider);
+  ref.watch(lxServerConnectionProvider);
   return ref.watch(musicServicesProvider.future);
 });
 

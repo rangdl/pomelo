@@ -59,6 +59,7 @@ class LxMusicService extends MusicService {
   String? get defaultLibraryId => _defaultLibraryId;
 
   /// 设置默认库
+  @override
   void setDefaultLibrary(String libraryId) {
     if (_libraries.any((l) => l.id == libraryId)) {
       _defaultLibraryId = libraryId;

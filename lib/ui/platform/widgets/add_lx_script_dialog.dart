@@ -6,6 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../providers/lx_metadata_plugin_paths_provider.dart';
@@ -55,50 +56,86 @@ class _LxPluginContent extends HookConsumerWidget {
 
     Future<void> addMetadataPlugin() async {
       isLoading.value = true;
-      final paths = await pickFiles();
-      if (paths.isNotEmpty) {
-        await ref.read(lxMetadataPluginPathsProvider.notifier).addPlugin(paths.first);
+      try {
+        final paths = await pickFiles();
+        if (paths.isNotEmpty) {
+          await ref.read(lxMetadataPluginPathsProvider.notifier).addPlugin(paths.first);
+          Rx.toast.success('元数据插件已添加');
+        }
+      } catch (e) {
+        Rx.toast.error('添加失败: $e');
+      } finally {
+        isLoading.value = false;
       }
-      isLoading.value = false;
     }
 
     Future<void> replaceMetadataPlugin() async {
       isLoading.value = true;
-      final paths = await pickFiles();
-      if (paths.isNotEmpty) {
-        await ref.read(lxMetadataPluginPathsProvider.notifier).replacePlugin(paths.first);
+      try {
+        final paths = await pickFiles();
+        if (paths.isNotEmpty) {
+          await ref.read(lxMetadataPluginPathsProvider.notifier).replacePlugin(paths.first);
+          Rx.toast.success('元数据插件已替换');
+        }
+      } catch (e) {
+        Rx.toast.error('替换失败: $e');
+      } finally {
+        isLoading.value = false;
       }
-      isLoading.value = false;
     }
 
     Future<void> removeMetadataPlugin(String path) async {
-      await ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin(path);
+      try {
+        await ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin(path);
+        Rx.toast.success('元数据插件已移除');
+      } catch (e) {
+        Rx.toast.error('移除失败: $e');
+      }
     }
 
     // ========== 音源插件操作 ==========
 
     Future<void> addSourcePlugins() async {
       isLoading.value = true;
-      final paths = await pickFiles(allowMultiple: true);
-      for (final path in paths) {
-        await ref.read(lxSourcePluginPathsProvider.notifier).addPlugin(path);
+      try {
+        final paths = await pickFiles(allowMultiple: true);
+        for (final path in paths) {
+          await ref.read(lxSourcePluginPathsProvider.notifier).addPlugin(path);
+        }
+        if (paths.isNotEmpty) {
+          Rx.toast.success('已添加 ${paths.length} 个音源插件');
+        }
+      } catch (e) {
+        Rx.toast.error('添加失败: $e');
+      } finally {
+        isLoading.value = false;
       }
-      isLoading.value = false;
     }
 
     Future<void> replaceSourcePlugin(String oldPath) async {
       isLoading.value = true;
-      final paths = await pickFiles();
-      if (paths.isNotEmpty) {
-        await ref
-            .read(lxSourcePluginPathsProvider.notifier)
-            .replacePlugin(oldPath, paths.first);
+      try {
+        final paths = await pickFiles();
+        if (paths.isNotEmpty) {
+          await ref
+              .read(lxSourcePluginPathsProvider.notifier)
+              .replacePlugin(oldPath, paths.first);
+          Rx.toast.success('音源插件已替换');
+        }
+      } catch (e) {
+        Rx.toast.error('替换失败: $e');
+      } finally {
+        isLoading.value = false;
       }
-      isLoading.value = false;
     }
 
     Future<void> removeSourcePlugin(String path) async {
-      await ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(path);
+      try {
+        await ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(path);
+        Rx.toast.success('音源插件已移除');
+      } catch (e) {
+        Rx.toast.error('移除失败: $e');
+      }
     }
 
     final colorScheme = Theme.of(context).colorScheme;
