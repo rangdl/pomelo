@@ -153,10 +153,21 @@ class MyPage extends HookConsumerWidget {
           ),
           const SizedBox(height: 8),
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.volume_up, size: 20),
-              title: const Text('播放设置'),
-              trailing: const Icon(Icons.chevron_right, size: 20),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.volume_up, size: 20),
+                  title: const Text('播放设置'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.info_outline, size: 20),
+                  title: const Text('关于'),
+                  trailing: const Icon(Icons.chevron_right, size: 20),
+                  onTap: () => context.pushRoute(const AboutRoute()),
+                ),
+              ],
             ),
           ),
         ],
