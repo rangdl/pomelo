@@ -5,6 +5,8 @@ import 'package:pomelo/modules/music/model/song.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_placeholder.dart';
+import 'lyric_parser.dart';
+import 'lyric_view.dart';
 import 'playback_page.dart';
 
 /// 底部迷你播放器
@@ -32,6 +34,19 @@ class MiniPlayer extends HookConsumerWidget {
       audioPlayer.durationStream,
       initialData: audioPlayer.duration,
     ).data ?? Duration.zero;
+
+    // 歌词获取与解析（track 为空时传入空 Song 占位避免条件 hook）
+    final lyricAsync = track == null
+        ? const AsyncValue<String?>.data(null)
+        : ref.watch(lyricProvider(track));
+    final lyricText = lyricAsync.value;
+    final lyricLines = useMemoized(
+      () => lyricText != null ? LyricParser.parse(lyricText) : <LyricLine>[],
+      [lyricText],
+    );
+    final currentLyricIndex = LyricParser.findCurrentIndex(lyricLines, position);
+    final currentLyric =
+        currentLyricIndex >= 0 ? lyricLines[currentLyricIndex].text : null;
 
     if (track == null) return const SizedBox.shrink();
 
@@ -67,6 +82,7 @@ class MiniPlayer extends HookConsumerWidget {
                 position,
                 duration,
                 isDesktop,
+                currentLyric,
               ),
             ),
             // 底部细进度条
@@ -86,6 +102,7 @@ class MiniPlayer extends HookConsumerWidget {
     Duration position,
     Duration duration,
     bool isDesktop,
+    String? currentLyric,
   ) {
     return Row(
       children: [
@@ -95,7 +112,7 @@ class MiniPlayer extends HookConsumerWidget {
           child: _buildCover(context, track, isDesktop ? 48 : 40),
         ),
         const Gap(12),
-        // 歌曲信息
+        // 歌曲信息（含当前歌词行）
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,13 +127,26 @@ class MiniPlayer extends HookConsumerWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              Text(
-                track.artist,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).colorScheme.mutedForeground,
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: Text(
+                  // 有当前歌词时优先展示歌词，否则回退到歌手名
+                  (currentLyric != null && currentLyric.isNotEmpty)
+                      ? currentLyric
+                      : track.artist,
+                  key: ValueKey(
+                    (currentLyric != null && currentLyric.isNotEmpty)
+                        ? 'lyric:$currentLyric'
+                        : 'artist:${track.artist}',
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: (currentLyric != null && currentLyric.isNotEmpty)
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.mutedForeground,
+                  ),
                 ),
               ),
             ],
