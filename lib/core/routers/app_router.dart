@@ -47,6 +47,9 @@ class AppRouter extends RootStackRouter {
     /// 播放页面（全屏）
     AutoRoute(path: '/playback', page: PlaybackRoute.page),
 
+    /// 播放队列（移动端全屏；桌面端走 openSheet 不入路由）
+    AutoRoute(path: '/play-queue', page: PlayQueueRoute.page),
+
     /// 示例模块（无底部导航）
     AutoRoute(
       path: '/ex',
