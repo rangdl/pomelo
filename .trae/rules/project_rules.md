@@ -186,6 +186,72 @@ Rx.action(
 );
 ```
 
+### 弹窗与菜单交互模式
+
+所有"次要面板/菜单"按场景分流，统一用 `Rx.action(context, mobile: ..., tablet: ...)`：
+
+| 场景 | 移动端 | 桌面端 |
+|------|--------|--------|
+| 全屏页面（如播放队列页） | `context.pushRoute(XxxRoute())` | `openSheet(position: OverlayPosition.right, builder:)` |
+| 表单/详情对话框 | `Navigator.push(MaterialPageRoute)` 全屏页 | `showDialog(builder:)` |
+| 歌曲更多操作菜单 | `openSheet(position: OverlayPosition.bottom, draggable: true)` | `showDropdown(builder: (_) => DropdownMenu(children:))` |
+| 危险/确认操作 | `showDialog` 确认框 | `showDialog` 确认框 |
+
+```dart
+// 播放队列入口（移动端全屏 / 桌面端右侧 Sheet）
+void _openPlayQueue(BuildContext context) {
+  Rx.action(
+    context,
+    mobile: () => context.pushRoute(const PlayQueueRoute()),
+    tablet: () => openSheet(
+      context: context,
+      position: OverlayPosition.right,
+      builder: (_) => const SizedBox(width: 360, child: PlayQueueContent()),
+    ),
+  );
+}
+
+// 歌曲更多操作菜单（移动端底部 Sheet / 桌面端 DropdownMenu）
+void _openActions(BuildContext context, WidgetRef ref) {
+  void close() => Navigator.of(context, rootNavigator: true).pop();
+  Rx.action(
+    context,
+    mobile: () => openSheet(
+      context: context,
+      position: OverlayPosition.bottom,
+      draggable: true,
+      builder: (_) => SongMoreActionsContent(song: song, onClose: close),
+    ),
+    tablet: () => showDropdown(
+      context: context,
+      builder: (_) => DropdownMenu(children: _buildMenuItems(context, ref, close)),
+    ),
+  );
+}
+```
+
+**共享内容组件模式**：移动端与桌面端复用同一组件，移动端用 `Column + ListTile + Divider(height: 1)` 嵌入 `openSheet`，桌面端用 `DropdownMenu(children: List<MenuItem>)`。
+
+**关闭面板统一约定**：`Navigator.of(context, rootNavigator: true).pop()`（覆盖 `openSheet`/`showDialog`/`showDropdown`）。
+
+### shadcn_flutter 菜单/按钮 API
+
+| 组件 | 用途 | 关键参数 |
+|------|------|---------|
+| `openSheet` | 侧边/底部面板 | `position: OverlayPosition.right/bottom/left/top`、`draggable`、`barrierDismissible` |
+| `showDropdown<T>` | 命令式下拉菜单 | `context`、`builder` 返回 `DropdownMenu`，返回 `OverlayCompleter<T?>` |
+| `DropdownMenu` | 菜单容器 | `children: List<MenuItem>` |
+| `MenuButton` | 菜单项（具体类） | `leading`、`child`、`onPressed: (BuildContext) =>`、`trailing` |
+| `MenuLabel` | 菜单标题（不可点） | `child` |
+| `MenuDivider` | 菜单分隔线 | 无参数 |
+| `PrimaryButton` | 主按钮 | `leading:`（图标）、`child:`（文案）、`onPressed:`、`enabled:` |
+| `GhostButton` / `DestructiveButton` | 次要/危险按钮 | 同上 |
+
+**易错点**：
+- `MenuItem` 是**抽象类**，不能直接 `MenuItem(...)`，必须用具体子类 `MenuButton`
+- `PrimaryButton` 没有 `.icon` 命名构造，加图标用 `leading:` 参数
+- `MenuButton.onPressed` 签名是 `void Function(BuildContext)`，不是 `VoidCallback`
+
 ---
 
 ## 多源错误处理
