@@ -10,6 +10,7 @@ import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/song_list.dart';
 import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
+import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌单详情 Provider
@@ -76,6 +77,7 @@ class PlaylistDetailPage extends HookConsumerWidget {
             coverUrl: coverUrl,
             creator: creator,
             songCount: songs.length,
+            songs: songs,
           );
           // 歌曲列表内容
           final songListContent = songs.isEmpty
@@ -88,7 +90,7 @@ class PlaylistDetailPage extends HookConsumerWidget {
                     ),
                   ),
                 )
-              : SongList(songs: songs);
+              : SongList(songs: songs, showMoreActions: true);
 
           return Rx.layout(
             context,
@@ -151,12 +153,14 @@ class _PlaylistHeader extends StatelessWidget {
   final String? coverUrl;
   final String creator;
   final int songCount;
+  final List<Song> songs;
 
   const _PlaylistHeader({
     required this.name,
     this.coverUrl,
     required this.creator,
     required this.songCount,
+    required this.songs,
   });
 
   @override
@@ -223,6 +227,8 @@ class _PlaylistHeader extends StatelessWidget {
                       color: colorScheme.mutedForeground,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  PlayAllButton(songs: songs),
                 ],
               ),
             ),
