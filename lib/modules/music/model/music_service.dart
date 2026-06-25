@@ -34,6 +34,12 @@ abstract class MusicService {
   /// 多库服务覆写此属性，在搜索/播放时使用该库。
   String? get defaultLibraryId => null;
 
+  /// 设置默认库（多库服务覆写此方法）
+  ///
+  /// 默认空实现，单库服务无需关心。
+  /// 多库服务（如 Lx、LxServer）覆写以切换当前活跃库。
+  void setDefaultLibrary(String libraryId) {}
+
   /// 同类型服务的最大注册数量
   ///
   /// 用于限制同一 [sourceType] 的服务注册上限。

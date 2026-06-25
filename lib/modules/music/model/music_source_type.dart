@@ -6,6 +6,9 @@ enum MusicSourceType {
   /// Lx 在线音乐平台（通过 JS 脚本）
   lx,
 
+  /// Lx Server（HTTP API 服务）
+  lxServer,
+
   /// Subsonic 兼容服务
   subsonic,
 
@@ -22,6 +25,7 @@ extension MusicSourceTypeX on MusicSourceType {
   String get displayName => switch (this) {
         MusicSourceType.local => '本地音乐',
         MusicSourceType.lx => '在线音乐',
+        MusicSourceType.lxServer => 'Lx Server',
         MusicSourceType.subsonic => 'Subsonic',
         MusicSourceType.navidrome => 'Navidrome',
         MusicSourceType.emby => 'Emby',

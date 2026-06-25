@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
-import 'package:flutter/foundation.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/modules/music/model/song.dart';
@@ -83,6 +82,34 @@ class ServerPlaybackRoutes {
 
   /// 清除所有 URL 缓存
   void clearAllUrlCache() => _urlCache.clear();
+
+  /// Hop-by-hop 头部集合
+  ///
+  /// 这些头部属于传输层，不应原样转发给 shelf。
+  /// 尤其 `transfer-encoding`：Dio/dart:io 已在传输层解码 chunked，
+  /// body 为原始字节；shelf 看到该头会再次尝试解码导致 FormatException。
+  static const _hopByHopHeaders = {
+    'transfer-encoding',
+    'content-length',
+    'connection',
+    'keep-alive',
+    'proxy-authenticate',
+    'proxy-authorization',
+    'te',
+    'trailer',
+    'upgrade',
+  };
+
+  /// 过滤 hop-by-hop 头部，由 shelf/dart:io 自行决定分块方式
+  Map<String, List<String>> _sanitizeHeaders(
+    Map<String, List<String>> headers,
+  ) {
+    return Map.fromEntries(
+      headers.entries.where(
+        (e) => !_hopByHopHeaders.contains(e.key.toLowerCase()),
+      ),
+    );
+  }
 
   // Future<String> _getTrackCacheFilePath(SourcedTrack track) async {
   //   String filePath = join(
@@ -234,46 +261,12 @@ class ServerPlaybackRoutes {
       validateStatus: (status) => status! < 400,
     );
 
-    final contentLengthRes =
-        await Future<dio_lib.Response?>.value(
-          dio.head(
-            url,
-            options: options.copyWith(responseType: ResponseType.bytes),
-          ),
-        ).catchError((e, stack) async {
-          log.error('Playback', e.toString(), error: e, stackTrace: stack);
-          // AppLogger.reportError(e, stack);
-
-          // final sourcedTrack = await ref
-          //     .read(sourcedTrackProvider(track.query).notifier)
-          //     .refreshStreamingUrl();
-
-          url = track.map(full: (f) => f.src, local: (l) => l.path);
-
-          return dio.head(url, options: options);
-        });
-
-    // Redirect to m3u8 link directly as it handles range requests internally
-    if (contentLengthRes?.headers.value("content-type") ==
-        "application/vnd.apple.mpegurl") {
-      return dio_lib.Response<Uint8List>(
-        statusCode: 301,
-        statusMessage: "M3U8 Redirect",
-        headers: Headers.fromMap({
-          "location": [url],
-          "content-type": ["application/vnd.apple.mpegurl"],
-        }),
-        requestOptions: RequestOptions(path: request.requestedUri.toString()),
-        isRedirect: true,
-      );
-    }
-
     final res = await dio.get<ResponseBody>(url, options: options);
 
     log.debug(
       'Playback',
       'Response for track: ${track.name}, '
-      'Status: ${res.statusCode}, Headers: ${res.headers.map}',
+          'Status: ${res.statusCode}, Headers: ${res.headers.map}',
     );
 
     // if (!userPreferences.cacheMusic) {
@@ -360,7 +353,10 @@ class ServerPlaybackRoutes {
       }
       final res = await streamTrackInformation(request, activeTrack);
 
-      return Response(res.statusCode!, headers: res.headers.map);
+      return Response(
+        res.statusCode!,
+        headers: _sanitizeHeaders(res.headers.map),
+      );
     } catch (e, stack) {
       log.error('Playback', e.toString(), error: e, stackTrace: stack);
       // AppLogger.reportError(e, stack);
@@ -381,24 +377,20 @@ class ServerPlaybackRoutes {
       if (activeTrack == null || activeTrack is! SongFull) {
         return Response.notFound('No active track or track is not streamable');
       }
-      final res = await streamTrack(
-        request,
-        activeTrack,
-        request.headers,
-      );
+      final res = await streamTrack(request, activeTrack, request.headers);
 
       if (res.data is ResponseBody) {
         return Response(
           res.statusCode!,
           body: (res.data as ResponseBody).stream,
-          headers: res.headers.map,
+          headers: _sanitizeHeaders(res.headers.map),
         );
       }
 
       return Response(
         res.statusCode!,
         body: res.data,
-        headers: res.headers.map,
+        headers: _sanitizeHeaders(res.headers.map),
       );
     } catch (e, stack) {
       log.error('Playback', e.toString(), error: e, stackTrace: stack);
