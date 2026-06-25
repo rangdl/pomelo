@@ -310,6 +310,45 @@ class LxServerClient {
     }
   }
 
+  // ========== 歌词 ==========
+
+  /// 获取歌词
+  ///
+  /// POST /api/music/lyric
+  /// [songInfo] 完整歌曲信息，服务端根据 source 选取所需字段。
+  /// 返回 LRC 格式歌词文本，无歌词返回 null。
+  Future<String?> getLyric({
+    required Map<String, dynamic> songInfo,
+  }) async {
+    await ensureLoggedIn();
+    final source = songInfo['source'] as String? ?? '';
+    final hash = songInfo['hash'] as String? ?? '';
+    log.debug('LxServer', '获取歌词: source=$source, hash=$hash');
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '$serverUrl/api/music/lyric',
+        data: {'songInfo': songInfo},
+        options: _authOptions.copyWith(contentType: Headers.jsonContentType),
+      );
+      final data = response.data!;
+      final lyric = data['lyric'] as String?;
+      if (lyric == null || lyric.isEmpty) {
+        log.debug('LxServer', '获取歌词为空: source=$source, hash=$hash');
+        return null;
+      }
+      log.debug('LxServer', '获取歌词成功: source=$source, hash=$hash');
+      return lyric;
+    } catch (e, s) {
+      log.error(
+        'LxServer',
+        '获取歌词异常: source=$source, hash=$hash',
+        error: e,
+        stackTrace: s,
+      );
+      return null;
+    }
+  }
+
   // ========== 服务器状态 ==========
 
   /// 获取服务器状态（测试连接）

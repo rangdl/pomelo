@@ -295,6 +295,16 @@ class LxServerMusicService extends MusicService {
     return client.getMusicUrl(songInfo: songInfo, quality: quality);
   }
 
+  // ========== 歌词 ==========
+
+  @override
+  Future<String?> getLyric(SongFull song) async {
+    final songInfo = Map<String, dynamic>.from(song.meta);
+    songInfo['source'] ??= song.source.libraryId ?? _currentSource;
+    songInfo['hash'] ??= song.id;
+    return client.getLyric(songInfo: songInfo);
+  }
+
   /// 选择最高可用质量
   ///
   /// 优先级：flac24bit > flac > 320k > 128k

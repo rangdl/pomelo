@@ -8,6 +8,8 @@ import 'package:pomelo/modules/music/model/song.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_placeholder.dart';
+import 'lyric_parser.dart';
+import 'lyric_view.dart';
 
 /// 全屏播放页面
 ///
@@ -25,14 +27,29 @@ class PlaybackPage extends HookConsumerWidget {
     final track = state.activeTrack;
 
     // 实时播放进度
-    final position = useStream(
-      audioPlayer.positionStream,
-      initialData: audioPlayer.position,
-    ).data ?? Duration.zero;
-    final duration = useStream(
-      audioPlayer.durationStream,
-      initialData: audioPlayer.duration,
-    ).data ?? Duration.zero;
+    final position =
+        useStream(
+          audioPlayer.positionStream,
+          initialData: audioPlayer.position,
+        ).data ??
+        Duration.zero;
+    final duration =
+        useStream(
+          audioPlayer.durationStream,
+          initialData: audioPlayer.duration,
+        ).data ??
+        Duration.zero;
+
+    // 歌词获取与解析
+    final lyricAsync = track == null
+        ? const AsyncValue<String?>.data(null)
+        : ref.watch(lyricProvider(track));
+    final lyricText = lyricAsync.value;
+    final lyricLines = useMemoized(
+      () => lyricText != null ? LyricParser.parse(lyricText) : <LyricLine>[],
+      [lyricText],
+    );
+    void onSeek(Duration d) => audioPlayer.seek(d);
 
     return Scaffold(
       headers: [
@@ -64,6 +81,8 @@ class PlaybackPage extends HookConsumerWidget {
                 position: position,
                 duration: duration,
                 audioPlayer: audioPlayer,
+                lyricLines: lyricLines,
+                onSeek: onSeek,
               ),
               tablet: () => _DesktopLayout(
                 track: track,
@@ -73,6 +92,8 @@ class PlaybackPage extends HookConsumerWidget {
                 position: position,
                 duration: duration,
                 audioPlayer: audioPlayer,
+                lyricLines: lyricLines,
+                onSeek: onSeek,
               ),
               desktop: () => _DesktopLayout(
                 track: track,
@@ -82,6 +103,8 @@ class PlaybackPage extends HookConsumerWidget {
                 position: position,
                 duration: duration,
                 audioPlayer: audioPlayer,
+                lyricLines: lyricLines,
+                onSeek: onSeek,
               ),
             ),
     );
@@ -97,6 +120,8 @@ class _MobileLayout extends StatelessWidget {
   final Duration position;
   final Duration duration;
   final dynamic audioPlayer;
+  final List<LyricLine> lyricLines;
+  final void Function(Duration)? onSeek;
 
   const _MobileLayout({
     required this.track,
@@ -106,6 +131,8 @@ class _MobileLayout extends StatelessWidget {
     required this.position,
     required this.duration,
     required this.audioPlayer,
+    required this.lyricLines,
+    required this.onSeek,
   });
 
   @override
@@ -118,10 +145,10 @@ class _MobileLayout extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
-            const Gap(24),
+            const Gap(16),
             // 封面
             Expanded(
-              flex: 5,
+              flex: 3,
               child: Center(
                 child: AspectRatio(
                   aspectRatio: 1,
@@ -132,10 +159,19 @@ class _MobileLayout extends StatelessWidget {
                 ),
               ),
             ),
-            const Gap(32),
+            const Gap(16),
             // 歌曲信息
             _buildInfo(context, albumName),
-            const Gap(24),
+            const Gap(8),
+            // 歌词滚动
+            Expanded(
+              child: LyricView(
+                lines: lyricLines,
+                position: position,
+                onSeek: onSeek,
+              ),
+            ),
+            const Gap(8),
             // 进度条
             _buildSeekBar(context),
             const Gap(16),
@@ -156,9 +192,8 @@ class _MobileLayout extends StatelessWidget {
       return Image.network(
         coverUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => CoverPlaceholder(
-          colorScheme: Theme.of(context).colorScheme,
-        ),
+        errorBuilder: (_, __, ___) =>
+            CoverPlaceholder(colorScheme: Theme.of(context).colorScheme),
       );
     }
     return CoverPlaceholder(colorScheme: Theme.of(context).colorScheme);
@@ -208,7 +243,9 @@ class _MobileLayout extends StatelessWidget {
         Slider(
           value: SliderValue.single(totalMs > 0 ? posMs / totalMs : 0),
           onChanged: totalMs > 0
-              ? (v) => audioPlayer.seek(Duration(milliseconds: (v.value * totalMs).toInt()))
+              ? (v) => audioPlayer.seek(
+                  Duration(milliseconds: (v.value * totalMs).toInt()),
+                )
               : null,
         ),
         Padding(
@@ -280,9 +317,7 @@ class _MobileLayout extends StatelessWidget {
           icon: Icon(
             Icons.shuffle,
             size: 20,
-            color: shuffled
-                ? Theme.of(context).colorScheme.primary
-                : null,
+            color: shuffled ? Theme.of(context).colorScheme.primary : null,
           ),
           onPressed: () => audioPlayer.setShuffle(!shuffled),
         ),
@@ -291,8 +326,8 @@ class _MobileLayout extends StatelessWidget {
             loopMode == PlaylistMode.loop
                 ? Icons.repeat
                 : loopMode == PlaylistMode.single
-                    ? Icons.repeat_one
-                    : Icons.repeat,
+                ? Icons.repeat_one
+                : Icons.repeat,
             size: 20,
             color: loopMode != PlaylistMode.none
                 ? Theme.of(context).colorScheme.primary
@@ -321,6 +356,8 @@ class _DesktopLayout extends StatelessWidget {
   final Duration position;
   final Duration duration;
   final dynamic audioPlayer;
+  final List<LyricLine> lyricLines;
+  final void Function(Duration)? onSeek;
 
   const _DesktopLayout({
     required this.track,
@@ -330,6 +367,8 @@ class _DesktopLayout extends StatelessWidget {
     required this.position,
     required this.duration,
     required this.audioPlayer,
+    required this.lyricLines,
+    required this.onSeek,
   });
 
   @override
@@ -366,7 +405,16 @@ class _DesktopLayout extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildInfo(context, albumName),
-                      const Gap(32),
+                      const Gap(16),
+                      SizedBox(
+                        height: 240,
+                        child: LyricView(
+                          lines: lyricLines,
+                          position: position,
+                          onSeek: onSeek,
+                        ),
+                      ),
+                      const Gap(16),
                       _buildSeekBar(context),
                       const Gap(24),
                       _buildMainControls(context),
@@ -388,9 +436,8 @@ class _DesktopLayout extends StatelessWidget {
       return Image.network(
         coverUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => CoverPlaceholder(
-          colorScheme: Theme.of(context).colorScheme,
-        ),
+        errorBuilder: (_, __, ___) =>
+            CoverPlaceholder(colorScheme: Theme.of(context).colorScheme),
       );
     }
     return CoverPlaceholder(colorScheme: Theme.of(context).colorScheme);
@@ -441,7 +488,9 @@ class _DesktopLayout extends StatelessWidget {
         Slider(
           value: SliderValue.single(totalMs > 0 ? posMs / totalMs : 0),
           onChanged: totalMs > 0
-              ? (v) => audioPlayer.seek(Duration(milliseconds: (v.value * totalMs).toInt()))
+              ? (v) => audioPlayer.seek(
+                  Duration(milliseconds: (v.value * totalMs).toInt()),
+                )
               : null,
         ),
         Padding(
@@ -522,8 +571,8 @@ class _DesktopLayout extends StatelessWidget {
             loopMode == PlaylistMode.loop
                 ? Icons.repeat
                 : loopMode == PlaylistMode.single
-                    ? Icons.repeat_one
-                    : Icons.repeat,
+                ? Icons.repeat_one
+                : Icons.repeat,
             size: 20,
             color: loopMode != PlaylistMode.none
                 ? Theme.of(context).colorScheme.primary
