@@ -257,7 +257,7 @@ class SubsonicMusicService extends MusicService {
   // ========== 播放链接 ==========
 
   @override
-  Future<String> getMusicUrl(SongFull song) async {
+  Future<String> getMusicUrl(SongFull song, {String? quality}) async {
     return client.buildStreamUrl(song.id);
   }
 

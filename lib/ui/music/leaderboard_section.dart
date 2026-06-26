@@ -1,9 +1,8 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
+import 'package:pomelo/ui/music/widgets/song_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 排行榜版块组件
@@ -115,42 +114,10 @@ class _LeaderboardSongs extends ConsumerWidget {
           itemCount: displaySongs.length,
           itemBuilder: (context, index) {
             final song = displaySongs[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Card(
-                child: ListTile(
-                  leading: Container(
-                    width: 24,
-                    height: 24,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: index < 3 ? FontWeight.bold : null,
-                        color: index < 3
-                            ? colorScheme.primary
-                            : colorScheme.mutedForeground,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    song.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    '${song.artist}  ·  ${song.formattedDuration}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: PlayPauseButton(song: song),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
+            return SongTile(
+              song: song,
+              index: index + 1,
+              trailing: PlayPauseButton(song: song),
             );
           },
         );

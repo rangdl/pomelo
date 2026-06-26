@@ -8,6 +8,8 @@ import 'package:pomelo/core/storage/storage_keys.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
+import 'package:pomelo/modules/music_lx_server/model/lx_server_quality.dart';
+import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 
 /// 我的页面 — 用户设置中心
@@ -29,6 +31,7 @@ class MyPage extends HookConsumerWidget {
     final themeModeAsync = ref.watch(settingWatcherProvider(StorageKeys.myThemeMode));
     final themeMode = themeModeAsync.value ?? 'system';
     final localDirs = ref.watch(localMusicDirsProvider);
+    final selectedQuality = ref.watch(selectedLxServerQualityProvider);
 
     final listView = ListView(
       padding: const EdgeInsets.all(16),
@@ -137,6 +140,89 @@ class MyPage extends HookConsumerWidget {
                     },
                   ),
                 ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ===== 播放 =====
+          Text(
+            '播放',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.mutedForeground,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.graphic_eq, size: 20),
+                  title: const Text('音质偏好'),
+                  subtitle: Text(
+                    '当前：$selectedQuality.label',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.mutedForeground,
+                    ),
+                  ),
+                  trailing: Select<LxServerQuality>(
+                    value: selectedQuality,
+                    onChanged: (value) {
+                      if (value != null) {
+                        ref
+                            .read(selectedLxServerQualityProvider.notifier)
+                            .set(value);
+                      }
+                    },
+                    popup: SelectPopup(
+                      items: SelectItemList(
+                        children: LxServerQuality.values
+                            .map(
+                              (q) => SelectItemButton(
+                                value: q,
+                                child: Text(q.label),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ).call,
+                    itemBuilder: (context, value) => Text(
+                      value.label,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.mutedForeground,
+                      ),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.mutedForeground,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '仅对 lx_server 音源生效，不支持所选音质时自动降级',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.mutedForeground,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
