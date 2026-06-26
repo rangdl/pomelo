@@ -151,7 +151,11 @@ abstract class MusicService {
   Future<PaginationResponse<Playlist>> getPlaylists({int page = 1, int limit = 20});
 
   /// 获取歌曲播放链接 用于音乐信息和播放链接分步获取
-  Future<String> getMusicUrl(SongFull song) {
+  ///
+  /// [quality] 可选音质标识（如 'flac24bit'、'flac'、'320k'、'128k'），
+  /// 服务按需处理：支持则使用，不支持则按自身策略降级。
+  /// 不传或传 null 时由服务自行决定默认音质。
+  Future<String> getMusicUrl(SongFull song, {String? quality}) {
     throw UnimplementedError('$sourceName(getMusicUrl) 尚未实现');
   }
 

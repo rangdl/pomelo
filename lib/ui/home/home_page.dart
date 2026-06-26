@@ -1,7 +1,6 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/models.dart';
@@ -10,6 +9,7 @@ import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
+import 'package:pomelo/ui/music/widgets/song_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Home 页面
@@ -343,41 +343,10 @@ class _LeaderboardSongs extends ConsumerWidget {
           itemCount: songs.length,
           itemBuilder: (context, index) {
             final song = songs[index];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Card(
-                child: ListTile(
-                  leading: Container(
-                    width: 28,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '${index + 1}',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: index < 3 ? FontWeight.bold : null,
-                        color: index < 3
-                            ? colorScheme.primary
-                            : colorScheme.mutedForeground,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    song.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    '${song.artist}  ·  ${song.formattedDuration}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: PlayPauseButton(song: song),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                ),
-              ),
+            return SongTile(
+              song: song,
+              index: index + 1,
+              trailing: PlayPauseButton(song: song),
             );
           },
         );

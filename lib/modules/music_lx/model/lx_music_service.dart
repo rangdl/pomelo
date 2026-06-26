@@ -204,7 +204,7 @@ class LxMusicService extends MusicService {
   // ========== 播放链接 ==========
 
   @override
-  Future<String> getMusicUrl(SongFull song) async {
+  Future<String> getMusicUrl(SongFull song, {String? quality}) async {
     if (sourceEngine == null) {
       throw UnimplementedError(
           '$sourceName(getMusicUrl) 未加载音源插件，无法获取播放链接');
@@ -222,9 +222,9 @@ class LxMusicService extends MusicService {
         throw UnimplementedError(
             '$sourceName(getMusicUrl) 音源插件不支持库 $libraryId，且无可用回退库');
       }
-      return sourceEngine!.getMusicUrl(fallback, song);
+      return sourceEngine!.getMusicUrl(fallback, song, quality: quality);
     }
-    return sourceEngine!.getMusicUrl(libraryId, song);
+    return sourceEngine!.getMusicUrl(libraryId, song, quality: quality);
   }
 
   // ========== 排行榜 ==========

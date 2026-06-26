@@ -105,7 +105,9 @@ class AudioPlayerModule extends Module {
           }
         }
         if (service == null) return track.map(full: (f) => f.src, local: (l) => l.path);
-        return service.getMusicUrl(track as SongFull);
+        // 读取用户音质偏好（持久化在 Settings，与 selectedLxServerQualityProvider 一致）
+        final preferredQuality = Settings.get(StorageKeys.musicLxServerQuality);
+        return service.getMusicUrl(track as SongFull, quality: preferredQuality);
       },
     );
 
