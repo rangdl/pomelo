@@ -91,5 +91,5 @@ final localMusicSongCountProvider = Provider<int>((ref) {
   // 监听版本号，版本变化时触发重建
   ref.watch(localMusicVersionProvider);
   final service = ref.read(localMusicServiceProvider);
-  return service?.songCount ?? 0;
+  return service?.trackCount ?? 0;
 });

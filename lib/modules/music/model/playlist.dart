@@ -1,8 +1,11 @@
-import 'song.dart';
+import 'package:flutter/foundation.dart';
+import 'package:pomelo/core/extensions/date_time.dart';
+import 'track.dart';
 
 /// 歌单分类
 ///
-/// 用于对歌单进行分组浏览，如“推荐”“流行”“摇滚”等。
+/// 用于对歌单进行分组浏览，如"推荐""流行""摇滚"等。
+@immutable
 class PlaylistCategory {
   /// 分类唯一标识
   final String id;
@@ -19,11 +22,56 @@ class PlaylistCategory {
     this.parentId,
   });
 
+  /// 从 JSON 创建
+  factory PlaylistCategory.fromJson(Map<String, dynamic> json) {
+    return PlaylistCategory(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? json['id'] as String,
+      parentId: json['parentId'] as String?,
+    );
+  }
+
+  /// 转换为 JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      if (parentId != null) 'parentId': parentId,
+    };
+  }
+
+  /// 创建副本
+  PlaylistCategory copyWith({
+    String? id,
+    String? name,
+    String? parentId,
+    bool clearParentId = false,
+  }) {
+    return PlaylistCategory(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      parentId: clearParentId ? null : (parentId ?? this.parentId),
+    );
+  }
+
   @override
   String toString() => 'PlaylistCategory(id: $id, name: $name)';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is PlaylistCategory &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          parentId == other.parentId;
+
+  @override
+  int get hashCode => Object.hash(id, name, parentId);
 }
 
 /// 歌单模型
+@immutable
 class Playlist {
   /// 歌单唯一标识
   final String id;
@@ -31,58 +79,77 @@ class Playlist {
   /// 歌单名称
   final String name;
 
-  /// 歌单封面URL
-  final String? coverUrl;
+  /// 歌单封面
+  final String? coverArt;
 
-  /// 创建者
-  final String creator;
+  /// 所有者
+  final String? owner;
 
-  /// 描述
-  final String? description;
+  /// 简介
+  final String? comment;
 
-  /// 歌曲列表
-  final List<Song> songs;
+  /// 是否公开
+  final bool public;
 
-  /// 数据来源 (服务标识, 名称, 库标识, 库名称)
-  final ({String id, String name, String? libraryId, String? libraryName}) source;
+  /// 歌曲数量
+  final int songCount;
+
+  /// 总时长（秒）
+  final int duration;
+
+  /// 创建时间
+  final DateTime? created;
+
+  /// 最后修改时间
+  final DateTime? changed;
+
+  /// 曲目列表（Pomelo 扩展，默认空列表）
+  final List<Track> tracks;
+
+  /// 数据来源
+  final ({String id, String name, String? libraryId, String? libraryName})?
+  source;
 
   /// 来源原始数据
   final Map<String, dynamic>? meta;
 
-  /// 创建时间
-  final DateTime createdAt;
-
-  Playlist({
+  const Playlist({
     required this.id,
     required this.name,
-    this.coverUrl,
-    required this.creator,
-    this.description,
-    this.songs = const [],
-    required this.source,
+    this.coverArt,
+    this.owner,
+    this.comment,
+    this.public = false,
+    this.songCount = 0,
+    this.duration = 0,
+    this.created,
+    this.changed,
+    this.tracks = const [],
+    this.source,
     this.meta,
-    DateTime? createdAt,
-  }) : createdAt = createdAt ?? DateTime.now();
+  });
 
-  /// 歌曲数量
-  int get songCount => songs.length;
-
-  /// 总时长（秒）
-  int get totalDuration =>
-      songs.fold<int>(0, (sum, song) => sum + song.duration);
-
-  /// 从JSON创建
+  /// 从 JSON 创建
   factory Playlist.fromJson(Map<String, dynamic> json) {
     final src = json['source'] as Map<String, dynamic>?;
     return Playlist(
       id: json['id'] as String,
       name: json['name'] as String,
-      coverUrl: json['cover_url'] as String?,
-      creator: json['creator'] as String,
-      description: json['description'] as String?,
-      songs:
+      coverArt: json['coverArt'] as String? ?? json['cover_url'] as String?,
+      owner: json['owner'] as String? ?? json['creator'] as String?,
+      comment: json['comment'] as String? ?? json['description'] as String?,
+      public: json['public'] as bool? ?? false,
+      songCount: (json['songCount'] as num?)?.toInt() ??
+          (json['song_count'] as num?)?.toInt() ??
+          0,
+      duration: (json['duration'] as num?)?.toInt() ?? 0,
+      created: tryParseDateTime(json['created'] ?? json['created_at']),
+      changed: tryParseDateTime(json['changed']),
+      tracks: (json['tracks'] as List<dynamic>?)
+              ?.map((e) => Track.fromJson(e as Map<String, dynamic>))
+              .toList() ??
           (json['songs'] as List<dynamic>?)
-              ?.map((e) => Song.fromJson(e as Map<String, dynamic>))
+              ?.map((e) => Track.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
       source: src != null
@@ -92,34 +159,109 @@ class Playlist {
               libraryId: src['libraryId'] as String?,
               libraryName: src['libraryName'] as String?,
             )
-          : (id: 'local', name: '本地', libraryId: null, libraryName: null),
-      meta: json['meta'] as Map<String, dynamic>?,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
-          : DateTime.now(),
+          : null,
+      meta: json['meta'] != null
+          ? Map<String, dynamic>.from(json['meta'] as Map)
+          : null,
     );
   }
 
-  /// 转换为JSON
+  /// 转换为 JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
-      'cover_url': coverUrl,
-      'creator': creator,
-      'description': description,
-      'songs': songs.map((s) => s.toJson()).toList(),
-      'source': {
-        'id': source.id,
-        'name': source.name,
-        if (source.libraryId != null) 'libraryId': source.libraryId,
-        if (source.libraryName != null) 'libraryName': source.libraryName,
-      },
-      'meta': meta,
-      'created_at': createdAt.toIso8601String(),
+      if (coverArt != null) 'coverArt': coverArt,
+      if (owner != null) 'owner': owner,
+      if (comment != null) 'comment': comment,
+      'public': public,
+      'songCount': songCount,
+      'duration': duration,
+      if (created != null) 'created': created!.toIso8601String(),
+      if (changed != null) 'changed': changed!.toIso8601String(),
+      'tracks': tracks.map((t) => t.toJson()).toList(),
+      if (source != null)
+        'source': {
+          'id': source!.id,
+          'name': source!.name,
+          if (source!.libraryId != null) 'libraryId': source!.libraryId,
+          if (source!.libraryName != null) 'libraryName': source!.libraryName,
+        },
+      if (meta != null) 'meta': meta,
     };
   }
 
+  /// 创建副本
+  Playlist copyWith({
+    String? id,
+    String? name,
+    String? coverArt,
+    String? owner,
+    String? comment,
+    bool? public,
+    int? songCount,
+    int? duration,
+    DateTime? created,
+    DateTime? changed,
+    List<Track>? tracks,
+    ({String id, String name, String? libraryId, String? libraryName})? source,
+    Map<String, dynamic>? meta,
+    bool clearCoverArt = false,
+    bool clearOwner = false,
+    bool clearComment = false,
+    bool clearCreated = false,
+    bool clearChanged = false,
+    bool clearSource = false,
+    bool clearMeta = false,
+  }) {
+    return Playlist(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      coverArt: clearCoverArt ? null : (coverArt ?? this.coverArt),
+      owner: clearOwner ? null : (owner ?? this.owner),
+      comment: clearComment ? null : (comment ?? this.comment),
+      public: public ?? this.public,
+      songCount: songCount ?? this.songCount,
+      duration: duration ?? this.duration,
+      created: clearCreated ? null : (created ?? this.created),
+      changed: clearChanged ? null : (changed ?? this.changed),
+      tracks: tracks ?? this.tracks,
+      source: clearSource ? null : (source ?? this.source),
+      meta: clearMeta ? null : (meta ?? this.meta),
+    );
+  }
+
   @override
-  String toString() => 'Playlist(id: $id, name: $name, songs: ${songs.length})';
+  String toString() =>
+      'Playlist(id: $id, name: $name, tracks: ${tracks.length})';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Playlist &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          name == other.name &&
+          coverArt == other.coverArt &&
+          owner == other.owner &&
+          comment == other.comment &&
+          public == other.public &&
+          songCount == other.songCount &&
+          duration == other.duration &&
+          created == other.created &&
+          changed == other.changed;
+
+  @override
+  int get hashCode => Object.hash(
+        id,
+        name,
+        coverArt,
+        owner,
+        comment,
+        public,
+        songCount,
+        duration,
+        created,
+        changed,
+      );
 }

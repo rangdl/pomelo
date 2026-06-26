@@ -5,7 +5,7 @@ import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_placeholder.dart';
@@ -134,7 +134,7 @@ class PlaybackPage extends HookConsumerWidget {
 
 /// 移动端布局 — 竖向排列
 class _MobileLayout extends StatelessWidget {
-  final Song track;
+  final Track track;
   final bool isPlaying;
   final PlaylistMode loopMode;
   final bool shuffled;
@@ -158,8 +158,8 @@ class _MobileLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final coverUrl = track.map(full: (f) => f.coverUrl, local: (l) => null);
-    final albumName = track.map(full: (f) => f.albumName, local: (l) => null);
+    final coverUrl = track.coverArt;
+    final albumName = track.album;
 
     return SafeArea(
       child: Padding(
@@ -224,14 +224,14 @@ class _MobileLayout extends StatelessWidget {
     return Column(
       children: [
         Text(
-          track.name,
+          track.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
         const Gap(4),
         Text(
-          track.artist,
+          track.artist ?? '',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
@@ -370,7 +370,7 @@ class _MobileLayout extends StatelessWidget {
 
 /// 桌面端布局 — 横向排列
 class _DesktopLayout extends StatelessWidget {
-  final Song track;
+  final Track track;
   final bool isPlaying;
   final PlaylistMode loopMode;
   final bool shuffled;
@@ -394,8 +394,8 @@ class _DesktopLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final coverUrl = track.map(full: (f) => f.coverUrl, local: (l) => null);
-    final albumName = track.map(full: (f) => f.albumName, local: (l) => null);
+    final coverUrl = track.coverArt;
+    final albumName = track.album;
 
     return SafeArea(
       child: Center(
@@ -468,7 +468,7 @@ class _DesktopLayout extends StatelessWidget {
     return Column(
       children: [
         Text(
-          track.name,
+          track.title,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
@@ -476,7 +476,7 @@ class _DesktopLayout extends StatelessWidget {
         ),
         const Gap(6),
         Text(
-          track.artist,
+          track.artist ?? '',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(

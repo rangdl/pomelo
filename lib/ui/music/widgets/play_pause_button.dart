@@ -1,11 +1,11 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 class PlayPauseButton extends HookConsumerWidget {
-  final Song? song;
-  const PlayPauseButton({this.song, super.key});
+  final Track? track;
+  const PlayPauseButton({this.track, super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -13,7 +13,7 @@ class PlayPauseButton extends HookConsumerWidget {
     final audioPlayerState = ref.watch(audioPlayerProvider);
     final notifier = ref.read(audioPlayerProvider.notifier);
 
-    return song == null
+    return track == null
         ? IconButton.text(
             icon: Icon(
               audioPlayerState.playing
@@ -28,18 +28,18 @@ class PlayPauseButton extends HookConsumerWidget {
           )
         : IconButton.text(
             icon: Icon(
-              audioPlayerState.activeTrack?.id == song!.id &&
+              audioPlayerState.activeTrack?.id == track!.id &&
                       audioPlayerState.playing
                   ? Icons.pause
                   : Icons.play_arrow_outlined,
             ),
             onPressed: () {
-              if (audioPlayerState.activeTrack?.id == song!.id) {
+              if (audioPlayerState.activeTrack?.id == track!.id) {
                 audioPlayerState.playing
                     ? audioPlayer.pause()
                     : audioPlayer.resume();
               } else {
-                notifier.load([song!], autoPlay: true);
+                notifier.load([track!], autoPlay: true);
               }
             },
           );

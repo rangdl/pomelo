@@ -1,6 +1,6 @@
 import 'package:pomelo/core/mars.dart';
 import 'music_source_type.dart';
-import 'song.dart';
+import 'track.dart';
 import 'album.dart';
 import 'playlist.dart';
 import 'leaderboard.dart';
@@ -37,7 +37,7 @@ abstract class MusicService {
   /// 设置默认库（多库服务覆写此方法）
   ///
   /// 默认空实现，单库服务无需关心。
-  /// 多库服务（如 Lx、LxServer）覆写以切换当前活跃库。
+  /// 多库服务（如 Lx、Lxserver）覆写以切换当前活跃库。
   void setDefaultLibrary(String libraryId) {}
 
   /// 同类型服务的最大注册数量
@@ -60,11 +60,11 @@ abstract class MusicService {
 
   // ========== 搜索 ==========
 
-  /// 搜索歌曲
+  /// 搜索曲目
   ///
   /// [libraryId] 可选，用于指定在哪个库中搜索。
   /// 对于多库服务（如 Lx 在线音乐），若未指定则使用 [defaultLibraryId]。
-  Future<PaginationResponse<Song>> searchSongs(
+  Future<PaginationResponse<Track>> searchTracks(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -87,21 +87,21 @@ abstract class MusicService {
     String? libraryId,
   });
 
-  // ========== 歌曲 ==========
+  // ========== 曲目 ==========
 
-  /// 获取歌曲详情
-  Future<Song?> getSong(String id);
+  /// 获取曲目详情
+  Future<Track?> getTrack(String id);
 
-  /// 获取歌曲列表（如最近播放、本地所有歌曲）
-  Future<PaginationResponse<Song>> getSongs({int page = 1, int limit = 20});
+  /// 获取曲目列表（如最近播放、本地所有曲目）
+  Future<PaginationResponse<Track>> getTracks({int page = 1, int limit = 20});
 
   // ========== 专辑 ==========
 
   /// 获取专辑详情
   Future<Album?> getAlbum(String id);
 
-  /// 获取专辑中的歌曲
-  Future<PaginationResponse<Song>> getAlbumSongs(
+  /// 获取专辑中的曲目
+  Future<PaginationResponse<Track>> getAlbumTracks(
     String albumId, {
     int page = 1,
     int limit = 20,
@@ -111,14 +111,14 @@ abstract class MusicService {
 
   /// 获取歌单分类列表
   ///
-  /// 返回该服务支持的所有歌单分类（如“推荐”“流行”“摇滚”等）。
+  /// 返回该服务支持的所有歌单分类（如"推荐""流行""摇滚"等）。
   /// 默认返回空列表，表示该服务不支持歌单分类。
   /// 可通过 [getPlaylistsByCategory] 获取指定分类下的歌单。
   Future<List<PlaylistCategory>> getPlaylistCategories() async => [];
 
   /// 获取歌单排序方式列表
   ///
-  /// 返回该服务支持的歌单排序方式（如“默认”“最热”“最新”等）。
+  /// 返回该服务支持的歌单排序方式（如"默认""最热""最新"等）。
   /// 默认返回空列表，表示该服务不支持排序选择。
   /// 可通过 [getPlaylistsByCategory] 的 [sortId] 参数指定排序方式。
   Future<List<({String id, String name})>> getPlaylistSortOrders() async => [];
@@ -141,42 +141,42 @@ abstract class MusicService {
   /// 获取歌单详情
   Future<Playlist?> getPlaylist(String id);
 
-  /// 获取歌单中的歌曲列表
+  /// 获取歌单中的曲目列表
   ///
   /// [id] 为歌单标识。
   /// 默认返回空列表，支持歌单详情的服务应覆写此方法。
-  Future<List<Song>> getPlaylistSongs(String id) async => [];
+  Future<List<Track>> getPlaylistTracks(String id) async => [];
 
   /// 获取歌单列表（推荐/默认）
   Future<PaginationResponse<Playlist>> getPlaylists({int page = 1, int limit = 20});
 
-  /// 获取歌曲播放链接 用于音乐信息和播放链接分步获取
+  /// 获取曲目播放链接 用于音乐信息和播放链接分步获取
   ///
   /// [quality] 可选音质标识（如 'flac24bit'、'flac'、'320k'、'128k'），
   /// 服务按需处理：支持则使用，不支持则按自身策略降级。
   /// 不传或传 null 时由服务自行决定默认音质。
-  Future<String> getMusicUrl(SongFull song, {String? quality}) {
+  Future<String> getMusicUrl(Track track, {String? quality}) {
     throw UnimplementedError('$sourceName(getMusicUrl) 尚未实现');
   }
 
   /// 获取歌词（LRC 文本）
   ///
-  /// [song] 当前播放歌曲。
+  /// [track] 当前播放曲目。
   /// 默认返回 null，表示不支持歌词。各平台覆写以提供歌词获取能力。
-  Future<String?> getLyric(SongFull song) async => null;
+  Future<String?> getLyric(Track track) async => null;
 
   // ========== 排行榜 ==========
 
   /// 获取排行榜列表
   ///
-  /// 返回该服务支持的所有排行榜（如“热歌榜”“新歌榜”等）。
+  /// 返回该服务支持的所有排行榜（如"热歌榜""新歌榜"等）。
   /// 默认返回空列表，表示该服务不支持排行榜。
-  /// 可通过 [getLeaderboardSongs] 获取指定排行榜下的歌曲。
+  /// 可通过 [getLeaderboardTracks] 获取指定排行榜下的曲目。
   Future<List<Leaderboard>> getBoards() async => [];
 
-  /// 获取指定排行榜的歌曲列表
+  /// 获取指定排行榜的曲目列表
   ///
   /// [leaderboardId] 来自 [Leaderboard.id]。
   /// 默认返回空列表，支持排行榜的服务应覆写此方法。
-  Future<List<Song>> getLeaderboardSongs(String leaderboardId) async => [];
+  Future<List<Track>> getLeaderboardTracks(String leaderboardId) async => [];
 }

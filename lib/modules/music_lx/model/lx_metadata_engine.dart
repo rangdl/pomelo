@@ -94,7 +94,7 @@ class LxMetadataEngine {
   }
 
   /// 搜索歌曲
-  Future<PaginationResponse<Song>> search(
+  Future<PaginationResponse<Track>> search(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -110,7 +110,7 @@ class LxMetadataEngine {
 
       if (raw == null) {
         log.error('LxMetadataEngine', '搜索歌曲返回 null');
-        return PaginationResponse<Song>(
+        return PaginationResponse<Track>(
           limit: limit,
           page: page,
           total: 0,
@@ -122,7 +122,7 @@ class LxMetadataEngine {
       final json = Map<String, dynamic>.from(raw);
       final total = json['total'] ?? 0;
       final items = (json['list'] ?? []) as List<dynamic>;
-      final res = PaginationResponse<Song>(
+      final res = PaginationResponse<Track>(
         limit: limit,
         page: page,
         total: total,
@@ -131,7 +131,7 @@ class LxMetadataEngine {
             .map(
               (item) => PomeloTrackObjectMeta.fromJson(
                 Map<String, dynamic>.from(item),
-              ).toSong(
+              ).toTrack(
                 libraryId: type,
                 sourceId: sourceId,
                 sourceName: sourceName,
@@ -143,7 +143,7 @@ class LxMetadataEngine {
       return res;
     } catch (e) {
       log.error('LxMetadataEngine', '搜索歌曲失败: $e', error: e);
-      return PaginationResponse<Song>(
+      return PaginationResponse<Track>(
         limit: limit,
         page: page,
         total: 0,
@@ -188,9 +188,9 @@ class LxMetadataEngine {
         return Playlist(
           id: '$type-${m['id']}',
           name: m['name'] as String? ?? '',
-          coverUrl: m['img'] as String?,
-          creator: m['author'] as String? ?? '',
-          description: m['desc'] as String?,
+          coverArt: m['img'] as String?,
+          owner: m['author'] as String? ?? '',
+          comment: m['desc'] as String?,
           source: source,
           meta: m,
         );
@@ -351,9 +351,9 @@ class LxMetadataEngine {
         return Playlist(
           id: '$type-${m['id']}',
           name: m['name'] as String? ?? '',
-          coverUrl: m['img'] as String?,
-          creator: m['author'] as String? ?? '',
-          description: m['desc'] as String?,
+          coverArt: m['img'] as String?,
+          owner: m['author'] as String? ?? '',
+          comment: m['desc'] as String?,
           source: source,
           meta: m,
         );
@@ -369,8 +369,8 @@ class LxMetadataEngine {
   /// 获取指定歌单下的歌曲列表
   ///
   /// 调用元数据插件的 getListDetail 方法，按歌单 id 获取歌曲列表。
-  /// 返回 [List<Song>]。
-  Future<List<Song>> getPlaylistsDetail(
+  /// 返回 [List<Track>]。
+  Future<List<Track>> getPlaylistsDetail(
     String id, {
     String type = 'tx',
     required String sourceId,
@@ -400,7 +400,7 @@ class LxMetadataEngine {
           .map(
             (item) => PomeloTrackObjectMeta.fromJson(
               Map<String, dynamic>.from(item),
-            ).toSong(
+            ).toTrack(
               libraryId: type,
               sourceId: sourceId,
               sourceName: sourceName,
@@ -456,8 +456,8 @@ class LxMetadataEngine {
   /// 获取指定排行榜的歌曲列表
   ///
   /// 调用元数据插件的 getListDetail 方法，按排行榜 id 获取歌曲列表。
-  /// 返回 [List<Song>]。
-  Future<List<Song>> getLeaderboardSongs(
+  /// 返回 [List<Track>]。
+  Future<List<Track>> getLeaderboardTracks(
     String id, {
     String type = 'tx',
     required String sourceId,
@@ -486,7 +486,7 @@ class LxMetadataEngine {
           .map(
             (item) => PomeloTrackObjectMeta.fromJson(
               Map<String, dynamic>.from(item),
-            ).toSong(
+            ).toTrack(
               libraryId: type,
               sourceId: sourceId,
               sourceName: sourceName,
@@ -619,19 +619,19 @@ class PomeloTrackObjectMeta {
     };
   }
 
-  Song toSong({
+  Track toTrack({
     String? libraryId,
     required String sourceId,
     required String sourceName,
     String? libraryName,
   }) {
-    return Song.full(
+    return Track(
       id: '$source-$musicId',
-      name: name,
+      title: name,
       artist: singer,
       albumId: albumId,
-      albumName: album,
-      coverUrl: img,
+      album: album,
+      coverArt: img,
       src: '', // 需要根据类型选择合适的链接
       duration: duration,
       source: (id: sourceId, name: sourceName, libraryId: libraryId, libraryName: libraryName),

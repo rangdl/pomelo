@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:collection/collection.dart';
 // import 'package:drift/drift.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:media_kit/media_kit.dart';
+import 'package:media_kit/media_kit.dart' hide Track;
 // import 'package:pomelo/models/database/database.dart';
 // import 'package:pomelo/provider/database/database.dart';
 // import 'package:pomelo/provider/server/sourced_track_provider.dart';
@@ -11,7 +11,7 @@ import 'package:pomelo/core/extensions/list.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/core/log/log_providers.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 
 // import 'package:pomelo/models/database/database.dart';
 // import 'package:pomelo/provider/blacklist_provider.dart';
@@ -29,18 +29,12 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   // BlackListNotifier get _blacklist => ref.read(blacklistProvider.notifier);
   AudioPlayerService get audioPlayer => ref.read(audioPlayerServiceProvider);
 
-  void _assertAllowedTracks(Iterable<Song> tracks) {
-    assert(
-      tracks.every((track) => track is SongFull || track is SongLocal),
-      'All tracks must be either SongFull or SongLocal',
-    );
+  void _assertAllowedTracks(Iterable<Track> tracks) {
+    // 扁平化后所有 Track 都合法，无需断言
   }
 
-  void _assertAllowedTrack(Song tracks) {
-    assert(
-      tracks is SongFull || tracks is SongLocal,
-      'Track must be either SongFull or SongLocal',
-    );
+  void _assertAllowedTrack(Track tracks) {
+    // 扁平化后所有 Track 都合法，无需断言
   }
 
   Future<void> _syncSavedState() async {
@@ -246,7 +240,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   }
 
   Future<void> addTracksAtFirst(
-    Iterable<Song> tracks, {
+    Iterable<Track> tracks, {
     bool allowDuplicates = false,
   }) async {
     _assertAllowedTracks(tracks);
@@ -284,7 +278,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     );
   }
 
-  Future<void> addTrack(Song track) async {
+  Future<void> addTrack(Track track) async {
     _assertAllowedTrack(track);
 
     // if (_blacklist.contains(track)) return;
@@ -303,7 +297,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     );
   }
 
-  Future<void> addTracks(Iterable<Song> tracks) async {
+  Future<void> addTracks(Iterable<Track> tracks) async {
     _assertAllowedTracks(tracks);
 
     // tracks = _blacklist.filter(tracks).toList();
@@ -364,16 +358,16 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     );
   }
 
-  bool _compareTracks(Song a, Song b) {
+  bool _compareTracks(Track a, Track b) {
     if (a.runtimeType != b.runtimeType) {
       return false;
     }
 
-    return a is SongLocal && b is SongLocal ? a.path == b.path : a.id == b.id;
+    return a.path != null && b.path != null ? a.path == b.path : a.id == b.id;
   }
 
   Future<void> load(
-    List<Song> tracks, {
+    List<Track> tracks, {
     int initialIndex = 0,
     bool autoPlay = false,
   }) async {
@@ -389,7 +383,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     // Giving the initial track a boost so MediaKit won't skip
     // because of timeout
     final intendedActiveTrack = medias.elementAt(initialIndex);
-    if (intendedActiveTrack.track is! SongLocal) {
+    if (intendedActiveTrack.track.path == null) {
       // ref.read(
       //   sourcedTrackProvider(intendedActiveTrack.track as SongFull).future,
       // );
@@ -420,7 +414,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   }
 
   Future<void> swapActiveSource() async {
-    if (state.tracks.isEmpty || state.activeTrack is! SongFull) {
+    if (state.tracks.isEmpty || state.activeTrack?.src == null) {
       return;
     }
 
@@ -452,7 +446,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     );
   }
 
-  Future<void> jumpToTrack(Song track) async {
+  Future<void> jumpToTrack(Track track) async {
     final index = state.tracks.toList().indexWhere(
       (element) => element.id == track.id,
     );
