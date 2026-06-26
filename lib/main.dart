@@ -112,6 +112,20 @@ class _AppShell extends HookConsumerWidget {
     final themeModeAsync = ref.watch(settingWatcherProvider('my_theme_mode'));
     final themeMode = _parseThemeMode(themeModeAsync.value);
 
+    // 触发平台媒体控制服务初始化（Windows SMTC / 移动端通知栏）
+    ref.watch(audioServicesProvider);
+
+    // 监听当前曲目变化，同步元数据到系统媒体控制
+    ref.listen(
+      audioPlayerProvider.select((s) => s.activeTrack),
+      (previous, next) {
+        if (next == null) return;
+        final audioServices = ref.read(audioServicesProvider).value;
+        if (audioServices == null) return;
+        audioServices.addTrack(next);
+      },
+    );
+
     return ShadcnApp.router(
       themeMode: themeMode,
       theme: AppTheme.light,
