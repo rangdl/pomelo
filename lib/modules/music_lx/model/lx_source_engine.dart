@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:pomelo/modules/music_lx/model/preload.dart';
 import 'js_engine.dart';
 
@@ -155,7 +155,7 @@ class LxSourceEngine {
   /// 返回播放链接 URL，若查询失败则返回空字符串。
   Future<String> getMusicUrl(
     String libraryId,
-    Song song, {
+    Track track, {
     quality = '128k',
   }) async {
     // 找到支持该库的音源插件引擎
@@ -173,7 +173,7 @@ class LxSourceEngine {
       'action': 'musicUrl',
       'info': {
         'type': quality,
-        'musicInfo': {...song.meta},
+        'musicInfo': {...?track.meta},
       },
     };
     final dataText = jsonEncode(data);

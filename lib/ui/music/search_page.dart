@@ -15,7 +15,7 @@ import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
-import 'package:pomelo/ui/music/widgets/song_tile.dart';
+import 'package:pomelo/ui/music/widgets/track_tile.dart';
 
 /// 歌曲搜索结果页面
 @RoutePage()
@@ -315,12 +315,12 @@ class _SearchResultsList extends ConsumerWidget {
           return const Center(child: Text('无可用来源'));
         }
 
-        final songs = data.songs;
+        final tracks = data.tracks;
 
         return Column(
           children: [
             ProviderErrorBanner(errors: data.errors),
-            if (songs.isEmpty)
+            if (tracks.isEmpty)
               Expanded(
                 child: Center(
                   child: Column(
@@ -345,18 +345,18 @@ class _SearchResultsList extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                       child: Text(
-                        '找到 ${songs.length} 首歌曲',
+                        '找到 ${tracks.length} 首歌曲',
                         style: TextStyle(color: colorScheme.mutedForeground),
                       ),
                     ),
                     Expanded(
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: songs.length,
+                        itemCount: tracks.length,
                         itemBuilder: (context, index) {
-                          final merged = songs[index];
-                          return SongTile(
-                            song: merged.primary,
+                          final merged = tracks[index];
+                          return TrackTile(
+                            track: merged.primary,
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -364,7 +364,7 @@ class _SearchResultsList extends ConsumerWidget {
                                   merged.displaySources,
                                   style: const TextStyle(fontSize: 12),
                                 ).muted,
-                                PlayPauseButton(song: merged.primary),
+                                PlayPauseButton(track: merged.primary),
                               ],
                             ),
                           );

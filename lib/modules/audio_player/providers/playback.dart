@@ -4,7 +4,7 @@ import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shelf/shelf.dart';
 // import 'package:pomelo/models/metadata/metadata.dart';
 // import 'package:pomelo/models/parser/range_headers.dart';
@@ -36,13 +36,13 @@ class ServerPlaybackRoutes {
   final Dio dio;
 
   /// 获取当前活跃曲目（由外部注入，避免对 Riverpod Ref 的依赖）
-  final Song? Function() getActiveTrack;
+  final Track? Function() getActiveTrack;
 
   /// 根据歌曲信息解析实际播放链接
   ///
   /// 由外部注入，内部调用对应 [MusicService.getMusicUrl]。
   /// 若未注入或解析失败，回退到 `track.src`。
-  final Future<String> Function(Song track)? getTrackUrl;
+  final Future<String> Function(Track track)? getTrackUrl;
 
   ServerPlaybackRoutes({
     required this.audioPlayer,
@@ -60,11 +60,11 @@ class ServerPlaybackRoutes {
   ///
   /// 优先返回缓存，未缓存时通过 [getTrackUrl] 回调获取，
   /// 若回调未注入或返回空则回退到 `track.src`。
-  Future<String> _resolveUrl(Song track) async {
+  Future<String> _resolveUrl(Track track) async {
     final cached = _urlCache[track.id];
     if (cached != null && cached.isNotEmpty) return cached;
 
-    String url = track.map(full: (f) => f.src, local: (l) => l.path);
+    String url = track.src ?? track.path ?? '';
     if (getTrackUrl != null) {
       try {
         final resolved = await getTrackUrl!(track);
@@ -162,11 +162,11 @@ class ServerPlaybackRoutes {
 
   Future<dio_lib.Response> streamTrackInformation(
     Request request,
-    SongFull track,
+    Track track,
   ) async {
     log.debug(
       'Playback',
-      'HEAD request for track: ${track.name}, Headers: ${request.headers}',
+      'HEAD request for track: ${track.title}, Headers: ${request.headers}',
     );
     // AppLogger.log.i(
     //   "HEAD request for track: ${track.query.name}\n"
@@ -213,12 +213,12 @@ class ServerPlaybackRoutes {
 
   Future<dio_lib.Response> streamTrack(
     Request request,
-    SongFull track,
+    Track track,
     Map<String, dynamic> headers,
   ) async {
     log.debug(
       'Playback',
-      'GET request for track: ${track.name}, Headers: ${request.headers}',
+      'GET request for track: ${track.title}, Headers: ${request.headers}',
     );
     // AppLogger.log.i(
     //   "GET request for track: ${track.query.name}\n"
@@ -265,7 +265,7 @@ class ServerPlaybackRoutes {
 
     log.debug(
       'Playback',
-      'Response for track: ${track.name}, '
+      'Response for track: ${track.title}, '
           'Status: ${res.statusCode}, Headers: ${res.headers.map}',
     );
 
@@ -348,7 +348,7 @@ class ServerPlaybackRoutes {
       // }
 
       final activeTrack = getActiveTrack();
-      if (activeTrack == null || activeTrack is! SongFull) {
+      if (activeTrack == null || activeTrack.src == null) {
         return Response.notFound('No active track or track is not streamable');
       }
       final res = await streamTrackInformation(request, activeTrack);
@@ -374,7 +374,7 @@ class ServerPlaybackRoutes {
       // }
 
       final activeTrack = getActiveTrack();
-      if (activeTrack == null || activeTrack is! SongFull) {
+      if (activeTrack == null || activeTrack.src == null) {
         return Response.notFound('No active track or track is not streamable');
       }
       final res = await streamTrack(request, activeTrack, request.headers);

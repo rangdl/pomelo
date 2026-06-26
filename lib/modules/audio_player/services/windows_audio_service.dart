@@ -6,7 +6,7 @@ import 'package:smtc_windows/smtc_windows.dart';
 import 'package:pomelo/modules/audio_player/model/playback_state.dart';
 import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
-import 'package:pomelo/modules/music/model/song.dart' show Song;
+import 'package:pomelo/modules/music/model/track.dart' show Track;
 
 class WindowsAudioService {
   final SMTCWindows smtc;
@@ -79,17 +79,17 @@ class WindowsAudioService {
     ]);
   }
 
-  Future<void> addTrack(Song track) async {
+  Future<void> addTrack(Track track) async {
     if (!smtc.enabled) {
       await smtc.enableSmtc();
     }
     await smtc.updateMetadata(
       MusicMetadata(
-        title: track.name,
+        title: track.title,
         albumArtist: track.artist,
         artist: track.artist,
-        album: track.albumName ?? 'Unknown',
-        thumbnail: track.coverUrl,
+        album: track.album ?? 'Unknown',
+        thumbnail: track.coverArt,
       ),
     );
   }

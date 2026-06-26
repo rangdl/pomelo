@@ -10,21 +10,21 @@
 ///
 /// 用法:
 /// ```dart
-/// class SongRepository extends PersistentRepository<Song> {
+/// class TrackRepository extends PersistentRepository<Track> {
 ///   @override
-///   String get boxName => 'songs';
+///   String get boxName => 'tracks';
 ///
 ///   @override
-///   String idSelector(Song item) => item.id;
+///   String idSelector(Track item) => item.id;
 ///
 ///   @override
-///   Song fromJson(Map<String, dynamic> json) => Song(
+///   Track fromJson(Map<String, dynamic> json) => Track(
 ///     id: json['id'] as String,
 ///     title: json['title'] as String? ?? '',
 ///   );
 ///
 ///   @override
-///   Map<String, dynamic> toJson(Song item) => {
+///   Map<String, dynamic> toJson(Track item) => {
 ///     'id': item.id,
 ///     'title': item.title,
 ///   };

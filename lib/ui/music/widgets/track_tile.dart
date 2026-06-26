@@ -1,18 +1,18 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Stack, Positioned;
 import 'package:flutter/widgets.dart' show Stack, Positioned;
 import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
 
-/// 统一的歌曲列表项组件
+/// 统一的曲目列表项组件
 ///
-/// 在所有展示歌曲列表的场景复用，保证样式一致：封面图、标题、副标题（艺术家·时长）、
+/// 在所有展示曲目列表的场景复用，保证样式一致：封面图、标题、副标题（艺术家·时长）、
 /// 可选序号 badge、可选 trailing 操作区、可选 onTap。
 ///
 /// 移动端采用更紧凑的 padding（12/6）和较小的封面（40px），
 /// 桌面端 padding 16/10、封面 48px。
-class SongTile extends StatelessWidget {
-  final Song song;
+class TrackTile extends StatelessWidget {
+  final Track track;
 
   /// 序号（1-based）。传入后会在封面右上角叠加序号 badge。
   final int? index;
@@ -36,9 +36,9 @@ class SongTile extends StatelessWidget {
   /// 是否显示封面图。false 时仅显示序号（无封面场景）。
   final bool showCover;
 
-  const SongTile({
+  const TrackTile({
     super.key,
-    required this.song,
+    required this.track,
     this.index,
     this.isActive = false,
     this.activeLeading,
@@ -66,7 +66,7 @@ class SongTile extends StatelessWidget {
         child: ListTile(
           leading: _buildLeading(context, colorScheme, coverSize),
           title: Text(
-            song.name,
+            track.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
@@ -75,7 +75,7 @@ class SongTile extends StatelessWidget {
             ),
           ),
           subtitle: Text(
-            '${song.artist}  ·  ${song.formattedDuration}',
+            '${track.artist}  ·  ${track.formattedDuration}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -105,9 +105,9 @@ class SongTile extends StatelessWidget {
     // 封面图
     final cover = ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: song.coverUrl != null && song.coverUrl!.isNotEmpty
+      child: track.coverArt != null && track.coverArt!.isNotEmpty
           ? Image.network(
-              song.coverUrl!,
+              track.coverArt!,
               width: coverSize,
               height: coverSize,
               fit: BoxFit.cover,

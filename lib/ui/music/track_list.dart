@@ -2,23 +2,23 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
-import 'package:pomelo/ui/music/widgets/song_more_actions_button.dart';
-import 'package:pomelo/ui/music/widgets/song_tile.dart';
+import 'package:pomelo/ui/music/widgets/track_more_actions_button.dart';
+import 'package:pomelo/ui/music/widgets/track_tile.dart';
 
-/// 歌曲列表组件
-class SongList extends HookConsumerWidget {
-  final List<Song> songs;
+/// 曲目列表组件
+class TrackList extends HookConsumerWidget {
+  final List<Track> tracks;
 
   /// 是否在每行末尾显示「更多操作」按钮（下一首播放、添加到播放列表等）
   final bool showMoreActions;
 
   /// 当 showMoreActions=true 且该回调非空时，菜单显示「从列表移除」
-  /// 透传给 SongMoreActionsButton，主要用于播放队列页
-  final void Function(Song)? onRemoveFromQueue;
+  /// 透传给 TrackMoreActionsButton，主要用于播放队列页
+  final void Function(Track)? onRemoveFromQueue;
 
-  const SongList({
+  const TrackList({
     super.key,
-    required this.songs,
+    required this.tracks,
     this.showMoreActions = false,
     this.onRemoveFromQueue,
   });
@@ -28,22 +28,22 @@ class SongList extends HookConsumerWidget {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: songs.length,
+      itemCount: tracks.length,
       itemBuilder: (context, index) {
-        final song = songs[index];
-        return SongTile(
-          song: song,
+        final track = tracks[index];
+        return TrackTile(
+          track: track,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(song.source.name).muted,
-              PlayPauseButton(song: song),
+              Text(track.source?.name ?? '').muted,
+              PlayPauseButton(track: track),
               if (showMoreActions)
-                SongMoreActionsButton(
-                  song: song,
+                TrackMoreActionsButton(
+                  track: track,
                   onRemoveFromQueue: onRemoveFromQueue == null
                       ? null
-                      : () => onRemoveFromQueue!(song),
+                      : () => onRemoveFromQueue!(track),
                 ),
             ],
           ),

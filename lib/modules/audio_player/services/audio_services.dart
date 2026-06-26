@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
-import 'package:pomelo/modules/music/model/song.dart' show Song;
+import 'package:pomelo/modules/music/model/track.dart' show Track;
 import 'mobile_audio_service.dart';
 import 'windows_audio_service.dart';
 
@@ -48,16 +48,16 @@ class AudioServices with WidgetsBindingObserver {
     return AudioServices(mobile, smtc, playback);
   }
 
-  Future<void> addTrack(Song track) async {
+  Future<void> addTrack(Track track) async {
     await smtc?.addTrack(track);
     mobile?.addItem(
       MediaItem(
         id: track.id,
-        album: track.albumName ?? 'Unknown',
-        title: track.name,
+        album: track.album ?? 'Unknown',
+        title: track.title,
         artist: track.artist,
         duration: Duration(seconds: track.duration),
-        artUri: track.coverUrl == null ? null : Uri.tryParse(track.coverUrl!),
+        artUri: track.coverArt == null ? null : Uri.tryParse(track.coverArt!),
         playable: true,
       ),
     );

@@ -85,14 +85,14 @@ class LxServerMusicService extends MusicService {
   // ========== 搜索 ==========
 
   @override
-  Future<PaginationResponse<Song>> searchSongs(
+  Future<PaginationResponse<Track>> searchTracks(
     String keyword, {
     int page = 1,
     int limit = 20,
     String? libraryId,
   }) {
     // lx-server API 无搜索接口
-    throw UnimplementedError('$sourceName(searchSongs) 尚未实现');
+    throw UnimplementedError('$sourceName(searchTracks) 尚未实现');
   }
 
   @override
@@ -118,13 +118,13 @@ class LxServerMusicService extends MusicService {
   // ========== 歌曲 ==========
 
   @override
-  Future<Song?> getSong(String id) {
-    throw UnimplementedError('$sourceName(getSong) 尚未实现');
+  Future<Track?> getTrack(String id) {
+    throw UnimplementedError('$sourceName(getTrack) 尚未实现');
   }
 
   @override
-  Future<PaginationResponse<Song>> getSongs({int page = 1, int limit = 20}) {
-    throw UnimplementedError('$sourceName(getSongs) 尚未实现');
+  Future<PaginationResponse<Track>> getTracks({int page = 1, int limit = 20}) {
+    throw UnimplementedError('$sourceName(getTracks) 尚未实现');
   }
 
   // ========== 专辑 ==========
@@ -135,12 +135,12 @@ class LxServerMusicService extends MusicService {
   }
 
   @override
-  Future<PaginationResponse<Song>> getAlbumSongs(
+  Future<PaginationResponse<Track>> getAlbumTracks(
     String albumId, {
     int page = 1,
     int limit = 20,
   }) {
-    throw UnimplementedError('$sourceName(getAlbumSongs) 尚未实现');
+    throw UnimplementedError('$sourceName(getAlbumTracks) 尚未实现');
   }
 
   // ========== 歌单 ==========
@@ -220,9 +220,9 @@ class LxServerMusicService extends MusicService {
       source: _currentSource,
       id: id,
     );
-    final songs = result.list
+    final tracks = result.list
         .map(
-          (s) => s.toSong(
+          (s) => s.toTrack(
             sourceId: _sourceId,
             sourceName: _sourceName,
             libraryId: _currentSource,
@@ -233,21 +233,21 @@ class LxServerMusicService extends MusicService {
     return Playlist(
       id: id,
       name: '',
-      creator: '',
+      owner: '',
       source: (id: _sourceId, name: _sourceName, libraryId: _currentSource, libraryName: _libraryName(_currentSource)),
-      songs: songs,
+      tracks: tracks,
     );
   }
 
   @override
-  Future<List<Song>> getPlaylistSongs(String id) async {
+  Future<List<Track>> getPlaylistTracks(String id) async {
     final result = await client.getPlaylistDetail(
       source: _currentSource,
       id: id,
     );
     return result.list
         .map(
-          (s) => s.toSong(
+          (s) => s.toTrack(
             sourceId: _sourceId,
             sourceName: _sourceName,
             libraryId: _currentSource,
@@ -289,12 +289,12 @@ class LxServerMusicService extends MusicService {
   // ========== 播放链接 ==========
 
   @override
-  Future<String> getMusicUrl(SongFull song, {String? quality}) async {
-    // song.meta 即完整的 songInfo（由 LxServerSong.toSongInfo() 构造）
-    final songInfo = Map<String, dynamic>.from(song.meta);
+  Future<String> getMusicUrl(Track track, {String? quality}) async {
+    // track.meta 即完整的 songInfo（由 LxServerSong.toSongInfo() 构造）
+    final songInfo = Map<String, dynamic>.from(track.meta ?? {});
     // 确保必要字段存在
-    songInfo['source'] ??= song.source.libraryId ?? _currentSource;
-    songInfo['hash'] ??= song.id;
+    songInfo['source'] ??= track.source?.libraryId ?? _currentSource;
+    songInfo['hash'] ??= track.id;
 
     // 按用户偏好选择音质，不可用则降级
     final typesMap = (songInfo['_types'] as Map<String, dynamic>?) ?? const {};
@@ -303,7 +303,7 @@ class LxServerMusicService extends MusicService {
     final hash = songInfo['hash'] as String? ?? '';
     log.debug(
       'LxServer',
-      'getMusicUrl: 歌曲=${song.name} - ${song.artist}, '
+      'getMusicUrl: 歌曲=${track.title} - ${track.artist}, '
           'source=$source, hash=$hash, 偏好=$quality, 选中质量=$selectedQuality',
     );
 
@@ -313,10 +313,10 @@ class LxServerMusicService extends MusicService {
   // ========== 歌词 ==========
 
   @override
-  Future<String?> getLyric(SongFull song) async {
-    final songInfo = Map<String, dynamic>.from(song.meta);
-    songInfo['source'] ??= song.source.libraryId ?? _currentSource;
-    songInfo['hash'] ??= song.id;
+  Future<String?> getLyric(Track track) async {
+    final songInfo = Map<String, dynamic>.from(track.meta ?? {});
+    songInfo['source'] ??= track.source?.libraryId ?? _currentSource;
+    songInfo['hash'] ??= track.id;
     return client.getLyric(songInfo: songInfo);
   }
 
@@ -364,7 +364,7 @@ class LxServerMusicService extends MusicService {
   }
 
   @override
-  Future<List<Song>> getLeaderboardSongs(String leaderboardId) async {
+  Future<List<Track>> getLeaderboardTracks(String leaderboardId) async {
     log.debug(
       'LxServer',
       'getLeaderboardSongs: source=$_currentSource, bangid=$leaderboardId',
@@ -373,9 +373,9 @@ class LxServerMusicService extends MusicService {
       source: _currentSource,
       bangid: leaderboardId,
     );
-    final songs = result.list
+    final tracks = result.list
         .map(
-          (s) => s.toSong(
+          (s) => s.toTrack(
             sourceId: _sourceId,
             sourceName: _sourceName,
             libraryId: _currentSource,
@@ -386,8 +386,8 @@ class LxServerMusicService extends MusicService {
     log.debug(
       'LxServer',
       'getLeaderboardSongs 完成: source=$_currentSource, bangid=$leaderboardId, '
-          '转换 ${songs.length} 首歌曲',
+          '转换 ${tracks.length} 首歌曲',
     );
-    return songs;
+    return tracks;
   }
 }

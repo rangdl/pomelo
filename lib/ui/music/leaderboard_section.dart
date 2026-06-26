@@ -2,7 +2,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
-import 'package:pomelo/ui/music/widgets/song_tile.dart';
+import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 排行榜版块组件
@@ -89,12 +89,12 @@ class _LeaderboardSongs extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final songsAsync = ref.watch(leaderboardSongsProvider(leaderboardId));
+    final tracksAsync = ref.watch(leaderboardTracksProvider(leaderboardId));
     final colorScheme = Theme.of(context).colorScheme;
 
-    return songsAsync.when(
-      data: (songs) {
-        if (songs.isEmpty) {
+    return tracksAsync.when(
+      data: (tracks) {
+        if (tracks.isEmpty) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
@@ -107,17 +107,17 @@ class _LeaderboardSongs extends ConsumerWidget {
         }
 
         // 显示前 20 首
-        final displaySongs = songs.take(20).toList();
+        final displayTracks = tracks.take(20).toList();
         return ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: displaySongs.length,
+          itemCount: displayTracks.length,
           itemBuilder: (context, index) {
-            final song = displaySongs[index];
-            return SongTile(
-              song: song,
+            final track = displayTracks[index];
+            return TrackTile(
+              track: track,
               index: index + 1,
-              trailing: PlayPauseButton(song: song),
+              trailing: PlayPauseButton(track: track),
             );
           },
         );

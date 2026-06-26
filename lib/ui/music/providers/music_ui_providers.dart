@@ -7,11 +7,11 @@ import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/model/playlist.dart';
 import 'package:pomelo/modules/music/model/leaderboard.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 import 'package:pomelo/ui/music/model/service_result.dart';
-import 'package:pomelo/ui/music/model/merged_song.dart';
+import 'package:pomelo/ui/music/model/merged_track.dart';
 
 import 'package:pomelo/ui/platform/providers/lx_metadata_plugin_paths_provider.dart';
 
@@ -86,17 +86,17 @@ final selectedSourceProvider =
       ({String? sourceId, String? libraryId})
     >(SelectedSourceNotifier.new);
 
-/// 音乐列表数据：歌曲列表 + 出错的服务
+/// 音乐列表数据：曲目列表 + 出错的服务
 class MusicListData {
-  final List<Song> songs;
+  final List<Track> tracks;
   final List<({String sourceId, String sourceName, Object error})> errors;
 
-  const MusicListData({this.songs = const [], this.errors = const []});
+  const MusicListData({this.tracks = const [], this.errors = const []});
 }
 
-/// 获取当前来源的歌曲列表（逐服务隔离异常）
-final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
-  // 监听本地音乐数据版本，目录/扫描变更后自动刷新歌曲列表
+/// 获取当前来源的曲目列表（逐服务隔离异常）
+final currentSourceTracksProvider = FutureProvider<MusicListData>((ref) async {
+  // 监听本地音乐数据版本，目录/扫描变更后自动刷新曲目列表
   ref.watch(localMusicVersionProvider);
   final selection = ref.watch(selectedSourceProvider);
   final services = await ref.watch(musicServicesProvider.future);
@@ -110,18 +110,18 @@ final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
 
   if (targets.isEmpty) return const MusicListData();
 
-  final results = await safeCallServices<PaginationResponse<Song>>(
+  final results = await safeCallServices<PaginationResponse<Track>>(
     targets.toList(),
-    (s) => (s as MusicService).getSongs(),
+    (s) => (s as MusicService).getTracks(),
     getId: (s) => (s as MusicService).sourceId,
     getName: (s) => (s as MusicService).sourceName,
   );
 
-  final songs = <Song>[];
+  final tracks = <Track>[];
   final errors = <({String sourceId, String sourceName, Object error})>[];
   for (final r in results) {
     if (r.isSuccess && r.data != null) {
-      songs.addAll(r.data!.items);
+      tracks.addAll(r.data!.items);
     } else if (r.isError && r.error != null) {
       errors.add((
         sourceId: r.sourceId,
@@ -130,7 +130,7 @@ final currentSourceSongsProvider = FutureProvider<MusicListData>((ref) async {
       ));
     }
   }
-  return MusicListData(songs: songs, errors: errors);
+  return MusicListData(tracks: tracks, errors: errors);
 });
 
 /// 所有已注册的音乐服务列表（监听 Lx 插件路径变化以触发刷新）
@@ -268,8 +268,8 @@ final selectedLeaderboardProvider =
       SelectedLeaderboardNotifier.new,
     );
 
-/// 指定排行榜的歌曲列表
-final leaderboardSongsProvider = FutureProvider.family<List<Song>, String>((
+/// 指定排行榜的曲目列表
+final leaderboardTracksProvider = FutureProvider.family<List<Track>, String>((
   ref,
   leaderboardId,
 ) async {
@@ -281,15 +281,15 @@ final leaderboardSongsProvider = FutureProvider.family<List<Song>, String>((
   final service = module?.service(selection.sourceId!);
   if (service == null) return [];
 
-  return service.getLeaderboardSongs(leaderboardId);
+  return service.getLeaderboardTracks(leaderboardId);
 });
 
-/// 搜索结果数据：合并后的歌曲列表 + 出错的服务
+/// 搜索结果数据：合并后的曲目列表 + 出错的服务
 class SearchListData {
-  final List<MergedSong> songs;
+  final List<MergedTrack> tracks;
   final List<({String sourceId, String sourceName, Object error})> errors;
 
-  const SearchListData({this.songs = const [], this.errors = const []});
+  const SearchListData({this.tracks = const [], this.errors = const []});
 }
 
 /// 搜索结果 Provider（按关键词 + sourceId 过滤）
@@ -312,18 +312,18 @@ final searchResultsProvider =
 
       if (targets.isEmpty) return const SearchListData();
 
-      final results = await safeCallServices<PaginationResponse<Song>>(
+      final results = await safeCallServices<PaginationResponse<Track>>(
         targets.toList(),
-        (s) => (s as MusicService).searchSongs(params.keyword),
+        (s) => (s as MusicService).searchTracks(params.keyword),
         getId: (s) => (s as MusicService).sourceId,
         getName: (s) => (s as MusicService).sourceName,
       );
 
-      final allSongs = <Song>[];
+      final allTracks = <Track>[];
       final errors = <({String sourceId, String sourceName, Object error})>[];
       for (final r in results) {
         if (r.isSuccess && r.data != null) {
-          allSongs.addAll(r.data!.items);
+          allTracks.addAll(r.data!.items);
         } else if (r.isError && r.error != null) {
           errors.add((
             sourceId: r.sourceId,
@@ -333,5 +333,5 @@ final searchResultsProvider =
         }
       }
 
-      return SearchListData(songs: mergeSongs(allSongs), errors: errors);
+      return SearchListData(tracks: mergeTracks(allTracks), errors: errors);
     });

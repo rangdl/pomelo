@@ -2,7 +2,7 @@ import 'package:flutter_js/quickjs/ffi.dart';
 import 'package:pomelo/core/mars.dart';
 import 'model/music_service.dart';
 import 'model/music_source_type.dart';
-import 'model/song.dart';
+import 'model/track.dart';
 import 'model/album.dart';
 import 'model/playlist.dart';
 
@@ -19,7 +19,7 @@ import 'model/playlist.dart';
 /// 本模块不包含播放功能，播放由 audio_player 模块负责。
 ///
 /// 遵循 M.A.R.S. 架构：
-/// - Model: song.dart, album.dart, playlist.dart, music_service.dart
+/// - Model: track.dart, album.dart, playlist.dart, music_service.dart
 /// - Action: (模块初始化/就绪/销毁)
 /// - Repository: 由各 MusicService 实现自行管理
 /// - Service/State: Riverpod Provider
@@ -122,14 +122,14 @@ class MusicModule extends Module {
 
   // ========== 便捷查询（遍历所有服务） ==========
 
-  /// 在所有服务中搜索歌曲
-  Future<PaginationResponse<Song>> searchSongs(
+  /// 在所有服务中搜索曲目
+  Future<PaginationResponse<Track>> searchTracks(
     String keyword, {
     int page = 1,
     int limit = 20,
   }) async {
     final results = await Future.wait(
-      _services.map((s) => s.searchSongs(keyword, page: page, limit: limit)),
+      _services.map((s) => s.searchTracks(keyword, page: page, limit: limit)),
     );
     // 合并所有分页结果
     final allItems = results.expand((r) => r.items).toList();

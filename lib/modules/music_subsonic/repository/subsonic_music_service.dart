@@ -38,7 +38,7 @@ class SubsonicMusicService extends MusicService {
   // ========== 搜索 ==========
 
   @override
-  Future<PaginationResponse<Song>> searchSongs(
+  Future<PaginationResponse<Track>> searchTracks(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -52,8 +52,8 @@ class SubsonicMusicService extends MusicService {
       songCount: limit,
       songOffset: (page - 1) * limit,
     );
-    final songs = result.songs
-        .map((s) => s.toSong(
+    final tracks = result.songs
+        .map((s) => s.toTrack(
               sourceId: sourceId,
               sourceName: sourceName,
               serverUrl: _serverUrl,
@@ -64,9 +64,9 @@ class SubsonicMusicService extends MusicService {
       limit: limit,
       total: result.songs.length < limit
           ? (page - 1) * limit + result.songs.length
-          : page * limit + 1, // 估算：如果返回满页，认为还有更多
+          : page * limit + 1,
       hasMore: result.songs.length == limit,
-      items: songs,
+      items: tracks,
     );
   }
 
@@ -110,8 +110,6 @@ class SubsonicMusicService extends MusicService {
     int limit = 20,
     String? libraryId,
   }) async {
-    // Subsonic API 的 playlist 没有独立搜索接口，
-    // 获取全部歌单后在客户端过滤
     final playlists = await client.getPlaylists();
     if (keyword.isEmpty) {
       final items = playlists
@@ -137,13 +135,13 @@ class SubsonicMusicService extends MusicService {
     return PaginationResponse.fromList(filtered, page: page, limit: limit);
   }
 
-  // ========== 歌曲 ==========
+  // ========== 曲目 ==========
 
   @override
-  Future<Song?> getSong(String id) async {
+  Future<Track?> getTrack(String id) async {
     try {
       final song = await client.getSong(id);
-      return song.toSong(
+      return song.toTrack(
         sourceId: sourceId,
         sourceName: sourceName,
         serverUrl: _serverUrl,
@@ -154,16 +152,14 @@ class SubsonicMusicService extends MusicService {
   }
 
   @override
-  Future<PaginationResponse<Song>> getSongs({
+  Future<PaginationResponse<Track>> getTracks({
     int page = 1,
     int limit = 20,
   }) async {
-    // 使用 getRandomSongs 作为默认歌曲列表
-    // Subsonic API 没有直接列出所有歌曲的接口
     try {
       final songs = await client.getRandomSongs(size: limit);
       final items = songs
-          .map((s) => s.toSong(
+          .map((s) => s.toTrack(
                 sourceId: sourceId,
                 sourceName: sourceName,
                 serverUrl: _serverUrl,
@@ -198,21 +194,21 @@ class SubsonicMusicService extends MusicService {
   }
 
   @override
-  Future<PaginationResponse<Song>> getAlbumSongs(
+  Future<PaginationResponse<Track>> getAlbumTracks(
     String albumId, {
     int page = 1,
     int limit = 20,
   }) async {
     try {
       final album = await client.getAlbum(albumId);
-      final songs = album.songs
-          .map((s) => s.toSong(
+      final tracks = album.songs
+          .map((s) => s.toTrack(
                 sourceId: sourceId,
                 sourceName: sourceName,
                 serverUrl: _serverUrl,
               ))
           .toList();
-      return PaginationResponse.fromList(songs, page: page, limit: limit);
+      return PaginationResponse.fromList(tracks, page: page, limit: limit);
     } on SubsonicException {
       return PaginationResponse.empty(page: page, limit: limit);
     }
@@ -257,8 +253,8 @@ class SubsonicMusicService extends MusicService {
   // ========== 播放链接 ==========
 
   @override
-  Future<String> getMusicUrl(SongFull song, {String? quality}) async {
-    return client.buildStreamUrl(song.id);
+  Future<String> getMusicUrl(Track track, {String? quality}) async {
+    return client.buildStreamUrl(track.id);
   }
 
   // ========== Subsonic 专属方法 ==========

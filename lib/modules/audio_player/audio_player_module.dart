@@ -15,7 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/music/music_module.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
@@ -87,16 +87,18 @@ class AudioPlayerModule extends Module {
         if (media == null) return null;
         return PomeloMedia.media(media).track;
       },
-      getTrackUrl: (Song track) async {
+      getTrackUrl: (Track track) async {
         // 通过 MusicModule 找到对应的 MusicService，调用 getMusicUrl 获取播放链接
         final musicModule = ModuleManager().find<MusicModule>('music');
-        if (musicModule == null) return track.map(full: (f) => f.src, local: (l) => l.path);
+        if (musicModule == null) return track.src ?? track.path ?? '';
         // source.id 已统一为服务 id（如 'lx-$pluginId'、'lx_server'、'subsonic-xxx'、'local'）
-        final service = musicModule.service(track.source.id);
-        if (service == null) return track.map(full: (f) => f.src, local: (l) => l.path);
+        final sourceId = track.source?.id;
+        if (sourceId == null) return track.src ?? track.path ?? '';
+        final service = musicModule.service(sourceId);
+        if (service == null) return track.src ?? track.path ?? '';
         // 读取用户音质偏好（持久化在 Settings，与 selectedLxServerQualityProvider 一致）
         final preferredQuality = Settings.get(StorageKeys.musicLxServerQuality);
-        return service.getMusicUrl(track as SongFull, quality: preferredQuality);
+        return service.getMusicUrl(track, quality: preferredQuality);
       },
     );
 

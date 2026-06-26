@@ -1,7 +1,7 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_placeholder.dart';
@@ -35,7 +35,7 @@ class MiniPlayer extends HookConsumerWidget {
       initialData: audioPlayer.duration,
     ).data ?? Duration.zero;
 
-    // 歌词获取与解析（track 为空时传入空 Song 占位避免条件 hook）
+    // 歌词获取与解析（track 为空时传入空 Track 占位避免条件 hook）
     final lyricAsync = track == null
         ? const AsyncValue<String?>.data(null)
         : ref.watch(lyricProvider(track));
@@ -96,7 +96,7 @@ class MiniPlayer extends HookConsumerWidget {
   Widget _buildContent(
     BuildContext context,
     WidgetRef ref,
-    Song track,
+    Track track,
     bool isPlaying,
     dynamic audioPlayer,
     Duration position,
@@ -119,7 +119,7 @@ class MiniPlayer extends HookConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                track.name,
+                track.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -133,7 +133,7 @@ class MiniPlayer extends HookConsumerWidget {
                   // 有当前歌词时优先展示歌词，否则回退到歌手名
                   (currentLyric != null && currentLyric.isNotEmpty)
                       ? currentLyric
-                      : track.artist,
+                      : track.artist ?? '',
                   key: ValueKey(
                     (currentLyric != null && currentLyric.isNotEmpty)
                         ? 'lyric:$currentLyric'
@@ -181,11 +181,8 @@ class MiniPlayer extends HookConsumerWidget {
     );
   }
 
-  Widget _buildCover(BuildContext context, Song track, double size) {
-    final coverUrl = track.map(
-      full: (f) => f.coverUrl,
-      local: (l) => null,
-    );
+  Widget _buildCover(BuildContext context, Track track, double size) {
+    final coverUrl = track.coverArt;
     if (coverUrl != null && coverUrl.isNotEmpty) {
       return Image.network(
         coverUrl,

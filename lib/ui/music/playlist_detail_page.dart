@@ -8,7 +8,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
-import 'package:pomelo/ui/music/song_list.dart';
+import 'package:pomelo/ui/music/track_list.dart';
 import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -16,14 +16,14 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 /// 歌单详情 Provider
 ///
 /// 根据 (sourceId, playlistId) 获取歌单歌曲列表。
-final playlistSongsProvider =
-    FutureProvider.family<List<Song>, ({String sourceId, String playlistId})>(
+final playlistTracksProvider =
+    FutureProvider.family<List<Track>, ({String sourceId, String playlistId})>(
   (ref, params) async {
     await ref.watch(musicReadyProvider.future);
     final module = ref.watch(musicModuleProvider);
     final service = module?.service(params.sourceId);
     if (service == null) return [];
-    return service.getPlaylistSongs(params.playlistId);
+    return service.getPlaylistTracks(params.playlistId);
   },
 );
 
@@ -48,7 +48,7 @@ class PlaylistDetailPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final songsAsync = ref.watch(
-      playlistSongsProvider((sourceId: sourceId, playlistId: playlistId)),
+      playlistTracksProvider((sourceId: sourceId, playlistId: playlistId)),
     );
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -70,17 +70,17 @@ class PlaylistDetailPage extends HookConsumerWidget {
         const Divider(),
       ],
       child: songsAsync.when(
-        data: (songs) {
+        data: (tracks) {
           // 歌单头部信息
           final header = _PlaylistHeader(
             name: playlistName,
             coverUrl: coverUrl,
             creator: creator,
-            songCount: songs.length,
-            songs: songs,
+            songCount: tracks.length,
+            tracks: tracks,
           );
           // 歌曲列表内容
-          final songListContent = songs.isEmpty
+          final songListContent = tracks.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 48),
                   child: Center(
@@ -90,7 +90,7 @@ class PlaylistDetailPage extends HookConsumerWidget {
                     ),
                   ),
                 )
-              : SongList(songs: songs, showMoreActions: true);
+              : TrackList(tracks: tracks, showMoreActions: true);
 
           return Rx.layout(
             context,
@@ -132,7 +132,7 @@ class PlaylistDetailPage extends HookConsumerWidget {
               GhostButton(
                 onPressed: () {
                   ref.invalidate(
-                    playlistSongsProvider(
+                    playlistTracksProvider(
                       (sourceId: sourceId, playlistId: playlistId),
                     ),
                   );
@@ -153,14 +153,14 @@ class _PlaylistHeader extends StatelessWidget {
   final String? coverUrl;
   final String creator;
   final int songCount;
-  final List<Song> songs;
+  final List<Track> tracks;
 
   const _PlaylistHeader({
     required this.name,
     this.coverUrl,
     required this.creator,
     required this.songCount,
-    required this.songs,
+    required this.tracks,
   });
 
   @override
@@ -228,7 +228,7 @@ class _PlaylistHeader extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  PlayAllButton(songs: songs),
+                  PlayAllButton(tracks: tracks),
                 ],
               ),
             ),

@@ -126,25 +126,26 @@ class SubsonicSong {
     );
   }
 
-  /// 转换为项目统一的 [Song] 模型
-  Song toSong({required String sourceId, required String sourceName, required String serverUrl}) {
+  /// 转换为项目统一的 [Track] 模型
+  Track toTrack({required String sourceId, required String sourceName, required String serverUrl}) {
     final coverUrl = coverArt != null
         ? '$serverUrl/rest/getCoverArt?id=$coverArt&size=300&f=json'
         : null;
     final streamUrl = '$serverUrl/rest/stream?id=$id&f=json';
-    return Song.full(
+    return Track(
       id: id,
-      name: title,
+      title: title,
       artist: artist ?? 'Unknown',
       albumId: albumId,
-      albumName: album,
-      coverUrl: coverUrl,
+      artistId: artistId,
+      album: album,
+      coverArt: coverUrl,
       duration: duration,
+      track: track,
+      year: year,
+      genre: genre,
       source: (id: sourceId, name: sourceName, libraryId: null, libraryName: null),
       meta: {
-        'genre': genre,
-        'track': track,
-        'year': year,
         'size': size,
         'suffix': suffix,
         'path': path,
@@ -206,16 +207,15 @@ class SubsonicAlbum {
         : null;
     return Album(
       id: id,
-      title: name,
+      name: name,
       artist: artist ?? 'Unknown',
-      coverUrl: coverUrl,
+      artistId: artistId,
+      coverArt: coverUrl,
       year: year,
       songCount: songCount,
+      duration: duration ?? 0,
+      genre: genre,
       source: (id: sourceId, name: sourceName, libraryId: null, libraryName: null),
-      meta: {
-        'genre': genre,
-        'duration': duration,
-      },
     );
   }
 }
@@ -299,22 +299,21 @@ class SubsonicPlaylist {
     return Playlist(
       id: id,
       name: name,
-      coverUrl: coverUrl,
-      creator: owner ?? '',
-      description: comment,
-      songs: entries
-          .map((s) => s.toSong(
+      coverArt: coverUrl,
+      owner: owner,
+      comment: comment,
+      public: public,
+      songCount: songCount,
+      duration: duration ?? 0,
+      created: created,
+      tracks: entries
+          .map((s) => s.toTrack(
                 sourceId: sourceId,
                 sourceName: sourceName,
                 serverUrl: serverUrl,
               ))
           .toList(),
       source: (id: sourceId, name: sourceName, libraryId: null, libraryName: null),
-      meta: {
-        'duration': duration,
-        'public': public,
-      },
-      createdAt: created,
     );
   }
 }
