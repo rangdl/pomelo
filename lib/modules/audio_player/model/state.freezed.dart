@@ -26,7 +26,7 @@ mixin _$AudioPlayerState {
   bool get shuffled => throw _privateConstructorUsedError;
   List<String> get collections => throw _privateConstructorUsedError;
   int get currentIndex => throw _privateConstructorUsedError;
-  List<Song> get tracks => throw _privateConstructorUsedError;
+  List<Track> get tracks => throw _privateConstructorUsedError;
 
   /// Serializes this AudioPlayerState to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -51,7 +51,7 @@ abstract class $AudioPlayerStateCopyWith<$Res> {
     bool shuffled,
     List<String> collections,
     int currentIndex,
-    List<Song> tracks,
+    List<Track> tracks,
   });
 }
 
@@ -102,7 +102,7 @@ class _$AudioPlayerStateCopyWithImpl<$Res, $Val extends AudioPlayerState>
             tracks: null == tracks
                 ? _value.tracks
                 : tracks // ignore: cast_nullable_to_non_nullable
-                      as List<Song>,
+                      as List<Track>,
           )
           as $Val,
     );
@@ -124,7 +124,7 @@ abstract class _$$AudioPlayerStateImplCopyWith<$Res>
     bool shuffled,
     List<String> collections,
     int currentIndex,
-    List<Song> tracks,
+    List<Track> tracks,
   });
 }
 
@@ -174,7 +174,7 @@ class __$$AudioPlayerStateImplCopyWithImpl<$Res>
         tracks: null == tracks
             ? _value._tracks
             : tracks // ignore: cast_nullable_to_non_nullable
-                  as List<Song>,
+                  as List<Track>,
       ),
     );
   }
@@ -189,7 +189,7 @@ class _$AudioPlayerStateImpl extends _AudioPlayerState {
     required this.shuffled,
     required final List<String> collections,
     this.currentIndex = 0,
-    final List<Song> tracks = const [],
+    final List<Track> tracks = const [],
   }) : _collections = collections,
        _tracks = tracks,
        super._();
@@ -214,10 +214,10 @@ class _$AudioPlayerStateImpl extends _AudioPlayerState {
   @override
   @JsonKey()
   final int currentIndex;
-  final List<Song> _tracks;
+  final List<Track> _tracks;
   @override
   @JsonKey()
-  List<Song> get tracks {
+  List<Track> get tracks {
     if (_tracks is EqualUnmodifiableListView) return _tracks;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_tracks);
@@ -283,7 +283,7 @@ abstract class _AudioPlayerState extends AudioPlayerState {
     required final bool shuffled,
     required final List<String> collections,
     final int currentIndex,
-    final List<Song> tracks,
+    final List<Track> tracks,
   }) = _$AudioPlayerStateImpl;
   _AudioPlayerState._() : super._();
 
@@ -301,7 +301,7 @@ abstract class _AudioPlayerState extends AudioPlayerState {
   @override
   int get currentIndex;
   @override
-  List<Song> get tracks;
+  List<Track> get tracks;
 
   /// Create a copy of AudioPlayerState
   /// with the given fields replaced by the non-null parameter values.

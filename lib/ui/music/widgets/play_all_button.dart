@@ -1,15 +1,15 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 「播放全部」按钮
 ///
-/// 点击后用提供的歌曲列表替换当前播放队列并自动播放。
+/// 点击后用提供的曲目列表替换当前播放队列并自动播放。
 /// 列表为空时按钮自动禁用。
 class PlayAllButton extends HookConsumerWidget {
-  final List<Song> songs;
+  final List<Track> tracks;
 
   /// 起始播放索引，默认 0
   final int initialIndex;
@@ -18,7 +18,7 @@ class PlayAllButton extends HookConsumerWidget {
   final String? label;
 
   const PlayAllButton({
-    required this.songs,
+    required this.tracks,
     super.key,
     this.initialIndex = 0,
     this.label,
@@ -28,16 +28,16 @@ class PlayAllButton extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return PrimaryButton(
       leading: const Icon(Icons.play_arrow, size: 18),
-      enabled: songs.isNotEmpty,
+      enabled: tracks.isNotEmpty,
       onPressed: () => _playAll(ref),
       child: Text(label ?? '播放全部'),
     );
   }
 
   void _playAll(WidgetRef ref) {
-    if (songs.isEmpty) return;
+    if (tracks.isEmpty) return;
     final notifier = ref.read(audioPlayerProvider.notifier);
-    notifier.load(songs, initialIndex: initialIndex, autoPlay: true);
-    Rx.toast.success('开始播放：${songs.length} 首');
+    notifier.load(tracks, initialIndex: initialIndex, autoPlay: true);
+    Rx.toast.success('开始播放：${tracks.length} 首');
   }
 }

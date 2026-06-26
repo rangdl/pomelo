@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 
 part 'state.freezed.dart';
 part 'state.g.dart';
@@ -15,7 +15,7 @@ class AudioPlayerState with _$AudioPlayerState {
     required bool shuffled,
     required List<String> collections,
     @Default(0) int currentIndex,
-    @Default([]) List<Song> tracks,
+    @Default([]) List<Track> tracks,
   }) = _AudioPlayerState;
 
   factory AudioPlayerState({
@@ -24,13 +24,8 @@ class AudioPlayerState with _$AudioPlayerState {
     required bool shuffled,
     required List<String> collections,
     int currentIndex = 0,
-    List<Song> tracks = const [],
+    List<Track> tracks = const [],
   }) {
-    assert(
-      tracks.every((track) => track is SongFull || track is SongLocal),
-      'All tracks must be either SpotubeFullTrackObject or SpotubeLocalTrackObject',
-    );
-
     return AudioPlayerState._inner(
       playing: playing,
       loopMode: loopMode,
@@ -44,21 +39,21 @@ class AudioPlayerState with _$AudioPlayerState {
   factory AudioPlayerState.fromJson(Map<String, dynamic> json) =>
       _$AudioPlayerStateFromJson(json);
 
-  Song? get activeTrack {
+  Track? get activeTrack {
     if (currentIndex < 0 || currentIndex >= tracks.length) return null;
     return tracks[currentIndex];
   }
 
-  bool containsTrack(Song track) {
+  bool containsTrack(Track track) {
     return tracks.isNotEmpty &&
         tracks.any(
-          (t) => t is SongLocal && track is SongLocal
+          (t) => t.path != null && track.path != null
               ? t.path == track.path
               : t.id == track.id,
         );
   }
 
-  bool containsTracks(List<Song> tracks) {
+  bool containsTracks(List<Track> tracks) {
     return this.tracks.isNotEmpty && tracks.every(containsTrack);
   }
 

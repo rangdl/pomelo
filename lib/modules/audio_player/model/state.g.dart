@@ -17,7 +17,7 @@ _$AudioPlayerStateImpl _$$AudioPlayerStateImplFromJson(Map json) =>
       currentIndex: (json['currentIndex'] as num?)?.toInt() ?? 0,
       tracks:
           (json['tracks'] as List<dynamic>?)
-              ?.map((e) => Song.fromJson(Map<String, dynamic>.from(e as Map)))
+              ?.map((e) => Track.fromJson(Map<String, dynamic>.from(e as Map)))
               .toList() ??
           const [],
     );

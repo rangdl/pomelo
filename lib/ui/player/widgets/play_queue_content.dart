@@ -4,8 +4,8 @@ import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
-import 'package:pomelo/ui/music/widgets/song_more_actions_button.dart';
-import 'package:pomelo/ui/music/widgets/song_tile.dart';
+import 'package:pomelo/ui/music/widgets/track_more_actions_button.dart';
+import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 播放队列内容组件
@@ -68,10 +68,10 @@ class PlayQueueContent extends HookConsumerWidget {
             padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: tracks.length,
             itemBuilder: (context, index) {
-              final song = tracks[index];
-              final isActive = activeTrack?.id == song.id;
-              return SongTile(
-                song: song,
+              final track = tracks[index];
+              final isActive = activeTrack?.id == track.id;
+              return TrackTile(
+                track: track,
                 index: index + 1,
                 isActive: isActive,
                 activeLeading: Icon(
@@ -82,14 +82,14 @@ class PlayQueueContent extends HookConsumerWidget {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    PlayPauseButton(song: song),
-                    SongMoreActionsButton(
-                      song: song,
-                      onRemoveFromQueue: () => notifier.removeTrack(song.id),
+                    PlayPauseButton(track: track),
+                    TrackMoreActionsButton(
+                      track: track,
+                      onRemoveFromQueue: () => notifier.removeTrack(track.id),
                     ),
                   ],
                 ),
-                onTap: () => notifier.jumpToTrack(song),
+                onTap: () => notifier.jumpToTrack(track),
                 padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
               );
             },

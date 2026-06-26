@@ -9,7 +9,7 @@ import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
-import 'package:pomelo/ui/music/widgets/song_tile.dart';
+import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// Home 页面
@@ -324,12 +324,12 @@ class _LeaderboardSongs extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final songsAsync = ref.watch(leaderboardSongsProvider(leaderboardId));
+    final songsAsync = ref.watch(leaderboardTracksProvider(leaderboardId));
     final colorScheme = Theme.of(context).colorScheme;
 
     return songsAsync.when(
-      data: (songs) {
-        if (songs.isEmpty) {
+      data: (tracks) {
+        if (tracks.isEmpty) {
           return Center(
             child: Text(
               '暂无歌曲',
@@ -340,13 +340,13 @@ class _LeaderboardSongs extends ConsumerWidget {
 
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          itemCount: songs.length,
+          itemCount: tracks.length,
           itemBuilder: (context, index) {
-            final song = songs[index];
-            return SongTile(
-              song: song,
+            final track = tracks[index];
+            return TrackTile(
+              track: track,
               index: index + 1,
-              trailing: PlayPauseButton(song: song),
+              trailing: PlayPauseButton(track: track),
             );
           },
         );
@@ -787,10 +787,10 @@ class _PlaylistCard extends StatelessWidget {
         context.pushRoute(
           PlaylistDetailRoute(
             playlistId: (playlist.meta?['id'] as String?) ?? playlist.id,
-            sourceId: playlist.source.id,
+            sourceId: playlist.source?.id ?? '',
             playlistName: playlist.name,
-            coverUrl: playlist.coverUrl,
-            creator: playlist.creator,
+            coverUrl: playlist.coverArt,
+            creator: playlist.owner ?? '',
           ),
         );
       },
@@ -806,9 +806,9 @@ class _PlaylistCard extends StatelessWidget {
                     top: Radius.circular(8),
                   ),
                   child:
-                      playlist.coverUrl != null && playlist.coverUrl!.isNotEmpty
+                      playlist.coverArt != null && playlist.coverArt!.isNotEmpty
                       ? Image.network(
-                          playlist.coverUrl!,
+                          playlist.coverArt!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) =>
                               CoverPlaceholder(colorScheme: colorScheme),
@@ -826,11 +826,11 @@ class _PlaylistCard extends StatelessWidget {
                 style: TextStyle(fontSize: 13, color: colorScheme.foreground),
               ),
             ),
-            if (playlist.creator.isNotEmpty)
+            if ((playlist.owner ?? '').isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                 child: Text(
-                  playlist.creator,
+                  playlist.owner ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

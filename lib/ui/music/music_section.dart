@@ -3,7 +3,7 @@ import 'package:pomelo/modules/music/model/music_source_type.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
-import 'package:pomelo/ui/music/song_list.dart';
+import 'package:pomelo/ui/music/track_list.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -169,7 +169,7 @@ class MusicSection extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dataAsync = ref.watch(currentSourceSongsProvider);
+    final dataAsync = ref.watch(currentSourceTracksProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,7 +186,7 @@ class MusicSection extends HookConsumerWidget {
             return Column(
               children: [
                 ProviderErrorBanner(errors: data.errors),
-                if (data.songs.isEmpty)
+                if (data.tracks.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
@@ -201,7 +201,7 @@ class MusicSection extends HookConsumerWidget {
                     ),
                   )
                 else
-                  SongList(songs: data.songs),
+                  TrackList(tracks: data.tracks),
               ],
             );
           },

@@ -90,7 +90,7 @@ class LxMusicService extends MusicService {
   // ========== 搜索 ==========
 
   @override
-  Future<PaginationResponse<Song>> searchSongs(
+  Future<PaginationResponse<Track>> searchTracks(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -134,13 +134,13 @@ class LxMusicService extends MusicService {
   // ========== 歌曲 ==========
 
   @override
-  Future<Song?> getSong(String id) {
-    throw UnimplementedError('$sourceName(getSong) 尚未实现');
+  Future<Track?> getTrack(String id) {
+    throw UnimplementedError('$sourceName(getTrack) 尚未实现');
   }
 
   @override
-  Future<PaginationResponse<Song>> getSongs({int page = 1, int limit = 20}) {
-    throw UnimplementedError('$sourceName(getSongs) 尚未实现');
+  Future<PaginationResponse<Track>> getTracks({int page = 1, int limit = 20}) {
+    throw UnimplementedError('$sourceName(getTracks) 尚未实现');
   }
 
   // ========== 专辑 ==========
@@ -151,12 +151,12 @@ class LxMusicService extends MusicService {
   }
 
   @override
-  Future<PaginationResponse<Song>> getAlbumSongs(
+  Future<PaginationResponse<Track>> getAlbumTracks(
     String albumId, {
     int page = 1,
     int limit = 20,
   }) {
-    throw UnimplementedError('$sourceName(getAlbumSongs) 尚未实现');
+    throw UnimplementedError('$sourceName(getAlbumTracks) 尚未实现');
   }
 
   // ========== 歌单 ==========
@@ -209,7 +209,7 @@ class LxMusicService extends MusicService {
   }
 
   @override
-  Future<List<Song>> getPlaylistSongs(String id) {
+  Future<List<Track>> getPlaylistTracks(String id) {
     final libId = _defaultLibraryId;
     if (libId == null) return Future.value([]);
     return metadataEngine.getPlaylistsDetail(
@@ -230,13 +230,13 @@ class LxMusicService extends MusicService {
   // ========== 播放链接 ==========
 
   @override
-  Future<String> getMusicUrl(SongFull song, {String? quality}) async {
+  Future<String> getMusicUrl(Track track, {String? quality}) async {
     if (sourceEngine == null) {
       throw UnimplementedError(
           '$sourceName(getMusicUrl) 未加载音源插件，无法获取播放链接');
     }
-    // 根据 song.source.libraryId 路由到对应库获取播放链接
-    final libraryId = song.source.libraryId ?? _defaultLibraryId;
+    // 根据 track.source.libraryId 路由到对应库获取播放链接
+    final libraryId = track.source?.libraryId ?? _defaultLibraryId;
     if (libraryId == null) {
       throw UnimplementedError(
           '$sourceName(getMusicUrl) 无法确定歌曲所属库，且无默认库');
@@ -248,9 +248,9 @@ class LxMusicService extends MusicService {
         throw UnimplementedError(
             '$sourceName(getMusicUrl) 音源插件不支持库 $libraryId，且无可用回退库');
       }
-      return sourceEngine!.getMusicUrl(fallback, song, quality: quality);
+      return sourceEngine!.getMusicUrl(fallback, track, quality: quality);
     }
-    return sourceEngine!.getMusicUrl(libraryId, song, quality: quality);
+    return sourceEngine!.getMusicUrl(libraryId, track, quality: quality);
   }
 
   // ========== 排行榜 ==========
@@ -263,10 +263,10 @@ class LxMusicService extends MusicService {
   }
 
   @override
-  Future<List<Song>> getLeaderboardSongs(String leaderboardId) {
+  Future<List<Track>> getLeaderboardTracks(String leaderboardId) {
     final libId = _defaultLibraryId;
     if (libId == null) return Future.value([]);
-    return metadataEngine.getLeaderboardSongs(
+    return metadataEngine.getLeaderboardTracks(
       leaderboardId,
       type: libId,
       sourceId: sourceId,

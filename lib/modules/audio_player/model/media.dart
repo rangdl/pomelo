@@ -3,8 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit/media_kit.dart' hide Track;
-import 'package:pomelo/modules/music/model/models.dart' show Song;
-import 'package:pomelo/modules/music/model/song.dart' show SongLocal;
+import 'package:pomelo/modules/music/model/models.dart' show Track;
 
 // // import '../../models/metadata/metadata.dart';
 // // import '../../utils/platform.dart';
@@ -23,7 +22,7 @@ class PomeloMedia extends mk.Media {
   static String get _host =>
       kIsWindows ? "localhost" : InternetAddress.anyIPv4.address;
 
-  final Song track;
+  final Track track;
   PomeloMedia(this.track)
     : // assert(
       //     track is SpotubeLocalTrackObject || track is SpotubeFullTrackObject,
@@ -31,8 +30,8 @@ class PomeloMedia extends mk.Media {
       //   ),
       // If the track is a local track, use its path, otherwise use the server URL
       super(
-        track is SongLocal
-            ? track.path
+        track.path != null
+            ? track.path!
             : "http://$_host:$serverPort/stream/${track.id}",
         extras: track.toJson(),
       );
@@ -40,7 +39,7 @@ class PomeloMedia extends mk.Media {
   factory PomeloMedia.media(Media media) {
     assert(media.extras != null, "[Media] must have extra metadata set");
     // return PomeloMedia(SpotubeTrackObject.fromJson(media.extras!));
-    return PomeloMedia(Song.fromJson(media.extras!));
+    return PomeloMedia(Track.fromJson(media.extras!));
   }
 }
 
@@ -129,7 +128,7 @@ class PomeloMedia extends mk.Media {
 //   }
 // }
 
-// extension AsMediaListSong on Iterable<Song> {
+// extension AsMediaListTrack on Iterable<Track> {
 //   List<PomeloMedia> asMediaList() {
 //     return map((track) => PomeloMedia(track)).toList();
 //   }

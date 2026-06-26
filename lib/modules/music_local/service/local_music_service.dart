@@ -22,8 +22,8 @@ class LocalMusicService extends MusicService {
 
   final _source = (id: 'local', name: '本地音乐', libraryId: null, libraryName: null);
 
-  /// 内存中的歌曲列表
-  final List<Song> _songs = [];
+  /// 内存中的曲目列表
+  final List<Track> _tracks = [];
 
   /// 内存中的专辑列表
   final List<Album> _albums = [];
@@ -37,8 +37,8 @@ class LocalMusicService extends MusicService {
   /// 已配置的扫描目录列表（只读）
   List<String> get directories => List.unmodifiable(_directories);
 
-  /// 当前歌曲总数
-  int get songCount => _songs.length;
+  /// 当前曲目总数
+  int get trackCount => _tracks.length;
 
   /// 当前专辑总数
   int get albumCount => _albums.length;
@@ -52,18 +52,16 @@ class LocalMusicService extends MusicService {
     await scanDirectory(path);
   }
 
-  /// 移除目录并清理对应歌曲
+  /// 移除目录并清理对应曲目
   void removeDirectory(String path) {
     _directories.remove(path);
-    // 移除来自该目录的所有歌曲
-    _songs.removeWhere((s) => s is SongLocal && s.path.startsWith(path));
-    // 重建专辑列表
+    _tracks.removeWhere((s) => s.path != null && s.path!.startsWith(path));
     _rebuildAlbums();
   }
 
   /// 清空所有数据
   void clear() {
-    _songs.clear();
+    _tracks.clear();
     _albums.clear();
     _playlists.clear();
     _directories.clear();
@@ -81,61 +79,55 @@ class LocalMusicService extends MusicService {
       final ext = p.extension(entity.path).toLowerCase();
       if (!_audioExtensions.contains(ext)) continue;
 
-      // 避免重复添加
-      if (_songs.any((s) => s is SongLocal && s.path == entity.path)) continue;
+      if (_tracks.any((s) => s.path != null && s.path == entity.path)) continue;
 
       final fileName = p.basenameWithoutExtension(entity.path);
-      // 尝试解析 "艺术家 - 歌名" 格式
       final parts = fileName.split(' - ');
       final String artist;
-      final String name;
+      final String title;
       if (parts.length >= 2) {
         artist = parts[0].trim();
-        name = parts.sublist(1).join(' - ').trim();
+        title = parts.sublist(1).join(' - ').trim();
       } else {
         artist = '未知艺术家';
-        name = fileName;
+        title = fileName;
       }
 
       final id = 'local-${entity.path.hashCode}';
-      final song = Song.local(
+      final track = Track(
         id: id,
-        name: name,
+        title: title,
         artist: artist,
-        albumId: null,
-        albumName: null,
-        duration: 0, // 不解析 tag，时长设为 0
+        duration: 0,
         path: entity.path,
         source: _source,
       );
-      _songs.add(song);
+      _tracks.add(track);
     }
 
-    // 扫描完成后重建专辑列表
     _rebuildAlbums();
   }
 
   /// 重新扫描所有已配置的目录
   Future<void> rescanAll() async {
-    _songs.clear();
+    _tracks.clear();
     _albums.clear();
     for (final dir in List<String>.from(_directories)) {
       await scanDirectory(dir);
     }
   }
 
-  /// 根据歌曲列表重建专辑分组
+  /// 根据曲目列表重建专辑分组
   void _rebuildAlbums() {
     _albums.clear();
-    // 按艺术家分组作为"专辑"
-    final groups = <String, List<Song>>{};
-    for (final song in _songs) {
-      groups.putIfAbsent(song.artist, () => []).add(song);
+    final groups = <String, List<Track>>{};
+    for (final track in _tracks) {
+      groups.putIfAbsent(track.artist ?? '未知', () => []).add(track);
     }
     for (final entry in groups.entries) {
       _albums.add(Album(
         id: 'local-artist-${entry.key.hashCode}',
-        title: entry.key,
+        name: entry.key,
         artist: entry.key,
         songCount: entry.value.length,
         source: _source,
@@ -146,7 +138,7 @@ class LocalMusicService extends MusicService {
   // ========== MusicService 接口实现 ==========
 
   @override
-  Future<PaginationResponse<Song>> searchSongs(
+  Future<PaginationResponse<Track>> searchTracks(
     String keyword, {
     int page = 1,
     int limit = 20,
@@ -156,11 +148,11 @@ class LocalMusicService extends MusicService {
       return PaginationResponse.empty(page: page, limit: limit);
     }
     final lower = keyword.toLowerCase();
-    final filtered = _songs
+    final filtered = _tracks
         .where(
           (s) =>
-              s.name.toLowerCase().contains(lower) ||
-              s.artist.toLowerCase().contains(lower),
+              s.title.toLowerCase().contains(lower) ||
+              (s.artist?.toLowerCase().contains(lower) ?? false),
         )
         .toList();
     return PaginationResponse.fromList(filtered, page: page, limit: limit);
@@ -180,8 +172,8 @@ class LocalMusicService extends MusicService {
     final filtered = _albums
         .where(
           (a) =>
-              a.title.toLowerCase().contains(lower) ||
-              a.artist.toLowerCase().contains(lower),
+              a.name.toLowerCase().contains(lower) ||
+              (a.artist?.toLowerCase().contains(lower) ?? false),
         )
         .toList();
     return PaginationResponse.fromList(filtered, page: page, limit: limit);
@@ -205,17 +197,17 @@ class LocalMusicService extends MusicService {
   }
 
   @override
-  Future<Song?> getSong(String id) async {
+  Future<Track?> getTrack(String id) async {
     try {
-      return _songs.firstWhere((s) => s.id == id);
+      return _tracks.firstWhere((s) => s.id == id);
     } catch (_) {
       return null;
     }
   }
 
   @override
-  Future<PaginationResponse<Song>> getSongs({int page = 1, int limit = 20}) async {
-    return PaginationResponse.fromList(_songs, page: page, limit: limit);
+  Future<PaginationResponse<Track>> getTracks({int page = 1, int limit = 20}) async {
+    return PaginationResponse.fromList(_tracks, page: page, limit: limit);
   }
 
   @override
@@ -228,15 +220,14 @@ class LocalMusicService extends MusicService {
   }
 
   @override
-  Future<PaginationResponse<Song>> getAlbumSongs(
+  Future<PaginationResponse<Track>> getAlbumTracks(
     String albumId, {
     int page = 1,
     int limit = 20,
   }) async {
     final album = await getAlbum(albumId);
     if (album == null) return PaginationResponse.empty(page: page, limit: limit);
-    // 专辑按艺术家分组，查找该艺术家的所有歌曲
-    final filtered = _songs.where((s) => s.artist == album.artist).toList();
+    final filtered = _tracks.where((s) => s.artist == album.artist).toList();
     return PaginationResponse.fromList(filtered, page: page, limit: limit);
   }
 

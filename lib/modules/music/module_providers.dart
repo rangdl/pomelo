@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'model/song.dart';
+import 'model/track.dart';
 import 'music_module.dart';
 
 // ============================================================
@@ -27,7 +27,7 @@ final musicSearchKeywordProvider =
     NotifierProvider<SearchKeywordNotifier, String>(SearchKeywordNotifier.new);
 
 /// 音乐搜索结果
-final musicSearchResultProvider = Provider<List<Song>>((ref) {
+final musicSearchResultProvider = Provider<List<Track>>((ref) {
   final keyword = ref.watch(musicSearchKeywordProvider);
   if (keyword.isEmpty) return [];
   return []; // TODO: 接入搜索逻辑

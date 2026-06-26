@@ -15,7 +15,7 @@ import 'package:pomelo/modules/audio_player/model/media.dart';
 import 'package:pomelo/modules/audio_player/model/custom_player.dart';
 import 'package:pomelo/modules/audio_player/model/playback_state.dart';
 import 'package:pomelo/modules/audio_player/repository/audio_player_repository.dart';
-import 'package:pomelo/modules/music/model/song.dart' show Song;
+import 'package:pomelo/modules/music/model/track.dart' show Track;
 
 /// 音频播放器服务
 ///
@@ -408,7 +408,7 @@ mixin AudioPlayerServiceStreams on AudioPlayerInterface {
   Stream<mk.Playlist> get playlistStream => _mkPlayer.stream.playlist;
 }
 
-extension AsMediaListSong on Iterable<Song> {
+extension AsMediaListTrack on Iterable<Track> {
   List<PomeloMedia> asMediaList() {
     return map((track) => PomeloMedia(track)).toList();
   }

@@ -286,10 +286,10 @@ class _PlaylistCard extends StatelessWidget {
       onTap: () {
         context.pushRoute(PlaylistDetailRoute(
           playlistId: (playlist.meta?['id'] as String?) ?? playlist.id,
-          sourceId: playlist.source.id,
+          sourceId: playlist.source?.id ?? '',
           playlistName: playlist.name,
-          coverUrl: playlist.coverUrl,
-          creator: playlist.creator,
+          coverUrl: playlist.coverArt,
+          creator: playlist.owner ?? '',
         ));
       },
       child: Card(
@@ -303,10 +303,10 @@ class _PlaylistCard extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius:
                       const BorderRadius.vertical(top: Radius.circular(8)),
-                  child: playlist.coverUrl != null &&
-                          playlist.coverUrl!.isNotEmpty
+                  child: playlist.coverArt != null &&
+                          playlist.coverArt!.isNotEmpty
                       ? Image.network(
-                          playlist.coverUrl!,
+                          playlist.coverArt!,
                           fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => CoverPlaceholder(
                             colorScheme: colorScheme,
@@ -327,11 +327,11 @@ class _PlaylistCard extends StatelessWidget {
               ),
             ),
             // 创建者
-            if (playlist.creator.isNotEmpty)
+            if ((playlist.owner ?? '').isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                 child: Text(
-                  playlist.creator,
+                  playlist.owner ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

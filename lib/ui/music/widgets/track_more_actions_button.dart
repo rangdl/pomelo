@@ -2,24 +2,24 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/music/model/song.dart';
+import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-/// 歌曲「更多操作」按钮
+/// 曲目「更多操作」按钮
 ///
 /// 点击后按响应式分流弹出菜单：
 /// - 移动端：openSheet 从底部滑出
 /// - 桌面端：showDropdown 在按钮旁弹出
 ///
 /// 菜单项：下一首播放、添加到播放列表、（可选）从列表移除。
-class SongMoreActionsButton extends HookConsumerWidget {
-  final Song song;
+class TrackMoreActionsButton extends HookConsumerWidget {
+  final Track track;
 
   /// 提供该回调时显示「从列表移除」（仅用于播放队列页）
   final VoidCallback? onRemoveFromQueue;
 
-  const SongMoreActionsButton({
-    required this.song,
+  const TrackMoreActionsButton({
+    required this.track,
     super.key,
     this.onRemoveFromQueue,
   });
@@ -40,8 +40,8 @@ class SongMoreActionsButton extends HookConsumerWidget {
         context: context,
         position: OverlayPosition.bottom,
         draggable: true,
-        builder: (_) => SongMoreActionsContent(
-          song: song,
+        builder: (_) => TrackMoreActionsContent(
+          track: track,
           onRemoveFromQueue: onRemoveFromQueue,
           onClose: close,
         ),
@@ -66,7 +66,7 @@ class SongMoreActionsButton extends HookConsumerWidget {
         leading: const Icon(Icons.queue_music, size: 18),
         child: const Text('下一首播放'),
         onPressed: (_) {
-          notifier.addTracksAtFirst([song]);
+          notifier.addTracksAtFirst([track]);
           onClose();
           Rx.toast.success('已添加到下一首');
         },
@@ -75,7 +75,7 @@ class SongMoreActionsButton extends HookConsumerWidget {
         leading: const Icon(Icons.playlist_add, size: 18),
         child: const Text('添加到播放列表'),
         onPressed: (_) {
-          notifier.addTracks([song]);
+          notifier.addTracks([track]);
           onClose();
           Rx.toast.success('已添加到播放列表');
         },
@@ -103,17 +103,17 @@ class SongMoreActionsButton extends HookConsumerWidget {
   }
 }
 
-/// 歌曲更多操作菜单共享内容
+/// 曲目更多操作菜单共享内容
 ///
 /// 移动端用 Column + ListTile 嵌入 openSheet。
 /// 桌面端直接用 DropdownMenu + MenuItem（不走此组件）。
-class SongMoreActionsContent extends HookConsumerWidget {
-  final Song song;
+class TrackMoreActionsContent extends HookConsumerWidget {
+  final Track track;
   final VoidCallback? onRemoveFromQueue;
   final VoidCallback? onClose;
 
-  const SongMoreActionsContent({
-    required this.song,
+  const TrackMoreActionsContent({
+    required this.track,
     super.key,
     this.onRemoveFromQueue,
     this.onClose,
@@ -133,7 +133,7 @@ class SongMoreActionsContent extends HookConsumerWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 顶部歌曲信息条
+          // 顶部曲目信息条
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
@@ -144,7 +144,7 @@ class SongMoreActionsContent extends HookConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        song.name,
+                        track.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -153,7 +153,7 @@ class SongMoreActionsContent extends HookConsumerWidget {
                         ),
                       ),
                       Text(
-                        song.artist,
+                        track.artist ?? '',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -172,7 +172,7 @@ class SongMoreActionsContent extends HookConsumerWidget {
             leading: const Icon(Icons.queue_music, size: 20),
             title: const Text('下一首播放'),
             onTap: () {
-              notifier.addTracksAtFirst([song]);
+              notifier.addTracksAtFirst([track]);
               onClose?.call();
               Rx.toast.success('已添加到下一首');
             },
@@ -182,7 +182,7 @@ class SongMoreActionsContent extends HookConsumerWidget {
             leading: const Icon(Icons.playlist_add, size: 20),
             title: const Text('添加到播放列表'),
             onTap: () {
-              notifier.addTracks([song]);
+              notifier.addTracks([track]);
               onClose?.call();
               Rx.toast.success('已添加到播放列表');
             },
