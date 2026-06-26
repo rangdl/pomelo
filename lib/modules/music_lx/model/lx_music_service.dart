@@ -78,6 +78,15 @@ class LxMusicService extends MusicService {
     }
   }
 
+  /// 根据 libraryId 查找库显示名
+  String? _libraryName(String? libraryId) {
+    if (libraryId == null) return null;
+    for (final l in _libraries) {
+      if (l.id == libraryId) return l.name;
+    }
+    return null;
+  }
+
   // ========== 搜索 ==========
 
   @override
@@ -91,7 +100,15 @@ class LxMusicService extends MusicService {
     if (libId == null) {
       return Future.value(PaginationResponse.empty(page: page, limit: limit));
     }
-    return metadataEngine.search(keyword, page: page, limit: limit, type: libId);
+    return metadataEngine.search(
+      keyword,
+      page: page,
+      limit: limit,
+      type: libId,
+      sourceId: sourceId,
+      sourceName: sourceName,
+      libraryName: _libraryName(libId),
+    );
   }
 
   @override
@@ -173,6 +190,9 @@ class LxMusicService extends MusicService {
       categoryId,
       sortId: sortId,
       type: libId,
+      sourceId: sourceId,
+      sourceName: sourceName,
+      libraryName: _libraryName(libId),
     );
     return PaginationResponse<Playlist>(
       page: page,
@@ -192,7 +212,13 @@ class LxMusicService extends MusicService {
   Future<List<Song>> getPlaylistSongs(String id) {
     final libId = _defaultLibraryId;
     if (libId == null) return Future.value([]);
-    return metadataEngine.getPlaylistsDetail(id, type: libId);
+    return metadataEngine.getPlaylistsDetail(
+      id,
+      type: libId,
+      sourceId: sourceId,
+      sourceName: sourceName,
+      libraryName: _libraryName(libId),
+    );
   }
 
   @override
@@ -240,6 +266,12 @@ class LxMusicService extends MusicService {
   Future<List<Song>> getLeaderboardSongs(String leaderboardId) {
     final libId = _defaultLibraryId;
     if (libId == null) return Future.value([]);
-    return metadataEngine.getLeaderboardSongs(leaderboardId, type: libId);
+    return metadataEngine.getLeaderboardSongs(
+      leaderboardId,
+      type: libId,
+      sourceId: sourceId,
+      sourceName: sourceName,
+      libraryName: _libraryName(libId),
+    );
   }
 }

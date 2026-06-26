@@ -19,9 +19,11 @@ class Song with _$Song {
     @Default(0) int duration, // 时长（秒）
     /// 数据来源
     ///
-    /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
-    /// `(id: 'local', name: '本地')`
-    required ({String id, String name, String? libraryId}) source,
+    /// - [id] 服务标识，如 'lx-server'、'lx-default'、'subsonic-xxx'、'local'
+    /// - [name] 服务显示名，如 'Lx Server'、'在线音乐'、'本地音乐'
+    /// - [libraryId] 库标识（如 'tx'、'kg'），无库概念时为 null
+    /// - [libraryName] 库显示名（如 'QQ音乐'、'酷狗'），无库概念时为 null
+    required ({String id, String name, String? libraryId, String? libraryName}) source,
 
     /// 来源原始数据
     ///
@@ -45,9 +47,11 @@ class Song with _$Song {
     @Default(0) int duration, // 时长（秒）
     /// 数据来源
     ///
-    /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
-    /// `(id: 'local', name: '本地')`
-    required ({String id, String name, String? libraryId}) source,
+    /// - [id] 服务标识，如 'lx-server'、'lx-default'、'subsonic-xxx'、'local'
+    /// - [name] 服务显示名，如 'Lx Server'、'在线音乐'、'本地音乐'
+    /// - [libraryId] 库标识（如 'tx'、'kg'），无库概念时为 null
+    /// - [libraryName] 库显示名（如 'QQ音乐'、'酷狗'），无库概念时为 null
+    required ({String id, String name, String? libraryId, String? libraryName}) source,
 
     /// 来源原始数据
     ///

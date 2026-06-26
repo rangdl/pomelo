@@ -1,18 +1,15 @@
 /// 日志模块 - 模块定义
 ///
 /// 提供应用内日志记录、查询、过滤和导出功能。
-/// 遵循 M.A.R.S. 架构：
-/// - Model: log_entry.dart
-/// - Action: (模块初始化/就绪/销毁)
-/// - Repository: LogRepository
-/// - Service/State: LogService / Riverpod Provider
+/// 作为系统核心组件，仍以 Module 形式注册到 ModuleManager，
+/// 便于其他模块通过依赖声明引用（如 audio_player 依赖 'log'）。
 library;
 
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/mars.dart';
 
-import 'repository/log_repository.dart';
-import 'service/log_service.dart';
+import 'log_repository.dart';
+import 'log_service.dart';
 
 class LogModule extends Module {
   LogModule() : _repository = LogRepository();

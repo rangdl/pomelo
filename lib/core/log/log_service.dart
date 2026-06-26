@@ -6,8 +6,8 @@ library;
 
 import 'package:pomelo/core/mars.dart';
 
-import '../model/log_entry.dart';
-import '../repository/log_repository.dart';
+import 'log_entry.dart';
+import 'log_repository.dart';
 
 class LogService extends Service {
   @override

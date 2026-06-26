@@ -43,10 +43,12 @@ mixin _$Song {
   int get duration => throw _privateConstructorUsedError; // 时长（秒）
   /// 数据来源
   ///
-  /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
-  /// `(id: 'local', name: '本地')`
-  ({String id, String? libraryId, String name}) get source =>
-      throw _privateConstructorUsedError;
+  /// - [id] 服务标识，如 'lx-server'、'lx-default'、'subsonic-xxx'、'local'
+  /// - [name] 服务显示名，如 'Lx Server'、'在线音乐'、'本地音乐'
+  /// - [libraryId] 库标识（如 'tx'、'kg'），无库概念时为 null
+  /// - [libraryName] 库显示名（如 'QQ音乐'、'酷狗'），无库概念时为 null
+  ({String id, String? libraryId, String? libraryName, String name})
+  get source => throw _privateConstructorUsedError;
 
   /// 来源原始数据
   ///
@@ -64,7 +66,7 @@ mixin _$Song {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -78,7 +80,7 @@ mixin _$Song {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -95,7 +97,7 @@ mixin _$Song {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -109,7 +111,7 @@ mixin _$Song {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -126,7 +128,7 @@ mixin _$Song {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -140,7 +142,7 @@ mixin _$Song {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -187,7 +189,7 @@ abstract class $SongCopyWith<$Res> {
     String? albumName,
     String? coverUrl,
     int duration,
-    ({String id, String? libraryId, String name}) source,
+    ({String id, String? libraryId, String? libraryName, String name}) source,
     Map<String, dynamic> meta,
     DateTime? createdAt,
   });
@@ -252,7 +254,12 @@ class _$SongCopyWithImpl<$Res, $Val extends Song>
             source: null == source
                 ? _value.source
                 : source // ignore: cast_nullable_to_non_nullable
-                      as ({String id, String? libraryId, String name}),
+                      as ({
+                        String id,
+                        String? libraryId,
+                        String? libraryName,
+                        String name,
+                      }),
             meta: null == meta
                 ? _value.meta
                 : meta // ignore: cast_nullable_to_non_nullable
@@ -283,7 +290,7 @@ abstract class _$$SongFullImplCopyWith<$Res> implements $SongCopyWith<$Res> {
     String? albumName,
     String? coverUrl,
     int duration,
-    ({String id, String? libraryId, String name}) source,
+    ({String id, String? libraryId, String? libraryName, String name}) source,
     Map<String, dynamic> meta,
     DateTime? createdAt,
     String src,
@@ -349,7 +356,12 @@ class __$$SongFullImplCopyWithImpl<$Res>
         source: null == source
             ? _value.source
             : source // ignore: cast_nullable_to_non_nullable
-                  as ({String id, String? libraryId, String name}),
+                  as ({
+                    String id,
+                    String? libraryId,
+                    String? libraryName,
+                    String name,
+                  }),
         meta: null == meta
             ? _value._meta
             : meta // ignore: cast_nullable_to_non_nullable
@@ -413,10 +425,13 @@ class _$SongFullImpl implements SongFull {
   // 时长（秒）
   /// 数据来源
   ///
-  /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
-  /// `(id: 'local', name: '本地')`
+  /// - [id] 服务标识，如 'lx-server'、'lx-default'、'subsonic-xxx'、'local'
+  /// - [name] 服务显示名，如 'Lx Server'、'在线音乐'、'本地音乐'
+  /// - [libraryId] 库标识（如 'tx'、'kg'），无库概念时为 null
+  /// - [libraryName] 库显示名（如 'QQ音乐'、'酷狗'），无库概念时为 null
   @override
-  final ({String id, String? libraryId, String name}) source;
+  final ({String id, String? libraryId, String? libraryName, String name})
+  source;
 
   /// 来源原始数据
   ///
@@ -508,7 +523,7 @@ class _$SongFullImpl implements SongFull {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -522,7 +537,7 @@ class _$SongFullImpl implements SongFull {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -555,7 +570,7 @@ class _$SongFullImpl implements SongFull {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -569,7 +584,7 @@ class _$SongFullImpl implements SongFull {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -602,7 +617,7 @@ class _$SongFullImpl implements SongFull {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -616,7 +631,7 @@ class _$SongFullImpl implements SongFull {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -688,7 +703,13 @@ abstract class SongFull implements Song {
     final String? albumName,
     final String? coverUrl,
     final int duration,
-    required final ({String id, String? libraryId, String name}) source,
+    required final ({
+      String id,
+      String? libraryId,
+      String? libraryName,
+      String name,
+    })
+    source,
     final Map<String, dynamic> meta,
     final DateTime? createdAt,
     required final String src,
@@ -713,10 +734,12 @@ abstract class SongFull implements Song {
   int get duration; // 时长（秒）
   /// 数据来源
   ///
-  /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
-  /// `(id: 'local', name: '本地')`
+  /// - [id] 服务标识，如 'lx-server'、'lx-default'、'subsonic-xxx'、'local'
+  /// - [name] 服务显示名，如 'Lx Server'、'在线音乐'、'本地音乐'
+  /// - [libraryId] 库标识（如 'tx'、'kg'），无库概念时为 null
+  /// - [libraryName] 库显示名（如 'QQ音乐'、'酷狗'），无库概念时为 null
   @override
-  ({String id, String? libraryId, String name}) get source;
+  ({String id, String? libraryId, String? libraryName, String name}) get source;
 
   /// 来源原始数据
   ///
@@ -752,7 +775,7 @@ abstract class _$$SongLocalImplCopyWith<$Res> implements $SongCopyWith<$Res> {
     String? albumName,
     String? coverUrl,
     int duration,
-    ({String id, String? libraryId, String name}) source,
+    ({String id, String? libraryId, String? libraryName, String name}) source,
     Map<String, dynamic> meta,
     DateTime? createdAt,
     String path,
@@ -818,7 +841,12 @@ class __$$SongLocalImplCopyWithImpl<$Res>
         source: null == source
             ? _value.source
             : source // ignore: cast_nullable_to_non_nullable
-                  as ({String id, String? libraryId, String name}),
+                  as ({
+                    String id,
+                    String? libraryId,
+                    String? libraryName,
+                    String name,
+                  }),
         meta: null == meta
             ? _value._meta
             : meta // ignore: cast_nullable_to_non_nullable
@@ -882,10 +910,13 @@ class _$SongLocalImpl implements SongLocal {
   // 时长（秒）
   /// 数据来源
   ///
-  /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
-  /// `(id: 'local', name: '本地')`
+  /// - [id] 服务标识，如 'lx-server'、'lx-default'、'subsonic-xxx'、'local'
+  /// - [name] 服务显示名，如 'Lx Server'、'在线音乐'、'本地音乐'
+  /// - [libraryId] 库标识（如 'tx'、'kg'），无库概念时为 null
+  /// - [libraryName] 库显示名（如 'QQ音乐'、'酷狗'），无库概念时为 null
   @override
-  final ({String id, String? libraryId, String name}) source;
+  final ({String id, String? libraryId, String? libraryName, String name})
+  source;
 
   /// 来源原始数据
   ///
@@ -977,7 +1008,7 @@ class _$SongLocalImpl implements SongLocal {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -991,7 +1022,7 @@ class _$SongLocalImpl implements SongLocal {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -1024,7 +1055,7 @@ class _$SongLocalImpl implements SongLocal {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -1038,7 +1069,7 @@ class _$SongLocalImpl implements SongLocal {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -1071,7 +1102,7 @@ class _$SongLocalImpl implements SongLocal {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String src,
@@ -1085,7 +1116,7 @@ class _$SongLocalImpl implements SongLocal {
       String? albumName,
       String? coverUrl,
       int duration,
-      ({String id, String? libraryId, String name}) source,
+      ({String id, String? libraryId, String? libraryName, String name}) source,
       Map<String, dynamic> meta,
       DateTime? createdAt,
       String path,
@@ -1157,7 +1188,13 @@ abstract class SongLocal implements Song {
     final String? albumName,
     final String? coverUrl,
     final int duration,
-    required final ({String id, String? libraryId, String name}) source,
+    required final ({
+      String id,
+      String? libraryId,
+      String? libraryName,
+      String name,
+    })
+    source,
     final Map<String, dynamic> meta,
     final DateTime? createdAt,
     required final String path,
@@ -1182,10 +1219,12 @@ abstract class SongLocal implements Song {
   int get duration; // 时长（秒）
   /// 数据来源
   ///
-  /// 如 `(id: 'lx-plugin1', name: '在线音乐', libraryId: 'tx')`、
-  /// `(id: 'local', name: '本地')`
+  /// - [id] 服务标识，如 'lx-server'、'lx-default'、'subsonic-xxx'、'local'
+  /// - [name] 服务显示名，如 'Lx Server'、'在线音乐'、'本地音乐'
+  /// - [libraryId] 库标识（如 'tx'、'kg'），无库概念时为 null
+  /// - [libraryName] 库显示名（如 'QQ音乐'、'酷狗'），无库概念时为 null
   @override
-  ({String id, String? libraryId, String name}) get source;
+  ({String id, String? libraryId, String? libraryName, String name}) get source;
 
   /// 来源原始数据
   ///

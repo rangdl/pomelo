@@ -11,7 +11,7 @@ import 'dart:io';
 
 import 'package:pomelo/core/mars.dart';
 
-import '../model/log_entry.dart';
+import 'log_entry.dart';
 
 class LogRepository extends Repository<LogEntry> {
   /// 最大内存日志条数（超过时自动清理旧日志）
@@ -242,4 +242,3 @@ class LogRepository extends Repository<LogEntry> {
     await super.onDispose();
   }
 }
-
