@@ -1,12 +1,11 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
-import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
-import 'package:pomelo/modules/music/model/song.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/song_more_actions_button.dart';
+import 'package:pomelo/ui/music/widgets/song_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 播放队列内容组件
@@ -71,58 +70,27 @@ class PlayQueueContent extends HookConsumerWidget {
             itemBuilder: (context, index) {
               final song = tracks[index];
               final isActive = activeTrack?.id == song.id;
-              return Padding(
-                padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
-                child: Card(
-                  child: ListTile(
-                    leading: SizedBox(
-                      width: 28,
-                      child: isActive
-                          ? Icon(
-                              Icons.equalizer,
-                              color: colorScheme.primary,
-                              size: 20,
-                            )
-                          : Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: colorScheme.mutedForeground,
-                              ),
-                            ),
-                    ),
-                    title: Text(
-                      song.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: isActive ? colorScheme.primary : null,
-                        fontWeight: isActive ? FontWeight.w600 : null,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${song.artist}  ·  ${song.formattedDuration}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        PlayPauseButton(song: song),
-                        SongMoreActionsButton(
-                          song: song,
-                          onRemoveFromQueue: () =>
-                              notifier.removeTrack(song.id),
-                        ),
-                      ],
-                    ),
-                    onTap: () => notifier.jumpToTrack(song),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                  ),
+              return SongTile(
+                song: song,
+                index: index + 1,
+                isActive: isActive,
+                activeLeading: Icon(
+                  Icons.equalizer,
+                  color: colorScheme.primary,
+                  size: 20,
                 ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PlayPauseButton(song: song),
+                    SongMoreActionsButton(
+                      song: song,
+                      onRemoveFromQueue: () => notifier.removeTrack(song.id),
+                    ),
+                  ],
+                ),
+                onTap: () => notifier.jumpToTrack(song),
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
               );
             },
           ),

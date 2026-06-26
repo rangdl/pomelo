@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/module/module_manager.dart';
+import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/storage/storage_keys.dart';
 
+import '../model/lx_server_quality.dart';
 import '../music_lx_server_module.dart';
 import '../repository/lx_server_music_service.dart';
 
@@ -57,3 +60,25 @@ final lxServerConnectionProvider =
     NotifierProvider<LxServerConnectionNotifier, LxServerMusicService?>(
   LxServerConnectionNotifier.new,
 );
+
+/// 用户选择的 lx_server 音质偏好
+///
+/// 持久化到 [StorageKeys.musicLxServerQuality]。
+/// 应用到 [LxServerMusicService.getMusicUrl] 时若该音质不可用则按优先级降级。
+final selectedLxServerQualityProvider =
+    NotifierProvider<SelectedLxServerQualityNotifier, LxServerQuality>(
+  SelectedLxServerQualityNotifier.new,
+);
+
+class SelectedLxServerQualityNotifier extends Notifier<LxServerQuality> {
+  @override
+  LxServerQuality build() {
+    final stored = Settings.get(StorageKeys.musicLxServerQuality);
+    return LxServerQuality.fromIdOrDefault(stored);
+  }
+
+  Future<void> set(LxServerQuality quality) async {
+    state = quality;
+    await Settings.set(StorageKeys.musicLxServerQuality, quality.id);
+  }
+}

@@ -8,7 +8,6 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
@@ -16,6 +15,7 @@ import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
+import 'package:pomelo/ui/music/widgets/song_tile.dart';
 
 /// 歌曲搜索结果页面
 @RoutePage()
@@ -355,39 +355,17 @@ class _SearchResultsList extends ConsumerWidget {
                         itemCount: songs.length,
                         itemBuilder: (context, index) {
                           final merged = songs[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Card(
-                              child: ListTile(
-                                leading: Icon(
-                                  Icons.music_note,
-                                  color: colorScheme.primary,
-                                  size: 24,
-                                ),
-                                title: Text(
-                                  merged.primary.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  '${merged.primary.artist}  ·  ${merged.primary.formattedDuration}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: Row(
-                                  children: [
-                                    Text(
-                                      merged.displaySources,
-                                      style: const TextStyle(fontSize: 12),
-                                    ).muted,
-                                    PlayPauseButton(song: merged.primary),
-                                  ],
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 10,
-                                ),
-                              ),
+                          return SongTile(
+                            song: merged.primary,
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  merged.displaySources,
+                                  style: const TextStyle(fontSize: 12),
+                                ).muted,
+                                PlayPauseButton(song: merged.primary),
+                              ],
                             ),
                           );
                         },

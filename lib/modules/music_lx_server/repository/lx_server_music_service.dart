@@ -274,25 +274,25 @@ class LxServerMusicService extends MusicService {
   // ========== 播放链接 ==========
 
   @override
-  Future<String> getMusicUrl(SongFull song) async {
+  Future<String> getMusicUrl(SongFull song, {String? quality}) async {
     // song.meta 即完整的 songInfo（由 LxServerSong.toSongInfo() 构造）
     final songInfo = Map<String, dynamic>.from(song.meta);
     // 确保必要字段存在
     songInfo['source'] ??= song.source.libraryId ?? _currentSource;
     songInfo['hash'] ??= song.id;
 
-    // 选择最高可用质量
+    // 按用户偏好选择音质，不可用则降级
     final typesMap = (songInfo['_types'] as Map<String, dynamic>?) ?? const {};
-    final quality = _selectQuality(typesMap);
+    final selectedQuality = _selectQuality(typesMap, preferredQuality: quality);
     final source = songInfo['source'] as String? ?? '';
     final hash = songInfo['hash'] as String? ?? '';
     log.debug(
       'LxServer',
       'getMusicUrl: 歌曲=${song.name} - ${song.artist}, '
-          'source=$source, hash=$hash, 选中质量=$quality',
+          'source=$source, hash=$hash, 偏好=$quality, 选中质量=$selectedQuality',
     );
 
-    return client.getMusicUrl(songInfo: songInfo, quality: quality);
+    return client.getMusicUrl(songInfo: songInfo, quality: selectedQuality);
   }
 
   // ========== 歌词 ==========
@@ -305,13 +305,30 @@ class LxServerMusicService extends MusicService {
     return client.getLyric(songInfo: songInfo);
   }
 
-  /// 选择最高可用质量
+  /// 选择可用音质
   ///
-  /// 优先级：flac24bit > flac > 320k > 128k
-  String _selectQuality(Map<String, dynamic> typesMap) {
+  /// 策略：从 [preferredQuality] 在优先级数组中的位置开始向后找第一个可用音质；
+  /// 若 [preferredQuality] 为 null 或不在优先级数组中，则从最高优先级开始找。
+  /// 全部不可用时回退到 '128k'。
+  ///
+  /// 优先级（高 → 低）：flac24bit > flac > 320k > 128k
+  String _selectQuality(
+    Map<String, dynamic> typesMap, {
+    String? preferredQuality,
+  }) {
     const priority = ['flac24bit', 'flac', '320k', '128k'];
-    for (final q in priority) {
-      if (typesMap.containsKey(q)) return q;
+    final startIndex = preferredQuality == null
+        ? 0
+        : priority.indexOf(preferredQuality);
+    // 偏好不在已知列表中，从最高优先级开始
+    final effectiveStart = startIndex < 0 ? 0 : startIndex;
+
+    for (int i = effectiveStart; i < priority.length; i++) {
+      if (typesMap.containsKey(priority[i])) return priority[i];
+    }
+    // 用户偏好过高且全部不可用，向前回退（理论上不会走到，因为 128k 通常在列表末尾）
+    for (int i = effectiveStart - 1; i >= 0; i--) {
+      if (typesMap.containsKey(priority[i])) return priority[i];
     }
     if (typesMap.isNotEmpty) return typesMap.keys.first;
     return '128k';

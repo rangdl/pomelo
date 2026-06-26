@@ -26,6 +26,7 @@ class StorageKeys {
 
   // ======================== music_lx_server ========================
   static const musicLxServerConfig = 'music_lx_server_config';
+  static const musicLxServerQuality = 'music_lx_server_quality';
 
   // ======================== music_subsonic ========================
   static const musicSubsonicAccounts = 'music_subsonic_accounts';
