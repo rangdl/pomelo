@@ -43,8 +43,8 @@ class Playlist {
   /// 歌曲列表
   final List<Song> songs;
 
-  /// 数据来源 (服务标识, 名称, 库标识)
-  final ({String id, String name, String? libraryId}) source;
+  /// 数据来源 (服务标识, 名称, 库标识, 库名称)
+  final ({String id, String name, String? libraryId, String? libraryName}) source;
 
   /// 来源原始数据
   final Map<String, dynamic>? meta;
@@ -73,6 +73,7 @@ class Playlist {
 
   /// 从JSON创建
   factory Playlist.fromJson(Map<String, dynamic> json) {
+    final src = json['source'] as Map<String, dynamic>?;
     return Playlist(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -84,13 +85,14 @@ class Playlist {
               ?.map((e) => Song.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      source: json['source'] != null
+      source: src != null
           ? (
-              id: (json['source'] as Map<String, dynamic>)['id'] as String,
-              name: (json['source'] as Map<String, dynamic>)['name'] as String,
-              libraryId: (json['source'] as Map<String, dynamic>)['libraryId'] as String?,
+              id: src['id'] as String,
+              name: src['name'] as String,
+              libraryId: src['libraryId'] as String?,
+              libraryName: src['libraryName'] as String?,
             )
-          : (id: 'local', name: '本地', libraryId: null),
+          : (id: 'local', name: '本地', libraryId: null, libraryName: null),
       meta: json['meta'] as Map<String, dynamic>?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -107,7 +109,12 @@ class Playlist {
       'creator': creator,
       'description': description,
       'songs': songs.map((s) => s.toJson()).toList(),
-      'source': {'id': source.id, 'name': source.name, if (source.libraryId != null) 'libraryId': source.libraryId},
+      'source': {
+        'id': source.id,
+        'name': source.name,
+        if (source.libraryId != null) 'libraryId': source.libraryId,
+        if (source.libraryName != null) 'libraryName': source.libraryName,
+      },
       'meta': meta,
       'created_at': createdAt.toIso8601String(),
     };

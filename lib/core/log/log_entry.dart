@@ -1,7 +1,6 @@
 /// 日志条目数据模型
 ///
 /// 表示一条应用内日志记录。
-/// 遵循 M.A.R.S. 架构中的 Model 层。
 class LogEntry {
   /// 日志级别
   final LogLevel level;

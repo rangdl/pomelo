@@ -8,7 +8,7 @@ class MergedSong {
   final Song primary;
 
   /// 该歌曲出现的所有来源
-  final List<({String id, String name, String? libraryId})> sources;
+  final List<({String id, String name, String? libraryId, String? libraryName})> sources;
 
   /// 来源数 > 1 表示多平台都有
   bool get hasMultipleSources => sources.length > 1;

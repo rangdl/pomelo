@@ -99,6 +99,9 @@ class LxMetadataEngine {
     int page = 1,
     int limit = 20,
     String type = 'tx',
+    required String sourceId,
+    required String sourceName,
+    String? libraryName,
   }) async {
     try {
       final raw = await _evalAsync(
@@ -128,7 +131,12 @@ class LxMetadataEngine {
             .map(
               (item) => PomeloTrackObjectMeta.fromJson(
                 Map<String, dynamic>.from(item),
-              ).toSong(libraryId: type),
+              ).toSong(
+                libraryId: type,
+                sourceId: sourceId,
+                sourceName: sourceName,
+                libraryName: libraryName,
+              ),
             )
             .toList(),
       );
@@ -151,6 +159,9 @@ class LxMetadataEngine {
     int page = 1,
     int limit = 20,
     String type = 'tx',
+    required String sourceId,
+    required String sourceName,
+    String? libraryName,
   }) async {
     try {
       final raw = await _evalAsync(
@@ -171,7 +182,7 @@ class LxMetadataEngine {
       final json = Map<String, dynamic>.from(raw);
       final total = json['total'] ?? 0;
       final list = (json['list'] ?? []) as List<dynamic>;
-      final source = (id: type, name: type, libraryId: type);
+      final source = (id: sourceId, name: sourceName, libraryId: type, libraryName: libraryName);
       final items = list.map((item) {
         final m = Map<String, dynamic>.from(item as Map);
         return Playlist(
@@ -317,6 +328,9 @@ class LxMetadataEngine {
     String categoryId, {
     String? sortId,
     String type = 'tx',
+    required String sourceId,
+    required String sourceName,
+    String? libraryName,
   }) async {
     try {
       final sort = sortId ?? '';
@@ -331,7 +345,7 @@ class LxMetadataEngine {
 
       final json = Map<String, dynamic>.from(raw);
       final list = (json['list'] ?? []) as List<dynamic>;
-      final source = (id: type, name: type, libraryId: type);
+      final source = (id: sourceId, name: sourceName, libraryId: type, libraryName: libraryName);
       final items = list.map((item) {
         final m = Map<String, dynamic>.from(item as Map);
         return Playlist(
@@ -356,7 +370,13 @@ class LxMetadataEngine {
   ///
   /// 调用元数据插件的 getListDetail 方法，按歌单 id 获取歌曲列表。
   /// 返回 [List<Song>]。
-  Future<List<Song>> getPlaylistsDetail(String id, {String type = 'tx'}) async {
+  Future<List<Song>> getPlaylistsDetail(
+    String id, {
+    String type = 'tx',
+    required String sourceId,
+    required String sourceName,
+    String? libraryName,
+  }) async {
     try {
       // 提取原始 id（去掉 `${type}-` 前缀）
       final prefix = '$type-';
@@ -380,7 +400,12 @@ class LxMetadataEngine {
           .map(
             (item) => PomeloTrackObjectMeta.fromJson(
               Map<String, dynamic>.from(item),
-            ).toSong(libraryId: type),
+            ).toSong(
+              libraryId: type,
+              sourceId: sourceId,
+              sourceName: sourceName,
+              libraryName: libraryName,
+            ),
           )
           .toList();
     } catch (e) {
@@ -435,6 +460,9 @@ class LxMetadataEngine {
   Future<List<Song>> getLeaderboardSongs(
     String id, {
     String type = 'tx',
+    required String sourceId,
+    required String sourceName,
+    String? libraryName,
   }) async {
     try {
       final prefix = '${type}__';
@@ -458,7 +486,12 @@ class LxMetadataEngine {
           .map(
             (item) => PomeloTrackObjectMeta.fromJson(
               Map<String, dynamic>.from(item),
-            ).toSong(libraryId: type),
+            ).toSong(
+              libraryId: type,
+              sourceId: sourceId,
+              sourceName: sourceName,
+              libraryName: libraryName,
+            ),
           )
           .toList();
     } catch (e) {
@@ -586,7 +619,12 @@ class PomeloTrackObjectMeta {
     };
   }
 
-  Song toSong({String? libraryId}) {
+  Song toSong({
+    String? libraryId,
+    required String sourceId,
+    required String sourceName,
+    String? libraryName,
+  }) {
     return Song.full(
       id: '$source-$musicId',
       name: name,
@@ -596,7 +634,7 @@ class PomeloTrackObjectMeta {
       coverUrl: img,
       src: '', // 需要根据类型选择合适的链接
       duration: duration,
-      source: (id: source, name: source, libraryId: libraryId ?? source),
+      source: (id: sourceId, name: sourceName, libraryId: libraryId, libraryName: libraryName),
       meta: toMap(),
     );
   }

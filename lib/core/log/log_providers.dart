@@ -1,12 +1,12 @@
-/// 日志模块 - Riverpod Providers
+/// 日志核心组件 - Riverpod Providers
 ///
 /// 提供日志模块的响应式状态管理。
 library;
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-import '../model/log_entry.dart';
-import '../service/log_service.dart';
+import 'log_entry.dart';
+import 'log_service.dart';
 
 /// 日志模块的 Service Provider
 final logServiceProvider = Provider<LogService>((ref) {

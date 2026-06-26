@@ -243,12 +243,14 @@ class LxServerSong {
 
   /// 转换为项目统一的 [Song] 模型
   ///
-  /// [sourceId] 为服务标识，[sourceName] 为服务显示名，[libraryId] 为来源库（kg/kw 等）。
+  /// [sourceId] 为服务标识，[sourceName] 为服务显示名，
+  /// [libraryId] 为来源库（kg/kw 等），[libraryName] 为库显示名。
   /// 完整 songInfo 存入 meta，供 [LxServerMusicService.getMusicUrl] 使用。
   Song toSong({
     required String sourceId,
     required String sourceName,
     required String libraryId,
+    required String libraryName,
   }) {
     return Song.full(
       id: songmid?.toString() ?? hash ?? '',
@@ -258,7 +260,7 @@ class LxServerSong {
       albumName: albumName,
       coverUrl: img,
       duration: durationSeconds,
-      source: (id: sourceId, name: sourceName, libraryId: libraryId),
+      source: (id: sourceId, name: sourceName, libraryId: libraryId, libraryName: libraryName),
       meta: toSongInfo(),
       src: '',
     );
@@ -302,6 +304,7 @@ class LxServerPlaylist {
     required String sourceId,
     required String sourceName,
     required String libraryId,
+    required String libraryName,
   }) {
     return Playlist(
       id: id,
@@ -309,7 +312,7 @@ class LxServerPlaylist {
       coverUrl: img,
       creator: author,
       description: desc,
-      source: (id: sourceId, name: sourceName, libraryId: libraryId),
+      source: (id: sourceId, name: sourceName, libraryId: libraryId, libraryName: libraryName),
       meta: {'id': id, 'play_count': playCount, 'time': time},
     );
   }

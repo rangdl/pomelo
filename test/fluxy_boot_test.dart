@@ -36,7 +36,10 @@ void main() {
     final a = PomeloTrackObjectMeta.fromJson(
       // Map<String, dynamic>.from(item),
       a2,
-    ).toSong();
+    ).toSong(
+      sourceId: 'lx-test',
+      sourceName: '测试',
+    );
     print(a);
   });
 }
