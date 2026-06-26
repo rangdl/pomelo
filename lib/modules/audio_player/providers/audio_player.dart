@@ -10,7 +10,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:pomelo/core/extensions/list.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
-import 'package:pomelo/modules/log/providers/log_providers.dart';
+import 'package:pomelo/core/log/log_providers.dart';
 import 'package:pomelo/modules/music/model/song.dart';
 
 // import 'package:pomelo/models/database/database.dart';

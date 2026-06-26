@@ -19,6 +19,7 @@ _$SongFullImpl _$$SongFullImplFromJson(Map json) => _$SongFullImpl(
     ($jsonValue) => (
       id: $jsonValue['id'] as String,
       libraryId: $jsonValue['libraryId'] as String?,
+      libraryName: $jsonValue['libraryName'] as String?,
       name: $jsonValue['name'] as String,
     ),
   ),
@@ -44,6 +45,7 @@ Map<String, dynamic> _$$SongFullImplToJson(_$SongFullImpl instance) =>
       'source': <String, dynamic>{
         'id': instance.source.id,
         'libraryId': instance.source.libraryId,
+        'libraryName': instance.source.libraryName,
         'name': instance.source.name,
       },
       'meta': instance.meta,
@@ -68,6 +70,7 @@ _$SongLocalImpl _$$SongLocalImplFromJson(Map json) => _$SongLocalImpl(
     ($jsonValue) => (
       id: $jsonValue['id'] as String,
       libraryId: $jsonValue['libraryId'] as String?,
+      libraryName: $jsonValue['libraryName'] as String?,
       name: $jsonValue['name'] as String,
     ),
   ),
@@ -93,6 +96,7 @@ Map<String, dynamic> _$$SongLocalImplToJson(_$SongLocalImpl instance) =>
       'source': <String, dynamic>{
         'id': instance.source.id,
         'libraryId': instance.source.libraryId,
+        'libraryName': instance.source.libraryName,
         'name': instance.source.name,
       },
       'meta': instance.meta,

@@ -14,9 +14,9 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:pomelo/core/mars.dart';
 
-import '../modules/log/log_module.dart';
-import '../modules/log/model/log_entry.dart';
-import '../modules/log/service/log_service.dart';
+import 'log/log_module.dart';
+import 'log/log_entry.dart';
+import 'log/log_service.dart';
 
 /// 全局日志访问器实例
 final Logger log = Logger._();

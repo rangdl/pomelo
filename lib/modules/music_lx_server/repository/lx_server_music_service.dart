@@ -68,6 +68,17 @@ class LxServerMusicService extends MusicService {
     }
   }
 
+  /// 根据 libraryId 查找库显示名
+  String _libraryName(String? libraryId) {
+    if (libraryId == null) return '';
+    return _allLibraries
+        .firstWhere(
+          (l) => l.id == libraryId,
+          orElse: () => (id: libraryId, name: libraryId),
+        )
+        .name;
+  }
+
   /// 当前库标识（source 参数）
   String get _currentSource => _defaultLibraryId ?? _allLibraries.first.id;
 
@@ -189,6 +200,7 @@ class LxServerMusicService extends MusicService {
             sourceId: _sourceId,
             sourceName: _sourceName,
             libraryId: _currentSource,
+            libraryName: _libraryName(_currentSource),
           ),
         )
         .toList();
@@ -214,6 +226,7 @@ class LxServerMusicService extends MusicService {
             sourceId: _sourceId,
             sourceName: _sourceName,
             libraryId: _currentSource,
+            libraryName: _libraryName(_currentSource),
           ),
         )
         .toList();
@@ -221,7 +234,7 @@ class LxServerMusicService extends MusicService {
       id: id,
       name: '',
       creator: '',
-      source: (id: _sourceId, name: _sourceName, libraryId: _currentSource),
+      source: (id: _sourceId, name: _sourceName, libraryId: _currentSource, libraryName: _libraryName(_currentSource)),
       songs: songs,
     );
   }
@@ -238,6 +251,7 @@ class LxServerMusicService extends MusicService {
             sourceId: _sourceId,
             sourceName: _sourceName,
             libraryId: _currentSource,
+            libraryName: _libraryName(_currentSource),
           ),
         )
         .toList();
@@ -259,6 +273,7 @@ class LxServerMusicService extends MusicService {
             sourceId: _sourceId,
             sourceName: _sourceName,
             libraryId: _currentSource,
+            libraryName: _libraryName(_currentSource),
           ),
         )
         .toList();
@@ -364,6 +379,7 @@ class LxServerMusicService extends MusicService {
             sourceId: _sourceId,
             sourceName: _sourceName,
             libraryId: _currentSource,
+            libraryName: _libraryName(_currentSource),
           ),
         )
         .toList();
