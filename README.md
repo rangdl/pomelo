@@ -1,31 +1,119 @@
-# pomelo
+# Pomelo
 
-A new Flutter project.
+跨平台音乐播放器，支持多音源聚合、响应式 UI 和本地音乐管理。
 
-## Getting Started
+基于 Flutter 构建，运行于 Android、iOS、Windows、macOS 和 Linux。
 
-This project is a starting point for a Flutter application.
+## 功能特性
 
-A few resources to get you started if this is your first Flutter project:
+- **多音源聚合**：统一界面接入多种音乐服务
+  - 本地音乐（扫描本地文件）
+  - Lx 音乐（JS 插件，支持自定义音源）
+  - Lx Server（自建服务端）
+  - Subsonic（兼容 Subsonic/Navidrome/Airsonic 协议）
+- **播放器**：基于 media_kit，支持播放队列、循环模式、随机播放、进度拖拽
+- **歌词**：实时歌词滚动、多行显示、字体大小可调
+- **搜索**：跨多音源并行搜索，结果合并去重
+- **歌单与排行榜**：浏览各音源提供的歌单分类和排行榜
+- **收藏**：收藏曲目，支持 Subsonic 收藏同步
+- **统计**：播放记录与统计数据
+- **响应式 UI**：自动适配手机（单栏）、平板（双栏）、桌面（多栏）
+- **系统媒体控制**：Windows SMTC / 移动端通知栏媒体控制
+- **音质选择**：Lx Server 支持音质选择与自动降级
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+## 技术栈
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+| 类别 | 技术 |
+|------|------|
+| UI 框架 | [shadcn_flutter](https://pub.dev/packages/shadcn_flutter) |
+| 状态管理 | Riverpod + flutter_hooks |
+| 路由 | auto_route |
+| 音频播放 | media_kit |
+| 持久化 | hive_ce |
+| 响应式布局 | Rx.layout() / Rx.action() |
+| JS 引擎 | flutter_js（Lx 插件运行时） |
 
-## 提交
-```txt
-请根据当前已暂存改动，用中文生成一条 git commit message，格式：类型: 描述
+## 支持平台
+
+| 平台 | 状态 |
+|------|------|
+| Android | ✅ |
+| iOS | ✅ |
+| Windows | ✅ |
+| macOS | ✅ |
+| Linux | ✅ |
+
+## 开始使用
+
+### 环境要求
+
+- Flutter 3.35.7
+- Dart SDK ^3.9.0
+
+### 构建运行
+
+```bash
+# 安装依赖
+flutter pub get
+
+# 生成路由等代码
+dart run build_runner build --delete-conflicting-outputs
+
+# 运行
+flutter run
+
+# 构建 APK
+flutter build apk
+
+# 构建 Windows
+flutter build windows
 ```
 
-## M.A.R.S. 架构分层调用指南
+### 添加 Lx 音源插件
 
-> 完整架构说明详见 [MARS_ARCHITECTURE.md](MARS_ARCHITECTURE.md)
+在「我的」→「Lx 插件」中导入 `.js` 格式的 Lx 音源脚本。插件运行在 Flutter JS 引擎中，无需原生依赖。
 
-本项目遵循 **M.A.R.S.** 模块化分层架构，核心三层的依赖关系遵循 **单向依赖** 原则：
+### 连接 Subsonic 服务
+
+在「我的」→「Subsonic」中添加服务器信息（支持 Subsonic / Navidrome / Airsonic）。
+
+## 项目结构
+
+```
+lib/
+├── core/                  # 核心层：框架、存储、路由、日志
+│   ├── extensions/        # 扩展函数（DateTime 解析等）
+│   ├── framework/         # 框架基础（Module、Service、Repository）
+│   ├── log/               # 日志模块
+│   ├── pagination/        # 分页响应
+│   ├── routers/           # 路由配置
+│   ├── storage/           # 持久化存储（Settings、StorageKeys）
+│   └── ...
+├── modules/               # 业务模块层
+│   ├── music/             # 音乐核心（模型、服务抽象、多源聚合）
+│   ├── music_local/       # 本地音乐
+│   ├── music_lx/          # Lx 音乐（JS 插件）
+│   ├── music_lx_server/   # Lx Server
+│   ├── music_subsonic/    # Subsonic 协议
+│   ├── audio_player/      # 播放器（media_kit 封装）
+│   ├── favorite/          # 收藏
+│   ├── home/              # 首页
+│   ├── statistics/        # 统计
+│   └── my/                # 设置
+├── ui/                    # UI 层
+│   ├── home/              # 首页
+│   ├── music/             # 音乐相关页面（搜索、歌单详情等）
+│   ├── player/            # 播放器 UI（全屏播放、迷你播放器、歌词）
+│   ├── favorite/          # 收藏页
+│   ├── log/               # 日志页
+│   ├── my/                # 设置页
+│   └── platform/          # 平台配置页（Lx 插件、Subsonic 账号）
+└── main.dart              # 入口
+```
+
+## 架构
+
+本项目遵循 **M.A.R.S.** 模块化分层架构，核心三层依赖遵循单向依赖原则：
 
 ```
   Provider (Riverpod 状态)
@@ -34,10 +122,8 @@ samples, guidance on mobile development, and a full API reference.
   Service (业务逻辑)
       │
       ▼
-Repository (数据访问)
+  Repository (数据访问)
 ```
-
-### 各层调用规则
 
 | 调用方 | → Repository | → Service | → Provider |
 |--------|:-----------:|:---------:|:----------:|
@@ -46,112 +132,38 @@ Repository (数据访问)
 | **Provider** | ✅ 通过 Module 获取 | ✅ 通过 ref.watch/ref.read | — |
 | **Module** (A → B) | ✅ 通过 ModuleManager | ✅ 通过 ModuleManager | ❌ 不允许 |
 
-### 1. Service → Repository（构造函数注入）
+完整架构说明详见 [MARS_ARCHITECTURE.md](MARS_ARCHITECTURE.md)。
 
-```dart
-class FavoriteService extends Service {
-  final FavoriteRepository repository;
+## 提交规范
 
-  // 通过构造函数注入 Repository
-  FavoriteService(this.repository);
-
-  Future<void> addFavorite(Song song) async {
-    await repository.save(FavoriteItem(song: song));
-  }
-
-  Future<List<FavoriteItem>> getAll() async {
-    return repository.fetchAll();
-  }
-}
+```txt
+请根据当前已暂存改动，用中文生成一条 git commit message，格式：类型: 描述
 ```
 
-Module 的 `onInit` 中完成装配：
+允许类型：`feat`（新功能）、`fix`（修复）、`docs`（文档）、`refactor`（重构）、`test`（测试）
 
-```dart
-class FavoriteModule extends Module {
-  @override
-  Future<void> onInit() async {
-    await _repository.onInit();
-    _service = FavoriteService(_repository); // 注入 Repository
-    await _service.onInit();
-  }
-}
-```
+---
 
-### 2. Provider → Service（ref.watch / ref.read）
+## 免责声明
 
-```dart
-// Provider 通过 ref.watch 获取 Service 实例
-final logQueryProvider = FutureProvider.family<List<LogEntry>, LogQuery>((ref) async {
-  final service = ref.watch(logServiceProvider);
-  return service.query(query); // 调用 Service 方法
-});
+本项目（Pomelo）仅供学习和个人使用，不提供任何音乐资源。
 
-// 或通过 Module 间接获取
-final musicProvidersProvider = FutureProvider<List<MusicProvider>>((ref) async {
-  final module = ref.watch(musicModuleProvider);
-  return module?.providers ?? [];
-});
-```
+1. **音源独立性**：本项目本身不内置、不分发任何音乐内容。所有音乐数据来源于用户自行配置的第三方音源（Lx 插件、Lx Server、Subsonic 兼容服务器、本地文件等），本项目仅作为播放工具进行数据展示和播放控制。
 
-### 3. Provider → Repository（通过 Module 间接访问）
+2. **用户责任**：用户使用本软件获取和播放的音乐内容，由用户自行负责确保符合当地法律法规及版权要求。用户应仅播放其有权访问的内容（如自有音乐文件、已授权的流媒体服务等）。
 
-```dart
-final musicSdkSongRepositoryProvider = Provider<InMemoryRepository<Song>>((ref) {
-  // 通过 Module 实例获取其内部的 Repository
-  return ref.watch(musicSdkModuleProvider).repository.songs;
-});
-```
+3. **版权声明**：本项目不存储、不缓存任何受版权保护的音乐文件。所有音乐的版权归属其原作者或版权所有者，未经授权不得用于商业用途。
 
-### 4. 跨模块调用（Module → Module）
+4. **第三方插件**：Lx 音源插件由第三方开发者提供，本项目不对插件的内容、安全性和合法性承担责任。用户应自行审查所使用的插件。
 
-通过 `ModuleManager` 获取其他模块实例，再访问其公开的 `service` / `repository`：
+5. **无担保**：本软件按"现状"提供，不提供任何明示或暗示的担保。在法律允许的最大范围内，作者不对因使用本软件而产生的任何直接或间接损失负责。
 
-```dart
-// 方式一：在模块生命周期中
-class MusicLocalModule extends Module {
-  @override
-  Future<void> onReady() async {
-    final musicModule = ModuleManager().find<MusicModule>('music');
-    musicModule?.register(_provider);
-  }
-}
+6. **用途限制**：请勿将本软件用于任何违法用途。如因用户行为导致的法律责任，由用户自行承担。
 
-// 方式二：在任意位置（如 Provider、UI 回调）
-void someFunction() {
-  final logModule = ModuleManager().find<LogModule>('log');
-  logModule?.service.info('Tag', '消息内容');
-}
+如您是音乐版权所有者，认为某个第三方音源侵犯了您的权益，请联系对应音源的服务提供者。
 
-// 方式三：懒加载模块触发（使用前确保模块已初始化）
-await ModuleManager().lazyInit('favorite');
-final favModule = ModuleManager().find<FavoriteModule>('favorite');
-```
+---
 
-### 5. Provider 获取 Module 的两种方式
+## License
 
-```dart
-// 方式 A：main.dart 中 override 注入（适用于非 lazy 模块）
-// —— 在 main.dart 中：
-// audioPlayerModuleProvider.overrideWithValue(audioPlayerModule)
-// —— 在 Provider 中：
-final audioPlayerModuleProvider = Provider<AudioPlayerModule>((ref) {
-  throw UnimplementedError('Must be overridden in main.dart');
-});
-
-// 方式 B：通过 ModuleManager 动态查找（适用于所有模块，包括 lazy 模块）
-final musicModuleProvider = Provider<MusicModule?>((ref) {
-  return ModuleManager().find<MusicModule>('music');
-});
-```
-
-### 核心原则
-
-| 原则 | 说明 |
-|------|------|
-| **单向依赖** | Provider → Service → Repository，绝不允许反向调用 |
-| **构造函数注入** | Service 通过构造函数接收 Repository，由 Module 负责装配 |
-| **Provider 作为 UI 出口** | UI 层只通过 `ref.watch` / `ref.read` 调用 Provider，不直接访问 Service/Repository |
-| **模块间通过 ModuleManager** | 跨模块调用通过 `ModuleManager().find<T>(id)` 获取目标模块实例 |
-| **Service 不依赖 Provider** | Service 是纯 Dart 类，不导入 Riverpod/hooks_riverpod |
-| **Repository 仅关注数据** | Repository 只负责 CRUD，不包含业务逻辑 |
+本项目仅供学习交流使用，不得用于商业用途。
