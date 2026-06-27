@@ -12,6 +12,7 @@ import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
+import 'package:pomelo/ui/root/root_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌单引用 — 用于在首页 Tab 内联打开歌单详情
@@ -38,6 +39,26 @@ class HomePage extends HookConsumerWidget {
     final tabIndex = useState(0);
     // 当前内联查看的歌单引用；非 null 时渲染歌单详情页（占据 Home tab 区域，保留底部导航和迷你播放器）
     final viewingPlaylist = useState<_PlaylistRef?>(null);
+    // 当前激活的 Tab 索引 — 用于判断 Home tab 是否处于前台
+    final activeTabIndex = ref.watch(activeTabIndexProvider);
+    // 移动端显示自带 AppBar（搜索/切换）；桌面端由 Root 标题栏统一承载
+    final isMobile =
+        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+
+    // 同步内联导航状态到 Root 标题栏的返回按钮
+    // 使用 Future.microtask 延迟到 build 后执行，避免在 build 期间修改 provider
+    useEffect(() {
+      final isHomeActive = activeTabIndex == 0;
+      final hasInlineNav = viewingPlaylist.value != null;
+      final shouldEnable = isHomeActive && hasInlineNav;
+      Future.microtask(() {
+        ref.read(rootCanPopProvider.notifier).set(shouldEnable);
+        ref.read(rootPopCallbackProvider.notifier).set(
+              shouldEnable ? () => viewingPlaylist.value = null : null,
+            );
+      });
+      return null;
+    }, [activeTabIndex, viewingPlaylist.value]);
 
     // 内联查看歌单详情：与首页/平台页位于相同位置（tab 内容区），
     // 保留根部的底部导航栏和迷你播放器。
@@ -55,21 +76,23 @@ class HomePage extends HookConsumerWidget {
 
     return Scaffold(
       headers: [
-        AppBar(
-          leading: [const LibrarySwitchButton()],
-          title: TextField(
-            placeholder: const Text('搜索歌曲...'),
-            onSubmitted: (value) {
-              if (value.trim().isNotEmpty) {
-                context.pushRoute(MusicSearchRoute(keyword: value.trim()));
-              }
-            },
-            features: [
-              InputFeature.leading(const Icon(Icons.search, size: 18)),
-            ],
+        // 移动端显示 AppBar；桌面端由 Root 标题栏统一承载搜索/切换
+        if (isMobile)
+          AppBar(
+            leading: [const LibrarySwitchButton()],
+            title: TextField(
+              placeholder: const Text('搜索歌曲...'),
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  context.pushRoute(MusicSearchRoute(keyword: value.trim()));
+                }
+              },
+              features: [
+                InputFeature.leading(const Icon(Icons.search, size: 18)),
+              ],
+            ),
+            trailing: [const SourceSwitchButton()],
           ),
-          trailing: [const SourceSwitchButton()],
-        ),
       ],
       child: Column(
         children: [

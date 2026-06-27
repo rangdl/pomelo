@@ -33,7 +33,6 @@ class TrackMoreActionsButton extends HookConsumerWidget {
   }
 
   void _openActions(BuildContext context, WidgetRef ref) {
-    void close() => Navigator.of(context, rootNavigator: true).pop();
     Rx.action(
       context,
       mobile: () => openSheet(
@@ -43,13 +42,12 @@ class TrackMoreActionsButton extends HookConsumerWidget {
         builder: (_) => TrackMoreActionsContent(
           track: track,
           onRemoveFromQueue: onRemoveFromQueue,
-          onClose: close,
         ),
       ),
       tablet: () => showDropdown(
         context: context,
         builder: (_) => DropdownMenu(
-          children: _buildMenuItems(context, ref, close),
+          children: _buildMenuItems(context, ref),
         ),
       ),
     );
@@ -58,7 +56,6 @@ class TrackMoreActionsButton extends HookConsumerWidget {
   List<MenuItem> _buildMenuItems(
     BuildContext context,
     WidgetRef ref,
-    VoidCallback onClose,
   ) {
     final notifier = ref.read(audioPlayerProvider.notifier);
     return [
@@ -67,7 +64,6 @@ class TrackMoreActionsButton extends HookConsumerWidget {
         child: const Text('下一首播放'),
         onPressed: (_) {
           notifier.addTracksAtFirst([track]);
-          onClose();
           Rx.toast.success('已添加到下一首');
         },
       ),
@@ -76,7 +72,6 @@ class TrackMoreActionsButton extends HookConsumerWidget {
         child: const Text('添加到播放列表'),
         onPressed: (_) {
           notifier.addTracks([track]);
-          onClose();
           Rx.toast.success('已添加到播放列表');
         },
       ),
@@ -95,7 +90,6 @@ class TrackMoreActionsButton extends HookConsumerWidget {
           ),
           onPressed: (_) {
             onRemoveFromQueue!.call();
-            onClose();
             Rx.toast.success('已从列表移除');
           },
         ),
@@ -110,13 +104,11 @@ class TrackMoreActionsButton extends HookConsumerWidget {
 class TrackMoreActionsContent extends HookConsumerWidget {
   final Track track;
   final VoidCallback? onRemoveFromQueue;
-  final VoidCallback? onClose;
 
   const TrackMoreActionsContent({
     required this.track,
     super.key,
     this.onRemoveFromQueue,
-    this.onClose,
   });
 
   @override
@@ -173,7 +165,7 @@ class TrackMoreActionsContent extends HookConsumerWidget {
             title: const Text('下一首播放'),
             onTap: () {
               notifier.addTracksAtFirst([track]);
-              onClose?.call();
+              closeOverlay(context);
               Rx.toast.success('已添加到下一首');
             },
           ),
@@ -183,7 +175,7 @@ class TrackMoreActionsContent extends HookConsumerWidget {
             title: const Text('添加到播放列表'),
             onTap: () {
               notifier.addTracks([track]);
-              onClose?.call();
+              closeOverlay(context);
               Rx.toast.success('已添加到播放列表');
             },
           ),
@@ -201,7 +193,7 @@ class TrackMoreActionsContent extends HookConsumerWidget {
               ),
               onTap: () {
                 onRemoveFromQueue!.call();
-                onClose?.call();
+                closeOverlay(context);
                 Rx.toast.success('已从列表移除');
               },
             ),
