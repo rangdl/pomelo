@@ -269,12 +269,34 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   final _proxyController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // 自动填入上次输入的 GitHub 加速地址
+    final saved = Settings.get(StorageKeys.myUpdateProxy);
+    if (saved != null && saved.isNotEmpty) {
+      _proxyController.text = saved;
+    }
+  }
+
+  @override
   void dispose() {
     _proxyController.dispose();
     super.dispose();
   }
 
   void _close() => Navigator.of(context, rootNavigator: true).pop();
+
+  /// 持久化加速地址并跳转下载
+  Future<void> _download() async {
+    final url = widget.result.downloadUrl;
+    if (url == null) return;
+    final proxy = _proxyController.text;
+    // 持久化以便下次自动填入
+    await Settings.set(StorageKeys.myUpdateProxy, proxy);
+    final finalUrl = UpdateService.applyProxy(url, proxy);
+    _close();
+    launchUrl(Uri.parse(finalUrl));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -313,19 +335,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               launchUrl(Uri.parse(UpdateService.releasesLatestUrl)),
           child: const Text('更新日志'),
         ),
-        PrimaryButton(
-          onPressed: () {
-            final url = result.downloadUrl;
-            if (url == null) return;
-            final finalUrl = UpdateService.applyProxy(
-              url,
-              _proxyController.text,
-            );
-            _close();
-            launchUrl(Uri.parse(finalUrl));
-          },
-          child: const Text('前往下载'),
-        ),
+        PrimaryButton(onPressed: _download, child: const Text('前往下载')),
       ],
     );
   }

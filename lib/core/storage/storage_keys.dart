@@ -39,4 +39,5 @@ class StorageKeys {
   static const myThemeMode = 'my_theme_mode';
   static const myLyricFontSize = 'my_lyric_font_size';
   static const myAutoPlay = 'my_auto_play';
+  static const myUpdateProxy = 'my_update_proxy';
 }
