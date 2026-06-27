@@ -12,10 +12,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/mars.dart';
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/modules/music/music_module.dart';
-import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
@@ -31,6 +30,14 @@ class AudioPlayerModule extends Module {
   final AudioPlayerRepository _repository;
   late final AudioPlayerService _service;
   HttpServer? _server;
+
+  /// Riverpod ProviderContainer
+  ///
+  /// 由 `main.dart` 在 `ProviderScope` 创建之前注入。
+  /// 用于 [ServerPlaybackRoutes] 访问 [trackUrlResolverProvider]
+  /// 完成 URL 解析、HEAD 校验和音质降级。
+  ProviderContainer? _container;
+  set container(ProviderContainer? value) => _container = value;
 
   @override
   String get id => 'audio_player';
@@ -76,7 +83,7 @@ class AudioPlayerModule extends Module {
       PomeloMedia.serverPort = Random().nextInt(17500) + 5000;
     }
 
-    // 构建播放路由（注入 AudioPlayerService、活跃曲目获取器和 URL 解析器）
+    // 构建播放路由（注入 AudioPlayerService、活跃曲目获取器和 ProviderContainer）
     final playbackRoutes = ServerPlaybackRoutes(
       audioPlayer: _service,
       getActiveTrack: () {
@@ -87,19 +94,9 @@ class AudioPlayerModule extends Module {
         if (media == null) return null;
         return PomeloMedia.media(media).track;
       },
-      getTrackUrl: (Track track) async {
-        // 通过 MusicModule 找到对应的 MusicService，调用 getMusicUrl 获取播放链接
-        final musicModule = ModuleManager().find<MusicModule>('music');
-        if (musicModule == null) return track.src ?? track.path ?? '';
-        // source.id 已统一为服务 id（如 'lx-$pluginId'、'lx_server'、'subsonic-xxx'、'local'）
-        final sourceId = track.source?.id;
-        if (sourceId == null) return track.src ?? track.path ?? '';
-        final service = musicModule.service(sourceId);
-        if (service == null) return track.src ?? track.path ?? '';
-        // 读取用户音质偏好（持久化在 Settings，与 selectedLxServerQualityProvider 一致）
-        final preferredQuality = Settings.get(StorageKeys.musicLxServerQuality);
-        return service.getMusicUrl(track, quality: preferredQuality);
-      },
+      // 通过 ProviderContainer 访问 trackUrlResolverProvider
+      // URL 解析、HEAD 校验、音质降级逻辑全部由 provider 负责
+      getContainer: () => _container,
     );
 
     final router = buildServerRouter(playbackRoutes);

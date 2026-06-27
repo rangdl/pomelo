@@ -90,13 +90,22 @@ void main() async {
   };
   // ================================
 
+  // ========== Riverpod ProviderContainer ==========
+  // 显式创建 ProviderContainer，以便在 ProviderScope 之前注入到 audioPlayerModule
+  // （ServerPlaybackRoutes 需要访问 trackUrlResolverProvider 完成播放链接解析）
+  final container = ProviderContainer(
+    overrides: [
+      logServiceProvider.overrideWithValue(logModule.service),
+      homeModuleProvider.overrideWithValue(homeModule),
+      audioPlayerModuleProvider.overrideWithValue(audioPlayerModule),
+    ],
+  );
+  audioPlayerModule.container = container;
+  // ===============================================
+
   runApp(
-    ProviderScope(
-      overrides: [
-        logServiceProvider.overrideWithValue(logModule.service),
-        homeModuleProvider.overrideWithValue(homeModule),
-        audioPlayerModuleProvider.overrideWithValue(audioPlayerModule),
-      ],
+    UncontrolledProviderScope(
+      container: container,
       child: const _AppShell(),
     ),
   );
