@@ -349,11 +349,6 @@ class _ToastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Text(text),
-      ),
-    );
+    return Card(child: Text(text));
   }
 }

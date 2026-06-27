@@ -278,8 +278,7 @@ class MiniPlayer extends HookConsumerWidget {
         context: context,
         position: OverlayPosition.bottom,
         draggable: true,
-        builder: (_) => _PlayQueueSheet(onClose: () =>
-            Navigator.of(context, rootNavigator: true).pop()),
+        builder: (_) => const _PlayQueueSheet(),
       ),
       tablet: () => openSheet(
         context: context,
@@ -301,9 +300,7 @@ class MiniPlayer extends HookConsumerWidget {
 
 /// 移动端播放队列底部 Sheet 内容
 class _PlayQueueSheet extends StatelessWidget {
-  final VoidCallback onClose;
-
-  const _PlayQueueSheet({required this.onClose});
+  const _PlayQueueSheet();
 
   @override
   Widget build(BuildContext context) {
@@ -324,7 +321,7 @@ class _PlayQueueSheet extends StatelessWidget {
               children: [
                 IconButton.text(
                   icon: const Icon(Icons.close, size: 20),
-                  onPressed: onClose,
+                  onPressed: () => closeOverlay(context),
                 ),
                 const Gap(4),
                 const Text(

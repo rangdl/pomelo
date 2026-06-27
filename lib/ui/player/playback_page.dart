@@ -59,8 +59,7 @@ class PlaybackPage extends HookConsumerWidget {
           leading: [
             IconButton.text(
               icon: const Icon(Icons.keyboard_arrow_down, size: 24),
-              onPressed: () =>
-                  Navigator.of(context, rootNavigator: true).pop(),
+              onPressed: () => closeOverlay(context),
             ),
           ],
           title: const Text('正在播放'),

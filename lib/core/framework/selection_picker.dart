@@ -57,6 +57,10 @@ class SelectionOption<T> {
 ///
 /// 选中后自动关闭面板并通过 [onSelected] 回调返回选中值。
 ///
+/// 关闭方式说明：
+/// - 桌面端 dropdown：`MenuButton` 默认 `autoClose: true`，按下后自动关闭。
+/// - 移动端 sheet：在 `_SelectionSheetContent` 内调用 `closeOverlay(context)` 关闭。
+///
 /// [anchorAlignment] 与 [alignment] 控制桌面端下拉菜单与按钮的对齐方式，
 /// 默认左对齐（按钮左下角 ↔ 菜单左上角）。
 void showSelectionPicker<T>({
@@ -67,13 +71,6 @@ void showSelectionPicker<T>({
   AlignmentGeometry anchorAlignment = Alignment.bottomLeft,
   AlignmentGeometry alignment = Alignment.topLeft,
 }) {
-  void close() => Navigator.of(context, rootNavigator: true).pop();
-
-  void handleSelected(T value) {
-    close();
-    onSelected(value);
-  }
-
   Rx.action(
     context,
     mobile: () => openSheet(
@@ -83,7 +80,7 @@ void showSelectionPicker<T>({
       builder: (_) => _SelectionSheetContent(
         title: title,
         options: options,
-        onSelected: handleSelected,
+        onSelected: onSelected,
       ),
     ),
     tablet: () => showDropdown(
@@ -91,7 +88,7 @@ void showSelectionPicker<T>({
       anchorAlignment: anchorAlignment,
       alignment: alignment,
       builder: (_) => DropdownMenu(
-        children: _buildMenuItems(title, options, handleSelected),
+        children: _buildMenuItems(title, options, onSelected),
       ),
     ),
   );
@@ -172,7 +169,10 @@ class _SelectionSheetContent<T> extends StatelessWidget {
               trailing: options[i].selected
                   ? Icon(Icons.check, size: 18, color: colorScheme.primary)
                   : null,
-              onTap: () => onSelected(options[i].value),
+              onTap: () {
+                closeOverlay(context);
+                onSelected(options[i].value);
+              },
             ),
             if (i < options.length - 1) const Divider(height: 1),
           ],

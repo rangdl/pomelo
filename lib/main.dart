@@ -92,7 +92,7 @@ void main() async {
 
   // ========== Riverpod ProviderContainer ==========
   // 显式创建 ProviderContainer，以便在 ProviderScope 之前注入到 audioPlayerModule
-  // （ServerPlaybackRoutes 需要访问 trackUrlResolverProvider 完成播放链接解析）
+  // （ServerPlaybackRoutes 需要访问 sourcedTrackProvider 完成播放链接解析）
   final container = ProviderContainer(
     overrides: [
       logServiceProvider.overrideWithValue(logModule.service),
