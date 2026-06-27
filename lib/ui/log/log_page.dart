@@ -140,6 +140,14 @@ class _LogContent extends HookConsumerWidget {
     final searchKeyword = useState('');
     final searchController = useTextEditingController();
 
+    // 每次打开日志页面都重新加载数据（三个 Provider 非 autoDispose，需手动 invalidate）
+    useEffect(() {
+      ref.invalidate(latestLogsProvider);
+      ref.invalidate(logLevelStatsProvider);
+      ref.invalidate(logTagsProvider);
+      return null;
+    }, []);
+
     final logsAsync = ref.watch(latestLogsProvider);
     final statsAsync = ref.watch(logLevelStatsProvider);
     final tagsAsync = ref.watch(logTagsProvider);

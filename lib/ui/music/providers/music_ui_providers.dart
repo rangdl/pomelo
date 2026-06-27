@@ -37,7 +37,7 @@ class SelectedSourceNotifier
   ({String? sourceId, String? libraryId}) build() {
     final savedSource = Settings.get(StorageKeys.musicSelectedSource);
     final savedLibrary = Settings.get(StorageKeys.musicSelectedLibrary);
-    final state = (
+    final initialState = (
       sourceId: (savedSource != null && savedSource.isNotEmpty)
           ? savedSource
           : null,
@@ -46,16 +46,25 @@ class SelectedSourceNotifier
           : null,
     );
 
-    // 恢复状态时，同步更新服务的默认库
-    if (state.sourceId != null && state.libraryId != null) {
+    // 修复重启后选中库未生效：
+    // build() 同步执行时音乐服务尚未注册（lazy 模块未完成 onReady），
+    // 直接调用 service.setDefaultLibrary 会因服务为 null 而被跳过。
+    // 这里改为在 musicReadyProvider 就绪后再应用持久化的库。
+    void applyPersistedLibrary(bool _) {
+      final sourceId = initialState.sourceId;
+      final libraryId = initialState.libraryId;
+      if (sourceId == null || libraryId == null) return;
       final module = ref.read(musicModuleProvider);
-      final service = module?.service(state.sourceId!);
-      if (service != null) {
-        service.setDefaultLibrary(state.libraryId!);
-      }
+      module?.service(sourceId)?.setDefaultLibrary(libraryId);
     }
 
-    return state;
+    ref.listen<AsyncValue<bool>>(musicReadyProvider, (_, ready) {
+      ready.whenData(applyPersistedLibrary);
+    });
+    // 兜底：若服务在 build 前已就绪
+    ref.read(musicReadyProvider).whenData(applyPersistedLibrary);
+
+    return initialState;
   }
 
   void selectAll() {
@@ -166,9 +175,13 @@ final playlistCategoriesProvider = FutureProvider<List<PlaylistCategory>>((
 /// 当前选中的父分类 id
 ///
 /// 为 null 时显示第一个父分类。仅用于切换子分类列表，不触发歌单查询。
+/// 监听 [selectedSourceProvider]，切换来源/库时自动重置为 null，避免选中态与新库不匹配。
 class SelectedPlaylistParentNotifier extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() {
+    ref.watch(selectedSourceProvider);
+    return null;
+  }
 
   void select(String? parentId) => state = parentId;
 }
@@ -181,9 +194,13 @@ final selectedPlaylistParentProvider =
 /// 当前选中的子分类 id
 ///
 /// 为 null 时不查询歌单列表。只有点击子分类才会设置此值并触发查询。
+/// 监听 [selectedSourceProvider]，切换来源/库时自动重置为 null。
 class SelectedPlaylistCategoryNotifier extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() {
+    ref.watch(selectedSourceProvider);
+    return null;
+  }
 
   void select(String? categoryId) => state = categoryId;
 }
@@ -196,9 +213,13 @@ final selectedPlaylistCategoryProvider =
 /// 当前选中的歌单排序方式 id
 ///
 /// 为 null 时使用默认排序。
+/// 监听 [selectedSourceProvider]，切换来源/库时自动重置为 null。
 class SelectedPlaylistSortNotifier extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() {
+    ref.watch(selectedSourceProvider);
+    return null;
+  }
 
   void select(String? sortId) => state = sortId;
 }
@@ -256,9 +277,13 @@ final leaderboardsProvider = FutureProvider<List<Leaderboard>>((ref) async {
 /// 当前选中的排行榜 id
 ///
 /// 为 null 时默认选中第一个排行榜。
+/// 监听 [selectedSourceProvider]，切换来源/库时自动重置为 null，避免选中态与新库不匹配。
 class SelectedLeaderboardNotifier extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() {
+    ref.watch(selectedSourceProvider);
+    return null;
+  }
 
   void select(String? id) => state = id;
 }

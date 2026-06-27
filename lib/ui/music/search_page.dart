@@ -43,23 +43,20 @@ class MusicSearchPage extends HookConsumerWidget {
               child: const Icon(Icons.arrow_back, size: 20),
             ),
           ],
-          title: SizedBox(
-            height: 36,
-            child: TextField(
-              controller: searchController,
-              autofocus: false,
-              placeholder: const Text('搜索歌曲...'),
-              onSubmitted: doSearch,
-              features: [
-                InputFeature.trailing(
-                  GhostButton(
-                    density: ButtonDensity.icon,
-                    onPressed: () => doSearch(searchController.text),
-                    child: const Icon(Icons.search, size: 20),
-                  ),
+          title: TextField(
+            controller: searchController,
+            autofocus: false,
+            placeholder: const Text('搜索歌曲...'),
+            onSubmitted: doSearch,
+            features: [
+              InputFeature.trailing(
+                GhostButton(
+                  density: ButtonDensity.icon,
+                  onPressed: () => doSearch(searchController.text),
+                  child: const Icon(Icons.search, size: 20),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         const Divider(),
@@ -93,9 +90,6 @@ class _SearchResults extends HookConsumerWidget {
 
     return servicesAsync.when(
       data: (services) {
-        final byType = groupServicesByType(services);
-        final types = byType.keys.toList();
-
         final filtered = tabSourceId.value == null
             ? services
             : services.where((s) => s.sourceId == tabSourceId.value).toList();
@@ -104,8 +98,7 @@ class _SearchResults extends HookConsumerWidget {
 
         // 来源筛选 chips 组件
         final sourceChips = _SourceChips(
-          types: types,
-          byType: byType,
+          services: services,
           selectedSourceId: selectedSourceId,
           tabSourceId: tabSourceId,
           selection: selection,
@@ -145,11 +138,14 @@ class _SearchResults extends HookConsumerWidget {
                       padding: const EdgeInsets.all(12),
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: Text('来源', style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.mutedForeground,
-                        )),
+                        child: Text(
+                          '来源',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: colorScheme.mutedForeground,
+                          ),
+                        ),
                       ),
                     ),
                     Expanded(child: SingleChildScrollView(child: sourceChips)),
@@ -171,8 +167,7 @@ class _SearchResults extends HookConsumerWidget {
 
 /// 来源筛选 chips 组件
 class _SourceChips extends StatelessWidget {
-  final List<dynamic> types;
-  final Map<dynamic, List<MusicService>> byType;
+  final List<MusicService> services;
   final String? selectedSourceId;
   final ValueNotifier<String?> tabSourceId;
   final ({String? sourceId, String? libraryId}) selection;
@@ -180,8 +175,7 @@ class _SourceChips extends StatelessWidget {
   final WidgetRef ref;
 
   const _SourceChips({
-    required this.types,
-    required this.byType,
+    required this.services,
     required this.selectedSourceId,
     required this.tabSourceId,
     required this.selection,
@@ -207,73 +201,56 @@ class _SourceChips extends StatelessWidget {
           borderRadius: 8,
           fontSize: 13,
         ),
-        ...types.expand((type) {
-          final typeServices = byType[type] ?? [];
-          if (typeServices.isEmpty) return <Widget>[];
-          return [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Center(
-                child: Text(
-                  (type as dynamic).displayName as String,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: colorScheme.foreground.withValues(alpha: 0.4),
+        // 扁平展示所有平台，不按类型分组；
+        // 多库服务展开为每个库一个 chip
+        ...services.expand((service) {
+          if (service.libraries.isNotEmpty) {
+            return service.libraries.map(
+              (lib) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: AppChip(
+                  label: lib.name,
+                  isSelected:
+                      tabSourceId.value == service.sourceId &&
+                      service.defaultLibraryId == lib.id,
+                  onTap: () {
+                    tabSourceId.value = service.sourceId;
+                    ref
+                        .read(selectedSourceProvider.notifier)
+                        .select(service.sourceId, libraryId: lib.id);
+                  },
+                  fill: true,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
                   ),
+                  borderRadius: 8,
+                  fontSize: 13,
                 ),
               ),
-            ),
-            ...typeServices.expand((service) {
-              if (service.libraries.isNotEmpty) {
-                return service.libraries.map(
-                  (lib) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: AppChip(
-                      label: lib.name,
-                      isSelected:
-                          tabSourceId.value == service.sourceId &&
-                          service.defaultLibraryId == lib.id,
-                      onTap: () {
-                        tabSourceId.value = service.sourceId;
-                        ref.read(selectedSourceProvider.notifier).select(
-                          service.sourceId,
-                          libraryId: lib.id,
-                        );
-                      },
-                      fill: true,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      borderRadius: 8,
-                      fontSize: 13,
-                    ),
-                  ),
-                );
-              }
-              return [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: AppChip(
-                    label: service.sourceName,
-                    isSelected: tabSourceId.value == service.sourceId,
-                    onTap: () {
-                      tabSourceId.value = service.sourceId;
-                      ref
-                          .read(selectedSourceProvider.notifier)
-                          .select(service.sourceId);
-                    },
-                    fill: true,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    borderRadius: 8,
-                    fontSize: 13,
-                  ),
+            );
+          }
+          return [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: AppChip(
+                label: service.sourceName,
+                isSelected: tabSourceId.value == service.sourceId,
+                onTap: () {
+                  tabSourceId.value = service.sourceId;
+                  ref
+                      .read(selectedSourceProvider.notifier)
+                      .select(service.sourceId);
+                },
+                fill: true,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
                 ),
-              ];
-            }),
+                borderRadius: 8,
+                fontSize: 13,
+              ),
+            ),
           ];
         }),
       ],

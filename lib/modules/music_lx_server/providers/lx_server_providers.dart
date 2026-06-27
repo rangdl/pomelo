@@ -18,11 +18,11 @@ typedef LxServerConfig = ({
   String serverUrl,
   String username,
   String password,
+  String? displayName,
 });
 
 /// Lx Server 连接状态 Notifier
-class LxServerConnectionNotifier
-    extends Notifier<LxServerMusicService?> {
+class LxServerConnectionNotifier extends Notifier<LxServerMusicService?> {
   @override
   LxServerMusicService? build() {
     final module = ref.read(musicLxServerModuleProvider);
@@ -41,6 +41,7 @@ class LxServerConnectionNotifier
       serverUrl: config.serverUrl,
       username: config.username,
       password: config.password,
+      displayName: config.displayName,
     );
     state = service;
     return service;
@@ -58,8 +59,8 @@ class LxServerConnectionNotifier
 /// Lx Server 连接状态
 final lxServerConnectionProvider =
     NotifierProvider<LxServerConnectionNotifier, LxServerMusicService?>(
-  LxServerConnectionNotifier.new,
-);
+      LxServerConnectionNotifier.new,
+    );
 
 /// 用户选择的 lx_server 音质偏好
 ///
@@ -67,8 +68,8 @@ final lxServerConnectionProvider =
 /// 应用到 [LxServerMusicService.getMusicUrl] 时若该音质不可用则按优先级降级。
 final selectedLxServerQualityProvider =
     NotifierProvider<SelectedLxServerQualityNotifier, LxServerQuality>(
-  SelectedLxServerQualityNotifier.new,
-);
+      SelectedLxServerQualityNotifier.new,
+    );
 
 class SelectedLxServerQualityNotifier extends Notifier<LxServerQuality> {
   @override
