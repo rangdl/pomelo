@@ -1,5 +1,6 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -8,6 +9,7 @@ import '../music/widgets/cover_placeholder.dart';
 import 'lyric_parser.dart';
 import 'lyric_view.dart';
 import 'playback_page.dart';
+import 'widgets/play_queue_content.dart';
 
 /// 底部迷你播放器
 ///
@@ -106,10 +108,14 @@ class MiniPlayer extends HookConsumerWidget {
   ) {
     return Row(
       children: [
-        // 封面
-        ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: _buildCover(context, track, isDesktop ? 48 : 40),
+        // 封面（右键/长按打开播放队列）
+        GestureDetector(
+          onSecondaryTap: () => _openPlayQueue(context),
+          onLongPress: () => _openPlayQueue(context),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: _buildCover(context, track, isDesktop ? 48 : 40),
+          ),
         ),
         const Gap(12),
         // 歌曲信息（含当前歌词行）
@@ -249,9 +255,40 @@ class MiniPlayer extends HookConsumerWidget {
     );
   }
 
+  /// 打开播放详情页 — 作为底部 Sheet 覆盖整个页面
   void _navigateToPlayback(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const PlaybackPage()),
+    openSheet(
+      context: context,
+      position: OverlayPosition.bottom,
+      builder: (_) => SizedBox(
+        height: MediaQuery.of(context).size.height,
+        child: const PlaybackPage(),
+      ),
+    );
+  }
+
+  /// 响应式打开播放队列
+  ///
+  /// 桌面端：右侧 Sheet（360px 宽）
+  /// 移动端：底部 Sheet
+  void _openPlayQueue(BuildContext context) {
+    Rx.action(
+      context,
+      mobile: () => openSheet(
+        context: context,
+        position: OverlayPosition.bottom,
+        draggable: true,
+        builder: (_) => _PlayQueueSheet(onClose: () =>
+            Navigator.of(context, rootNavigator: true).pop()),
+      ),
+      tablet: () => openSheet(
+        context: context,
+        position: OverlayPosition.right,
+        builder: (_) => const SizedBox(
+          width: 360,
+          child: PlayQueueContent(),
+        ),
+      ),
     );
   }
 
@@ -259,5 +296,48 @@ class MiniPlayer extends HookConsumerWidget {
     final m = d.inMinutes;
     final s = d.inSeconds.remainder(60);
     return '$m:${s.toString().padLeft(2, '0')}';
+  }
+}
+
+/// 移动端播放队列底部 Sheet 内容
+class _PlayQueueSheet extends StatelessWidget {
+  final VoidCallback onClose;
+
+  const _PlayQueueSheet({required this.onClose});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.card,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 标题栏
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Row(
+              children: [
+                IconButton.text(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: onClose,
+                ),
+                const Gap(4),
+                const Text(
+                  '播放队列',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          const Flexible(child: PlayQueueContent()),
+        ],
+      ),
+    );
   }
 }

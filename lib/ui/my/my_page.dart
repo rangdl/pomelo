@@ -10,10 +10,9 @@ import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/core/storage/storage_keys.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
-import 'package:pomelo/modules/music_lx_server/model/lx_server_quality.dart';
-import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:pomelo/modules/my/service/update_service.dart';
+import 'package:pomelo/ui/my/playback_settings_page.dart';
 
 /// 我的页面 — 用户设置中心
 ///
@@ -36,7 +35,6 @@ class MyPage extends HookConsumerWidget {
     );
     final themeMode = themeModeAsync.value ?? 'system';
     final localDirs = ref.watch(localMusicDirsProvider);
-    final selectedQuality = ref.watch(selectedLxServerQualityProvider);
     final checking = useState(false);
 
     Future<void> checkForUpdate() async {
@@ -160,85 +158,7 @@ class MyPage extends HookConsumerWidget {
       ),
       const SizedBox(height: 24),
 
-      // ===== 播放 =====
-      Text(
-        '播放',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).colorScheme.mutedForeground,
-        ),
-      ),
-      const SizedBox(height: 8),
-      Card(
-        child: Column(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.graphic_eq, size: 20),
-              title: const Text('音质偏好'),
-              subtitle: Text(
-                '当前：$selectedQuality.label',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).colorScheme.mutedForeground,
-                ),
-              ),
-              trailing: Select<LxServerQuality>(
-                value: selectedQuality,
-                onChanged: (value) {
-                  if (value != null) {
-                    ref
-                        .read(selectedLxServerQualityProvider.notifier)
-                        .set(value);
-                  }
-                },
-                popup: SelectPopup(
-                  items: SelectItemList(
-                    children: LxServerQuality.values
-                        .map(
-                          (q) =>
-                              SelectItemButton(value: q, child: Text(q.label)),
-                        )
-                        .toList(),
-                  ),
-                ).call,
-                itemBuilder: (context, value) => Text(
-                  value.label,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.mutedForeground,
-                  ),
-                ),
-              ),
-            ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 14,
-                    color: Theme.of(context).colorScheme.mutedForeground,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '仅对 lx_server 音源生效，不支持所选音质时自动降级',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.mutedForeground,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      const SizedBox(height: 24),
-
-      // ===== 更多设置占位 =====
+      // ===== 其他设置 =====
       Text(
         '其他',
         style: TextStyle(
@@ -255,6 +175,7 @@ class MyPage extends HookConsumerWidget {
               leading: const Icon(Icons.volume_up, size: 20),
               title: const Text('播放设置'),
               trailing: const Icon(Icons.chevron_right, size: 20),
+              onTap: () => openPlaybackSettings(context),
             ),
             const Divider(height: 1),
             ListTile(

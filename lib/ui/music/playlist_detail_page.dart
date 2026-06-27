@@ -36,6 +36,12 @@ class PlaylistDetailPage extends HookConsumerWidget {
   final String? coverUrl;
   final String creator;
 
+  /// 关闭回调。
+  ///
+  /// 当此页面以非路由方式（如嵌入到首页 Tab 内容区）渲染时，
+  /// 通过该回调通知宿主关闭。若为 null，则使用 `context.router.maybePop()`。
+  final VoidCallback? onClose;
+
   const PlaylistDetailPage({
     super.key,
     required this.playlistId,
@@ -43,6 +49,7 @@ class PlaylistDetailPage extends HookConsumerWidget {
     required this.playlistName,
     this.coverUrl,
     this.creator = '',
+    this.onClose,
   });
 
   @override
@@ -57,7 +64,7 @@ class PlaylistDetailPage extends HookConsumerWidget {
         AppBar(
           leading: [
             GhostButton(
-              onPressed: () => context.router.maybePop(),
+              onPressed: onClose ?? () => context.router.maybePop(),
               child: const Icon(Icons.arrow_back, size: 20),
             ),
           ],
