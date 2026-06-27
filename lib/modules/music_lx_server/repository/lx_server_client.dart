@@ -272,10 +272,7 @@ class LxServerClient {
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '$serverUrl/api/music/url',
-        data: {
-          'songInfo': songInfo,
-          'quality': quality,
-        },
+        data: {'songInfo': songInfo, 'quality': quality},
         options: _authOptions.copyWith(contentType: Headers.jsonContentType),
       );
       final data = response.data!;
@@ -317,18 +314,16 @@ class LxServerClient {
   /// POST /api/music/lyric
   /// [songInfo] 完整歌曲信息，服务端根据 source 选取所需字段。
   /// 返回 LRC 格式歌词文本，无歌词返回 null。
-  Future<String?> getLyric({
-    required Map<String, dynamic> songInfo,
-  }) async {
+  Future<String?> getLyric({required Map<String, dynamic> songInfo}) async {
     await ensureLoggedIn();
     final source = songInfo['source'] as String? ?? '';
     final hash = songInfo['hash'] as String? ?? '';
     log.debug('LxServer', '获取歌词: source=$source, hash=$hash');
     try {
-      final response = await _dio.post<Map<String, dynamic>>(
+      final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/lyric',
-        data: {'songInfo': songInfo},
-        options: _authOptions.copyWith(contentType: Headers.jsonContentType),
+        queryParameters: songInfo,
+        options: _authOptions,
       );
       final data = response.data!;
       final lyric = data['lyric'] as String?;

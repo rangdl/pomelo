@@ -45,12 +45,14 @@ class MusicLxServerModule extends Module {
   bool get isConnected => _service != null;
 
   /// 当前配置信息
-  ({String serverUrl, String username, String password})? get config {
+  ({String serverUrl, String username, String password, String? displayName})?
+  get config {
     if (_config == null) return null;
     return (
       serverUrl: _config!['serverUrl'] as String,
       username: _config!['username'] as String,
       password: _config!['password'] as String,
+      displayName: _config!['displayName'] as String?,
     );
   }
 
@@ -66,6 +68,7 @@ class MusicLxServerModule extends Module {
       username: saved['username'] as String,
       password: saved['password'] as String,
       token: saved['token'] as String?,
+      displayName: saved['displayName'] as String?,
       silent: true,
     );
   }
@@ -89,11 +92,13 @@ class MusicLxServerModule extends Module {
   /// 添加/连接 lx-server
   ///
   /// 登录验证成功后创建服务并注册到 MusicModule。
+  /// [displayName] 为自定义显示名称，留空则使用默认名 "Lx Server"。
   /// 连接失败抛出异常。
   Future<LxServerMusicService> connect({
     required String serverUrl,
     required String username,
     required String password,
+    String? displayName,
   }) async {
     // 若已有连接，先断开
     await disconnect();
@@ -102,6 +107,7 @@ class MusicLxServerModule extends Module {
       serverUrl: serverUrl,
       username: username,
       password: password,
+      displayName: displayName,
       silent: false,
     );
 
@@ -114,6 +120,7 @@ class MusicLxServerModule extends Module {
       'serverUrl': serverUrl,
       'username': username,
       'password': password,
+      'displayName': displayName,
       'token': _client!.token,
     };
     await _saveConfig();
@@ -142,12 +149,14 @@ class MusicLxServerModule extends Module {
 
   /// 创建并初始化连接
   ///
+  /// [displayName] 为自定义显示名称，留空则使用默认名 "Lx Server"。
   /// [silent] 为 true 时，连接失败只打印日志不抛异常。
   Future<LxServerMusicService?> _connect({
     required String serverUrl,
     required String username,
     required String password,
     String? token,
+    String? displayName,
     required bool silent,
   }) async {
     final cleanUrl = serverUrl.replaceAll(RegExp(r'/+$'), '');
@@ -175,10 +184,13 @@ class MusicLxServerModule extends Module {
     }
 
     final sourceId = 'lx-server-${cleanUrl.hashCode.abs()}';
+    final sourceName = (displayName != null && displayName.isNotEmpty)
+        ? displayName
+        : 'Lx Server';
     final service = LxServerMusicService(
       client: client,
       sourceId: sourceId,
-      sourceName: 'Lx Server',
+      sourceName: sourceName,
     );
 
     _client = client;
@@ -187,6 +199,7 @@ class MusicLxServerModule extends Module {
       'serverUrl': cleanUrl,
       'username': username,
       'password': password,
+      'displayName': displayName,
       'token': client.token,
     };
     log.info('LxServer', '已连接 $username@$cleanUrl');

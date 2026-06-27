@@ -16,6 +16,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
     final serverUrlController = useTextEditingController();
     final usernameController = useTextEditingController();
     final passwordController = useTextEditingController();
+    final displayNameController = useTextEditingController();
 
     final isLoading = useState(false);
     final error = useState<String?>(null);
@@ -24,6 +25,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
       final serverUrl = serverUrlController.text.trim();
       final username = usernameController.text.trim();
       final password = passwordController.text;
+      final displayName = displayNameController.text.trim();
 
       if (serverUrl.isEmpty || username.isEmpty || password.isEmpty) {
         error.value = '服务器地址、用户名和密码为必填项';
@@ -38,12 +40,16 @@ class _LxServerAccountContent extends HookConsumerWidget {
           serverUrl: serverUrl,
           username: username,
           password: password,
+          displayName: displayName.isEmpty ? null : displayName,
         ));
         Rx.toast.success('连接成功');
         if (context.mounted) Navigator.of(context).pop(true);
       } catch (e) {
         isLoading.value = false;
-        final msg = e.toString().replaceFirst('StateError: ', '').replaceFirst('Exception: ', '');
+        final msg = e
+            .toString()
+            .replaceFirst('StateError: ', '')
+            .replaceFirst('Exception: ', '');
         error.value = msg;
         Rx.toast.error('连接失败: $msg');
       }
@@ -95,6 +101,20 @@ class _LxServerAccountContent extends HookConsumerWidget {
             color: Theme.of(context).colorScheme.mutedForeground,
           ),
         ),
+        const Gap(12),
+        TextField(
+          controller: displayNameController,
+          placeholder: const Text('自定义显示名称，留空则使用 Lx Server'),
+          onChanged: (_) => error.value != null ? error.value = null : null,
+        ),
+        const Gap(4),
+        Text(
+          '显示名称（可选）',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.mutedForeground,
+          ),
+        ),
         if (error.value != null) ...[
           const Gap(12),
           Text(
@@ -110,7 +130,9 @@ class _LxServerAccountContent extends HookConsumerWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             GhostButton(
-              onPressed: isLoading.value ? null : () => Navigator.of(context).pop(false),
+              onPressed: isLoading.value
+                  ? null
+                  : () => Navigator.of(context).pop(false),
               child: const Text('取消'),
             ),
             const Gap(8),
@@ -139,10 +161,7 @@ class AddLxServerAccountDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('添加 Lx Server'),
-      content: SizedBox(
-        width: 400,
-        child: const _LxServerAccountContent(),
-      ),
+      content: SizedBox(width: 400, child: const _LxServerAccountContent()),
     );
   }
 }
@@ -168,9 +187,7 @@ class AddLxServerAccountPage extends StatelessWidget {
       child: const Padding(
         padding: EdgeInsets.all(16),
         child: Center(
-          child: SingleChildScrollView(
-            child: _LxServerAccountContent(),
-          ),
+          child: SingleChildScrollView(child: _LxServerAccountContent()),
         ),
       ),
     );

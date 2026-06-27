@@ -29,19 +29,17 @@ class HomePage extends HookConsumerWidget {
     return Scaffold(
       headers: [
         AppBar(
-          title: SizedBox(
-            height: 36,
-            child: TextField(
-              placeholder: const Text('搜索歌曲...'),
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
-                  context.pushRoute(MusicSearchRoute(keyword: value.trim()));
-                }
-              },
-              features: [
-                InputFeature.leading(const Icon(Icons.search, size: 18)),
-              ],
-            ),
+          leading: [const LibrarySwitchButton()],
+          title: TextField(
+            placeholder: const Text('搜索歌曲...'),
+            onSubmitted: (value) {
+              if (value.trim().isNotEmpty) {
+                context.pushRoute(MusicSearchRoute(keyword: value.trim()));
+              }
+            },
+            features: [
+              InputFeature.leading(const Icon(Icons.search, size: 18)),
+            ],
           ),
           trailing: [const SourceSwitchButton()],
         ),
@@ -383,7 +381,10 @@ class _PlaylistContent extends HookConsumerWidget {
             .toList();
         if (parentCategories.isEmpty) return const _EmptyHint(text: '暂无歌单分类');
 
-        final activeParentId = selectedParentId ?? parentCategories.first.id;
+        final activeParentId = (selectedParentId != null &&
+                parentCategories.any((c) => c.id == selectedParentId))
+            ? selectedParentId
+            : parentCategories.first.id;
         final childCategories = allCategories
             .where((c) => c.parentId == activeParentId)
             .toList();

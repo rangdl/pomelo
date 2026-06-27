@@ -1,5 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/modules/music/model/music_source_type.dart';
+import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/modules/music/model/music_service.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
@@ -7,10 +7,10 @@ import 'package:pomelo/ui/music/track_list.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-/// 音乐来源切换按钮（右上角）
+/// 音乐平台切换按钮（右上角）
 ///
-/// 遍历 MusicModule.services，按 sourceType 分组展示。
-/// 多库服务（如 LxMusicService）展示子库选项。
+/// 仅切换音乐平台（服务），不展示平台提供的库。
+/// 多库服务（如 LxServer）的库切换由 [LibrarySwitchButton] 负责。
 class SourceSwitchButton extends HookConsumerWidget {
   const SourceSwitchButton({super.key});
 
@@ -22,23 +22,14 @@ class SourceSwitchButton extends HookConsumerWidget {
 
     return servicesAsync.when(
       data: (services) {
-        // 确定显示名称：如果有 libraryId 则显示库名，否则显示服务名
+        // 显示名称：仅显示服务名（不显示库名）
         final selectedName = selectedSourceId == null
             ? '全部'
-            : () {
-                final service = services
-                    .where((s) => s.sourceId == selectedSourceId)
-                    .firstOrNull;
-                if (service == null) return '全部';
-                if (selection.libraryId != null &&
-                    service.libraries.isNotEmpty) {
-                  final lib = service.libraries
-                      .where((l) => l.id == selection.libraryId)
-                      .firstOrNull;
-                  return lib?.name ?? service.sourceName;
-                }
-                return service.sourceName;
-              }();
+            : services
+                      .where((s) => s.sourceId == selectedSourceId)
+                      .firstOrNull
+                      ?.sourceName ??
+                  '全部';
 
         return GhostButton(
           size: ButtonSize.small,
@@ -65,99 +56,110 @@ class SourceSwitchButton extends HookConsumerWidget {
     List<MusicService> services,
     String? selectedSourceId,
   ) {
-    final byType = groupServicesByType(services);
-
-    final types = byType.keys.toList();
-
-    showDialog(
+    showSelectionPicker<String?>(
       context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('选择音乐来源'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                GhostButton(
-                  onPressed: () {
-                    ref.read(selectedSourceProvider.notifier).selectAll();
-                    Navigator.of(dialogContext).pop();
-                  },
-                  child: Text(
-                    '全部来源',
-                    style: TextStyle(
-                      fontWeight: selectedSourceId == null ? FontWeight.bold : null,
-                    ),
-                  ),
-                ),
-                const Divider(),
-                ...types.expand((type) {
-                  final typeServices = byType[type] ?? [];
-                  return [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                      child: Text(
-                        type.displayName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.mutedForeground,
-                        ),
-                      ),
-                    ),
-                    ...typeServices.expand((service) {
-                      // 如果服务有多个库，展示每个库作为子选项
-                      if (service.libraries.isNotEmpty) {
-                        return service.libraries.map(
-                          (lib) => GhostButton(
-                            onPressed: () {
-                              // 选中库对应的 sourceId（对于多库服务，sourceId 是服务级别的）
-                              // 同时设置服务的默认库
-                              ref
-                                  .read(selectedSourceProvider.notifier)
-                                  .select(service.sourceId, libraryId: lib.id);
-                              Navigator.of(dialogContext).pop();
-                            },
-                            child: Text(
-                              lib.name,
-                              style: TextStyle(
-                                fontWeight: selectedSourceId == service.sourceId &&
-                                      service.defaultLibraryId == lib.id
-                                  ? FontWeight.bold
-                                  : null,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                      // 单库/无库服务，直接展示
-                      return [
-                        GhostButton(
-                          onPressed: () {
-                            ref
-                                .read(selectedSourceProvider.notifier)
-                                .select(service.sourceId);
-                            Navigator.of(dialogContext).pop();
-                          },
-                          child: Text(
-                            service.sourceName,
-                            style: TextStyle(
-                              fontWeight: selectedSourceId == service.sourceId
-                                  ? FontWeight.bold
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      ];
-                    }),
-                  ];
-                }),
-              ],
-            ),
+      title: '选择音乐平台',
+      options: [
+        SelectionOption<String?>(
+          value: null,
+          label: '全部来源',
+          selected: selectedSourceId == null,
+        ),
+        ...services.map(
+          (service) => SelectionOption<String?>(
+            value: service.sourceId,
+            label: service.sourceName,
+            selected: service.sourceId == selectedSourceId,
+          ),
+        ),
+      ],
+      onSelected: (value) {
+        if (value == null) {
+          ref.read(selectedSourceProvider.notifier).selectAll();
+        } else {
+          ref.read(selectedSourceProvider.notifier).select(value);
+        }
+      },
+    );
+  }
+}
+
+/// 库切换按钮（左侧）
+///
+/// 仅当选中的平台（服务）提供多个库时显示。
+/// 点击弹出库选择对话框，选中后更新 [selectedSourceProvider] 的 libraryId。
+class LibrarySwitchButton extends HookConsumerWidget {
+  const LibrarySwitchButton({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final servicesAsync = ref.watch(musicServicesProvider);
+    final selection = ref.watch(selectedSourceProvider);
+
+    return servicesAsync.when(
+      data: (services) {
+        final sourceId = selection.sourceId;
+        if (sourceId == null) return const SizedBox.shrink();
+        final service = services
+            .where((s) => s.sourceId == sourceId)
+            .firstOrNull;
+        // 平台未提供库，或仅有一个库，则不显示
+        if (service == null || service.libraries.length <= 1) {
+          return const SizedBox.shrink();
+        }
+
+        // 当前库名
+        final currentLibId = selection.libraryId ?? service.defaultLibraryId;
+        final currentLibName =
+            service.libraries
+                .where((l) => l.id == currentLibId)
+                .firstOrNull
+                ?.name ??
+            '选择库';
+
+        return GhostButton(
+          size: ButtonSize.small,
+          onPressed: () => _showLibraryPicker(context, ref, service, sourceId),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.library_music, size: 16),
+              const SizedBox(width: 4),
+              Text(currentLibName),
+            ],
           ),
         );
+      },
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+    );
+  }
+
+  void _showLibraryPicker(
+    BuildContext context,
+    WidgetRef ref,
+    MusicService service,
+    String sourceId,
+  ) {
+    final selection = ref.read(selectedSourceProvider);
+    final currentLibId = selection.libraryId ?? service.defaultLibraryId;
+
+    showSelectionPicker<String>(
+      context: context,
+      title: '选择库',
+      options: service.libraries
+          .map(
+            (lib) => SelectionOption<String>(
+              value: lib.id,
+              label: lib.name,
+              selected: lib.id == currentLibId,
+            ),
+          )
+          .toList(),
+      onSelected: (libId) {
+        ref
+            .read(selectedSourceProvider.notifier)
+            .select(sourceId, libraryId: libId);
       },
     );
   }
@@ -193,9 +195,7 @@ class MusicSection extends HookConsumerWidget {
                       child: Text(
                         '暂无歌曲',
                         style: TextStyle(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.mutedForeground,
+                          color: Theme.of(context).colorScheme.mutedForeground,
                         ),
                       ),
                     ),
@@ -217,9 +217,7 @@ class MusicSection extends HookConsumerWidget {
               child: Text(
                 '加载失败: $err',
                 style: TextStyle(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.mutedForeground,
+                  color: Theme.of(context).colorScheme.mutedForeground,
                 ),
               ),
             ),
