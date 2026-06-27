@@ -5,12 +5,23 @@ import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/ui/music/music_section.dart';
+import 'package:pomelo/ui/music/playlist_detail_page.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
+import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+
+/// 歌单引用 — 用于在首页 Tab 内联打开歌单详情
+typedef _PlaylistRef = ({
+  String playlistId,
+  String sourceId,
+  String playlistName,
+  String? coverUrl,
+  String creator,
+});
 
 /// Home 页面
 ///
@@ -25,6 +36,22 @@ class HomePage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 0 = 排行榜, 1 = 歌单
     final tabIndex = useState(0);
+    // 当前内联查看的歌单引用；非 null 时渲染歌单详情页（占据 Home tab 区域，保留底部导航和迷你播放器）
+    final viewingPlaylist = useState<_PlaylistRef?>(null);
+
+    // 内联查看歌单详情：与首页/平台页位于相同位置（tab 内容区），
+    // 保留根部的底部导航栏和迷你播放器。
+    if (viewingPlaylist.value != null) {
+      final p = viewingPlaylist.value!;
+      return PlaylistDetailPage(
+        playlistId: p.playlistId,
+        sourceId: p.sourceId,
+        playlistName: p.playlistName,
+        coverUrl: p.coverUrl,
+        creator: p.creator,
+        onClose: () => viewingPlaylist.value = null,
+      );
+    }
 
     return Scaffold(
       headers: [
@@ -53,7 +80,9 @@ class HomePage extends HookConsumerWidget {
           Expanded(
             child: tabIndex.value == 0
                 ? const _LeaderboardContent()
-                : const _PlaylistContent(),
+                : _PlaylistContent(
+                    onOpenPlaylist: (p) => viewingPlaylist.value = p,
+                  ),
           ),
         ],
       ),
@@ -62,14 +91,18 @@ class HomePage extends HookConsumerWidget {
 }
 
 /// 顶部 Tab 切换栏
-class _HomeTabBar extends StatelessWidget {
+class _HomeTabBar extends ConsumerWidget {
   final ValueNotifier<int> tabIndex;
 
   const _HomeTabBar({required this.tabIndex});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final isLeaderboard = tabIndex.value == 0;
+
+    // 仅在排行榜 Tab 下获取曲目列表
+    final tracks = isLeaderboard ? _watchLeaderboardTracks(ref) : <Track>[];
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -90,9 +123,26 @@ class _HomeTabBar extends StatelessWidget {
             colorScheme: colorScheme,
             onTap: () => tabIndex.value = 1,
           ),
+          const Spacer(),
+          // 播放全部按钮 — 仅排行榜 Tab 下生效
+          if (isLeaderboard) PlayAllButton(tracks: tracks),
         ],
       ),
     );
+  }
+
+  /// 获取当前选中排行榜的曲目列表
+  List<Track> _watchLeaderboardTracks(WidgetRef ref) {
+    final leaderboards = ref.watch(leaderboardsProvider).value ?? [];
+    if (leaderboards.isEmpty) return [];
+
+    final selectedId = ref.watch(selectedLeaderboardProvider);
+    final effectiveId =
+        (selectedId == null || !leaderboards.any((l) => l.id == selectedId))
+        ? leaderboards.first.id
+        : selectedId;
+
+    return ref.watch(leaderboardTracksProvider(effectiveId)).value ?? [];
   }
 }
 
@@ -364,7 +414,9 @@ class _LeaderboardSongs extends ConsumerWidget {
 
 /// 歌单内容容器 — 响应式布局
 class _PlaylistContent extends HookConsumerWidget {
-  const _PlaylistContent();
+  final void Function(_PlaylistRef) onOpenPlaylist;
+
+  const _PlaylistContent({required this.onOpenPlaylist});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -418,12 +470,14 @@ class _PlaylistContent extends HookConsumerWidget {
             childCategories: childCategories,
             activeParentId: activeParentId,
             effectiveChildId: effectiveChildId,
+            onOpenPlaylist: onOpenPlaylist,
           ),
           tablet: () => _PlaylistDesktop(
             allCategories: allCategories,
             parentCategories: parentCategories,
             activeParentId: activeParentId,
             effectiveChildId: effectiveChildId,
+            onOpenPlaylist: onOpenPlaylist,
           ),
         );
       },
@@ -439,12 +493,14 @@ class _PlaylistMobile extends HookConsumerWidget {
   final List<PlaylistCategory> childCategories;
   final String activeParentId;
   final String? effectiveChildId;
+  final void Function(_PlaylistRef) onOpenPlaylist;
 
   const _PlaylistMobile({
     required this.parentCategories,
     required this.childCategories,
     required this.activeParentId,
     required this.effectiveChildId,
+    required this.onOpenPlaylist,
   });
 
   @override
@@ -515,7 +571,10 @@ class _PlaylistMobile extends HookConsumerWidget {
           ),
         // 歌单网格
         Expanded(
-          child: _PlaylistGridContent(childCategoryId: effectiveChildId),
+          child: _PlaylistGridContent(
+            childCategoryId: effectiveChildId,
+            onOpenPlaylist: onOpenPlaylist,
+          ),
         ),
       ],
     );
@@ -531,12 +590,14 @@ class _PlaylistDesktop extends HookConsumerWidget {
   final List<PlaylistCategory> parentCategories;
   final String activeParentId;
   final String? effectiveChildId;
+  final void Function(_PlaylistRef) onOpenPlaylist;
 
   const _PlaylistDesktop({
     required this.allCategories,
     required this.parentCategories,
     required this.activeParentId,
     required this.effectiveChildId,
+    required this.onOpenPlaylist,
   });
 
   @override
@@ -635,7 +696,10 @@ class _PlaylistDesktop extends HookConsumerWidget {
         const VerticalDivider(width: 1),
         // 右侧歌单网格
         Expanded(
-          child: _PlaylistGridContent(childCategoryId: effectiveChildId),
+          child: _PlaylistGridContent(
+            childCategoryId: effectiveChildId,
+            onOpenPlaylist: onOpenPlaylist,
+          ),
         ),
       ],
     );
@@ -645,8 +709,12 @@ class _PlaylistDesktop extends HookConsumerWidget {
 /// 歌单网格内容（含排序）
 class _PlaylistGridContent extends HookConsumerWidget {
   final String? childCategoryId;
+  final void Function(_PlaylistRef) onOpenPlaylist;
 
-  const _PlaylistGridContent({required this.childCategoryId});
+  const _PlaylistGridContent({
+    required this.childCategoryId,
+    required this.onOpenPlaylist,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -719,7 +787,10 @@ class _PlaylistGridContent extends HookConsumerWidget {
                   ),
                 );
               }
-              return _PlaylistGrid(playlists: data.items);
+              return _PlaylistGrid(
+                playlists: data.items,
+                onOpenPlaylist: onOpenPlaylist,
+              );
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (err, _) => Center(
@@ -738,8 +809,12 @@ class _PlaylistGridContent extends HookConsumerWidget {
 /// 歌单网格（响应式列数）
 class _PlaylistGrid extends StatelessWidget {
   final List<Playlist> playlists;
+  final void Function(_PlaylistRef) onOpenPlaylist;
 
-  const _PlaylistGrid({required this.playlists});
+  const _PlaylistGrid({
+    required this.playlists,
+    required this.onOpenPlaylist,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -765,8 +840,10 @@ class _PlaylistGrid extends StatelessWidget {
             childAspectRatio: 0.85,
           ),
           itemCount: playlists.length,
-          itemBuilder: (context, index) =>
-              _PlaylistCard(playlist: playlists[index]),
+          itemBuilder: (context, index) => _PlaylistCard(
+            playlist: playlists[index],
+            onOpenPlaylist: onOpenPlaylist,
+          ),
         );
       },
     );
@@ -776,25 +853,25 @@ class _PlaylistGrid extends StatelessWidget {
 /// 单个歌单卡片
 class _PlaylistCard extends StatelessWidget {
   final Playlist playlist;
+  final void Function(_PlaylistRef) onOpenPlaylist;
 
-  const _PlaylistCard({required this.playlist});
+  const _PlaylistCard({
+    required this.playlist,
+    required this.onOpenPlaylist,
+  });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: () {
-        context.pushRoute(
-          PlaylistDetailRoute(
-            playlistId: (playlist.meta?['id'] as String?) ?? playlist.id,
-            sourceId: playlist.source?.id ?? '',
-            playlistName: playlist.name,
-            coverUrl: playlist.coverArt,
-            creator: playlist.owner ?? '',
-          ),
-        );
-      },
+      onTap: () => onOpenPlaylist((
+        playlistId: (playlist.meta?['id'] as String?) ?? playlist.id,
+        sourceId: playlist.source?.id ?? '',
+        playlistName: playlist.name,
+        coverUrl: playlist.coverArt,
+        creator: playlist.owner ?? '',
+      )),
       child: Card(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
