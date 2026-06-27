@@ -34,8 +34,8 @@ class AudioPlayerModule extends Module {
   /// Riverpod ProviderContainer
   ///
   /// 由 `main.dart` 在 `ProviderScope` 创建之前注入。
-  /// 用于 [ServerPlaybackRoutes] 访问 [trackUrlResolverProvider]
-  /// 完成 URL 解析、HEAD 校验和音质降级。
+  /// 用于 [ServerPlaybackRoutes] 访问 [sourcedTrackProvider]
+  /// 完成 URL 解析（HEAD 校验与音质降级由 ServerPlaybackRoutes 负责）。
   ProviderContainer? _container;
   set container(ProviderContainer? value) => _container = value;
 
@@ -94,8 +94,8 @@ class AudioPlayerModule extends Module {
         if (media == null) return null;
         return PomeloMedia.media(media).track;
       },
-      // 通过 ProviderContainer 访问 trackUrlResolverProvider
-      // URL 解析、HEAD 校验、音质降级逻辑全部由 provider 负责
+      // 通过 ProviderContainer 访问 sourcedTrackProvider
+      // URL 解析由 provider 负责，HEAD 校验与音质降级由 ServerPlaybackRoutes 负责
       getContainer: () => _container,
     );
 

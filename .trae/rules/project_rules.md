@@ -119,9 +119,98 @@ import 'package:media_kit/media_kit.dart' hide Track;
 
 ### 3. 导航模式
 
-- **移动端**: 全屏页面（`Navigator.push`）
-- **桌面端**: 对话框（`showDialog`）
-- **使用 `Rx.action`** 自动适配两端
+#### 3.1 响应式导航壳
+
+| 端 | 导航壳 | 标题栏 |
+|----|--------|--------|
+| mobile (< 600px) | 底部 `NavigationBar` + 各页面自带 `AppBar` | 无统一标题栏 |
+| tablet/desktop (>= 600px) | 左侧 `NavigationRail` + 顶部固定 `_DesktopTitleBar` | 统一标题栏 |
+
+#### 3.2 桌面端标题栏（`_DesktopTitleBar`）
+
+位于 `lib/ui/root/root_page.dart`，固定在 Root 页面顶部，包含：
+
+| 位置 | 内容 | 说明 |
+|------|------|------|
+| 左侧 | 返回按钮 | 监听 `rootCanPopProvider`，根页面禁用，有内联导航时激活 |
+| 中部 | 库切换 + 平台切换 + 搜索框 | 从各页面 AppBar 上移至标题栏统一承载 |
+| 右侧 | 最小化 + 关闭 | `windowManager.minimize()` / `windowManager.destroy()`，仅 `Helper.isDesktop` 时显示 |
+
+- 关闭使用 `destroy()` 而非 `close()`（`main.dart` 中 `setPreventClose(true)`）
+- 桌面端各 Tab 页面不再自带 `AppBar`（搜索/切换由标题栏承载），移动端保留各自 `AppBar`
+
+#### 3.3 Root 导航 Provider（`lib/ui/root/root_providers.dart`）
+
+| Provider | 类型 | 说明 |
+|----------|------|------|
+| `activeTabIndexProvider` | `NotifierProvider<_, int>` | 当前激活 Tab 索引，由 Root 布局在 Tab 切换时 `set()` |
+| `rootCanPopProvider` | `NotifierProvider<_, bool>` | 当前 Tab 是否有可返回的内联导航 |
+| `rootPopCallbackProvider` | `NotifierProvider<_, VoidCallback?>` | 返回回调，标题栏返回按钮调用 |
+
+**Tab 页面注册内联导航状态的约定**：
+
+```dart
+final activeTabIndex = ref.watch(activeTabIndexProvider);
+
+useEffect(() {
+  if (activeTabIndex == myTabIndex && hasInlineNav) {
+    ref.read(rootCanPopProvider.notifier).set(true);
+    ref.read(rootPopCallbackProvider.notifier).set(() => goBack());
+    return () {
+      ref.read(rootCanPopProvider.notifier).set(false);
+      ref.read(rootPopCallbackProvider.notifier).set(null);
+    };
+  }
+  return null;
+}, [activeTabIndex, inlineNavState]);
+```
+
+- 必须以 `activeTabIndex` 作为依赖之一，确保切换 Tab 时正确设置/清除状态
+- 清理函数（`return () => ...`）负责清除状态，防止非激活 Tab 污染标题栏
+
+#### 3.4 页面打开位置约定
+
+**除非特别指定，新页面默认在对应的 Tab 中内联打开**，不作为覆盖全屏的顶级路由。
+
+| 方式 | 适用场景 | 实现 |
+|------|----------|------|
+| 内联状态导航（推荐） | Tab 内子页面（如歌单详情） | `useState<Ref?>` + `onClose` 回调，渲染在 Tab 内容区 |
+| `openSheet` | 播放详情、播放队列等浮层 | 底部/右侧 Sheet，覆盖当前页面 |
+| `showDialog` | 表单、确认框等对话框 | 桌面端对话框 |
+| `context.pushRoute` | **仅限**需要覆盖全屏（含底部导航）的场景 | 谨慎使用 |
+
+**内联页面模式**（参考 `PlaylistDetailPage`）：
+
+```dart
+// 子页面添加可选 onClose 回调
+class DetailPage extends HookConsumerWidget {
+  final VoidCallback? onClose;
+  // onClose 非 null 时，返回按钮调用 onClose；否则用 context.router.maybePop()
+}
+
+// Tab 页面用 useState 控制内联渲染
+final viewingDetail = useState<Ref?>(null);
+if (viewingDetail.value != null) {
+  return DetailPage(..., onClose: () => viewingDetail.value = null);
+}
+return NormalContent(...);
+```
+
+#### 3.5 弹窗与菜单交互模式
+
+沿用 `Rx.action(context, mobile:, tablet:)` 模式，详见下方 [弹窗与菜单交互模式](#弹窗与菜单交互模式) 章节。
+
+**关闭面板约定（按弹层类型区分）**：
+
+| 弹层类型 | 关闭方式 | 原因 |
+|----------|----------|------|
+| `openSheet` / `showDropdown` | `closeOverlay(context)` | shadcn_flutter 的 sheet/dropdown 走 Overlay（非 Navigator 栈），`Navigator.pop()` 会误弹真实路由导致白屏 |
+| `showDialog` | `Navigator.of(context).pop()` 或 `Navigator.of(context, rootNavigator: true).pop()` | 走 Flutter 标准的 `DialogRoute`（Navigator 栈） |
+
+**关键注意**：
+- `closeOverlay(context)` 通过 `Data.maybeFind<OverlayHandlerStateMixin>(context)` 查找最近 sheet/dropdown 的状态并关闭，`context` 必须是 sheet/dropdown **内部**的 BuildContext
+- 每个 `Scaffold` 都会创建一个空的 `DrawerOverlay`，其 `PopScope(canPop: _entries.isEmpty)` 在空时为 `true`，因此从 sheet 内部的 Scaffold 调用 `Navigator.pop()` 会穿透到父 Navigator 弹出真实路由（如 RootPage），造成白屏
+- `MenuButton` 默认 `autoClose: true`，按下后自动关闭 dropdown，无需手动调用 `closeOverlay`
 
 ---
 
@@ -297,26 +386,28 @@ void _openPlayQueue(BuildContext context) {
 
 // 曲目更多操作菜单（移动端底部 Sheet / 桌面端 DropdownMenu）
 void _openActions(BuildContext context, WidgetRef ref) {
-  void close() => Navigator.of(context, rootNavigator: true).pop();
   Rx.action(
     context,
     mobile: () => openSheet(
       context: context,
       position: OverlayPosition.bottom,
       draggable: true,
-      builder: (_) => TrackMoreActionsContent(track: track, onClose: close),
+      builder: (_) => TrackMoreActionsContent(track: track, onRemoveFromQueue: onRemoveFromQueue),
     ),
     tablet: () => showDropdown(
       context: context,
-      builder: (_) => DropdownMenu(children: _buildMenuItems(context, ref, close)),
+      builder: (_) => DropdownMenu(children: _buildMenuItems(context, ref)),
     ),
   );
 }
+
+// 移动端 sheet 内容组件内部用 closeOverlay(context) 关闭
+// 桌面端 dropdown 的 MenuButton 默认 autoClose: true，无需手动关闭
 ```
 
 **共享内容组件模式**：移动端与桌面端复用同一组件，移动端用 `Column + ListTile + Divider(height: 1)` 嵌入 `openSheet`，桌面端用 `DropdownMenu(children: List<MenuItem>)`。
 
-**关闭面板统一约定**：`Navigator.of(context, rootNavigator: true).pop()`（覆盖 `openSheet`/`showDialog`/`showDropdown`）。
+**关闭面板约定**：见上方 [3.5 弹窗与菜单交互模式](#35-弹窗与菜单交互模式) 章节。`openSheet`/`showDropdown` 必须用 `closeOverlay(context)`，`showDialog` 用 `Navigator.pop()`。
 
 ### shadcn_flutter 菜单/按钮 API
 
@@ -366,6 +457,10 @@ final results = await safeCallServices<PaginationResponse<Track>>(
 9. **勿用 `FutureBuilder`** - 使用 Provider + `AsyncValue.when`
 10. **不要使用 `Song` 命名** - 已统一为 `Track`（API 契约层 `SubsonicSong`/`LxServerSong` 除外）
 11. **Track 可空字段访问** - `artist`、`source`、`meta` 为可空，Text 组件需 `?? ''`，属性访问需 `?.`
+12. **新页面默认在 Tab 内联打开** - 使用 `useState` + `onClose` 回调模式，不作为顶级路由覆盖全屏（除非特别指定）
+13. **桌面端页面不再自带 AppBar** - 搜索/切换由 Root 标题栏统一承载，仅移动端保留各自 AppBar
+14. **窗口关闭用 `destroy()`** - `main.dart` 中 `setPreventClose(true)`，`close()` 会被拦截
+15. **内联导航状态需注册到 Root Provider** - Tab 页面用 `useEffect` 监听 `activeTabIndexProvider`，设置/清除 `rootCanPopProvider` 和 `rootPopCallbackProvider`
 
 ---
 
