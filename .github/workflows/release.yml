@@ -155,6 +155,7 @@ jobs:
           omitNameDuringUpdate: true
           omitPrereleaseDuringUpdate: true
           allowUpdates: true
+          generateReleaseNotes: true
           artifacts: Release-Binaries/**/*,RELEASE.sha256sum,RELEASE.md5sum
 
   cleanup:
