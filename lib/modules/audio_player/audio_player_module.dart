@@ -107,9 +107,13 @@ class AudioPlayerModule extends Module {
       pipeline = pipeline.addMiddleware(logRequests());
     }
 
+    // iOS/macOS 绑定回环地址可避免触发 Local Network 权限弹窗
+    final bindAddress = Platform.isIOS || Platform.isMacOS
+        ? InternetAddress.loopbackIPv4
+        : InternetAddress.anyIPv4;
     _server = await shelf_io.serve(
       pipeline.addHandler(router.call),
-      InternetAddress.anyIPv4,
+      bindAddress,
       PomeloMedia.serverPort,
     );
 
