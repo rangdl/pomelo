@@ -1,6 +1,3 @@
-import 'dart:io';
-
-import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/modules/music/model/models.dart' show Track;
@@ -14,13 +11,10 @@ import 'package:pomelo/modules/music/model/models.dart' show Track;
 // part 'audio_player_impl.dart';
 // part 'audio_players_streams_mixin.dart';
 
-final kIsWindows = kIsWeb ? false : Platform.isWindows;
-
 class PomeloMedia extends mk.Media {
   static int serverPort = 0;
 
-  static String get _host =>
-      kIsWindows ? "localhost" : InternetAddress.anyIPv4.address;
+  static String get _host => "localhost";
 
   final Track track;
   PomeloMedia(this.track)
