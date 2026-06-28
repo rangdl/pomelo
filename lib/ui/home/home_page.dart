@@ -8,7 +8,7 @@ import 'package:pomelo/ui/music/music_section.dart';
 import 'package:pomelo/ui/music/playlist_detail_page.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
-import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
+import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
@@ -138,7 +138,7 @@ class _HomeTabBar extends ConsumerWidget {
             colorScheme: colorScheme,
             onTap: () => tabIndex.value = 0,
           ),
-          const SizedBox(width: 8),
+          const Gap(8),
           _TabItem(
             label: '歌单',
             icon: Icons.queue_music,
@@ -208,7 +208,7 @@ class _TabItem extends StatelessWidget {
                   ? colorScheme.primaryForeground
                   : colorScheme.mutedForeground,
             ),
-            const SizedBox(width: 6),
+            const Gap(6),
             Text(
               label,
               style: TextStyle(
@@ -287,7 +287,7 @@ class _LeaderboardMobile extends ConsumerWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             itemCount: leaderboards.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) => const Gap(8),
             itemBuilder: (context, index) {
               final lb = leaderboards[index];
               final isSelected = lb.id == selectedId;
@@ -537,7 +537,7 @@ class _PlaylistMobile extends HookConsumerWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             itemCount: parentCategories.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            separatorBuilder: (_, _) => const Gap(8),
             itemBuilder: (context, index) {
               final cat = parentCategories[index];
               final isSelected = cat.id == activeParentId;
@@ -571,7 +571,7 @@ class _PlaylistMobile extends HookConsumerWidget {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
               itemCount: childCategories.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 6),
+              separatorBuilder: (_, _) => const Gap(6),
               itemBuilder: (context, index) {
                 final cat = childCategories[index];
                 final isSelected = cat.id == effectiveChildId;
@@ -770,7 +770,7 @@ class _PlaylistGridContent extends HookConsumerWidget {
                   vertical: 3,
                 ),
                 itemCount: sortOrders.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                separatorBuilder: (_, _) => const Gap(6),
                 itemBuilder: (context, index) {
                   final sort = sortOrders[index];
                   final isSelected =
@@ -902,19 +902,12 @@ class _PlaylistCard extends StatelessWidget {
             Expanded(
               child: SizedBox(
                 width: double.infinity,
-                child: ClipRRect(
+                child: CoverImage(
+                  coverArt: playlist.coverArt,
+                  colorScheme: colorScheme,
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(8),
                   ),
-                  child:
-                      playlist.coverArt != null && playlist.coverArt!.isNotEmpty
-                      ? Image.network(
-                          playlist.coverArt!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) =>
-                              CoverPlaceholder(colorScheme: colorScheme),
-                        )
-                      : CoverPlaceholder(colorScheme: colorScheme),
                 ),
               ),
             ),

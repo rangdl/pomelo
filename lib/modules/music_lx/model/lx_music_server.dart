@@ -1,4 +1,4 @@
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
 import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
@@ -14,7 +14,7 @@ import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 /// 库列表由元数据插件加载后通过构造函数传入，
 /// [defaultLibraryId] 默认为第一个库的 id，
 /// 搜索和播放时若未指定库则使用默认库。
-class LxMusicService extends MusicService {
+class LxMusicServer extends MusicServer {
   @override
   MusicSourceType get sourceType => MusicSourceType.lx;
 
@@ -33,7 +33,7 @@ class LxMusicService extends MusicService {
   /// 当前默认使用的库标识
   String? _defaultLibraryId;
 
-  LxMusicService({
+  LxMusicServer({
     required this.metadataEngine,
     this.sourceEngine,
     required this.pluginId,

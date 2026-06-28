@@ -34,7 +34,7 @@ class ProviderErrorBanner extends StatelessWidget {
                 size: 18,
                 color: colorScheme.destructive,
               ),
-              const SizedBox(width: 8),
+              const Gap(8),
               Expanded(
                 child: Text(
                   '${errors.length} 个来源加载失败，点击查看详情',
@@ -83,7 +83,7 @@ class ProviderErrorBanner extends StatelessWidget {
                           color: colorScheme.destructive,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const Gap(4),
                       Text(
                         '${e.error}',
                         style: TextStyle(

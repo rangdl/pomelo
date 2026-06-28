@@ -22,7 +22,7 @@ class StatisticsPage extends StatelessWidget {
               size: 64,
               color: colorScheme.mutedForeground,
             ),
-            const SizedBox(height: 16),
+            const Gap(16),
             Text(
               '统计功能开发中',
               style: TextStyle(

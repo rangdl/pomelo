@@ -4,7 +4,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/helper.dart';
-import 'package:pomelo/core/module/module_manager.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/ui/music/music_section.dart';
@@ -67,18 +66,6 @@ class RootPage extends StatelessWidget {
   }
 }
 
-/// Tab 索引到模块 ID 的映射
-const _tabModuleIds = ['home', 'favorite', 'statistics', 'my'];
-
-/// 延迟初始化对应 Tab 的 M.A.R.S. 模块
-void _lazyInitModule(int index) {
-  if (index < 0 || index >= _tabModuleIds.length) return;
-  final moduleId = _tabModuleIds[index];
-  // home 是即时加载模块，不需要延迟初始化
-  if (moduleId == 'home') return;
-  unawaited(ModuleManager().lazyInit(moduleId));
-}
-
 /// 手机布局 — 底部导航栏
 class _PhoneLayout extends HookConsumerWidget {
   final TabsRouter tabsRouter;
@@ -95,10 +82,8 @@ class _PhoneLayout extends HookConsumerWidget {
   Widget build(BuildContext context, ref) {
     final selectedKey = useState<Key?>(ValueKey(tabsRouter.activeIndex));
 
-    // 延迟加载非首屏模块 — 用户切到对应 Tab 时才初始化
+    // 同步当前 Tab 索引到全局 Provider（延迟到 build 后执行，避免在 build 期间修改 provider）
     useEffect(() {
-      _lazyInitModule(tabsRouter.activeIndex);
-      // 同步当前 Tab 索引到全局 Provider（延迟到 build 后执行，避免在 build 期间修改 provider）
       Future.microtask(
         () => ref
             .read(activeTabIndexProvider.notifier)
@@ -154,10 +139,8 @@ class _NavigationRailLayout extends HookConsumerWidget {
   Widget build(BuildContext context, ref) {
     final selectedKey = useState<Key?>(ValueKey(tabsRouter.activeIndex));
 
-    // 延迟加载非首屏模块 — 用户切到对应 Tab 时才初始化
+    // 同步当前 Tab 索引到全局 Provider（延迟到 build 后执行，避免在 build 期间修改 provider）
     useEffect(() {
-      _lazyInitModule(tabsRouter.activeIndex);
-      // 同步当前 Tab 索引到全局 Provider（延迟到 build 后执行，避免在 build 期间修改 provider）
       Future.microtask(
         () => ref
             .read(activeTabIndexProvider.notifier)
@@ -249,13 +232,13 @@ class _DesktopTitleBar extends HookConsumerWidget {
             enabled: canPop,
             onPressed: () => popCallback?.call(),
           ),
-          const SizedBox(width: 4),
+          const Gap(4),
           // 库切换
           const LibrarySwitchButton(),
-          const SizedBox(width: 4),
+          const Gap(4),
           // 平台切换
           const SourceSwitchButton(),
-          const SizedBox(width: 12),
+          const Gap(12),
           // 搜索框
           Expanded(
             child: TextField(
@@ -272,7 +255,7 @@ class _DesktopTitleBar extends HookConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const Gap(8),
           // 窗口控制按钮 — 仅桌面平台
           if (Helper.isDesktop) ...[
             IconButton.ghost(

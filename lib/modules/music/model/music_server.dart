@@ -1,4 +1,4 @@
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 import 'music_source_type.dart';
 import 'track.dart';
 import 'album.dart';
@@ -7,10 +7,11 @@ import 'leaderboard.dart';
 
 /// 音乐服务接口
 ///
-/// 由各音乐平台模块实现，注册到 [MusicModule] 后统一对外提供服务。
+/// 由各音乐平台模块实现，通过 Riverpod Provider 创建并聚合到
+/// [musicServersProvider] 后统一对外提供服务。
 /// 每个服务有自己的 [sourceId] 和 [sourceName]，用于标识数据来源。
 /// 可选的 [categoryId] 和 [categoryName] 用于对服务进行二级分类分组。
-abstract class MusicService {
+abstract class MusicServer {
   /// 服务唯一标识，如 'local', 'netease'
   String get sourceId;
 

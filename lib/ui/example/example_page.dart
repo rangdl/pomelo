@@ -126,32 +126,3 @@ class Ex1DetailView extends StatelessWidget {
     );
   }
 }
-
-/// Example 页面 — 示例2详情页（导航演示）
-@RoutePage()
-class Ex2DetailView extends StatelessWidget {
-  const Ex2DetailView({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      headers: [AppBar(title: Text('示例2'))],
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('导航示例'),
-            const Gap(8),
-            Text('返回上级页面'),
-            const Gap(24),
-            PrimaryButton(
-              onPressed: () => context.router.maybePop(),
-              child: const Text('返回'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

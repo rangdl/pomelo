@@ -84,7 +84,7 @@ class _SearchResults extends HookConsumerWidget {
       return null;
     }, const []);
 
-    final servicesAsync = ref.watch(musicServicesProvider);
+    final servicesAsync = ref.watch(musicServersProvider);
     final selection = ref.watch(selectedSourceProvider);
     final selectedSourceId = selection.sourceId;
 
@@ -167,7 +167,7 @@ class _SearchResults extends HookConsumerWidget {
 
 /// 来源筛选 chips 组件
 class _SourceChips extends StatelessWidget {
-  final List<MusicService> services;
+  final List<MusicServer> services;
   final String? selectedSourceId;
   final ValueNotifier<String?> tabSourceId;
   final ({String? sourceId, String? libraryId}) selection;
@@ -263,7 +263,7 @@ class _SearchResultsList extends ConsumerWidget {
   final String keyword;
   final String? sourceId;
   final String? libraryId;
-  final List<MusicService> services;
+  final List<MusicServer> services;
 
   const _SearchResultsList({
     super.key,
@@ -308,7 +308,7 @@ class _SearchResultsList extends ConsumerWidget {
                         size: 48,
                         color: colorScheme.mutedForeground,
                       ),
-                      const SizedBox(height: 12),
+                      const Gap(12),
                       Text('未找到与"$keyword"相关的歌曲'),
                     ],
                   ),

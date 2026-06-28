@@ -6,7 +6,7 @@
 - **状态管理**: Riverpod (hooks_riverpod, flutter_riverpod) + flutter_hooks
 - **路由**: auto_route
 - **响应式布局**: Rx.layout() / Rx.action()
-- **持久化**: hive_ce + Settings
+- **持久化**: hive_ce + `UserPreference`（统一设置实体）
 
 ---
 
@@ -20,27 +20,90 @@
 │  - 页面、组件、UI Provider                  │
 ├─────────────────────────────────────────────┤
 │  Module Layer (lib/modules/)               │
-│  - 业务模块、服务、仓储、模块级 Provider     │
+│  - 业务模块、MusicServer、仓储、模块级 Provider │
 ├─────────────────────────────────────────────┤
 │  Core Layer (lib/core/)                    │
-│  - 框架、存储、路由、日志、工具函数         │
+│  - 框架基类、存储、路由、日志、UserPreference │
 └─────────────────────────────────────────────┘
 ```
 
-### 2. Provider 分层原则
+### 2. 模块系统（已移除 M.A.R.S.）
+
+项目已移除 M.A.R.S. 模块化架构（`ModuleManager` 单例 + 拓扑排序 + 懒加载机制）。
+原因：数据刷新不及时，模块间状态同步依赖手动调用，难以与 Riverpod 响应式系统集成。
+
+**当前模式**：
+
+- **核心模块**（`LogModule`、`HomeModule`、`AudioPlayerModule`）：在 `main.dart` 中直接实例化并 `onInit()`，通过 `Provider.overrideWithValue` 注入到 Riverpod
+- **业务模块**（`music_local`、`music_lx`、`music_lx_server`、`music_subsonic` 等）：无 `Module` 类，直接通过 Riverpod Provider 创建 `MusicServer` 实例
+- **日志服务**：通过全局静态引用 `setLogService()` 注入，`Logger` 内部通过 `_logService` 静态变量访问（避免每次 `ref.read`）
+- **Module 基类**：保留 `lib/core/module/module.dart`，仅用于核心模块的生命周期（`onInit`/`onReady`/`onDispose`）
+
+### 3. Provider 分层原则
 
 | 层级 | 位置 | 职责 |
 |------|------|------|
-| Core | `lib/core/storage/` | 全局存储 Provider（`settingsProvider`） |
-| 模块级 | `lib/modules/*/providers/` | 模块实例、服务、仓储、业务状态 |
+| Core | `lib/core/preferences/` | 全局设置 Provider（`userPreferenceProvider`） |
+| 模块级 | `lib/modules/*/providers/` | MusicServer 实例、服务、仓储、业务状态 |
 | UI 级 | `lib/ui/*/providers/` | 页面选中态、派生数据、UI 状态 |
 
-### 3. 持久化策略
+### 4. 持久化策略
 
-- **全局 KV**: 使用 `Settings.set/get`（基于 hive_ce）
+- **统一设置**: 使用 `UserPreference` 实体类（`lib/core/preferences/user_preference.dart`），通过 `userPreferenceProvider` 管理状态，整体序列化为 JSON 存入 Hive Box（key = `user_preference`）
 - **模块级仓储**: 使用 `PersistentRepository<T>`（基于 hive_ce）
+- **播放器状态**: 单独通过 `StorageKeys.audioPlayerState` 持久化（freezed + json_serializable）
 - **文件存储**: 仅 `lib/core/log/` 模块使用（JSON Lines）
 - **内存存储**: 使用 `InMemoryRepository<T>`（`favorite`、`home`、`statistics`）
+
+> **迁移说明**: 旧的散落 `Settings.get/set(StorageKeys.xxx)` 已通过 `UserPreferenceNotifier.migrateFromLegacySettings()` 迁移到统一格式。新代码**必须**使用 `UserPreference`，不要直接调用 `Settings` + `StorageKeys`。
+
+---
+
+## MusicServer 实体（音乐源统一架构）
+
+### 1. 核心抽象
+
+所有音乐来源统一实现 `MusicServer` 抽象类（`lib/modules/music/model/music_server.dart`）：
+
+| 子类 | 文件 | 说明 |
+|------|------|------|
+| `LocalMusicServer` | [local_music_server.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music_local/service/local_music_server.dart) | 本地音乐 |
+| `LxMusicServer` | [lx_music_server.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music_lx/model/lx_music_server.dart) | Lx 音乐（JS 插件） |
+| `LxServerMusicServer` | [lx_server_music_server.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music_lx_server/repository/lx_server_music_server.dart) | Lx Server |
+| `SubsonicMusicServer` | [subsonic_music_server.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music_subsonic/repository/subsonic_music_server.dart) | Subsonic/Navidrome |
+
+### 2. Provider 聚合架构
+
+```dart
+// 各来源的 FutureProvider（依赖 userPreferenceProvider）
+final localMusicServerProvider = FutureProvider<MusicServer>(...);
+final lxMusicServerProvider = FutureProvider<MusicServer?>(...);
+final lxServerMusicServerProvider = FutureProvider<MusicServer?>(...);
+final subsonicServersProvider = FutureProvider<List<MusicServer>>(...);
+
+// 聚合所有来源
+final musicServersProvider = FutureProvider<List<MusicServer>>((ref) async {
+  final local = await ref.watch(localMusicServerProvider.future);
+  final lx = await ref.watch(lxMusicServerProvider.future);
+  final lxServer = await ref.watch(lxServerMusicServerProvider.future);
+  final subsonic = await ref.watch(subsonicServersProvider.future);
+  return [local, ?lx, ?lxServer, ...subsonic];
+});
+
+// 按 sourceId 查找
+final musicServerBySourceProvider = Provider.family<MusicServer?, String>(...);
+```
+
+**关键特性**：当 `userPreferenceProvider` 中任一配置字段变化时，对应来源的 `FutureProvider` 自动重建，`musicServersProvider` 随之刷新，所有依赖它的 UI Provider 自动更新。这解决了旧架构数据刷新不及时的问题。
+
+### 3. sourceId 命名约定
+
+| 来源 | sourceId 格式 | 示例 |
+|------|--------------|------|
+| 本地 | `local` | `local` |
+| Lx 插件 | `lx-$pluginId` | `lx-music_search` |
+| Lx Server | `lx-server` | `lx-server` |
+| Subsonic | `subsonic-$hash` | `subsonic-a1b2c3` |
 
 ---
 
@@ -52,17 +115,17 @@
 
 | 类 | 文件 | 说明 |
 |----|------|------|
-| `Track` | [track.dart](file:///d:/WorkSpace/personal/flutter/pomelo/lib/modules/music/model/track.dart) | 曲目（替代旧 `Song`） |
-| `Album` / `AlbumWithTracks` | [album.dart](file:///d:/WorkSpace/personal/flutter/pomelo/lib/modules/music/model/album.dart) | 专辑 / 带曲目列表的专辑 |
-| `Artist` / `ArtistWithAlbums` | [artist.dart](file:///d:/WorkSpace/personal/flutter/pomelo/lib/modules/music/model/artist.dart) | 艺术家 / 带专辑列表的艺术家 |
-| `Playlist` / `PlaylistCategory` | [playlist.dart](file:///d:/WorkSpace/personal/flutter/pomelo/lib/modules/music/model/playlist.dart) | 歌单 / 歌单分类 |
+| `Track` | [track.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music/model/track.dart) | 曲目（替代旧 `Song`） |
+| `Album` / `AlbumWithTracks` | [album.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music/model/album.dart) | 专辑 / 带曲目列表的专辑 |
+| `Artist` / `ArtistWithAlbums` | [artist.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music/model/artist.dart) | 艺术家 / 带专辑列表的艺术家 |
+| `Playlist` / `PlaylistCategory` | [playlist.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music/model/playlist.dart) | 歌单 / 歌单分类 |
 
 ### 2. 模型设计约定
 
 - **`@immutable` 注解**: 所有模型类使用 `@immutable`（来自 `package:flutter/foundation.dart`），字段全 `final`
 - **手写 `copyWith`**: 不使用 freezed；nullable 字段的 `copyWith` 带 `clearX` 布尔参数（如 `clearStarred`）
 - **`fromJson` / `toJson`**: 手写，缺 key 容忍（`??` 兜底），支持零迁移 schema 升级
-- **DateTime 解析**: 使用 `tryParseDateTime(dynamic)`（[date_time.dart](file:///d:/WorkSpace/personal/flutter/pomelo/lib/core/extensions/date_time.dart)），兼容 ISO8601、epoch 毫秒、常见字符串格式
+- **DateTime 解析**: 使用 `tryParseDateTime(dynamic)`（[date_time.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/core/extensions/date_time.dart)），兼容 ISO8601、epoch 毫秒、常见字符串格式
 - **`==` / `hashCode`**: 按 `id` 判等
 
 ### 3. Track 模型要点
@@ -252,14 +315,16 @@ return NormalContent(...);
 
 ## Provider 约定
 
-### 1. 获取模块
+### 1. 获取音乐服务
 
 ```dart
-// ✅ 正确
-final module = ref.watch(musicModuleProvider);
+// ✅ 正确：通过 Riverpod Provider 获取 MusicServer
+await ref.watch(musicServersProvider.future);
+final service = ref.watch(musicServerBySourceProvider(sourceId));
 
-// ❌ 错误
-final module = ModuleManager().find<MusicModule>('music');
+// ❌ 错误：旧的 ModuleManager 模式已移除
+// final module = ModuleManager().find<MusicModule>('music');
+// final service = module?.service(sourceId);
 ```
 
 ### 2. 异步数据
@@ -286,17 +351,33 @@ ref.watch(selectedLeaderboardProvider);
 final selectedId = useState<String?>(null);
 ```
 
-### 4. 持久化选中态
+### 4. 持久化设置
 
-| Provider | 持久化 |
-|----------|--------|
-| `selectedSourceProvider` | ✅ 是 |
-| `selectedLeaderboardProvider` | ❌ 否 |
-| `selectedPlaylistParentProvider` | ❌ 否 |
-| `selectedPlaylistCategoryProvider` | ❌ 否 |
-| `selectedPlaylistSortProvider` | ❌ 否 |
+**必须**通过 `userPreferenceProvider` 读写持久化设置：
 
-### 5. 曲目相关 Provider 命名
+```dart
+// ✅ 正确：读取
+final themeMode = ref.watch(userPreferenceProvider.select((p) => p.themeMode));
+
+// ✅ 正确：写入
+await ref.read(userPreferenceProvider.notifier).setThemeMode('dark');
+
+// ❌ 错误：旧的散落 Settings 调用
+// await Settings.set(StorageKeys.myThemeMode, 'dark');
+```
+
+### 5. 持久化选中态
+
+| 选中态 | 持久化方式 | 说明 |
+|----------|--------|------|
+| `selectedSourceProvider` | `UserPreference.selectedSourceId` | 通过 `userPreferenceProvider` 持久化 |
+| `selectedLibraryId` | `UserPreference.selectedLibraryId` | 同上 |
+| `selectedLeaderboardProvider` | ❌ 否 | 仅内存 |
+| `selectedPlaylistParentProvider` | ❌ 否 | 仅内存 |
+| `selectedPlaylistCategoryProvider` | ❌ 否 | 仅内存 |
+| `selectedPlaylistSortProvider` | ❌ 否 | 仅内存 |
+
+### 6. 曲目相关 Provider 命名
 
 | Provider | 说明 |
 |----------|------|
@@ -305,36 +386,46 @@ final selectedId = useState<String?>(null);
 | `playlistTracksProvider` | 歌单曲目（非 `playlistSongsProvider`） |
 | `searchResultsProvider` | 搜索结果，返回 `SearchListData`（含 `.tracks` 字段） |
 
-### 6. MusicService 方法命名
+### 7. MusicServer 方法命名
 
 | 方法 | 说明 |
 |------|------|
 | `searchTracks(keyword)` | 搜索曲目（非 `searchSongs`） |
 | `getPlaylistTracks(id)` | 获取歌单曲目（非 `getPlaylistSongs`） |
 | `getLeaderboardTracks(...)` | 获取排行榜曲目 |
-| `LocalMusicService.trackCount` | 本地曲目数（非 `songCount`） |
+| `LocalMusicServer.trackCount` | 本地曲目数（非 `songCount`） |
 
 ---
 
-## 持久化 Key 管理
+## UserPreference 字段管理
 
-所有 Settings Key 集中定义在 [storage_keys.dart](file:///d:/WorkSpace/personal/flutter/pomelo/lib/core/storage/storage_keys.dart)：
+所有用户偏好设置集中在 `UserPreference` 实体类（`lib/core/preferences/user_preference.dart`）：
 
-| Key 常量 | 用途 | 所属模块 |
-|----------|------|----------|
-| `audioPlayerState` | 播放器状态 | audio_player |
-| `logStorageLevel` | 日志存储级别 | core/log |
-| `musicSelectedSource` | 当前选中来源 | music (UI) |
-| `musicSelectedLibrary` | 当前选中库 | music (UI) |
-| `musicLocalDirectories` | 本地音乐目录 | music_local |
-| `musicLxMetadataPluginPath` | Lx 元数据插件路径 | music_lx |
-| `musicLxSourcePluginPaths` | Lx 音源插件路径 | music_lx |
-| `musicLxServerConfig` | Lx Server 配置 | music_lx_server |
-| `musicLxServerQuality` | Lx Server 音质设置 | music_lx_server |
-| `musicSubsonicAccounts` | Subsonic 账号 | music_subsonic |
-| `myThemeMode` | 主题模式 | my |
-| `myLyricFontSize` | 歌词字体大小 | my |
-| `myAutoPlay` | 自动播放开关 | my |
+| 字段 | 类型 | 所属模块 | 说明 |
+|------|------|----------|------|
+| `themeMode` | `String` | my | 主题模式（'light'/'dark'/'system'） |
+| `lyricFontSize` | `int` | my | 歌词字体大小 |
+| `autoPlay` | `bool` | my | 自动播放开关 |
+| `updateProxy` | `String?` | my | 更新代理地址 |
+| `selectedSourceId` | `String?` | music UI | 当前选中音乐源 |
+| `selectedLibraryId` | `String?` | music UI | 当前选中库 |
+| `logStorageLevel` | `LogLevel` | log | 日志存储级别 |
+| `localDirectories` | `List<String>` | music_local | 本地音乐扫描目录 |
+| `lxMetadataPluginPath` | `String?` | music_lx | Lx 元数据插件路径 |
+| `lxSourcePluginPaths` | `List<String>` | music_lx | Lx 音源插件路径列表 |
+| `lxServerConfig` | `LxServerConfig?` | music_lx_server | Lx Server 连接配置 |
+| `lxServerQuality` | `LxServerQuality` | music_lx_server | Lx Server 音质设置 |
+| `subsonicAccounts` | `List<SubsonicAccountConfig>` | music_subsonic | Subsonic 账号列表 |
+
+**新增字段流程**：
+1. 在 `UserPreference` 类添加 `final` 字段 + 构造函数默认值
+2. 在 `fromJson` 添加解析（`??` 兜底）
+3. 在 `toJson` 添加序列化
+4. 在 `copyWith` 添加参数
+5. 在 `UserPreferenceNotifier` 添加 `setXxx` 方法
+6. 在 `migrateFromLegacySettings` 添加旧数据迁移（如适用）
+
+> **旧 StorageKeys 保留**：`StorageKeys.audioPlayerState` 仍用于播放器状态持久化（freezed 模型），`StorageKeys` 类本身保留作为旧 key 的引用，但**不应**用于新的用户设置。
 
 ---
 
@@ -452,7 +543,7 @@ final results = await safeCallServices<PaginationResponse<Track>>(
 4. **ListTile 必须在 Card 内** - 不要单独使用
 5. **间距优先使用 Gap** - 而不是 SizedBox
 6. **AppBar.leading 是 List\<Widget\>** - 不是单个 Widget
-7. **不要直接调用 ModuleManager** - 应通过 Provider 获取模块
+7. **不要直接调用 `Settings` + `StorageKeys`** - 必须使用 `userPreferenceProvider`
 8. **导入 media_kit 时 hide Track** - 避免与 pomelo Track 歧义
 9. **勿用 `FutureBuilder`** - 使用 Provider + `AsyncValue.when`
 10. **不要使用 `Song` 命名** - 已统一为 `Track`（API 契约层 `SubsonicSong`/`LxServerSong` 除外）
@@ -461,11 +552,18 @@ final results = await safeCallServices<PaginationResponse<Track>>(
 13. **桌面端页面不再自带 AppBar** - 搜索/切换由 Root 标题栏统一承载，仅移动端保留各自 AppBar
 14. **窗口关闭用 `destroy()`** - `main.dart` 中 `setPreventClose(true)`，`close()` 会被拦截
 15. **内联导航状态需注册到 Root Provider** - Tab 页面用 `useEffect` 监听 `activeTabIndexProvider`，设置/清除 `rootCanPopProvider` 和 `rootPopCallbackProvider`
+16. **不要使用 `MusicService` 命名** - 已统一为 `MusicServer`（`LocalMusicServer`/`LxMusicServer`/`LxServerMusicServer`/`SubsonicMusicServer`）
+17. **不要创建 `Module` 子类用于业务模块** - 仅核心模块（Log/Home/AudioPlayer）保留 `Module` 基类，业务模块直接通过 Provider 创建
 
 ---
 
 ## 已删除/废弃代码
 
+- **M.A.R.S. 架构** — `ModuleManager`、`ModuleWidget`、`modules.dart` barrel、9 个空/dead code 模块类（`MusicModule`/`FavoriteModule`/`MyModule`/`StatisticsModule`/`ExampleModule`/各 music_*_module）已删除
+- **`MusicService` 接口** — 已重命名为 `MusicServer`，4 个子类同步重命名
+- **`musicServicesProvider` / `musicServiceBySourceProvider` / `musicServicesListProvider`** — 已重命名为 `musicServersProvider` / `musicServerBySourceProvider` / 移除
+- **`musicModuleProvider` / `musicReadyProvider` / `musicProvidersBridgeProvider`** — 已删除，直接使用 `musicServersProvider`
+- **散落的 `Settings.get/set(StorageKeys.xxx)`** — 已迁移到 `UserPreference`，通过 `userPreferenceProvider` 管理
 - `Song` 类 — 已重命名为 `Track`，字段 `name`→`title`、`coverUrl`→`coverArt`、`albumName`→`album`
 - `SongFull` / `SongLocal` 联合类型 — 已扁平化为 `Track`（用 `src`/`path` 区分）
 - `SongTile` / `SongList` / `SongMoreActionsButton` — 已重命名为 `TrackTile` / `TrackList` / `TrackMoreActionsButton`

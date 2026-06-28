@@ -1,21 +1,22 @@
-import 'dart:convert';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/core/module/module_manager.dart';
-import 'package:pomelo/core/storage/settings.dart';
-import 'package:pomelo/core/storage/storage_keys.dart';
-import 'package:pomelo/modules/music_local/music_local_module.dart';
-import 'service/local_music_service.dart';
+import 'package:pomelo/core/preferences/user_preference.dart';
+import 'package:pomelo/core/preferences/user_preference_provider.dart';
 
-/// 持有 MusicLocalModule 实例的 Provider
-final musicLocalModuleProvider = Provider<MusicLocalModule?>((ref) {
-  final mm = ModuleManager();
-  return mm.find<MusicLocalModule>('music_local');
-});
+import 'service/local_music_server.dart';
 
 /// 本地音乐服务实例
-final localMusicServiceProvider = Provider<LocalMusicService?>((ref) {
-  return ref.watch(musicLocalModuleProvider)?.service;
+///
+/// 在初始化时创建实例并加载已保存的目录。
+/// 不监听 [UserPreference.localDirectories]，避免每次目录变化都重建整个实例。
+/// 后续的 addDirectory/removeDirectory 通过 [LocalMusicDirsNotifier] 直接操作实例。
+final localMusicServerProvider = FutureProvider<LocalMusicServer>((ref) async {
+  final dirs = UserPreference.loadFromBox().localDirectories;
+  final server = LocalMusicServer();
+  for (final dir in dirs) {
+    await server.addDirectory(dir);
+  }
+  ref.onDispose(() => server.clear());
+  return server;
 });
 
 /// 本地音乐数据版本号 Notifier
@@ -38,15 +39,15 @@ final localMusicVersionProvider =
 class LocalMusicDirsNotifier extends Notifier<List<String>> {
   @override
   List<String> build() {
-    // 从 Settings 初始化
-    return MusicLocalModule.loadDirectories();
+    // 从 UserPreference 初始化
+    return ref.watch(userPreferenceProvider.select((p) => p.localDirectories));
   }
 
   /// 添加目录
   Future<void> addDirectory(String path) async {
     if (state.contains(path)) return;
-    final module = ref.read(musicLocalModuleProvider);
-    await module?.service.addDirectory(path);
+    final server = await ref.read(localMusicServerProvider.future);
+    await server.addDirectory(path);
     state = [...state, path];
     await _save();
     _bumpVersion();
@@ -54,8 +55,9 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
 
   /// 移除目录
   void removeDirectory(String path) {
-    final module = ref.read(musicLocalModuleProvider);
-    module?.service.removeDirectory(path);
+    if (!state.contains(path)) return;
+    final server = ref.read(localMusicServerProvider).value;
+    server?.removeDirectory(path);
     state = state.where((d) => d != path).toList();
     _save();
     _bumpVersion();
@@ -63,8 +65,8 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
 
   /// 重新扫描所有目录
   Future<void> rescanAll() async {
-    final module = ref.read(musicLocalModuleProvider);
-    await module?.service.rescanAll();
+    final server = await ref.read(localMusicServerProvider.future);
+    await server.rescanAll();
     _bumpVersion();
   }
 
@@ -74,7 +76,7 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
   }
 
   Future<void> _save() async {
-    await Settings.set(StorageKeys.musicLocalDirectories, jsonEncode(state));
+    await ref.read(userPreferenceProvider.notifier).setLocalDirectories(state);
   }
 }
 
@@ -90,6 +92,6 @@ final localMusicDirsProvider =
 final localMusicSongCountProvider = Provider<int>((ref) {
   // 监听版本号，版本变化时触发重建
   ref.watch(localMusicVersionProvider);
-  final service = ref.read(localMusicServiceProvider);
-  return service?.trackCount ?? 0;
+  final server = ref.watch(localMusicServerProvider).value;
+  return server?.trackCount ?? 0;
 });

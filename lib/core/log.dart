@@ -12,14 +12,20 @@
 library;
 
 import 'package:flutter/foundation.dart';
-import 'package:pomelo/core/mars.dart';
 
-import 'log/log_module.dart';
 import 'log/log_entry.dart';
 import 'log/log_service.dart';
 
 /// 全局日志访问器实例
 final Logger log = Logger._();
+
+/// 全局 LogService 引用（由 main.dart 在启动时设置）
+LogService? _logService;
+
+/// 设置全局 LogService 实例
+///
+/// 在 main.dart 中 LogModule 初始化完成后调用。
+void setLogService(LogService? service) => _logService = service;
 
 /// 统一日志访问器
 ///
@@ -28,8 +34,7 @@ final Logger log = Logger._();
 class Logger {
   Logger._();
 
-  LogService? get _service =>
-      ModuleManager().find<LogModule>('log')?.service;
+  LogService? get _service => _logService;
 
   /// 记录调试日志
   void debug(String tag, String message) {

@@ -1,12 +1,12 @@
 /// 日志模块 - 模块定义
 ///
 /// 提供应用内日志记录、查询、过滤和导出功能。
-/// 作为系统核心组件，仍以 Module 形式注册到 ModuleManager，
-/// 便于其他模块通过依赖声明引用（如 audio_player 依赖 'log'）。
+/// 作为系统核心组件，在 main.dart 中直接初始化并通过 [setLogService] 注入到
+/// 全局静态引用，便于其他模块通过 [Logger] 直接使用。
 library;
 
 import 'package:path_provider/path_provider.dart';
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 
 import 'log_repository.dart';
 import 'log_service.dart';

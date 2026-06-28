@@ -48,7 +48,7 @@ class LeaderboardSection extends HookConsumerWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: leaderboards.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => const Gap(8),
                 itemBuilder: (context, index) {
                   final lb = leaderboards[index];
                   final isSelected = lb.id == effectiveId;
@@ -67,7 +67,7 @@ class LeaderboardSection extends HookConsumerWidget {
               ),
             ),
             // 展开的排行榜歌曲列表
-            const SizedBox(height: 12),
+            const Gap(12),
             _LeaderboardSongs(leaderboardId: effectiveId),
           ],
         );
