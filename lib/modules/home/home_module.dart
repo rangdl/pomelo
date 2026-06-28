@@ -1,4 +1,4 @@
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 import 'repository/home_repository.dart';
 import 'service/home_service.dart';
 

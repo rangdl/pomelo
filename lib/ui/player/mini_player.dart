@@ -5,11 +5,14 @@ import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/music/model/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../music/widgets/cover_placeholder.dart';
+import '../music/widgets/cover_image.dart';
+import 'duration_format.dart';
 import 'lyric_parser.dart';
 import 'lyric_view.dart';
 import 'playback_page.dart';
+import 'widgets/bottom_sheet.dart';
 import 'widgets/play_queue_content.dart';
+import 'widgets/play_queue_sheet.dart';
 
 /// 底部迷你播放器
 ///
@@ -56,7 +59,7 @@ class MiniPlayer extends HookConsumerWidget {
         ? position.inMilliseconds / duration.inMilliseconds
         : 0.0;
 
-    final isDesktop = MediaQuery.of(context).size.width >= 600;
+    final isDesktop = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.mobile;
 
     return GestureDetector(
       onTap: () => _navigateToPlayback(context),
@@ -111,7 +114,7 @@ class MiniPlayer extends HookConsumerWidget {
         // 封面（右键/长按打开播放队列）
         GestureDetector(
           onSecondaryTap: () => _openPlayQueue(context),
-          onLongPress: () => _openPlayQueue(context),
+          onLongPressStart: (_) => _openPlayQueue(context),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: _buildCover(context, track, isDesktop ? 48 : 40),
@@ -162,7 +165,7 @@ class MiniPlayer extends HookConsumerWidget {
         // 桌面端显示时间
         if (isDesktop) ...[
           Text(
-            _formatDuration(position),
+            formatDuration(position),
             style: TextStyle(
               fontSize: 11,
               color: Theme.of(context).colorScheme.mutedForeground,
@@ -176,7 +179,7 @@ class MiniPlayer extends HookConsumerWidget {
         if (isDesktop) ...[
           const Gap(8),
           Text(
-            _formatDuration(duration),
+            formatDuration(duration),
             style: TextStyle(
               fontSize: 11,
               color: Theme.of(context).colorScheme.mutedForeground,
@@ -188,24 +191,10 @@ class MiniPlayer extends HookConsumerWidget {
   }
 
   Widget _buildCover(BuildContext context, Track track, double size) {
-    final coverUrl = track.coverArt;
-    if (coverUrl != null && coverUrl.isNotEmpty) {
-      return Image.network(
-        coverUrl,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => CoverPlaceholder(
-          colorScheme: Theme.of(context).colorScheme,
-          width: size,
-          height: size,
-        ),
-      );
-    }
-    return CoverPlaceholder(
+    return CoverImage(
+      coverArt: track.coverArt,
       colorScheme: Theme.of(context).colorScheme,
-      width: size,
-      height: size,
+      size: size,
     );
   }
 
@@ -255,11 +244,10 @@ class MiniPlayer extends HookConsumerWidget {
     );
   }
 
-  /// 打开播放详情页 — 作为底部 Sheet 覆盖整个页面
+  /// 打开播放详情页 — 作为底部 Sheet 覆盖整个页面，支持下拉关闭
   void _navigateToPlayback(BuildContext context) {
-    openSheet(
+    openBottomSheet(
       context: context,
-      position: OverlayPosition.bottom,
       builder: (_) => SizedBox(
         height: MediaQuery.of(context).size.height,
         child: const PlaybackPage(),
@@ -270,15 +258,13 @@ class MiniPlayer extends HookConsumerWidget {
   /// 响应式打开播放队列
   ///
   /// 桌面端：右侧 Sheet（360px 宽）
-  /// 移动端：底部 Sheet
+  /// 移动端：底部 Sheet，支持下拉关闭
   void _openPlayQueue(BuildContext context) {
     Rx.action(
       context,
-      mobile: () => openSheet(
+      mobile: () => openBottomSheet(
         context: context,
-        position: OverlayPosition.bottom,
-        draggable: true,
-        builder: (_) => const _PlayQueueSheet(),
+        builder: (_) => const PlayQueueSheet(),
       ),
       tablet: () => openSheet(
         context: context,
@@ -287,53 +273,6 @@ class MiniPlayer extends HookConsumerWidget {
           width: 360,
           child: PlayQueueContent(),
         ),
-      ),
-    );
-  }
-
-  String _formatDuration(Duration d) {
-    final m = d.inMinutes;
-    final s = d.inSeconds.remainder(60);
-    return '$m:${s.toString().padLeft(2, '0')}';
-  }
-}
-
-/// 移动端播放队列底部 Sheet 内容
-class _PlayQueueSheet extends StatelessWidget {
-  const _PlayQueueSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.card,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 标题栏
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Row(
-              children: [
-                IconButton.text(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => closeOverlay(context),
-                ),
-                const Gap(4),
-                const Text(
-                  '播放队列',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          const Flexible(child: PlayQueueContent()),
-        ],
       ),
     );
   }

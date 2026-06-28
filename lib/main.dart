@@ -5,25 +5,17 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' show MediaKit;
-import 'package:pomelo/core/module/module_manager.dart';
-import 'package:pomelo/core/routers/app_router.dart';
-import 'package:pomelo/core/storage/settings.dart';
-import 'package:pomelo/core/theme/app_theme.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/log/log_module.dart';
 import 'package:pomelo/core/log/log_providers.dart';
+import 'package:pomelo/core/routers/app_router.dart';
+import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/theme/app_theme.dart';
 import 'package:pomelo/modules/audio_player/audio_player_module.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/favorite/favorite_module.dart';
-import 'package:pomelo/modules/my/my_module.dart';
-import 'package:pomelo/modules/music/music_module.dart';
-import 'package:pomelo/modules/music_local/music_local_module.dart';
-import 'package:pomelo/modules/music_lx/music_lx_module.dart';
-import 'package:pomelo/modules/music_lx_server/music_lx_server_module.dart';
-import 'package:pomelo/modules/music_subsonic/music_subsonic_module.dart';
-import 'package:pomelo/modules/statistics/statistics_module.dart';
 import 'package:pomelo/modules/home/home_module.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
-import 'package:pomelo/modules/example/example_module.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -37,41 +29,32 @@ void main() async {
 
   await _runPlatformSpecificCode();
 
-  // ========== 存储层初始化（先于模块） ==========
+  // ========== 存储层初始化 ==========
   final appDir = await Helper.getAppDataDir();
   Hive.init(appDir);
   await Settings.init();
-  // =============================================
+  // 迁移旧的散落 Settings key 到统一的 UserPreference
+  // （必须在 ProviderContainer 创建前执行，UserPreferenceNotifier.build 会读取迁移结果）
+  await UserPreferenceNotifier.migrateFromLegacySettings();
+  // ================================
 
-  // ========== M.A.R.S. 模块初始化 ==========
-  final moduleManager = ModuleManager();
-  final homeModule = HomeModule();
+  // ========== 核心模块初始化 ==========
+  // LogModule 必须先初始化，后续模块依赖日志服务
   final logModule = LogModule();
+  await logModule.onInit();
+  setLogService(logModule.service);
+
+  final homeModule = HomeModule();
+  await homeModule.onInit();
+
   final audioPlayerModule = AudioPlayerModule();
-  await moduleManager.registerAll([
-    homeModule,
-    ExampleModule(),
-    FavoriteModule(),
-    MyModule(),
-    StatisticsModule(),
-    MusicModule(),
-    MusicLocalModule(),
-    LxMusicModule(),
-    MusicLxServerModule(),
-    MusicSubsonicModule(),
-    logModule,
-    audioPlayerModule,
-  ]);
-  await moduleManager.initAll();
-  await moduleManager.readyAll();
-  // =========================================
+  await audioPlayerModule.onInit();
+  // ===================================
 
   // ========== 全局错误处理 ==========
-  final logService = logModule.service;
-
   FlutterError.onError = (details) {
     FlutterError.presentError(details);
-    logService.error(
+    log.error(
       'FlutterError',
       details.exceptionAsString(),
       error: details.exception,
@@ -80,7 +63,7 @@ void main() async {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    logService.fatal(
+    log.fatal(
       'PlatformError',
       error.toString(),
       error: error,
@@ -118,8 +101,10 @@ class _AppShell extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 响应式监听主题模式设置
-    final themeModeAsync = ref.watch(settingWatcherProvider('my_theme_mode'));
-    final themeMode = _parseThemeMode(themeModeAsync.value);
+    final themeModeStr = ref.watch(
+      userPreferenceProvider.select((p) => p.themeMode),
+    );
+    final themeMode = _parseThemeMode(themeModeStr);
 
     // 触发平台媒体控制服务初始化（Windows SMTC / 移动端通知栏）
     ref.watch(audioServicesProvider);

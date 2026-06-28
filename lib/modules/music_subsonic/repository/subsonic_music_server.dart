@@ -1,4 +1,4 @@
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 
 import 'subsonic_client.dart';
@@ -6,15 +6,15 @@ import 'subsonic_models.dart';
 
 /// Subsonic 音乐服务
 ///
-/// 继承 [MusicService]，通过 [SubsonicClient] 对接 Subsonic REST API。
+/// 继承 [MusicServer]，通过 [SubsonicClient] 对接 Subsonic REST API。
 /// 每个 Subsonic 账号对应一个服务实例。
-class SubsonicMusicService extends MusicService {
+class SubsonicMusicServer extends MusicServer {
   final SubsonicClient client;
   final String _serverUrl;
   final String _username;
   final String _displayName;
 
-  SubsonicMusicService({
+  SubsonicMusicServer({
     required this.client,
     required String serverUrl,
     required String username,

@@ -9,7 +9,9 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:pomelo/core/mars.dart';
+import 'package:hive_ce/hive.dart';
+import 'package:pomelo/core/core.dart';
+import 'package:pomelo/core/preferences/user_preference.dart';
 
 import 'log_entry.dart';
 
@@ -41,22 +43,19 @@ class LogRepository extends Repository<LogEntry> {
   /// 设置文件存储的最低日志级别并持久化
   Future<void> setStorageLevel(LogLevel level) async {
     _storageLevel = level;
-    await Settings.set(StorageKeys.logStorageLevel, level.name);
+    final box = Hive.box<String>('app_settings');
+    final pref = UserPreference.loadFromBox();
+    final newPref = pref.copyWith(logStorageLevel: level);
+    await box.put('user_preference', newPref.toJsonString());
   }
 
   /// 初始化文件存储
   ///
   /// [logDir] 日志文件所在目录（建议使用应用文档目录下的 logs 子目录）。
-  /// 加载已有的日志文件，并从 Settings 读取存储级别。
+  /// 加载已有的日志文件，并从 UserPreference 读取存储级别。
   Future<void> initFileStorage(String logDir) async {
-    // 从 Settings 读取存储级别
-    final savedLevel = Settings.get(StorageKeys.logStorageLevel);
-    if (savedLevel != null) {
-      _storageLevel = LogLevel.values.firstWhere(
-        (e) => e.name == savedLevel,
-        orElse: () => LogLevel.warning,
-      );
-    }
+    // 从 UserPreference 读取存储级别（已为 LogLevel 枚举，无需再解析）
+    _storageLevel = UserPreference.loadFromBox().logStorageLevel;
 
     // 确保目录存在
     final dir = Directory(logDir);

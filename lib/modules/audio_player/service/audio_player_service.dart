@@ -9,7 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit/media_kit.dart' hide Track;
 
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/audio_player/model/media.dart';
 import 'package:pomelo/modules/audio_player/model/custom_player.dart';

@@ -245,7 +245,7 @@ class LxServerSong {
   ///
   /// [sourceId] 为服务标识，[sourceName] 为服务显示名，
   /// [libraryId] 为来源库（kg/kw 等），[libraryName] 为库显示名。
-  /// 完整 songInfo 存入 meta，供 [LxServerMusicService.getMusicUrl] 使用。
+  /// 完整 songInfo 存入 meta，供 [LxServerMusicServer.getMusicUrl] 使用。
   Track toTrack({
     required String sourceId,
     required String sourceName,
