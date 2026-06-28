@@ -2,7 +2,7 @@
 ///
 /// 集中管理 lx_server 支持的音质标识、显示名与优先级。
 /// 用户偏好存储为字符串标识（[LxServerQuality.id]），
-/// 应用到 [LxServerMusicService.getMusicUrl] 时若不可用则按 [priority] 降级。
+/// 应用到 [LxServerMusicServer.getMusicUrl] 时若不可用则按 [priority] 降级。
 library;
 
 /// Lx Server 音质等级

@@ -14,9 +14,8 @@ import 'lyric_parser.dart';
 final lyricProvider =
     FutureProvider.autoDispose.family<String?, Track>((ref, song) async {
   if (song.src == null) return null;
-  await ref.watch(musicReadyProvider.future);
-  final module = ref.watch(musicModuleProvider);
-  final service = module?.service(song.source?.id ?? '');
+  await ref.watch(musicServersProvider.future);
+  final service = ref.watch(musicServerBySourceProvider(song.source?.id ?? ''));
   if (service == null) return null;
   try {
     return await service.getLyric(song);

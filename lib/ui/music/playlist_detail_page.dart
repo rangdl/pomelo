@@ -9,7 +9,7 @@ import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/track_list.dart';
-import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
+import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -19,9 +19,8 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 final playlistTracksProvider =
     FutureProvider.family<List<Track>, ({String sourceId, String playlistId})>(
   (ref, params) async {
-    await ref.watch(musicReadyProvider.future);
-    final module = ref.watch(musicModuleProvider);
-    final service = module?.service(params.sourceId);
+    await ref.watch(musicServersProvider.future);
+    final service = ref.watch(musicServerBySourceProvider(params.sourceId));
     if (service == null) return [];
     return service.getPlaylistTracks(params.playlistId);
   },
@@ -133,9 +132,9 @@ class PlaylistDetailPage extends HookConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.error_outline, size: 48, color: colorScheme.destructive),
-              const SizedBox(height: 12),
+              const Gap(12),
               Text('加载失败: $err'),
-              const SizedBox(height: 12),
+              const Gap(12),
               GhostButton(
                 onPressed: () {
                   ref.invalidate(
@@ -181,27 +180,13 @@ class _PlaylistHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 封面图
-            ClipRRect(
+            CoverImage(
+              coverArt: coverUrl,
+              colorScheme: colorScheme,
+              size: 100,
               borderRadius: BorderRadius.circular(8),
-              child: coverUrl != null && coverUrl!.isNotEmpty
-                  ? Image.network(
-                      coverUrl!,
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => CoverPlaceholder(
-                        colorScheme: colorScheme,
-                        width: 100,
-                        height: 100,
-                      ),
-                    )
-                  : CoverPlaceholder(
-                      colorScheme: colorScheme,
-                      width: 100,
-                      height: 100,
-                    ),
             ),
-            const SizedBox(width: 16),
+            const Gap(16),
             // 歌单信息
             Expanded(
               child: Column(
@@ -217,7 +202,7 @@ class _PlaylistHeader extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const Gap(8),
                   if (creator.isNotEmpty)
                     Text(
                       creator,
@@ -226,7 +211,7 @@ class _PlaylistHeader extends StatelessWidget {
                         color: colorScheme.mutedForeground,
                       ),
                     ),
-                  const SizedBox(height: 4),
+                  const Gap(4),
                   Text(
                     '$songCount 首歌曲',
                     style: TextStyle(
@@ -234,7 +219,7 @@ class _PlaylistHeader extends StatelessWidget {
                       color: colorScheme.mutedForeground,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const Gap(12),
                   PlayAllButton(tracks: tracks),
                 ],
               ),

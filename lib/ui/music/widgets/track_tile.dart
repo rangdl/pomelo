@@ -1,8 +1,9 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart' hide Stack, Positioned;
 import 'package:flutter/widgets.dart' show Stack, Positioned;
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/track.dart';
-import 'package:pomelo/ui/music/widgets/cover_placeholder.dart';
+import 'package:pomelo/ui/music/widgets/cover_image.dart';
 
 /// 统一的曲目列表项组件
 ///
@@ -49,7 +50,7 @@ class TrackTile extends StatelessWidget {
   });
 
   bool _isMobile(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < 600;
+      MediaQuery.sizeOf(context).width < ResponsiveBreakpoints.mobile;
 
   @override
   Widget build(BuildContext context) {
@@ -103,25 +104,11 @@ class TrackTile extends StatelessWidget {
     }
 
     // 封面图
-    final cover = ClipRRect(
+    final cover = CoverImage(
+      coverArt: track.coverArt,
+      colorScheme: colorScheme,
+      size: coverSize,
       borderRadius: BorderRadius.circular(6),
-      child: track.coverArt != null && track.coverArt!.isNotEmpty
-          ? Image.network(
-              track.coverArt!,
-              width: coverSize,
-              height: coverSize,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => CoverPlaceholder(
-                colorScheme: colorScheme,
-                width: coverSize,
-                height: coverSize,
-              ),
-            )
-          : CoverPlaceholder(
-              colorScheme: colorScheme,
-              width: coverSize,
-              height: coverSize,
-            ),
     );
 
     if (index == null) return cover;

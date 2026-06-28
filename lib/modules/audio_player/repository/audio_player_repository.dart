@@ -5,7 +5,7 @@ library;
 
 import 'dart:convert';
 
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 import '../model/state.dart';
 
 /// 音频播放器状态仓储

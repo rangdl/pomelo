@@ -29,7 +29,7 @@
 | 状态管理 | Riverpod + flutter_hooks |
 | 路由 | auto_route |
 | 音频播放 | media_kit |
-| 持久化 | hive_ce |
+| 持久化 | hive_ce + `UserPreference`（统一设置实体） |
 | 响应式布局 | Rx.layout() / Rx.action() |
 | JS 引擎 | flutter_js（Lx 插件运行时） |
 
@@ -83,18 +83,22 @@ flutter build windows
 lib/
 ├── core/                  # 核心层：框架、存储、路由、日志
 │   ├── extensions/        # 扩展函数（DateTime 解析等）
-│   ├── framework/         # 框架基础（Module、Service、Repository）
+│   ├── framework/         # 框架基础（ListTile 等自定义组件）
 │   ├── log/               # 日志模块
+│   ├── module/            # Module 基类（仅核心模块使用）
 │   ├── pagination/        # 分页响应
+│   ├── preferences/       # 统一设置（UserPreference 实体 + Provider）
+│   ├── repository/        # Repository 基类
 │   ├── routers/           # 路由配置
+│   ├── service/           # Service 基类
 │   ├── storage/           # 持久化存储（Settings、StorageKeys）
 │   └── ...
 ├── modules/               # 业务模块层
-│   ├── music/             # 音乐核心（模型、服务抽象、多源聚合）
-│   ├── music_local/       # 本地音乐
-│   ├── music_lx/          # Lx 音乐（JS 插件）
-│   ├── music_lx_server/   # Lx Server
-│   ├── music_subsonic/    # Subsonic 协议
+│   ├── music/             # 音乐核心（模型、MusicServer 抽象、Provider 聚合）
+│   ├── music_local/       # 本地音乐（LocalMusicServer）
+│   ├── music_lx/          # Lx 音乐（LxMusicServer，JS 插件）
+│   ├── music_lx_server/   # Lx Server（LxServerMusicServer）
+│   ├── music_subsonic/    # Subsonic（SubsonicMusicServer）
 │   ├── audio_player/      # 播放器（media_kit 封装）
 │   ├── favorite/          # 收藏
 │   ├── home/              # 首页
@@ -113,26 +117,63 @@ lib/
 
 ## 架构
 
-本项目遵循 **M.A.R.S.** 模块化分层架构，核心三层依赖遵循单向依赖原则：
+本项目采用 **Riverpod 驱动的分层架构**，核心三层依赖遵循单向依赖原则：
 
 ```
-  Provider (Riverpod 状态)
-      │
+  UI Layer (lib/ui/)
+      │  ref.watch / ref.read
       ▼
-  Service (业务逻辑)
-      │
+  Module Layer (lib/modules/)
+      │  - MusicServer（音乐源统一抽象）
+      │  - Repository（数据访问）
+      │  - Provider（业务状态）
       ▼
-  Repository (数据访问)
+  Core Layer (lib/core/)
+      - UserPreference（统一设置实体）
+      - 框架基类、路由、日志
 ```
 
-| 调用方 | → Repository | → Service | → Provider |
-|--------|:-----------:|:---------:|:----------:|
-| **Repository** | — | ❌ 不允许 | ❌ 不允许 |
-| **Service** | ✅ 构造函数注入 | — | ❌ 不允许 |
-| **Provider** | ✅ 通过 Module 获取 | ✅ 通过 ref.watch/ref.read | — |
-| **Module** (A → B) | ✅ 通过 ModuleManager | ✅ 通过 ModuleManager | ❌ 不允许 |
+### 核心模块初始化
 
-完整架构说明详见 [MARS_ARCHITECTURE.md](MARS_ARCHITECTURE.md)。
+在 `main.dart` 中直接实例化并初始化核心模块，通过 `Provider.overrideWithValue` 注入到 Riverpod：
+
+```dart
+final logModule = LogModule();
+await logModule.onInit();
+setLogService(logModule.service);  // 全局静态引用
+
+final homeModule = HomeModule();
+await homeModule.onInit();
+
+final audioPlayerModule = AudioPlayerModule();
+await audioPlayerModule.onInit();
+
+final container = ProviderContainer(
+  overrides: [
+    logServiceProvider.overrideWithValue(logModule.service),
+    homeModuleProvider.overrideWithValue(homeModule),
+    audioPlayerModuleProvider.overrideWithValue(audioPlayerModule),
+  ],
+);
+```
+
+### 音乐源聚合（MusicServer）
+
+所有音乐来源统一实现 `MusicServer` 抽象类，通过 Riverpod `FutureProvider` 创建并聚合：
+
+```
+userPreferenceProvider（统一设置）
+        │
+        ▼
+┌───────────────────────────────────────┐
+│ localMusicServerProvider              │
+│ lxMusicServerProvider                 │ → musicServersProvider（聚合）
+│ lxServerMusicServerProvider           │   → musicServerBySourceProvider
+│ subsonicServersProvider               │
+└───────────────────────────────────────┘
+```
+
+当 `UserPreference` 中任一配置字段变化时，对应来源的 Provider 自动重建，所有依赖它的 UI 自动刷新。
 
 ## 提交规范
 

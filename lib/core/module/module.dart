@@ -23,7 +23,7 @@ abstract class Module {
   /// 是否为延迟加载模块
   ///
   /// 延迟模块不会在应用启动时自动初始化，
-  /// 而是在首次通过 [ModuleManager.lazyInit] 触发时才执行生命周期。
+  /// 而是在首次使用时才执行生命周期。
   /// 适用于非首屏、低频访问的模块，可缩短应用冷启动时间。
   bool get lazy => false;
 
@@ -40,20 +40,20 @@ abstract class Module {
   bool get isInitialized => _isInitialized;
   bool _isInitialized = false;
 
-  /// 内部初始化（由 ModuleManager 调用）
+  /// 内部初始化
   Future<void> init() async {
     if (_isInitialized) return;
     await onInit();
     _isInitialized = true;
   }
 
-  /// 内部就绪（由 ModuleManager 调用）
+  /// 内部就绪
   Future<void> ready() async {
     if (!_isInitialized) return;
     await onReady();
   }
 
-  /// 内部销毁（由 ModuleManager 调用）
+  /// 内部销毁
   Future<void> dispose() async {
     if (!_isInitialized) return;
     await onDispose();

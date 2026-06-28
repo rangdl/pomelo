@@ -88,7 +88,7 @@ class AppChip extends StatelessWidget {
           children: [
             if (icon != null) ...[
               Icon(icon, size: fontSize + 2, color: textColor),
-              const SizedBox(width: 4),
+              const Gap(4),
             ],
             Text(
               label,

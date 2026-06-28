@@ -10,9 +10,9 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/modules/music/model/track.dart';
-import 'package:pomelo/modules/music/music_module.dart';
+import 'package:pomelo/modules/music/providers/music_providers.dart';
 
 /// 已解析音源曲目状态
 ///
@@ -76,7 +76,7 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
       return state.url!;
     }
 
-    final preferredQuality = Settings.get(StorageKeys.musicLxServerQuality);
+    final preferredQuality = ref.read(userPreferenceProvider).lxServerQuality.id;
     final availableQualities = _collectAvailableQualities();
     final downgradeList = _buildDowngradeList(
       availableQualities,
@@ -162,16 +162,17 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
     return availableQualities.sublist(prefIndex);
   }
 
-  /// 调用对应 MusicService 获取播放链接
+  /// 调用对应 MusicServer 获取播放链接
   Future<String> _getMusicUrl(
     Track track, {
     required String quality,
   }) async {
-    final musicModule = ModuleManager().find<MusicModule>('music');
-    if (musicModule == null) return track.src ?? track.path ?? '';
     final sourceId = track.source?.id;
     if (sourceId == null) return track.src ?? track.path ?? '';
-    final service = musicModule.service(sourceId);
+
+    // 等待服务列表加载完成，然后查找对应服务
+    await ref.read(musicServersProvider.future);
+    final service = ref.read(musicServerBySourceProvider(sourceId));
     if (service == null) return track.src ?? track.path ?? '';
     return service.getMusicUrl(track, quality: quality);
   }
@@ -188,7 +189,7 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   ///
   /// 供调用方迭代 HEAD 校验使用。
   List<String> get downgradeList {
-    final preferredQuality = Settings.get(StorageKeys.musicLxServerQuality);
+    final preferredQuality = ref.read(userPreferenceProvider).lxServerQuality.id;
     final availableQualities = _collectAvailableQualities();
     return _buildDowngradeList(availableQualities, preferredQuality);
   }

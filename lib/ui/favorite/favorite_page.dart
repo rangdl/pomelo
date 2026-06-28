@@ -4,8 +4,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/music/model/music_source_type.dart';
-import 'package:pomelo/modules/music/model/music_service.dart';
-import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_service.dart';
+import 'package:pomelo/modules/music/model/music_server.dart';
+import 'package:pomelo/modules/music/providers/music_providers.dart';
+import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_server.dart';
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
@@ -40,11 +41,9 @@ class FavoritePage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final servicesAsync = ref.watch(musicServicesListProvider);
+    final servicesAsync = ref.watch(musicServersProvider);
     final subsonicAccounts = ref.watch(subsonicAccountsProvider);
     final sourcePlugins = ref.watch(lxSourcePluginPathsProvider);
-    // 监听 lx-server 连接状态变化以触发服务列表刷新
-    ref.watch(lxServerConnectionProvider);
 
     return Scaffold(
       headers: [
@@ -61,7 +60,7 @@ class FavoritePage extends HookConsumerWidget {
                   child: Row(
                     children: [
                       Icon(t.icon, size: 20),
-                      const SizedBox(width: 12),
+                      const Gap(12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,8 +99,8 @@ class FavoritePage extends HookConsumerWidget {
   Widget _buildBody(
     BuildContext context,
     WidgetRef ref,
-    List<MusicService> services,
-    List<SubsonicMusicService> subsonicAccounts,
+    List<MusicServer> services,
+    List<SubsonicMusicServer> subsonicAccounts,
     List<String> sourcePlugins,
   ) {
     final byType = groupServicesByType(services);
@@ -127,7 +126,7 @@ class FavoritePage extends HookConsumerWidget {
             Icon(Icons.layers_outlined,
                 size: 64,
                 color: Theme.of(context).colorScheme.mutedForeground),
-            const SizedBox(height: 16),
+            const Gap(16),
             Text(
               '暂无平台',
               style: TextStyle(
@@ -135,7 +134,7 @@ class FavoritePage extends HookConsumerWidget {
                 color: Theme.of(context).colorScheme.mutedForeground,
               ),
             ),
-            const SizedBox(height: 8),
+            const Gap(8),
             Text(
               '点击右上角 + 添加音乐平台',
               style: TextStyle(
@@ -183,7 +182,7 @@ class FavoritePage extends HookConsumerWidget {
                 children: leftSections,
               ),
             ),
-            const SizedBox(width: 16),
+            const Gap(16),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
@@ -201,8 +200,8 @@ class FavoritePage extends HookConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     MusicSourceType type,
-    List<MusicService> services,
-    List<SubsonicMusicService> subsonicAccounts,
+    List<MusicServer> services,
+    List<SubsonicMusicServer> subsonicAccounts,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,7 +213,7 @@ class FavoritePage extends HookConsumerWidget {
               Icon(_typeIcon(type),
                   size: 18,
                   color: Theme.of(context).colorScheme.mutedForeground),
-              const SizedBox(width: 8),
+              const Gap(8),
               Text(
                 type.displayName,
                 style: TextStyle(
@@ -223,7 +222,7 @@ class FavoritePage extends HookConsumerWidget {
                   color: Theme.of(context).colorScheme.mutedForeground,
                 ),
               ),
-              const SizedBox(width: 8),
+              const Gap(8),
               Text(
                 '${services.length}',
                 style: TextStyle(
@@ -244,7 +243,7 @@ class FavoritePage extends HookConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const Gap(16),
       ],
     );
   }
@@ -264,7 +263,7 @@ class FavoritePage extends HookConsumerWidget {
           child: Row(
             children: [
               Icon(Icons.audiotrack, size: 18, color: colorScheme.mutedForeground),
-              const SizedBox(width: 8),
+              const Gap(8),
               Text(
                 '音源插件',
                 style: TextStyle(
@@ -273,7 +272,7 @@ class FavoritePage extends HookConsumerWidget {
                   color: colorScheme.mutedForeground,
                 ),
               ),
-              const SizedBox(width: 8),
+              const Gap(8),
               Text(
                 '${plugins.length}',
                 style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
@@ -308,7 +307,7 @@ class FavoritePage extends HookConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const Gap(16),
       ],
     );
   }
@@ -317,8 +316,8 @@ class FavoritePage extends HookConsumerWidget {
   Widget _buildServiceTile(
     BuildContext context,
     WidgetRef ref,
-    MusicService service,
-    List<SubsonicMusicService> subsonicAccounts,
+    MusicServer service,
+    List<SubsonicMusicServer> subsonicAccounts,
   ) {
     final libraryCount = service.libraries.length;
     final subtitle = libraryCount > 0
@@ -412,8 +411,8 @@ class FavoritePage extends HookConsumerWidget {
   Future<void> _removeService(
     BuildContext context,
     WidgetRef ref,
-    MusicService service,
-    List<SubsonicMusicService> subsonicAccounts,
+    MusicServer service,
+    List<SubsonicMusicServer> subsonicAccounts,
   ) async {
     try {
       switch (service.sourceType) {

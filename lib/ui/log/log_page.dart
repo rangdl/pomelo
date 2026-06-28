@@ -76,7 +76,7 @@ class LogPage extends HookConsumerWidget {
                 color: Theme.of(context).colorScheme.mutedForeground,
               ),
             ),
-            const SizedBox(height: 8),
+            const Gap(8),
             Text(
               '低于此级别的日志仅存内存，重启后丢失。',
               style: TextStyle(
@@ -84,7 +84,7 @@ class LogPage extends HookConsumerWidget {
                 color: Theme.of(context).colorScheme.mutedForeground,
               ),
             ),
-            const SizedBox(height: 12),
+            const Gap(12),
             ...LogLevel.values.map((level) {
               return GhostButton(
                 onPressed: () {
@@ -96,7 +96,7 @@ class LogPage extends HookConsumerWidget {
                 child: Row(
                   children: [
                     _LogLevelDot(level: level),
-                    const SizedBox(width: 8),
+                    const Gap(8),
                     Text(_levelDisplayName(level)),
                     if (level == currentLevel) ...[
                       const Spacer(),
@@ -107,16 +107,16 @@ class LogPage extends HookConsumerWidget {
               );
             }),
             if (filePath != null) ...[
-              const SizedBox(height: 16),
+              const Gap(16),
               const Divider(),
-              const SizedBox(height: 8),
+              const Gap(8),
               Text(
                 '日志文件路径',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.mutedForeground,
                 ),
               ),
-              const SizedBox(height: 4),
+              const Gap(4),
               Text(
                 filePath,
                 style: const TextStyle(fontSize: 11),
@@ -263,7 +263,7 @@ class _FilterPanel extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const Gap(8),
           // 级别筛选 chips
           if (isSidebar)
             Wrap(
@@ -277,7 +277,7 @@ class _FilterPanel extends StatelessWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: LogLevel.values.length + 1,
-                separatorBuilder: (_, _) => const SizedBox(width: 6),
+                separatorBuilder: (_, _) => const Gap(6),
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     final isSelected = selectedLevels.value.isEmpty;
@@ -306,7 +306,7 @@ class _FilterPanel extends StatelessWidget {
                 },
               ),
             ),
-          const SizedBox(height: 8),
+          const Gap(8),
           // 标签筛选 + 统计
           Row(
             children: [
@@ -348,7 +348,7 @@ class _FilterPanel extends StatelessWidget {
                             selectedTag.value ?? '标签',
                             style: const TextStyle(fontSize: 13),
                           ),
-                          const SizedBox(width: 4),
+                          const Gap(4),
                           const Icon(Icons.arrow_drop_down, size: 18),
                         ],
                       ),
@@ -515,52 +515,52 @@ class _LogTile extends StatelessWidget {
               _detailRow(context, '时间', entry.timestamp.toString()),
               if (entry.sourceModuleId != null)
                 _detailRow(context, '来源模块', entry.sourceModuleId!),
-              const SizedBox(height: 12),
+              const Gap(12),
               Text(
                 '消息',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.mutedForeground,
                 ),
               ),
-              const SizedBox(height: 4),
+              const Gap(4),
               Text(entry.message),
               if (entry.error != null) ...[
-                const SizedBox(height: 12),
+                const Gap(12),
                 Text(
                   '错误详情',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.mutedForeground,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const Gap(4),
                 Text(
                   entry.error.toString(),
                   style: const TextStyle(color: Color(0xFFEF4444)),
                 ),
               ],
               if (entry.stackTrace != null) ...[
-                const SizedBox(height: 12),
+                const Gap(12),
                 Text(
                   '堆栈跟踪',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.mutedForeground,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const Gap(4),
                 Text(
                   entry.stackTrace.toString(),
                   style: const TextStyle(fontSize: 11),
                 ),
               ],
               if (entry.metadata != null && entry.metadata!.isNotEmpty) ...[
-                const SizedBox(height: 12),
+                const Gap(12),
                 Text(
                   '元数据',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.mutedForeground,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const Gap(4),
                 Text(entry.metadata.toString()),
               ],
             ],

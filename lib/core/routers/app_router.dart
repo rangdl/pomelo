@@ -11,7 +11,6 @@ import 'app_router.gr.dart';
 ///     /my         → MyPage (我的)
 ///   /ex           → ExListPage (示例列表)
 ///     /ex1        → Ex1DetailPage (示例1)
-///     /ex2        → Ex2DetailPage (示例2)
 ///
 /// 生成规则: `replaceInRouteName: 'Page|View,Route'`
 ///   - RootPage → RootRoute
@@ -47,9 +46,6 @@ class AppRouter extends RootStackRouter {
     /// 播放页面（全屏）
     AutoRoute(path: '/playback', page: PlaybackRoute.page),
 
-    /// 播放队列（移动端全屏；桌面端走 openSheet 不入路由）
-    AutoRoute(path: '/play-queue', page: PlayQueueRoute.page),
-
     /// 关于页面
     AutoRoute(path: '/about', page: AboutRoute.page),
 
@@ -59,7 +55,6 @@ class AppRouter extends RootStackRouter {
       page: ExListRoute.page,
       children: [
         AutoRoute(path: 'ex1', page: Ex1DetailRoute.page),
-        AutoRoute(path: 'ex2', page: Ex2DetailRoute.page),
         AutoRoute(path: 'ex3', page: JsEngineTestRoute.page),
       ],
     ),

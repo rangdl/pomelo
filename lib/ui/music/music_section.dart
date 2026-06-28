@@ -1,6 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/modules/music/model/music_service.dart';
+import 'package:pomelo/modules/music/model/music_server.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/track_list.dart';
@@ -16,7 +16,7 @@ class SourceSwitchButton extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final servicesAsync = ref.watch(musicServicesProvider);
+    final servicesAsync = ref.watch(musicServersProvider);
     final selection = ref.watch(selectedSourceProvider);
     final selectedSourceId = selection.sourceId;
 
@@ -39,7 +39,7 @@ class SourceSwitchButton extends HookConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.album, size: 16),
-              const SizedBox(width: 4),
+              const Gap(4),
               Text(selectedName),
             ],
           ),
@@ -53,7 +53,7 @@ class SourceSwitchButton extends HookConsumerWidget {
   void _showSourcePicker(
     BuildContext context,
     WidgetRef ref,
-    List<MusicService> services,
+    List<MusicServer> services,
     String? selectedSourceId,
   ) {
     showSelectionPicker<String?>(
@@ -93,7 +93,7 @@ class LibrarySwitchButton extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final servicesAsync = ref.watch(musicServicesProvider);
+    final servicesAsync = ref.watch(musicServersProvider);
     final selection = ref.watch(selectedSourceProvider);
 
     return servicesAsync.when(
@@ -124,7 +124,7 @@ class LibrarySwitchButton extends HookConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.library_music, size: 16),
-              const SizedBox(width: 4),
+              const Gap(4),
               Text(currentLibName),
             ],
           ),
@@ -138,7 +138,7 @@ class LibrarySwitchButton extends HookConsumerWidget {
   void _showLibraryPicker(
     BuildContext context,
     WidgetRef ref,
-    MusicService service,
+    MusicServer service,
     String sourceId,
   ) {
     final selection = ref.read(selectedSourceProvider);

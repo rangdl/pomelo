@@ -1,4 +1,4 @@
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/music/model/models.dart';
 
@@ -11,7 +11,7 @@ import 'lx_server_client.dart';
 ///
 /// [defaultLibraryId] 默认为第一个库（kg），
 /// 切换库后所有查询自动使用当前库作为 source 参数。
-class LxServerMusicService extends MusicService {
+class LxServerMusicServer extends MusicServer {
   /// 共享的 HTTP 客户端
   final LxServerClient client;
 
@@ -35,7 +35,7 @@ class LxServerMusicService extends MusicService {
   /// 当前默认使用的库标识
   String? _defaultLibraryId = _allLibraries.first.id;
 
-  LxServerMusicService({
+  LxServerMusicServer({
     required this.client,
     required String sourceId,
     required String sourceName,

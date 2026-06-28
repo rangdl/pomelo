@@ -6,8 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:pomelo/core/storage/settings.dart';
-import 'package:pomelo/core/storage/storage_keys.dart';
+import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
@@ -30,10 +29,9 @@ class MyPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeModeAsync = ref.watch(
-      settingWatcherProvider(StorageKeys.myThemeMode),
+    final themeMode = ref.watch(
+      userPreferenceProvider.select((p) => p.themeMode),
     );
-    final themeMode = themeModeAsync.value ?? 'system';
     final localDirs = ref.watch(localMusicDirsProvider);
     final checking = useState(false);
 
@@ -44,7 +42,7 @@ class MyPage extends HookConsumerWidget {
         final info = await PackageInfo.fromPlatform();
         final result = await UpdateService().checkForUpdate(info.version);
         if (!context.mounted) return;
-        _showUpdateResult(context, result);
+        _showUpdateResult(context, ref, result);
       } finally {
         checking.value = false;
       }
@@ -60,7 +58,7 @@ class MyPage extends HookConsumerWidget {
           color: Theme.of(context).colorScheme.mutedForeground,
         ),
       ),
-      const SizedBox(height: 8),
+      const Gap(8),
       Card(
         child: ListTile(
           leading: const Icon(Icons.brightness_6, size: 20),
@@ -68,7 +66,9 @@ class MyPage extends HookConsumerWidget {
           trailing: Select<String>(
             value: themeMode,
             onChanged: (value) {
-              if (value != null) Settings.set(StorageKeys.myThemeMode, value);
+              if (value != null) {
+                ref.read(userPreferenceProvider.notifier).setThemeMode(value);
+              }
             },
             popup: SelectPopup(
               items: SelectItemList(
@@ -90,7 +90,7 @@ class MyPage extends HookConsumerWidget {
           ),
         ),
       ),
-      const SizedBox(height: 24),
+      const Gap(24),
 
       // ===== 本地音乐 =====
       Text(
@@ -101,7 +101,7 @@ class MyPage extends HookConsumerWidget {
           color: Theme.of(context).colorScheme.mutedForeground,
         ),
       ),
-      const SizedBox(height: 8),
+      const Gap(8),
       Card(
         child: Column(
           children: [
@@ -156,7 +156,7 @@ class MyPage extends HookConsumerWidget {
           ],
         ),
       ),
-      const SizedBox(height: 24),
+      const Gap(24),
 
       // ===== 其他设置 =====
       Text(
@@ -167,7 +167,7 @@ class MyPage extends HookConsumerWidget {
           color: Theme.of(context).colorScheme.mutedForeground,
         ),
       ),
-      const SizedBox(height: 8),
+      const Gap(8),
       Card(
         child: Column(
           children: [
@@ -227,7 +227,7 @@ class MyPage extends HookConsumerWidget {
   }
 
   /// 展示更新检查结果
-  void _showUpdateResult(BuildContext context, UpdateCheckResult result) {
+  void _showUpdateResult(BuildContext context, WidgetRef ref, UpdateCheckResult result) {
     if (result.errorMessage != null) {
       showToast(
         context: context,
@@ -247,7 +247,12 @@ class MyPage extends HookConsumerWidget {
 
     showDialog<void>(
       context: context,
-      builder: (_) => _UpdateDialog(result: result),
+      builder: (_) => _UpdateDialog(
+        result: result,
+        savedProxy: ref.read(userPreferenceProvider).updateProxy,
+        onSaveProxy: (proxy) =>
+            ref.read(userPreferenceProvider.notifier).setUpdateProxy(proxy),
+      ),
     );
   }
 }
@@ -258,8 +263,14 @@ class MyPage extends HookConsumerWidget {
 /// 前往下载」三个操作。
 class _UpdateDialog extends StatefulWidget {
   final UpdateCheckResult result;
+  final String? savedProxy;
+  final Future<void> Function(String proxy) onSaveProxy;
 
-  const _UpdateDialog({required this.result});
+  const _UpdateDialog({
+    required this.result,
+    required this.savedProxy,
+    required this.onSaveProxy,
+  });
 
   @override
   State<_UpdateDialog> createState() => _UpdateDialogState();
@@ -272,7 +283,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
   void initState() {
     super.initState();
     // 自动填入上次输入的 GitHub 加速地址
-    final saved = Settings.get(StorageKeys.myUpdateProxy);
+    final saved = widget.savedProxy;
     if (saved != null && saved.isNotEmpty) {
       _proxyController.text = saved;
     }
@@ -292,7 +303,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     if (url == null) return;
     final proxy = _proxyController.text;
     // 持久化以便下次自动填入
-    await Settings.set(StorageKeys.myUpdateProxy, proxy);
+    await widget.onSaveProxy(proxy);
     final finalUrl = UpdateService.applyProxy(url, proxy);
     _close();
     launchUrl(Uri.parse(finalUrl));

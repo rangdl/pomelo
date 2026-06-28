@@ -4,7 +4,7 @@
 /// 其他模块可通过此服务记录日志。
 library;
 
-import 'package:pomelo/core/mars.dart';
+import 'package:pomelo/core/core.dart';
 
 import 'log_entry.dart';
 import 'log_repository.dart';
