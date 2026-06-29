@@ -1,5 +1,6 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/preferences/user_preference.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
@@ -8,18 +9,30 @@ import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dar
 ///
 /// 包含服务器地址、用户名、密码三个必填字段。
 /// 点击确定后尝试登录验证。
+/// 传入 [initialConfig] 时为编辑模式，字段预填充。
 class _LxServerAccountContent extends HookConsumerWidget {
-  const _LxServerAccountContent();
+  final LxServerConfig? initialConfig;
+
+  const _LxServerAccountContent({this.initialConfig});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final serverUrlController = useTextEditingController();
-    final usernameController = useTextEditingController();
-    final passwordController = useTextEditingController();
-    final displayNameController = useTextEditingController();
+    final serverUrlController = useTextEditingController(
+      text: initialConfig?.serverUrl ?? '',
+    );
+    final usernameController = useTextEditingController(
+      text: initialConfig?.username ?? '',
+    );
+    final passwordController = useTextEditingController(
+      text: initialConfig?.password ?? '',
+    );
+    final displayNameController = useTextEditingController(
+      text: initialConfig?.displayName ?? '',
+    );
 
     final isLoading = useState(false);
     final error = useState<String?>(null);
+    final isEditing = initialConfig != null;
 
     Future<void> submit() async {
       final serverUrl = serverUrlController.text.trim();
@@ -42,7 +55,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
           password: password,
           displayName: displayName.isEmpty ? null : displayName,
         ));
-        Rx.toast.success('连接成功');
+        Rx.toast.success(isEditing ? '已更新' : '连接成功');
         if (context.mounted) Navigator.of(context).pop(true);
       } catch (e) {
         isLoading.value = false;
@@ -51,7 +64,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
             .replaceFirst('StateError: ', '')
             .replaceFirst('Exception: ', '');
         error.value = msg;
-        Rx.toast.error('连接失败: $msg');
+        Rx.toast.error(isEditing ? '更新失败: $msg' : '连接失败: $msg');
       }
     }
 
@@ -144,7 +157,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('登录并连接'),
+                  : Text(isEditing ? '保存' : '登录并连接'),
             ),
           ],
         ),
@@ -155,27 +168,36 @@ class _LxServerAccountContent extends HookConsumerWidget {
 
 /// 添加 Lx Server 账号对话框（桌面端使用）
 class AddLxServerAccountDialog extends StatelessWidget {
-  const AddLxServerAccountDialog({super.key});
+  /// 编辑模式时传入的初始配置
+  final LxServerConfig? initialConfig;
+
+  const AddLxServerAccountDialog({super.key, this.initialConfig});
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('添加 Lx Server'),
-      content: SizedBox(width: 400, child: const _LxServerAccountContent()),
+      title: Text(initialConfig != null ? '编辑 Lx Server' : '添加 Lx Server'),
+      content: SizedBox(
+        width: 400,
+        child: _LxServerAccountContent(initialConfig: initialConfig),
+      ),
     );
   }
 }
 
 /// 添加 Lx Server 账号页面（移动端使用）
 class AddLxServerAccountPage extends StatelessWidget {
-  const AddLxServerAccountPage({super.key});
+  /// 编辑模式时传入的初始配置
+  final LxServerConfig? initialConfig;
+
+  const AddLxServerAccountPage({super.key, this.initialConfig});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       headers: [
         AppBar(
-          title: const Text('添加 Lx Server'),
+          title: Text(initialConfig != null ? '编辑 Lx Server' : '添加 Lx Server'),
           leading: [
             IconButton.text(
               icon: const Icon(Icons.arrow_back, size: 20),
@@ -184,10 +206,12 @@ class AddLxServerAccountPage extends StatelessWidget {
           ],
         ),
       ],
-      child: const Padding(
-        padding: EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Center(
-          child: SingleChildScrollView(child: _LxServerAccountContent()),
+          child: SingleChildScrollView(
+            child: _LxServerAccountContent(initialConfig: initialConfig),
+          ),
         ),
       ),
     );

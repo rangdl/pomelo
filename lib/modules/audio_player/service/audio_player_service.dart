@@ -15,7 +15,7 @@ import 'package:pomelo/modules/audio_player/model/media.dart';
 import 'package:pomelo/modules/audio_player/model/custom_player.dart';
 import 'package:pomelo/modules/audio_player/model/playback_state.dart';
 import 'package:pomelo/modules/audio_player/repository/audio_player_repository.dart';
-import 'package:pomelo/modules/music/model/track.dart' show Track;
+import 'package:pomelo/core/models/metadata/track.dart' show Track;
 
 /// 音频播放器服务
 ///

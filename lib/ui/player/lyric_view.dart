@@ -1,7 +1,7 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 

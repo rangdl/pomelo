@@ -5,7 +5,7 @@ import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_image.dart';

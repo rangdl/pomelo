@@ -1,17 +1,36 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/storage/music_cache_dir.dart';
 
 import 'service/local_music_server.dart';
 
 /// 本地音乐服务实例
 ///
 /// 在初始化时创建实例并加载已保存的目录。
+/// 若用户未配置任何目录，自动将音频流缓存目录作为默认目录添加。
 /// 不监听 [UserPreference.localDirectories]，避免每次目录变化都重建整个实例。
 /// 后续的 addDirectory/removeDirectory 通过 [LocalMusicDirsNotifier] 直接操作实例。
+/// 监听 [UserPreference.localServerName] 以响应名称变更。
 final localMusicServerProvider = FutureProvider<LocalMusicServer>((ref) async {
-  final dirs = UserPreference.loadFromBox().localDirectories;
-  final server = LocalMusicServer();
+  final pref = UserPreference.loadFromBox();
+  final name = ref.watch(userPreferenceProvider.select((p) => p.localServerName));
+  var dirs = pref.localDirectories;
+
+  // 缓存目录作为默认目录：用户未配置任何目录时自动添加
+  if (dirs.isEmpty) {
+    try {
+      final cacheDir = await MusicCacheDir.getOrCreate();
+      dirs = [cacheDir];
+      await ref.read(userPreferenceProvider.notifier).setLocalDirectories(dirs);
+      log.info('LocalMusic', '已自动添加缓存目录作为默认目录: $cacheDir');
+    } catch (e) {
+      log.warning('LocalMusic', '获取缓存目录失败: $e');
+    }
+  }
+
+  final server = LocalMusicServer(name: name);
   for (final dir in dirs) {
     await server.addDirectory(dir);
   }

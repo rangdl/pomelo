@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
-import 'package:pomelo/modules/music/model/music_source_type.dart';
-import 'package:pomelo/modules/music/model/music_server.dart';
-import 'package:pomelo/modules/music/model/playlist.dart';
-import 'package:pomelo/modules/music/model/leaderboard.dart';
+import 'package:pomelo/core/models/metadata/music_source_type.dart';
+import 'package:pomelo/core/models/metadata/music_server.dart';
+import 'package:pomelo/core/models/metadata/playlist.dart';
+import 'package:pomelo/core/models/metadata/leaderboard.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:pomelo/core/service_result.dart';
 import 'package:pomelo/ui/music/model/merged_track.dart';

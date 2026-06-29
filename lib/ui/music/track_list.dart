@@ -1,6 +1,6 @@
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+﻿import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/track_more_actions_button.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';

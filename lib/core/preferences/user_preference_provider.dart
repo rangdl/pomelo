@@ -87,6 +87,9 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
 
   // ==================== music_local 模块 ====================
 
+  Future<void> setLocalServerName(String name) =>
+      update((p) => p.copyWith(localServerName: name));
+
   Future<void> setLocalDirectories(List<String> dirs) =>
       update((p) => p.copyWith(localDirectories: dirs));
 

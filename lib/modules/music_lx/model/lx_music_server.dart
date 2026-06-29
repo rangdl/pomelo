@@ -1,5 +1,5 @@
-import 'package:pomelo/core/core.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+﻿import 'package:pomelo/core/core.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
 import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 
