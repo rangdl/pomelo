@@ -7,13 +7,29 @@ import 'package:path_provider/path_provider.dart';
 ///
 /// 提供音频流缓存文件的目录路径管理。
 /// 缓存目录同时作为本地音乐的默认扫描目录。
+///
+/// 支持通过 [setCustomDirectory] 设置自定义目录路径，
+/// 未设置时使用系统临时目录下的 `music_cache` 子目录。
 class MusicCacheDir {
   static const String _subDir = 'music_cache';
 
+  /// 自定义缓存目录路径，null 表示使用系统默认临时目录
+  static String? _customPath;
+
+  /// 设置自定义缓存目录路径
+  ///
+  /// 传入 null 恢复为系统默认临时目录。
+  /// 调用后会重置缓存的路径 Future，下次 [getOrCreate] 会重新初始化。
+  static void setCustomDirectory(String? path) {
+    _customPath = path;
+    _cachedPath = null;
+  }
+
   /// 获取缓存目录路径（确保目录存在）
   static Future<String> get path async {
-    final tempDir = await getTemporaryDirectory();
-    final cacheDir = Directory(p.join(tempDir.path, _subDir));
+    final cacheDir = _customPath != null
+        ? Directory(_customPath!)
+        : Directory(p.join((await getTemporaryDirectory()).path, _subDir));
     if (!await cacheDir.exists()) {
       await cacheDir.create(recursive: true);
     }

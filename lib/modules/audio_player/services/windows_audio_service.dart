@@ -83,11 +83,30 @@ class WindowsAudioService {
     if (!smtc.enabled) {
       await smtc.enableSmtc();
     }
+    _currentTrack = track;
     await smtc.updateMetadata(
       MusicMetadata(
         title: track.title,
         albumArtist: track.artist,
         artist: track.artist,
+        album: track.album ?? 'Unknown',
+        thumbnail: track.coverArt,
+      ),
+    );
+  }
+
+  /// 当前曲目的元数据缓存（用于 updateArtist 时重建完整元数据）
+  Track? _currentTrack;
+
+  /// 更新 artist 字段（用于歌词展示）
+  Future<void> updateArtist(String? artist) async {
+    final track = _currentTrack;
+    if (track == null) return;
+    await smtc.updateMetadata(
+      MusicMetadata(
+        title: track.title,
+        albumArtist: track.artist,
+        artist: artist,
         album: track.album ?? 'Unknown',
         thumbnail: track.coverArt,
       ),

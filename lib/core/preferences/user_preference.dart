@@ -122,6 +122,10 @@ class UserPreference {
   final String localServerName;
   final List<String> localDirectories;
 
+  // === 缓存设置 ===
+  /// 音频流缓存目录路径，null 表示使用系统默认临时目录。
+  final String? cacheDirectory;
+
   // === music_lx 模块 ===
   final String? lxMetadataPluginPath;
   final List<String> lxSourcePluginPaths;
@@ -143,6 +147,7 @@ class UserPreference {
     this.logStorageLevel = LogLevel.warning,
     this.localServerName = '本地音乐',
     this.localDirectories = const [],
+    this.cacheDirectory,
     this.lxMetadataPluginPath,
     this.lxSourcePluginPaths = const [],
     this.lxServerConfig,
@@ -168,6 +173,7 @@ class UserPreference {
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      cacheDirectory: json['cacheDirectory'] as String?,
       lxMetadataPluginPath: json['lxMetadataPluginPath'] as String?,
       lxSourcePluginPaths: (json['lxSourcePluginPaths'] as List?)
               ?.map((e) => e as String)
@@ -198,6 +204,7 @@ class UserPreference {
         'logStorageLevel': logStorageLevel.name,
         'localServerName': localServerName,
         'localDirectories': localDirectories,
+        'cacheDirectory': cacheDirectory,
         'lxMetadataPluginPath': lxMetadataPluginPath,
         'lxSourcePluginPaths': lxSourcePluginPaths,
         'lxServerConfig': lxServerConfig?.toJson(),
@@ -222,7 +229,7 @@ class UserPreference {
   /// 复制并更新字段。
   ///
   /// 对于可空字段（`updateProxy`/`selectedSourceId`/`selectedLibraryId`/
-  /// `lxMetadataPluginPath`/`lxServerConfig`），传入 `null` 表示**显式清除**，
+  /// `lxMetadataPluginPath`/`lxServerConfig`/`cacheDirectory`），传入 `null` 表示**显式清除**，
   /// 不传表示保持原值。这是通过 sentinel 对象实现的，避免与"不更新"歧义。
   ///
   /// 其余字段（非空类型或集合）遵循常规 `?? this.x` 语义：传 null 视为不更新。
@@ -236,6 +243,7 @@ class UserPreference {
     LogLevel? logStorageLevel,
     String? localServerName,
     List<String>? localDirectories,
+    Object? cacheDirectory = _unset,
     Object? lxMetadataPluginPath = _unset,
     List<String>? lxSourcePluginPaths,
     Object? lxServerConfig = _unset,
@@ -257,6 +265,9 @@ class UserPreference {
       logStorageLevel: logStorageLevel ?? this.logStorageLevel,
       localServerName: localServerName ?? this.localServerName,
       localDirectories: localDirectories ?? this.localDirectories,
+      cacheDirectory: cacheDirectory == _unset
+          ? this.cacheDirectory
+          : cacheDirectory as String?,
       lxMetadataPluginPath: lxMetadataPluginPath == _unset
           ? this.lxMetadataPluginPath
           : lxMetadataPluginPath as String?,

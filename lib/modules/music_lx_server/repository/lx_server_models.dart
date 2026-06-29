@@ -253,14 +253,19 @@ class LxServerSong {
     required String libraryName,
   }) {
     return Track(
-      id: songmid?.toString() ?? hash ?? '',
+      id: songmid?.toString() ?? songId?.toString() ?? hash ?? '',
       title: name,
       artist: singer.isEmpty ? '未知艺术家' : singer,
       albumId: albumId,
       album: albumName,
       coverArt: img,
       duration: durationSeconds,
-      source: (id: sourceId, name: sourceName, libraryId: libraryId, libraryName: libraryName),
+      source: (
+        id: sourceId,
+        name: sourceName,
+        libraryId: libraryId,
+        libraryName: libraryName,
+      ),
       meta: toSongInfo(),
       src: '',
     );
@@ -312,7 +317,12 @@ class LxServerPlaylist {
       coverArt: img,
       owner: author,
       comment: desc,
-      source: (id: sourceId, name: sourceName, libraryId: libraryId, libraryName: libraryName),
+      source: (
+        id: sourceId,
+        name: sourceName,
+        libraryId: libraryId,
+        libraryName: libraryName,
+      ),
       meta: {'id': id, 'play_count': playCount, 'time': time},
     );
   }
