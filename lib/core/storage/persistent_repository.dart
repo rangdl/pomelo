@@ -33,6 +33,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:hive_ce/hive.dart';
 
@@ -57,9 +58,25 @@ abstract class PersistentRepository<T> {
   bool __isInitialized = false;
 
   /// 打开 Box（由模块的 onInit 调用）
+  ///
+  /// 自动处理因非正常退出残留的锁文件：若 openBox 因文件锁占用失败
+  ///（errno 35 / Resource temporarily unavailable），删除锁文件后重试。
   Future<void> onInit() async {
     if (__isInitialized) return;
-    _box = await Hive.openBox<String>(boxName);
+    try {
+      _box = await Hive.openBox<String>(boxName);
+    } on FileSystemException catch (e) {
+      // errno 35 = EAGAIN（Resource temporarily unavailable），锁文件被占用
+      if (e.path != null && e.osError?.errorCode == 35) {
+        final lockFile = File(e.path!);
+        if (await lockFile.exists()) {
+          await lockFile.delete();
+        }
+        _box = await Hive.openBox<String>(boxName);
+      } else {
+        rethrow;
+      }
+    }
     __isInitialized = true;
   }
 

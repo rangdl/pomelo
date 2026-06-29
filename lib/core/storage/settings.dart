@@ -22,6 +22,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce/hive.dart';
@@ -44,8 +45,28 @@ class Settings {
   static Box<String>? get _internalBox => _box;
 
   /// 初始化（由 main.dart 启动时调用）
+  ///
+  /// 自动处理因非正常退出残留的锁文件：若 openBox 因文件锁占用失败
+  ///（errno 35 / Resource temporarily unavailable），删除锁文件后重试。
   static Future<void> init() async {
-    _box = await Hive.openBox<String>(_boxName);
+    _box = await _openBoxWithRecovery(_boxName);
+  }
+
+  /// 打开 Box，遇到锁文件残留时自动恢复
+  static Future<Box<String>> _openBoxWithRecovery(String name) async {
+    try {
+      return await Hive.openBox<String>(name);
+    } on FileSystemException catch (e) {
+      // errno 35 = EAGAIN（Resource temporarily unavailable），锁文件被占用
+      if (e.path != null && e.osError?.errorCode == 35) {
+        final lockFile = File(e.path!);
+        if (await lockFile.exists()) {
+          await lockFile.delete();
+        }
+        return await Hive.openBox<String>(name);
+      }
+      rethrow;
+    }
   }
 
   // ======================== 读取 ========================
