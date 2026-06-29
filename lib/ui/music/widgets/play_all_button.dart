@@ -1,5 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -29,15 +29,15 @@ class PlayAllButton extends HookConsumerWidget {
     return PrimaryButton(
       leading: const Icon(Icons.play_arrow, size: 18),
       enabled: tracks.isNotEmpty,
-      onPressed: () => _playAll(ref),
+      onPressed: () => _playAll(context, ref),
       child: Text(label ?? '播放全部'),
     );
   }
 
-  void _playAll(WidgetRef ref) {
+  void _playAll(BuildContext context, WidgetRef ref) {
     if (tracks.isEmpty) return;
     final notifier = ref.read(audioPlayerProvider.notifier);
     notifier.load(tracks, initialIndex: initialIndex, autoPlay: true);
-    Rx.toast.success('开始播放：${tracks.length} 首');
+    context.toast.success('开始播放：${tracks.length} 首');
   }
 }

@@ -4,7 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
-import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -43,7 +43,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
       );
       if (result == null) return;
       if (dirs.value.contains(result)) {
-        Rx.toast.info('该目录已添加');
+        context.toast.info('该目录已添加');
         return;
       }
       dirs.value = [...dirs.value, result];
@@ -52,7 +52,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
     Future<void> submit() async {
       final name = nameController.text.trim();
       if (name.isEmpty) {
-        Rx.toast.error('服务名称不能为空');
+        context.toast.error('服务名称不能为空');
         return;
       }
 
@@ -76,7 +76,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
         }
       }
 
-      Rx.toast.success('已保存');
+      context.toast.success('已保存');
       if (context.mounted) Navigator.of(context).pop(true);
     }
 
@@ -198,7 +198,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
               leading: const Icon(Icons.refresh, size: 16),
               onPressed: () async {
                 await ref.read(localMusicDirsProvider.notifier).rescanAll();
-                if (context.mounted) Rx.toast.success('已重新扫描');
+                if (context.mounted) context.toast.success('已重新扫描');
               },
               child: const Text('重新扫描'),
             ),

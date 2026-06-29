@@ -21,6 +21,8 @@ import 'app_router.gr.dart';
 ///   - Ex1DetailPage → Ex1DetailRoute
 @AutoRouterConfig(replaceInRouteName: 'Page|View,Route')
 class AppRouter extends RootStackRouter {
+  AppRouter({super.navigatorKey});
+
   @override
   List<AutoRoute> get routes => [
     /// 带底部导航的 Root

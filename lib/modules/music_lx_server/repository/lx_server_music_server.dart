@@ -1,4 +1,4 @@
-﻿import 'package:pomelo/core/core.dart';
+import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
@@ -307,7 +307,26 @@ class LxServerMusicServer extends MusicServer {
           'source=$source, hash=$hash, 偏好=$quality, 选中质量=$selectedQuality',
     );
 
-    return client.getMusicUrl(songInfo: songInfo, quality: selectedQuality);
+    // 构造代理播放时使用的文件名：歌名 - 歌手.mp3
+    final filename = _buildFilename(track);
+
+    return client.getMusicUrl(
+      songInfo: songInfo,
+      quality: selectedQuality,
+      filename: filename,
+    );
+  }
+
+  /// 构造代理播放文件名
+  ///
+  /// 格式：`歌名 - 歌手.mp3`。歌手为空时仅用歌名。
+  String _buildFilename(Track track) {
+    final title = track.title.isEmpty ? '未知曲目' : track.title;
+    final artist = track.artist?.trim() ?? '';
+    if (artist.isEmpty) {
+      return '$title.mp3';
+    }
+    return '$title - $artist.mp3';
   }
 
   // ========== 歌词 ==========
