@@ -9,6 +9,7 @@ import 'package:pomelo/core/extensions/list.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
+import 'package:pomelo/modules/audio_player/providers/play_history_provider.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/core/log/log_providers.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
@@ -98,6 +99,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         coverArt: Value(track.coverArt),
         duration: Value(track.duration),
       ));
+      // 刷新播放记录 Provider
+      ref.invalidate(playHistoryProvider);
     } catch (e, stack) {
       ref.read(logServiceProvider).error(
             'playHistory',
