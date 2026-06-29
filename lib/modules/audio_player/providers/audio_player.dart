@@ -21,6 +21,13 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   // BlackListNotifier get _blacklist => ref.read(blacklistProvider.notifier);
   AudioPlayerService get audioPlayer => ref.read(audioPlayerServiceProvider);
 
+  /// 批量操作标志：非零时跳过 [playlistStream] 的冗余状态同步。
+  ///
+  /// [load] / [addTracks] / [addTracksAtFirst] 等方法会直接更新 state，
+  /// 此时 media_kit 的 playlistStream 可能发出多次中间事件，
+  /// 导致 UI 出现「逐条加入」的视觉效果。通过此标志抑制这些中间事件。
+  int _batchDepth = 0;
+
   void _assertAllowedTracks(Iterable<Track> tracks) {
     // 扁平化后所有 Track 都合法，无需断言
   }
@@ -67,11 +74,16 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
       );
     } else if (tracks.isNotEmpty) {
       state = state.copyWith(tracks: tracks, currentIndex: currentIndex);
-      await audioPlayer.openPlaylist(
-        tracks.asMediaList(),
-        initialIndex: currentIndex,
-        autoPlay: false,
-      );
+      _batchDepth++;
+      try {
+        await audioPlayer.openPlaylist(
+          tracks.asMediaList(),
+          initialIndex: currentIndex,
+          autoPlay: false,
+        );
+      } finally {
+        _batchDepth--;
+      }
     }
 
     if (playerState.collections.isNotEmpty) {
@@ -175,6 +187,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         }
       }),
       audioPlayer.playlistStream.listen((playlist) async {
+        // 批量操作期间跳过，state 已由调用方直接更新
+        if (_batchDepth > 0) return;
         try {
           final tracks = playlist.medias
               .map((e) => PomeloMedia.media(e).track)
@@ -267,34 +281,24 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
       return addTracks(tracks);
     }
 
-    final addableTracks = tracks;
-    // final addableTracks = _blacklist
-    //     .filter(tracks)
-    //     .where(
-    //       (track) =>
-    //           allowDuplicates ||
-    //           !state.tracks.any((element) => _compareTracks(element, track)),
-    //     )
-    //     .toList();
+    final addableTracks = tracks.toList();
+    if (addableTracks.isEmpty) return;
 
-    state = state.copyWith(tracks: [...addableTracks, ...state.tracks]);
+    // 在当前曲目之后插入（「下一首播放」）
+    final insertIndex = max(state.currentIndex + 1, 0);
+    final newTracks = [...state.tracks];
+    newTracks.insertAll(insertIndex, addableTracks);
+    state = state.copyWith(tracks: newTracks);
 
-    for (int i = 0; i < addableTracks.length; i++) {
-      final track = addableTracks.elementAt(i);
-
-      await audioPlayer.addTrackAt(
-        PomeloMedia(track),
-        max(state.currentIndex, 0) + i + 1,
-      );
+    _batchDepth++;
+    try {
+      final medias = addableTracks.asMediaList();
+      await audioPlayer.addTracksAt(medias, insertIndex);
+    } finally {
+      _batchDepth--;
     }
 
-    await _updatePlayerState(
-      state,
-      // AudioPlayerStateTableCompanion(
-      //   tracks: Value(state.tracks),
-      //   currentIndex: Value(max(state.currentIndex, 0)),
-      // ),
-    );
+    await _updatePlayerState(state);
   }
 
   Future<void> addTrack(Track track) async {
@@ -319,20 +323,19 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   Future<void> addTracks(Iterable<Track> tracks) async {
     _assertAllowedTracks(tracks);
 
-    // tracks = _blacklist.filter(tracks).toList();
-    state = state.copyWith(tracks: [...state.tracks, ...tracks]);
+    final addableTracks = tracks.toList();
+    if (addableTracks.isEmpty) return;
 
-    for (final track in tracks) {
-      await audioPlayer.addTrack(PomeloMedia(track));
+    state = state.copyWith(tracks: [...state.tracks, ...addableTracks]);
+
+    _batchDepth++;
+    try {
+      await audioPlayer.addTracks(addableTracks.asMediaList());
+    } finally {
+      _batchDepth--;
     }
 
-    await _updatePlayerState(
-      state,
-      // AudioPlayerStateTableCompanion(
-      //   tracks: Value(state.tracks),
-      //   currentIndex: Value(max(state.currentIndex, 0)),
-      // ),
-    );
+    await _updatePlayerState(state);
   }
 
   Future<void> removeTrack(String trackId) async {
@@ -392,11 +395,6 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   }) async {
     _assertAllowedTracks(tracks);
 
-    // final medias = _blacklist
-    //     .filter(tracks)
-    //     .toList()
-    //     .asMediaList()
-    //     .unique((a, b) => a.uri == b.uri);
     final medias = tracks.asMediaList().unique((a, b) => a.uri == b.uri);
 
     // Giving the initial track a boost so MediaKit won't skip
@@ -411,25 +409,23 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     if (medias.isEmpty) return;
 
     state = state.copyWith(
-      // These are filtered tracks as well
       tracks: medias.map((media) => media.track).toList(),
       currentIndex: initialIndex,
       collections: [],
     );
 
-    await audioPlayer.openPlaylist(
-      medias,
-      initialIndex: initialIndex,
-      autoPlay: autoPlay,
-    );
+    _batchDepth++;
+    try {
+      await audioPlayer.openPlaylist(
+        medias,
+        initialIndex: initialIndex,
+        autoPlay: autoPlay,
+      );
+    } finally {
+      _batchDepth--;
+    }
 
-    await _updatePlayerState(
-      state,
-      // AudioPlayerStateTableCompanion(
-      //   tracks: Value(state.tracks),
-      //   currentIndex: Value(max(state.currentIndex, 0)),
-      // ),
-    );
+    await _updatePlayerState(state);
   }
 
   Future<void> swapActiveSource() async {

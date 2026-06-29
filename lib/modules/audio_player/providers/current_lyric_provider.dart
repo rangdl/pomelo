@@ -1,19 +1,19 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/log.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/player/lyric_parser.dart';
+import 'package:pomelo/ui/player/lyric_view.dart';
 
 /// 当前歌词行文本 Provider
 ///
 /// 监听当前播放曲目的位置流，实时输出对应的歌词行文本。
 /// 当曲目无歌词或无活跃曲目时输出 null。
 /// 用于将歌词同步到系统媒体控制（audio_service / SMTC）的 artist 展示位置。
+///
+/// 复用 [lyricProvider] 的缓存结果，避免与 UI 歌词渲染重复请求歌词。
 final currentLyricLineProvider = StreamProvider.autoDispose<String?>((
   ref,
 ) async* {
-  final state = ref.watch(audioPlayerProvider.select((s) => s.activeTrack));
-  final track = state;
+  final track = ref.watch(audioPlayerProvider.select((s) => s.activeTrack));
   if (track == null) {
     yield null;
     return;
@@ -25,26 +25,8 @@ final currentLyricLineProvider = StreamProvider.autoDispose<String?>((
     return;
   }
 
-  // 获取音乐服务
-  await ref.watch(musicServersProvider.future);
-  final service = ref.watch(
-    musicServerBySourceProvider(track.source?.id ?? ''),
-  );
-  if (service == null) {
-    yield null;
-    return;
-  }
-
-  // 获取歌词文本
-  String? lyricText;
-  try {
-    lyricText = await service.getLyric(track);
-  } catch (e) {
-    log.warning('Lyric', '获取歌词失败: $e');
-    yield null;
-    return;
-  }
-
+  // 复用 lyricProvider 的缓存，避免重复请求歌词
+  final lyricText = await ref.watch(lyricProvider(track).future);
   if (lyricText == null || lyricText.isEmpty) {
     yield null;
     return;

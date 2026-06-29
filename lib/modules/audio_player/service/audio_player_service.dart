@@ -131,6 +131,56 @@ class AudioPlayerService extends AudioPlayerInterface
     await _mkPlayer.insert(index, media);
   }
 
+  /// 批量追加多个曲目到队列末尾。
+  ///
+  /// 通过重建完整播放列表并一次性 [open] 实现，
+  /// 避免逐条 [addTrack] 造成的多次播放列表变更事件。
+  /// 保留当前播放位置与播放状态。
+  Future<void> addTracks(List<mk.Media> medias) async {
+    if (medias.isEmpty) return;
+    final playlist = _mkPlayer.state.playlist;
+    if (playlist.medias.isEmpty) {
+      await _mkPlayer.open(mk.Playlist(medias), play: true);
+      return;
+    }
+    final allMedias = [...playlist.medias, ...medias];
+    final position = _mkPlayer.state.position;
+    final wasPlaying = _mkPlayer.state.playing;
+    await _mkPlayer.open(
+      mk.Playlist(allMedias, index: playlist.index),
+      play: wasPlaying,
+    );
+    if (position > Duration.zero) {
+      await _mkPlayer.seek(position);
+    }
+  }
+
+  /// 批量插入多个曲目到指定索引位置。
+  ///
+  /// 通过重建完整播放列表并一次性 [open] 实现，
+  /// 避免逐条 [addTrackAt] 造成的多次播放列表变更事件。
+  /// 保留当前播放位置与播放状态。
+  Future<void> addTracksAt(List<mk.Media> medias, int index) async {
+    if (medias.isEmpty) return;
+    final playlist = _mkPlayer.state.playlist;
+    if (playlist.medias.isEmpty) {
+      await _mkPlayer.open(mk.Playlist(medias), play: true);
+      return;
+    }
+    final allMedias = [...playlist.medias];
+    final insertIndex = index.clamp(0, allMedias.length);
+    allMedias.insertAll(insertIndex, medias);
+    final position = _mkPlayer.state.position;
+    final wasPlaying = _mkPlayer.state.playing;
+    await _mkPlayer.open(
+      mk.Playlist(allMedias, index: playlist.index),
+      play: wasPlaying,
+    );
+    if (position > Duration.zero) {
+      await _mkPlayer.seek(position);
+    }
+  }
+
   Future<void> removeTrack(int index) async {
     await _mkPlayer.remove(index);
   }
