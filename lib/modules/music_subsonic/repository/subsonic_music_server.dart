@@ -1,5 +1,5 @@
-import 'package:pomelo/core/core.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+﻿import 'package:pomelo/core/core.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 
 import 'subsonic_client.dart';
 import 'subsonic_models.dart';

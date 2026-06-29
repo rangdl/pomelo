@@ -1,12 +1,15 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/log.dart';
+import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/modules/audio_player/providers/sourced_track.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:shelf/shelf.dart';
 
 class ServerPlaybackRoutes {
@@ -70,19 +73,14 @@ class ServerPlaybackRoutes {
   Future<String> _resolveValidUrl(Track track) async {
     final container = getContainer();
     if (container == null) return track.src ?? track.path ?? '';
-    final notifier = container.read(
-      sourcedTrackProvider(track).notifier,
-    );
+    final notifier = container.read(sourcedTrackProvider(track).notifier);
 
     // 命中缓存直接返回
     final cached = container.read(sourcedTrackProvider(track)).url;
     if (cached != null && cached.isNotEmpty) return cached;
 
     final downgradeList = notifier.downgradeList;
-    log.info(
-      'Playback',
-      '解析开始: track=${track.title}, 降级序列=$downgradeList',
-    );
+    log.info('Playback', '解析开始: track=${track.title}, 降级序列=$downgradeList');
 
     for (final quality in downgradeList) {
       try {
@@ -93,21 +91,12 @@ class ServerPlaybackRoutes {
         }
         if (await _headValidate(url)) {
           notifier.cacheUrl(url, quality);
-          log.info(
-            'Playback',
-            '解析成功: quality=$quality, track=${track.title}',
-          );
+          log.info('Playback', '解析成功: quality=$quality, track=${track.title}');
           return url;
         }
-        log.warning(
-          'Playback',
-          'HEAD 失败 quality=$quality, url=$url',
-        );
+        log.warning('Playback', 'HEAD 失败 quality=$quality, url=$url');
       } catch (e) {
-        log.warning(
-          'Playback',
-          '获取链接失败 quality=$quality: $e',
-        );
+        log.warning('Playback', '获取链接失败 quality=$quality: $e');
       }
     }
 
@@ -115,17 +104,11 @@ class ServerPlaybackRoutes {
     final fallback = notifier.fallbackUrl;
     if (fallback.isNotEmpty && await _headValidate(fallback)) {
       notifier.cacheUrl(fallback, null);
-      log.info(
-        'Playback',
-        '回退成功: src/path, track=${track.title}',
-      );
+      log.info('Playback', '回退成功: src/path, track=${track.title}');
       return fallback;
     }
 
-    log.error(
-      'Playback',
-      '所有音质均无法获取有效播放链接: ${track.title}',
-    );
+    log.error('Playback', '所有音质均无法获取有效播放链接: ${track.title}');
     throw Exception('无法获取有效的播放链接');
   }
 
@@ -240,10 +223,20 @@ class ServerPlaybackRoutes {
       final res = await streamTrack(request, activeTrack, request.headers);
 
       if (res.data is ResponseBody) {
+        final responseBody = res.data as ResponseBody;
+        final sanitizedHeaders = _sanitizeHeaders(res.headers.map);
+
+        // 缓存音频流到文件（异步，不阻塞响应）
+        final cachedStream = await _teeStreamToCache(
+          responseBody.stream,
+          activeTrack,
+          sanitizedHeaders,
+        );
+
         return Response(
           res.statusCode!,
-          body: (res.data as ResponseBody).stream,
-          headers: _sanitizeHeaders(res.headers.map),
+          body: cachedStream,
+          headers: sanitizedHeaders,
         );
       }
 
@@ -256,6 +249,57 @@ class ServerPlaybackRoutes {
       log.error('Playback', e.toString(), error: e, stackTrace: stack);
       return Response.internalServerError();
     }
+  }
+
+  /// 将流同时写入缓存文件（tee 模式）
+  ///
+  /// 先创建缓存文件，再返回一个同时向文件和下游传递数据的 Stream。
+  /// 写入失败不影响播放，仅记录日志。
+  Future<Stream<List<int>>> _teeStreamToCache(
+    Stream<Uint8List> source,
+    Track track,
+    Map<String, List<String>> headers,
+  ) async {
+    // 推断文件扩展名
+    final contentType = headers['content-type']?.first;
+    final extension = track.src != null
+        ? MusicCacheDir.extensionFromUrl(track.src!)
+        : MusicCacheDir.extensionFromContentType(contentType);
+
+    // 预先创建缓存文件
+    IOSink? cacheSink;
+    try {
+      final file = await MusicCacheDir.getCacheFile(track.id, extension);
+      cacheSink = file.openWrite();
+      log.debug('Playback', '缓存写入开始: ${file.path}');
+    } catch (e) {
+      log.warning('Playback', '缓存文件创建失败: $e');
+    }
+
+    // tee 流：每块数据同时写入文件和传递给下游
+    return source.transform(
+      StreamTransformer<Uint8List, List<int>>.fromHandlers(
+        handleData: (chunk, sink) {
+          cacheSink?.add(chunk);
+          sink.add(chunk);
+        },
+        handleDone: (sink) {
+          cacheSink
+              ?.close()
+              .then((_) {
+                log.debug('Playback', '缓存写入完成: track=${track.title}');
+              })
+              .catchError((e) {
+                log.warning('Playback', '缓存文件关闭失败: $e');
+              });
+          sink.close();
+        },
+        handleError: (error, stack, sink) {
+          cacheSink?.close().catchError((e) {});
+          sink.addError(error, stack);
+        },
+      ),
+    );
   }
 
   /// @get('/playback/toggle-playback')

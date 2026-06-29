@@ -1,6 +1,6 @@
-import 'package:pomelo/core/log.dart';
+﻿import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 
 import 'js_engine.dart';
 

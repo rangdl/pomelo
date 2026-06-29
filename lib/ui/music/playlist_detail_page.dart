@@ -1,4 +1,4 @@
-/// 歌单详情页面
+﻿/// 歌单详情页面
 ///
 /// 展示歌单信息（封面、名称、创建者）及其中的歌曲列表。
 library;
@@ -6,7 +6,7 @@ library;
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/rx.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/track_list.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';

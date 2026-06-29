@@ -1,28 +1,19 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
-// import 'package:drift/drift.dart';
+import 'package:drift/drift.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
-// import 'package:pomelo/models/database/database.dart';
-// import 'package:pomelo/provider/database/database.dart';
-// import 'package:pomelo/provider/server/sourced_track_provider.dart';
 import 'package:pomelo/core/extensions/list.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
+import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/core/log/log_providers.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 
-// import 'package:pomelo/models/database/database.dart';
-// import 'package:pomelo/provider/blacklist_provider.dart';
-// import 'package:pomelo/provider/database/database.dart';
-// import 'package:pomelo/provider/discord_provider.dart';
-// import 'package:pomelo/provider/server/sourced_track_provider.dart';
-
-// import '../../models/metadata/metadata.dart';
 import '../model/media.dart';
-// import '../../services/logger/logger.dart';
-// import '../model/audio_player.dart';
 import '../model/state.dart';
 
 class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
@@ -89,11 +80,32 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
   Future<void> _updatePlayerState(AudioPlayerState companion) async {
     await ref.read(audioPlayerServiceProvider).repository.persist(companion);
-    // final database = ref.read(databaseProvider);
+  }
 
-    // await (database.update(
-    //   database.audioPlayerStateTable,
-    // )..where((tb) => tb.id.equals(0))).write(companion);
+  /// 记录播放历史
+  void _recordPlayHistory(int index) {
+    try {
+      if (index < 0 || index >= state.tracks.length) return;
+      final track = state.tracks[index];
+      final db = ref.read(appDatabaseProvider);
+      db.addPlayHistory(PlayHistoryTableCompanion.insert(
+        trackId: track.id,
+        trackJson: jsonEncode(track.toJson()),
+        sourceId: track.source?.id ?? '',
+        sourceName: Value(track.source?.name ?? ''),
+        title: track.title,
+        artist: Value(track.artist),
+        coverArt: Value(track.coverArt),
+        duration: Value(track.duration),
+      ));
+    } catch (e, stack) {
+      ref.read(logServiceProvider).error(
+            'playHistory',
+            e.toString(),
+            error: e,
+            stackTrace: stack,
+          );
+    }
   }
 
   @override
@@ -185,6 +197,10 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
               );
           // AppLogger.reportError(e, stack);
         }
+      }),
+      // 监听当前曲目索引变化，记录播放历史
+      audioPlayer.currentIndexChangedStream.listen((index) {
+        _recordPlayHistory(index);
       }),
     ];
 

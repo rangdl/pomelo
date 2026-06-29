@@ -143,6 +143,59 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
         .read(userPreferenceProvider.notifier)
         .setSubsonicAccounts(newAccounts);
   }
+
+  /// 更新账号
+  ///
+  /// 先用临时 client 验证新配置的连接，成功后替换 [UserPreference.subsonicAccounts]
+  /// 中对应 sourceId 的账号。由 [subsonicServersProvider] 自动重建服务列表。
+  /// 连接失败抛出异常。
+  Future<void> updateAccount(
+    String sourceId,
+    SubsonicAccountRecord config,
+  ) async {
+    final cleanUrl = _cleanUrl(config.serverUrl);
+    final client = SubsonicClient(
+      serverUrl: cleanUrl,
+      username: config.username,
+      password: config.password,
+    );
+    try {
+      await client.ping();
+    } catch (e) {
+      client.dispose();
+      rethrow;
+    }
+    client.dispose();
+
+    final currentAccounts = ref.read(userPreferenceProvider).subsonicAccounts;
+    final newAccounts = currentAccounts.map((a) {
+      final aCleanUrl = _cleanUrl(a.serverUrl);
+      final id = 'subsonic-${aCleanUrl.hashCode.abs()}-${a.username}';
+      if (id == sourceId) {
+        return SubsonicAccountConfig(
+          serverUrl: cleanUrl,
+          username: config.username,
+          password: config.password,
+          displayName: config.displayName,
+        );
+      }
+      return a;
+    }).toList();
+    await ref
+        .read(userPreferenceProvider.notifier)
+        .setSubsonicAccounts(newAccounts);
+  }
+
+  /// 根据 sourceId 获取账号配置
+  SubsonicAccountConfig? getAccount(String sourceId) {
+    final accounts = ref.read(userPreferenceProvider).subsonicAccounts;
+    for (final a in accounts) {
+      final cleanUrl = _cleanUrl(a.serverUrl);
+      final id = 'subsonic-${cleanUrl.hashCode.abs()}-${a.username}';
+      if (id == sourceId) return a;
+    }
+    return null;
+  }
 }
 
 /// 已配置的 Subsonic 账号服务列表

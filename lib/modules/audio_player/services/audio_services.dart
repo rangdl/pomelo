@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
-import 'package:pomelo/modules/music/model/track.dart' show Track;
+import 'package:pomelo/core/models/metadata/track.dart' show Track;
 import 'mobile_audio_service.dart';
 import 'windows_audio_service.dart';
 

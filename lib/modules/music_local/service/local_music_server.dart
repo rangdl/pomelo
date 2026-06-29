@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:pomelo/core/core.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 
 /// 支持的音频文件扩展名
 const _audioExtensions = {'.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.wma'};
@@ -11,16 +11,21 @@ const _audioExtensions = {'.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.wma
 /// 实现 [MusicServer] 接口，提供本地音乐的查询能力。
 /// 通过扫描用户指定的目录，将音频文件信息存入内存，对外提供查询服务。
 class LocalMusicServer extends MusicServer {
+  LocalMusicServer({String name = '本地音乐'}) : _name = name;
+
+  final String _name;
+
   @override
   String get sourceId => 'local';
 
   @override
-  String get sourceName => '本地音乐';
+  String get sourceName => _name;
 
   @override
   MusicSourceType get sourceType => MusicSourceType.local;
 
-  final _source = (id: 'local', name: '本地音乐', libraryId: null, libraryName: null);
+  ({String id, String name, String? libraryId, String? libraryName}) get _source =>
+      (id: 'local', name: _name, libraryId: null, libraryName: null);
 
   /// 内存中的曲目列表
   final List<Track> _tracks = [];

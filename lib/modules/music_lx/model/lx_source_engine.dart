@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music_lx/model/preload.dart';
 import 'js_engine.dart';
 

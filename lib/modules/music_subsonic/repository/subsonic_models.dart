@@ -1,4 +1,4 @@
-import 'package:pomelo/modules/music/model/models.dart';
+﻿import 'package:pomelo/core/models/metadata/metadata.dart';
 
 /// Subsonic REST API 顶层响应包装
 ///

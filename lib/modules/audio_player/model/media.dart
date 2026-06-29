@@ -1,6 +1,6 @@
-import 'package:media_kit/media_kit.dart' as mk;
+﻿import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit/media_kit.dart' hide Track;
-import 'package:pomelo/modules/music/model/models.dart' show Track;
+import 'package:pomelo/core/models/metadata/metadata.dart' show Track;
 
 // // import '../../models/metadata/metadata.dart';
 // // import '../../utils/platform.dart';

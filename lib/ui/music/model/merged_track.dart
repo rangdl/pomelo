@@ -1,5 +1,5 @@
 
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 
 /// 合并后的曲目展示模型
 ///
