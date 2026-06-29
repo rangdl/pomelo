@@ -7,6 +7,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/my/service/update_service.dart';
@@ -66,22 +67,14 @@ class SettingsPage extends HookConsumerWidget {
       // 切换目录后刷新缓存大小统计
       ref.invalidate(_cacheSizeProvider);
       if (context.mounted) {
-        showToast(
-          context: context,
-          builder: (ctx, overlay) =>
-              const _ToastCard(text: '缓存目录已更新'),
-        );
+        context.toast.success('缓存目录已更新');
       }
     }
 
     Future<void> openCacheDirectory() async {
       final ok = await MusicCacheDir.openDirectory();
       if (!ok && context.mounted) {
-        showToast(
-          context: context,
-          builder: (ctx, overlay) =>
-              const _ToastCard(text: '无法打开缓存目录'),
-        );
+        context.toast.error('无法打开缓存目录');
       }
     }
 
@@ -89,11 +82,7 @@ class SettingsPage extends HookConsumerWidget {
       await MusicCacheDir.clear();
       ref.invalidate(_cacheSizeProvider);
       if (context.mounted) {
-        showToast(
-          context: context,
-          builder: (ctx, overlay) =>
-              const _ToastCard(text: '缓存已清除'),
-        );
+        context.toast.success('缓存已清除');
       }
     }
 
@@ -319,19 +308,12 @@ class SettingsPage extends HookConsumerWidget {
   /// 展示更新检查结果
   void _showUpdateResult(BuildContext context, WidgetRef ref, UpdateCheckResult result) {
     if (result.errorMessage != null) {
-      showToast(
-        context: context,
-        builder: (ctx, overlay) => _ToastCard(text: result.errorMessage!),
-      );
+      context.toast.error(result.errorMessage!);
       return;
     }
 
     if (!result.hasUpdate) {
-      showToast(
-        context: context,
-        builder: (ctx, overlay) =>
-            _ToastCard(text: '当前已是最新版本（v${result.currentVersion}）'),
-      );
+      context.toast.info('当前已是最新版本（v${result.currentVersion}）');
       return;
     }
 
@@ -456,18 +438,6 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         PrimaryButton(onPressed: _download, child: const Text('前往下载')),
       ],
     );
-  }
-}
-
-/// 简易 Toast 卡片
-class _ToastCard extends StatelessWidget {
-  final String text;
-
-  const _ToastCard({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(child: Text(text));
   }
 }
 
