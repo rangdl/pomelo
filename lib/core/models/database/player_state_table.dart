@@ -48,7 +48,8 @@ class PlayerTrackTable extends Table {
 
 /// 播放记录表
 ///
-/// 记录每次播放的曲目信息，按时间倒序查询。
+/// 每个曲目一行，记录播放次数和最后播放时间。
+/// 使用 upsert 语义：曲目已存在时递增 [playCount] 并更新 [playedAt]。
 @DataClassName('PlayHistoryEntity')
 class PlayHistoryTable extends Table {
   /// 自增主键
@@ -78,6 +79,41 @@ class PlayHistoryTable extends Table {
   /// 时长（秒）
   IntColumn get duration => integer().withDefault(const Constant(0))();
 
-  /// 播放时间
+  /// 播放时间（最后一次播放）
   DateTimeColumn get playedAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// 播放次数
+  IntColumn get playCount => integer().withDefault(const Constant(1))();
+}
+
+/// 已解析音源曲目持久化表
+///
+/// 缓存曲目在各音质下的播放链接和本地缓存文件路径，
+/// 下次播放时优先使用本地缓存文件，次选缓存的播放链接，
+/// 全部未命中或失效时重新获取并更新记录。
+@DataClassName('SourcedTrackEntity')
+class SourcedTrackTable extends Table {
+  /// 曲目 ID（主键）
+  TextColumn get trackId => text()();
+
+  /// 来源服务 ID
+  TextColumn get sourceId => text()();
+
+  /// 库 ID（可空）
+  TextColumn get libraryId => text().nullable()();
+
+  /// 可用音质列表（JSON 数组字符串，如 `["flac","320k","128k"]`）
+  TextColumn get qualities => text().withDefault(const Constant('[]'))();
+
+  /// 音质 → 播放链接映射（JSON 对象，如 `{"flac":"https://...","320k":"https://..."}`)
+  TextColumn get urlMap => text().withDefault(const Constant('{}'))();
+
+  /// 音质 → 本地缓存文件路径映射（JSON 对象）
+  TextColumn get cachePathMap => text().withDefault(const Constant('{}'))();
+
+  /// 最后更新时间
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {trackId};
 }

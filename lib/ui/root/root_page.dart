@@ -123,20 +123,20 @@ class _PhoneLayout extends HookConsumerWidget {
   }
 }
 
-/// 平板 / 桌面 / TV 布局 — 顶部标题栏 + 右侧 NavigationRail
+/// 平板 / 桌面 / TV 布局 — 左侧 NavigationRail + 顶部标题栏
 ///
 /// 布局结构：
 /// ```
-/// ┌────────────────────┬──────────┐
-/// │  TopTitleBar       │          │
-/// ├────────────────────┤  NavRail │
-/// │  Content           │  (全高)  │
-/// │  (tabRouter)       │          │
-/// ├────────────────────┤          │
-/// │  MiniPlayer        │          │
-/// └────────────────────┴──────────┘
+/// ┌──────────┬────────────────────┐
+/// │          │  TopTitleBar       │
+/// │  NavRail ├────────────────────┤
+/// │  (全高)  │  Content           │
+/// │          │  (tabRouter)       │
+/// │          ├────────────────────┤
+/// │          │  MiniPlayer        │
+/// └──────────┴────────────────────┘
 /// ```
-/// 顶部标题栏与 tabRouter 内容区对齐；右侧 NavigationRail 占满全高。
+/// 左侧 NavigationRail 占满全高；顶部标题栏与 tabRouter 内容区对齐。
 class _NavigationRailLayout extends HookConsumerWidget {
   final TabsRouter tabsRouter;
   final List<Widget> children;
@@ -165,19 +165,7 @@ class _NavigationRailLayout extends HookConsumerWidget {
     return Scaffold(
       child: Row(
         children: [
-          // 左侧：顶部标题栏 + 内容 + MiniPlayer
-          Expanded(
-            child: Column(
-              children: [
-                const _TopTitleBar(),
-                const Divider(height: 1, thickness: 1),
-                Expanded(child: children[tabsRouter.activeIndex]),
-                const MiniPlayer(),
-              ],
-            ),
-          ),
-          const VerticalDivider(width: 1, thickness: 1),
-          // 右侧 NavigationRail — 占满全高
+          // 左侧 NavigationRail — 占满全高
           NavigationRail(
             alignment: NavigationRailAlignment.start,
             labelType: NavigationLabelType.none,
@@ -201,6 +189,18 @@ class _NavigationRailLayout extends HookConsumerWidget {
                   ),
                 )
                 .toList(),
+          ),
+          const VerticalDivider(width: 1, thickness: 1),
+          // 右侧：顶部标题栏 + 内容 + MiniPlayer
+          Expanded(
+            child: Column(
+              children: [
+                const _TopTitleBar(),
+                const Divider(height: 1, thickness: 1),
+                Expanded(child: children[tabsRouter.activeIndex]),
+                const MiniPlayer(),
+              ],
+            ),
           ),
         ],
       ),

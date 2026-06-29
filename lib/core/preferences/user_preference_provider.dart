@@ -98,6 +98,9 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
   Future<void> setCacheDirectory(String? path) =>
       update((p) => p.copyWith(cacheDirectory: path));
 
+  Future<void> setCacheSizeLimitGB(int gb) =>
+      update((p) => p.copyWith(cacheSizeLimitGB: gb));
+
   // ==================== music_lx 模块 ====================
 
   Future<void> setLxMetadataPluginPath(String? path) =>

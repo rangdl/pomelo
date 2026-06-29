@@ -5,11 +5,20 @@
 ///
 /// 降级策略：从用户偏好音质开始向下降级（更低比特率）。
 /// HEAD 校验由调用方（如 `playback.dart`）负责。
+///
+/// 持久化：解析结果（URL + 缓存文件路径）通过 drift 数据库持久化，
+/// 下次播放时优先使用本地缓存文件，次选缓存的播放链接。
 library;
 
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/log.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
+import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
@@ -216,6 +225,124 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   /// 清空 [url] 和 [quality]，强制下次 [resolveValidUrl] 重新解析。
   void invalidateUrl() {
     state = SourcedTrackState(query: track);
+  }
+
+  // ======================================================================
+  // 持久化：通过 drift 数据库缓存解析结果（URL + 缓存文件路径）
+  // ======================================================================
+
+  /// 从数据库加载持久化记录
+  Future<SourcedTrackEntity?> _loadPersisted() async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      return db.getSourcedTrack(track.id);
+    } catch (e) {
+      log.warning('SourcedTrack', '加载持久化记录失败: $e');
+      return null;
+    }
+  }
+
+  /// 查找持久化的本地缓存文件
+  ///
+  /// 按 [qualities] 顺序查找，返回首个存在且文件存在的缓存路径。
+  Future<({String quality, String path})?> findCachedFile(
+    List<String> qualities,
+  ) async {
+    final record = await _loadPersisted();
+    if (record == null) return null;
+
+    final cachePathMap = _parseStringMap(record.cachePathMap);
+    for (final quality in qualities) {
+      final path = cachePathMap[quality];
+      if (path != null && path.isNotEmpty) {
+        final file = File(path);
+        if (await file.exists()) {
+          return (quality: quality, path: path);
+        }
+      }
+    }
+    return null;
+  }
+
+  /// 查找持久化的播放链接
+  ///
+  /// 按 [qualities] 顺序查找，返回首个非空的 URL。
+  /// 调用方需自行 HEAD 校验。
+  Future<({String quality, String url})?> findCachedUrl(
+    List<String> qualities,
+  ) async {
+    final record = await _loadPersisted();
+    if (record == null) return null;
+
+    final urlMap = _parseStringMap(record.urlMap);
+    for (final quality in qualities) {
+      final url = urlMap[quality];
+      if (url != null && url.isNotEmpty) {
+        return (quality: quality, url: url);
+      }
+    }
+    return null;
+  }
+
+  /// 持久化指定音质的播放链接
+  Future<void> saveUrlToPersistence(String quality, String url) async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final existing = await db.getSourcedTrack(track.id);
+
+      final urlMap = _parseStringMap(existing?.urlMap);
+      urlMap[quality] = url;
+
+      await db.upsertSourcedTrack(SourcedTrackTableCompanion(
+        trackId: Value(track.id),
+        sourceId: Value(track.source?.id ?? ''),
+        libraryId: Value(track.source?.libraryId),
+        qualities: Value(jsonEncode(_collectAvailableQualities())),
+        urlMap: Value(jsonEncode(urlMap)),
+        cachePathMap: Value(existing?.cachePathMap ?? '{}'),
+        updatedAt: Value(DateTime.now()),
+      ));
+      log.debug('SourcedTrack', '持久化URL: quality=$quality, track=${track.title}');
+    } catch (e) {
+      log.warning('SourcedTrack', '持久化URL失败: $e');
+    }
+  }
+
+  /// 持久化指定音质的缓存文件路径
+  Future<void> saveCachePathToPersistence(
+    String quality,
+    String cachePath,
+  ) async {
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final existing = await db.getSourcedTrack(track.id);
+
+      final cachePathMap = _parseStringMap(existing?.cachePathMap);
+      cachePathMap[quality] = cachePath;
+
+      await db.upsertSourcedTrack(SourcedTrackTableCompanion(
+        trackId: Value(track.id),
+        sourceId: Value(existing?.sourceId ?? track.source?.id ?? ''),
+        libraryId: Value(existing?.libraryId ?? track.source?.libraryId),
+        qualities: Value(existing?.qualities ?? jsonEncode(_collectAvailableQualities())),
+        urlMap: Value(existing?.urlMap ?? '{}'),
+        cachePathMap: Value(jsonEncode(cachePathMap)),
+        updatedAt: Value(DateTime.now()),
+      ));
+      log.debug('SourcedTrack', '持久化缓存路径: quality=$quality, track=${track.title}');
+    } catch (e) {
+      log.warning('SourcedTrack', '持久化缓存路径失败: $e');
+    }
+  }
+
+  /// 解析 JSON 字符串为 Map<String, String>
+  Map<String, String> _parseStringMap(String? json) {
+    if (json == null || json.isEmpty) return {};
+    try {
+      return Map<String, String>.from(jsonDecode(json) as Map);
+    } catch (_) {
+      return {};
+    }
   }
 }
 

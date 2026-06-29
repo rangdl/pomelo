@@ -126,6 +126,9 @@ class UserPreference {
   /// 音频流缓存目录路径，null 表示使用系统默认临时目录。
   final String? cacheDirectory;
 
+  /// 缓存大小上限（GB），范围 1~5，默认 1。
+  final int cacheSizeLimitGB;
+
   // === music_lx 模块 ===
   final String? lxMetadataPluginPath;
   final List<String> lxSourcePluginPaths;
@@ -148,6 +151,7 @@ class UserPreference {
     this.localServerName = '本地音乐',
     this.localDirectories = const [],
     this.cacheDirectory,
+    this.cacheSizeLimitGB = 1,
     this.lxMetadataPluginPath,
     this.lxSourcePluginPaths = const [],
     this.lxServerConfig,
@@ -174,6 +178,8 @@ class UserPreference {
               .toList() ??
           const [],
       cacheDirectory: json['cacheDirectory'] as String?,
+      cacheSizeLimitGB: (((json['cacheSizeLimitGB'] as num?)?.toInt() ?? 1)
+              .clamp(1, 5)),
       lxMetadataPluginPath: json['lxMetadataPluginPath'] as String?,
       lxSourcePluginPaths: (json['lxSourcePluginPaths'] as List?)
               ?.map((e) => e as String)
@@ -205,6 +211,7 @@ class UserPreference {
         'localServerName': localServerName,
         'localDirectories': localDirectories,
         'cacheDirectory': cacheDirectory,
+        'cacheSizeLimitGB': cacheSizeLimitGB,
         'lxMetadataPluginPath': lxMetadataPluginPath,
         'lxSourcePluginPaths': lxSourcePluginPaths,
         'lxServerConfig': lxServerConfig?.toJson(),
@@ -244,6 +251,7 @@ class UserPreference {
     String? localServerName,
     List<String>? localDirectories,
     Object? cacheDirectory = _unset,
+    int? cacheSizeLimitGB,
     Object? lxMetadataPluginPath = _unset,
     List<String>? lxSourcePluginPaths,
     Object? lxServerConfig = _unset,
@@ -268,6 +276,7 @@ class UserPreference {
       cacheDirectory: cacheDirectory == _unset
           ? this.cacheDirectory
           : cacheDirectory as String?,
+      cacheSizeLimitGB: (cacheSizeLimitGB ?? this.cacheSizeLimitGB).clamp(1, 5),
       lxMetadataPluginPath: lxMetadataPluginPath == _unset
           ? this.lxMetadataPluginPath
           : lxMetadataPluginPath as String?,

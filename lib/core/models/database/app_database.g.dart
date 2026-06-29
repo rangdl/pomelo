@@ -846,6 +846,18 @@ class $PlayHistoryTableTable extends PlayHistoryTable
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _playCountMeta = const VerificationMeta(
+    'playCount',
+  );
+  @override
+  late final GeneratedColumn<int> playCount = GeneratedColumn<int>(
+    'play_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -858,6 +870,7 @@ class $PlayHistoryTableTable extends PlayHistoryTable
     coverArt,
     duration,
     playedAt,
+    playCount,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -936,6 +949,12 @@ class $PlayHistoryTableTable extends PlayHistoryTable
         playedAt.isAcceptableOrUnknown(data['played_at']!, _playedAtMeta),
       );
     }
+    if (data.containsKey('play_count')) {
+      context.handle(
+        _playCountMeta,
+        playCount.isAcceptableOrUnknown(data['play_count']!, _playCountMeta),
+      );
+    }
     return context;
   }
 
@@ -985,6 +1004,10 @@ class $PlayHistoryTableTable extends PlayHistoryTable
         DriftSqlType.dateTime,
         data['${effectivePrefix}played_at'],
       )!,
+      playCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}play_count'],
+      )!,
     );
   }
 
@@ -1023,8 +1046,11 @@ class PlayHistoryEntity extends DataClass
   /// 时长（秒）
   final int duration;
 
-  /// 播放时间
+  /// 播放时间（最后一次播放）
   final DateTime playedAt;
+
+  /// 播放次数
+  final int playCount;
   const PlayHistoryEntity({
     required this.id,
     required this.trackId,
@@ -1036,6 +1062,7 @@ class PlayHistoryEntity extends DataClass
     this.coverArt,
     required this.duration,
     required this.playedAt,
+    required this.playCount,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1054,6 +1081,7 @@ class PlayHistoryEntity extends DataClass
     }
     map['duration'] = Variable<int>(duration);
     map['played_at'] = Variable<DateTime>(playedAt);
+    map['play_count'] = Variable<int>(playCount);
     return map;
   }
 
@@ -1073,6 +1101,7 @@ class PlayHistoryEntity extends DataClass
           : Value(coverArt),
       duration: Value(duration),
       playedAt: Value(playedAt),
+      playCount: Value(playCount),
     );
   }
 
@@ -1092,6 +1121,7 @@ class PlayHistoryEntity extends DataClass
       coverArt: serializer.fromJson<String?>(json['coverArt']),
       duration: serializer.fromJson<int>(json['duration']),
       playedAt: serializer.fromJson<DateTime>(json['playedAt']),
+      playCount: serializer.fromJson<int>(json['playCount']),
     );
   }
   @override
@@ -1108,6 +1138,7 @@ class PlayHistoryEntity extends DataClass
       'coverArt': serializer.toJson<String?>(coverArt),
       'duration': serializer.toJson<int>(duration),
       'playedAt': serializer.toJson<DateTime>(playedAt),
+      'playCount': serializer.toJson<int>(playCount),
     };
   }
 
@@ -1122,6 +1153,7 @@ class PlayHistoryEntity extends DataClass
     Value<String?> coverArt = const Value.absent(),
     int? duration,
     DateTime? playedAt,
+    int? playCount,
   }) => PlayHistoryEntity(
     id: id ?? this.id,
     trackId: trackId ?? this.trackId,
@@ -1133,6 +1165,7 @@ class PlayHistoryEntity extends DataClass
     coverArt: coverArt.present ? coverArt.value : this.coverArt,
     duration: duration ?? this.duration,
     playedAt: playedAt ?? this.playedAt,
+    playCount: playCount ?? this.playCount,
   );
   PlayHistoryEntity copyWithCompanion(PlayHistoryTableCompanion data) {
     return PlayHistoryEntity(
@@ -1148,6 +1181,7 @@ class PlayHistoryEntity extends DataClass
       coverArt: data.coverArt.present ? data.coverArt.value : this.coverArt,
       duration: data.duration.present ? data.duration.value : this.duration,
       playedAt: data.playedAt.present ? data.playedAt.value : this.playedAt,
+      playCount: data.playCount.present ? data.playCount.value : this.playCount,
     );
   }
 
@@ -1163,7 +1197,8 @@ class PlayHistoryEntity extends DataClass
           ..write('artist: $artist, ')
           ..write('coverArt: $coverArt, ')
           ..write('duration: $duration, ')
-          ..write('playedAt: $playedAt')
+          ..write('playedAt: $playedAt, ')
+          ..write('playCount: $playCount')
           ..write(')'))
         .toString();
   }
@@ -1180,6 +1215,7 @@ class PlayHistoryEntity extends DataClass
     coverArt,
     duration,
     playedAt,
+    playCount,
   );
   @override
   bool operator ==(Object other) =>
@@ -1194,7 +1230,8 @@ class PlayHistoryEntity extends DataClass
           other.artist == this.artist &&
           other.coverArt == this.coverArt &&
           other.duration == this.duration &&
-          other.playedAt == this.playedAt);
+          other.playedAt == this.playedAt &&
+          other.playCount == this.playCount);
 }
 
 class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
@@ -1208,6 +1245,7 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
   final Value<String?> coverArt;
   final Value<int> duration;
   final Value<DateTime> playedAt;
+  final Value<int> playCount;
   const PlayHistoryTableCompanion({
     this.id = const Value.absent(),
     this.trackId = const Value.absent(),
@@ -1219,6 +1257,7 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
     this.coverArt = const Value.absent(),
     this.duration = const Value.absent(),
     this.playedAt = const Value.absent(),
+    this.playCount = const Value.absent(),
   });
   PlayHistoryTableCompanion.insert({
     this.id = const Value.absent(),
@@ -1231,6 +1270,7 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
     this.coverArt = const Value.absent(),
     this.duration = const Value.absent(),
     this.playedAt = const Value.absent(),
+    this.playCount = const Value.absent(),
   }) : trackId = Value(trackId),
        trackJson = Value(trackJson),
        sourceId = Value(sourceId),
@@ -1246,6 +1286,7 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
     Expression<String>? coverArt,
     Expression<int>? duration,
     Expression<DateTime>? playedAt,
+    Expression<int>? playCount,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1258,6 +1299,7 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
       if (coverArt != null) 'cover_art': coverArt,
       if (duration != null) 'duration': duration,
       if (playedAt != null) 'played_at': playedAt,
+      if (playCount != null) 'play_count': playCount,
     });
   }
 
@@ -1272,6 +1314,7 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
     Value<String?>? coverArt,
     Value<int>? duration,
     Value<DateTime>? playedAt,
+    Value<int>? playCount,
   }) {
     return PlayHistoryTableCompanion(
       id: id ?? this.id,
@@ -1284,6 +1327,7 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
       coverArt: coverArt ?? this.coverArt,
       duration: duration ?? this.duration,
       playedAt: playedAt ?? this.playedAt,
+      playCount: playCount ?? this.playCount,
     );
   }
 
@@ -1320,6 +1364,9 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
     if (playedAt.present) {
       map['played_at'] = Variable<DateTime>(playedAt.value);
     }
+    if (playCount.present) {
+      map['play_count'] = Variable<int>(playCount.value);
+    }
     return map;
   }
 
@@ -1335,7 +1382,487 @@ class PlayHistoryTableCompanion extends UpdateCompanion<PlayHistoryEntity> {
           ..write('artist: $artist, ')
           ..write('coverArt: $coverArt, ')
           ..write('duration: $duration, ')
-          ..write('playedAt: $playedAt')
+          ..write('playedAt: $playedAt, ')
+          ..write('playCount: $playCount')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SourcedTrackTableTable extends SourcedTrackTable
+    with TableInfo<$SourcedTrackTableTable, SourcedTrackEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SourcedTrackTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _trackIdMeta = const VerificationMeta(
+    'trackId',
+  );
+  @override
+  late final GeneratedColumn<String> trackId = GeneratedColumn<String>(
+    'track_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _libraryIdMeta = const VerificationMeta(
+    'libraryId',
+  );
+  @override
+  late final GeneratedColumn<String> libraryId = GeneratedColumn<String>(
+    'library_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _qualitiesMeta = const VerificationMeta(
+    'qualities',
+  );
+  @override
+  late final GeneratedColumn<String> qualities = GeneratedColumn<String>(
+    'qualities',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _urlMapMeta = const VerificationMeta('urlMap');
+  @override
+  late final GeneratedColumn<String> urlMap = GeneratedColumn<String>(
+    'url_map',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _cachePathMapMeta = const VerificationMeta(
+    'cachePathMap',
+  );
+  @override
+  late final GeneratedColumn<String> cachePathMap = GeneratedColumn<String>(
+    'cache_path_map',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    trackId,
+    sourceId,
+    libraryId,
+    qualities,
+    urlMap,
+    cachePathMap,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sourced_track_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SourcedTrackEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('track_id')) {
+      context.handle(
+        _trackIdMeta,
+        trackId.isAcceptableOrUnknown(data['track_id']!, _trackIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_trackIdMeta);
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('library_id')) {
+      context.handle(
+        _libraryIdMeta,
+        libraryId.isAcceptableOrUnknown(data['library_id']!, _libraryIdMeta),
+      );
+    }
+    if (data.containsKey('qualities')) {
+      context.handle(
+        _qualitiesMeta,
+        qualities.isAcceptableOrUnknown(data['qualities']!, _qualitiesMeta),
+      );
+    }
+    if (data.containsKey('url_map')) {
+      context.handle(
+        _urlMapMeta,
+        urlMap.isAcceptableOrUnknown(data['url_map']!, _urlMapMeta),
+      );
+    }
+    if (data.containsKey('cache_path_map')) {
+      context.handle(
+        _cachePathMapMeta,
+        cachePathMap.isAcceptableOrUnknown(
+          data['cache_path_map']!,
+          _cachePathMapMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {trackId};
+  @override
+  SourcedTrackEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SourcedTrackEntity(
+      trackId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}track_id'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      )!,
+      libraryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}library_id'],
+      ),
+      qualities: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}qualities'],
+      )!,
+      urlMap: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}url_map'],
+      )!,
+      cachePathMap: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cache_path_map'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SourcedTrackTableTable createAlias(String alias) {
+    return $SourcedTrackTableTable(attachedDatabase, alias);
+  }
+}
+
+class SourcedTrackEntity extends DataClass
+    implements Insertable<SourcedTrackEntity> {
+  /// 曲目 ID（主键）
+  final String trackId;
+
+  /// 来源服务 ID
+  final String sourceId;
+
+  /// 库 ID（可空）
+  final String? libraryId;
+
+  /// 可用音质列表（JSON 数组字符串，如 `["flac","320k","128k"]`）
+  final String qualities;
+
+  /// 音质 → 播放链接映射（JSON 对象，如 `{"flac":"https://...","320k":"https://..."}`)
+  final String urlMap;
+
+  /// 音质 → 本地缓存文件路径映射（JSON 对象）
+  final String cachePathMap;
+
+  /// 最后更新时间
+  final DateTime updatedAt;
+  const SourcedTrackEntity({
+    required this.trackId,
+    required this.sourceId,
+    this.libraryId,
+    required this.qualities,
+    required this.urlMap,
+    required this.cachePathMap,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['track_id'] = Variable<String>(trackId);
+    map['source_id'] = Variable<String>(sourceId);
+    if (!nullToAbsent || libraryId != null) {
+      map['library_id'] = Variable<String>(libraryId);
+    }
+    map['qualities'] = Variable<String>(qualities);
+    map['url_map'] = Variable<String>(urlMap);
+    map['cache_path_map'] = Variable<String>(cachePathMap);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SourcedTrackTableCompanion toCompanion(bool nullToAbsent) {
+    return SourcedTrackTableCompanion(
+      trackId: Value(trackId),
+      sourceId: Value(sourceId),
+      libraryId: libraryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(libraryId),
+      qualities: Value(qualities),
+      urlMap: Value(urlMap),
+      cachePathMap: Value(cachePathMap),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SourcedTrackEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SourcedTrackEntity(
+      trackId: serializer.fromJson<String>(json['trackId']),
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      libraryId: serializer.fromJson<String?>(json['libraryId']),
+      qualities: serializer.fromJson<String>(json['qualities']),
+      urlMap: serializer.fromJson<String>(json['urlMap']),
+      cachePathMap: serializer.fromJson<String>(json['cachePathMap']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'trackId': serializer.toJson<String>(trackId),
+      'sourceId': serializer.toJson<String>(sourceId),
+      'libraryId': serializer.toJson<String?>(libraryId),
+      'qualities': serializer.toJson<String>(qualities),
+      'urlMap': serializer.toJson<String>(urlMap),
+      'cachePathMap': serializer.toJson<String>(cachePathMap),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SourcedTrackEntity copyWith({
+    String? trackId,
+    String? sourceId,
+    Value<String?> libraryId = const Value.absent(),
+    String? qualities,
+    String? urlMap,
+    String? cachePathMap,
+    DateTime? updatedAt,
+  }) => SourcedTrackEntity(
+    trackId: trackId ?? this.trackId,
+    sourceId: sourceId ?? this.sourceId,
+    libraryId: libraryId.present ? libraryId.value : this.libraryId,
+    qualities: qualities ?? this.qualities,
+    urlMap: urlMap ?? this.urlMap,
+    cachePathMap: cachePathMap ?? this.cachePathMap,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SourcedTrackEntity copyWithCompanion(SourcedTrackTableCompanion data) {
+    return SourcedTrackEntity(
+      trackId: data.trackId.present ? data.trackId.value : this.trackId,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      libraryId: data.libraryId.present ? data.libraryId.value : this.libraryId,
+      qualities: data.qualities.present ? data.qualities.value : this.qualities,
+      urlMap: data.urlMap.present ? data.urlMap.value : this.urlMap,
+      cachePathMap: data.cachePathMap.present
+          ? data.cachePathMap.value
+          : this.cachePathMap,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SourcedTrackEntity(')
+          ..write('trackId: $trackId, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('libraryId: $libraryId, ')
+          ..write('qualities: $qualities, ')
+          ..write('urlMap: $urlMap, ')
+          ..write('cachePathMap: $cachePathMap, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    trackId,
+    sourceId,
+    libraryId,
+    qualities,
+    urlMap,
+    cachePathMap,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SourcedTrackEntity &&
+          other.trackId == this.trackId &&
+          other.sourceId == this.sourceId &&
+          other.libraryId == this.libraryId &&
+          other.qualities == this.qualities &&
+          other.urlMap == this.urlMap &&
+          other.cachePathMap == this.cachePathMap &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SourcedTrackTableCompanion extends UpdateCompanion<SourcedTrackEntity> {
+  final Value<String> trackId;
+  final Value<String> sourceId;
+  final Value<String?> libraryId;
+  final Value<String> qualities;
+  final Value<String> urlMap;
+  final Value<String> cachePathMap;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const SourcedTrackTableCompanion({
+    this.trackId = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.libraryId = const Value.absent(),
+    this.qualities = const Value.absent(),
+    this.urlMap = const Value.absent(),
+    this.cachePathMap = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SourcedTrackTableCompanion.insert({
+    required String trackId,
+    required String sourceId,
+    this.libraryId = const Value.absent(),
+    this.qualities = const Value.absent(),
+    this.urlMap = const Value.absent(),
+    this.cachePathMap = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : trackId = Value(trackId),
+       sourceId = Value(sourceId);
+  static Insertable<SourcedTrackEntity> custom({
+    Expression<String>? trackId,
+    Expression<String>? sourceId,
+    Expression<String>? libraryId,
+    Expression<String>? qualities,
+    Expression<String>? urlMap,
+    Expression<String>? cachePathMap,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (trackId != null) 'track_id': trackId,
+      if (sourceId != null) 'source_id': sourceId,
+      if (libraryId != null) 'library_id': libraryId,
+      if (qualities != null) 'qualities': qualities,
+      if (urlMap != null) 'url_map': urlMap,
+      if (cachePathMap != null) 'cache_path_map': cachePathMap,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SourcedTrackTableCompanion copyWith({
+    Value<String>? trackId,
+    Value<String>? sourceId,
+    Value<String?>? libraryId,
+    Value<String>? qualities,
+    Value<String>? urlMap,
+    Value<String>? cachePathMap,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SourcedTrackTableCompanion(
+      trackId: trackId ?? this.trackId,
+      sourceId: sourceId ?? this.sourceId,
+      libraryId: libraryId ?? this.libraryId,
+      qualities: qualities ?? this.qualities,
+      urlMap: urlMap ?? this.urlMap,
+      cachePathMap: cachePathMap ?? this.cachePathMap,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (trackId.present) {
+      map['track_id'] = Variable<String>(trackId.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (libraryId.present) {
+      map['library_id'] = Variable<String>(libraryId.value);
+    }
+    if (qualities.present) {
+      map['qualities'] = Variable<String>(qualities.value);
+    }
+    if (urlMap.present) {
+      map['url_map'] = Variable<String>(urlMap.value);
+    }
+    if (cachePathMap.present) {
+      map['cache_path_map'] = Variable<String>(cachePathMap.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SourcedTrackTableCompanion(')
+          ..write('trackId: $trackId, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('libraryId: $libraryId, ')
+          ..write('qualities: $qualities, ')
+          ..write('urlMap: $urlMap, ')
+          ..write('cachePathMap: $cachePathMap, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1353,6 +1880,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PlayHistoryTableTable playHistoryTable = $PlayHistoryTableTable(
     this,
   );
+  late final $SourcedTrackTableTable sourcedTrackTable =
+      $SourcedTrackTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1361,6 +1890,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     playerStateTable,
     playerTrackTable,
     playHistoryTable,
+    sourcedTrackTable,
   ];
 }
 
@@ -1790,6 +2320,7 @@ typedef $$PlayHistoryTableTableCreateCompanionBuilder =
       Value<String?> coverArt,
       Value<int> duration,
       Value<DateTime> playedAt,
+      Value<int> playCount,
     });
 typedef $$PlayHistoryTableTableUpdateCompanionBuilder =
     PlayHistoryTableCompanion Function({
@@ -1803,6 +2334,7 @@ typedef $$PlayHistoryTableTableUpdateCompanionBuilder =
       Value<String?> coverArt,
       Value<int> duration,
       Value<DateTime> playedAt,
+      Value<int> playCount,
     });
 
 class $$PlayHistoryTableTableFilterComposer
@@ -1861,6 +2393,11 @@ class $$PlayHistoryTableTableFilterComposer
 
   ColumnFilters<DateTime> get playedAt => $composableBuilder(
     column: $table.playedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playCount => $composableBuilder(
+    column: $table.playCount,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -1923,6 +2460,11 @@ class $$PlayHistoryTableTableOrderingComposer
     column: $table.playedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get playCount => $composableBuilder(
+    column: $table.playCount,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PlayHistoryTableTableAnnotationComposer
@@ -1965,6 +2507,9 @@ class $$PlayHistoryTableTableAnnotationComposer
 
   GeneratedColumn<DateTime> get playedAt =>
       $composableBuilder(column: $table.playedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get playCount =>
+      $composableBuilder(column: $table.playCount, builder: (column) => column);
 }
 
 class $$PlayHistoryTableTableTableManager
@@ -2014,6 +2559,7 @@ class $$PlayHistoryTableTableTableManager
                 Value<String?> coverArt = const Value.absent(),
                 Value<int> duration = const Value.absent(),
                 Value<DateTime> playedAt = const Value.absent(),
+                Value<int> playCount = const Value.absent(),
               }) => PlayHistoryTableCompanion(
                 id: id,
                 trackId: trackId,
@@ -2025,6 +2571,7 @@ class $$PlayHistoryTableTableTableManager
                 coverArt: coverArt,
                 duration: duration,
                 playedAt: playedAt,
+                playCount: playCount,
               ),
           createCompanionCallback:
               ({
@@ -2038,6 +2585,7 @@ class $$PlayHistoryTableTableTableManager
                 Value<String?> coverArt = const Value.absent(),
                 Value<int> duration = const Value.absent(),
                 Value<DateTime> playedAt = const Value.absent(),
+                Value<int> playCount = const Value.absent(),
               }) => PlayHistoryTableCompanion.insert(
                 id: id,
                 trackId: trackId,
@@ -2049,6 +2597,7 @@ class $$PlayHistoryTableTableTableManager
                 coverArt: coverArt,
                 duration: duration,
                 playedAt: playedAt,
+                playCount: playCount,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -2079,6 +2628,259 @@ typedef $$PlayHistoryTableTableProcessedTableManager =
       PlayHistoryEntity,
       PrefetchHooks Function()
     >;
+typedef $$SourcedTrackTableTableCreateCompanionBuilder =
+    SourcedTrackTableCompanion Function({
+      required String trackId,
+      required String sourceId,
+      Value<String?> libraryId,
+      Value<String> qualities,
+      Value<String> urlMap,
+      Value<String> cachePathMap,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$SourcedTrackTableTableUpdateCompanionBuilder =
+    SourcedTrackTableCompanion Function({
+      Value<String> trackId,
+      Value<String> sourceId,
+      Value<String?> libraryId,
+      Value<String> qualities,
+      Value<String> urlMap,
+      Value<String> cachePathMap,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$SourcedTrackTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SourcedTrackTableTable> {
+  $$SourcedTrackTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get trackId => $composableBuilder(
+    column: $table.trackId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get libraryId => $composableBuilder(
+    column: $table.libraryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get qualities => $composableBuilder(
+    column: $table.qualities,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get urlMap => $composableBuilder(
+    column: $table.urlMap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cachePathMap => $composableBuilder(
+    column: $table.cachePathMap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SourcedTrackTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SourcedTrackTableTable> {
+  $$SourcedTrackTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get trackId => $composableBuilder(
+    column: $table.trackId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get libraryId => $composableBuilder(
+    column: $table.libraryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get qualities => $composableBuilder(
+    column: $table.qualities,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get urlMap => $composableBuilder(
+    column: $table.urlMap,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cachePathMap => $composableBuilder(
+    column: $table.cachePathMap,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SourcedTrackTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SourcedTrackTableTable> {
+  $$SourcedTrackTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get trackId =>
+      $composableBuilder(column: $table.trackId, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get libraryId =>
+      $composableBuilder(column: $table.libraryId, builder: (column) => column);
+
+  GeneratedColumn<String> get qualities =>
+      $composableBuilder(column: $table.qualities, builder: (column) => column);
+
+  GeneratedColumn<String> get urlMap =>
+      $composableBuilder(column: $table.urlMap, builder: (column) => column);
+
+  GeneratedColumn<String> get cachePathMap => $composableBuilder(
+    column: $table.cachePathMap,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SourcedTrackTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SourcedTrackTableTable,
+          SourcedTrackEntity,
+          $$SourcedTrackTableTableFilterComposer,
+          $$SourcedTrackTableTableOrderingComposer,
+          $$SourcedTrackTableTableAnnotationComposer,
+          $$SourcedTrackTableTableCreateCompanionBuilder,
+          $$SourcedTrackTableTableUpdateCompanionBuilder,
+          (
+            SourcedTrackEntity,
+            BaseReferences<
+              _$AppDatabase,
+              $SourcedTrackTableTable,
+              SourcedTrackEntity
+            >,
+          ),
+          SourcedTrackEntity,
+          PrefetchHooks Function()
+        > {
+  $$SourcedTrackTableTableTableManager(
+    _$AppDatabase db,
+    $SourcedTrackTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SourcedTrackTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SourcedTrackTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SourcedTrackTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> trackId = const Value.absent(),
+                Value<String> sourceId = const Value.absent(),
+                Value<String?> libraryId = const Value.absent(),
+                Value<String> qualities = const Value.absent(),
+                Value<String> urlMap = const Value.absent(),
+                Value<String> cachePathMap = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SourcedTrackTableCompanion(
+                trackId: trackId,
+                sourceId: sourceId,
+                libraryId: libraryId,
+                qualities: qualities,
+                urlMap: urlMap,
+                cachePathMap: cachePathMap,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String trackId,
+                required String sourceId,
+                Value<String?> libraryId = const Value.absent(),
+                Value<String> qualities = const Value.absent(),
+                Value<String> urlMap = const Value.absent(),
+                Value<String> cachePathMap = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SourcedTrackTableCompanion.insert(
+                trackId: trackId,
+                sourceId: sourceId,
+                libraryId: libraryId,
+                qualities: qualities,
+                urlMap: urlMap,
+                cachePathMap: cachePathMap,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SourcedTrackTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SourcedTrackTableTable,
+      SourcedTrackEntity,
+      $$SourcedTrackTableTableFilterComposer,
+      $$SourcedTrackTableTableOrderingComposer,
+      $$SourcedTrackTableTableAnnotationComposer,
+      $$SourcedTrackTableTableCreateCompanionBuilder,
+      $$SourcedTrackTableTableUpdateCompanionBuilder,
+      (
+        SourcedTrackEntity,
+        BaseReferences<
+          _$AppDatabase,
+          $SourcedTrackTableTable,
+          SourcedTrackEntity
+        >,
+      ),
+      SourcedTrackEntity,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2089,4 +2891,6 @@ class $AppDatabaseManager {
       $$PlayerTrackTableTableTableManager(_db, _db.playerTrackTable);
   $$PlayHistoryTableTableTableManager get playHistoryTable =>
       $$PlayHistoryTableTableTableManager(_db, _db.playHistoryTable);
+  $$SourcedTrackTableTableTableManager get sourcedTrackTable =>
+      $$SourcedTrackTableTableTableManager(_db, _db.sourcedTrackTable);
 }

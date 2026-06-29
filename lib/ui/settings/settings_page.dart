@@ -12,6 +12,11 @@ import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/modules/my/service/update_service.dart';
 import 'package:pomelo/ui/settings/playback_settings_page.dart';
 
+/// 缓存大小（字节）Provider，autoDispose 便于手动刷新
+final _cacheSizeProvider = FutureProvider.autoDispose<int>((ref) async {
+  return MusicCacheDir.getCacheSize();
+});
+
 /// 设置页面 — 用户设置中心
 ///
 /// 包含应用全局设置项，各设置直接通过 UserPreference 读写。
@@ -33,6 +38,10 @@ class SettingsPage extends HookConsumerWidget {
     final cacheDirectory = ref.watch(
       userPreferenceProvider.select((p) => p.cacheDirectory),
     );
+    final cacheSizeLimitGB = ref.watch(
+      userPreferenceProvider.select((p) => p.cacheSizeLimitGB),
+    );
+    final cacheSizeAsync = ref.watch(_cacheSizeProvider);
     final checking = useState(false);
 
     Future<void> checkForUpdate() async {
@@ -54,6 +63,8 @@ class SettingsPage extends HookConsumerWidget {
       );
       if (result == null) return;
       await ref.read(userPreferenceProvider.notifier).setCacheDirectory(result);
+      // 切换目录后刷新缓存大小统计
+      ref.invalidate(_cacheSizeProvider);
       if (context.mounted) {
         showToast(
           context: context,
@@ -63,8 +74,20 @@ class SettingsPage extends HookConsumerWidget {
       }
     }
 
+    Future<void> openCacheDirectory() async {
+      final ok = await MusicCacheDir.openDirectory();
+      if (!ok && context.mounted) {
+        showToast(
+          context: context,
+          builder: (ctx, overlay) =>
+              const _ToastCard(text: '无法打开缓存目录'),
+        );
+      }
+    }
+
     Future<void> clearCache() async {
       await MusicCacheDir.clear();
+      ref.invalidate(_cacheSizeProvider);
       if (context.mounted) {
         showToast(
           context: context,
@@ -149,11 +172,69 @@ class SettingsPage extends HookConsumerWidget {
                   if (cacheDirectory != null)
                     IconButton.text(
                       icon: const Icon(Icons.restore, size: 18),
-                      onPressed: () => ref
-                          .read(userPreferenceProvider.notifier)
-                          .setCacheDirectory(null),
+                      onPressed: () {
+                        ref
+                            .read(userPreferenceProvider.notifier)
+                            .setCacheDirectory(null);
+                        ref.invalidate(_cacheSizeProvider);
+                      },
                     ),
                 ],
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.open_in_new, size: 20),
+              title: const Text('打开缓存目录'),
+              onTap: openCacheDirectory,
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.data_usage, size: 20),
+              title: const Text('缓存大小'),
+              subtitle: Text(
+                cacheSizeAsync.when(
+                  loading: () => '计算中…',
+                  error: (_, _) => '无法获取',
+                  data: (bytes) =>
+                      '${_formatBytes(bytes)} / $cacheSizeLimitGB GB',
+                ),
+              ),
+              trailing: IconButton.text(
+                icon: const Icon(Icons.refresh, size: 18),
+                onPressed: () => ref.invalidate(_cacheSizeProvider),
+              ),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.cloud_upload_outlined, size: 20),
+              title: const Text('缓存上限'),
+              trailing: Select<int>(
+                value: cacheSizeLimitGB,
+                onChanged: (value) {
+                  if (value != null) {
+                    ref
+                        .read(userPreferenceProvider.notifier)
+                        .setCacheSizeLimitGB(value);
+                  }
+                },
+                popup: SelectPopup(
+                  items: SelectItemList(
+                    children: [
+                      for (int i = 1; i <= 5; i++)
+                        SelectItemButton(
+                          value: i,
+                          child: Text('$i GB'),
+                        ),
+                    ],
+                  ),
+                ).call,
+                itemBuilder: (context, value) => Text(
+                  '$value GB',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.mutedForeground,
+                  ),
+                ),
               ),
             ),
             const Divider(height: 1),
@@ -371,4 +452,19 @@ class _ToastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(child: Text(text));
   }
+}
+
+/// 字节数格式化为人类可读字符串（如 "1.23 GB"、"456.7 MB"）
+String _formatBytes(int bytes) {
+  if (bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  var size = bytes.toDouble();
+  var unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+  return unitIndex <= 1
+      ? '${size.toStringAsFixed(0)} ${units[unitIndex]}'
+      : '${size.toStringAsFixed(2)} ${units[unitIndex]}';
 }
