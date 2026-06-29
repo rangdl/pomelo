@@ -1,7 +1,7 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
-import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 
@@ -33,6 +33,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
     final isLoading = useState(false);
     final error = useState<String?>(null);
     final isEditing = initialConfig != null;
+    final proxyPlayback = useState(initialConfig?.proxyPlayback ?? false);
 
     Future<void> submit() async {
       final serverUrl = serverUrlController.text.trim();
@@ -54,9 +55,9 @@ class _LxServerAccountContent extends HookConsumerWidget {
           username: username,
           password: password,
           displayName: displayName.isEmpty ? null : displayName,
+          proxyPlayback: proxyPlayback.value,
         ));
-        Rx.toast.success(isEditing ? '已更新' : '连接成功');
-        if (context.mounted) Navigator.of(context).pop(true);
+        if (context.mounted) context.toast.success(isEditing ? '已更新' : '连接成功');
       } catch (e) {
         isLoading.value = false;
         final msg = e
@@ -64,7 +65,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
             .replaceFirst('StateError: ', '')
             .replaceFirst('Exception: ', '');
         error.value = msg;
-        Rx.toast.error(isEditing ? '更新失败: $msg' : '连接失败: $msg');
+        if (context.mounted) context.toast.error(isEditing ? '更新失败: $msg' : '连接失败: $msg');
       }
     }
 
@@ -123,6 +124,19 @@ class _LxServerAccountContent extends HookConsumerWidget {
         const Gap(4),
         Text(
           '显示名称（可选）',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.mutedForeground,
+          ),
+        ),
+        const Gap(12),
+        Switch(
+          value: proxyPlayback.value,
+          onChanged: (v) => proxyPlayback.value = v,
+        ),
+        const Gap(4),
+        Text(
+          '代理播放：开启后通过服务器代理获取音频流，适用于 CDN 直链无法直接访问的场景',
           style: TextStyle(
             fontSize: 12,
             color: Theme.of(context).colorScheme.mutedForeground,

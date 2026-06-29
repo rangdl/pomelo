@@ -11,7 +11,11 @@ typedef SubsonicAccountRecord = ({
   String serverUrl,
   String username,
   String password,
+  String? token,
+  String? salt,
   String? displayName,
+  String? version,
+  String? pathPrefix,
 });
 
 /// 去除 serverUrl 末尾的多余斜杠
@@ -36,6 +40,10 @@ final subsonicServersProvider =
           serverUrl: cleanUrl,
           username: account.username,
           password: account.password,
+          token: account.token,
+          salt: account.salt,
+          version: account.version,
+          pathPrefix: account.pathPrefix,
         );
 
         try {
@@ -91,6 +99,10 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
       serverUrl: cleanUrl,
       username: config.username,
       password: config.password,
+      token: config.token,
+      salt: config.salt,
+      version: config.version,
+      pathPrefix: config.pathPrefix,
     );
     try {
       await client.ping();
@@ -105,7 +117,11 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
       serverUrl: cleanUrl,
       username: config.username,
       password: config.password,
+      token: config.token,
+      salt: config.salt,
       displayName: config.displayName,
+      version: config.version,
+      pathPrefix: config.pathPrefix,
     );
     await ref.read(userPreferenceProvider.notifier).setSubsonicAccounts([
       ...currentAccounts,
@@ -158,6 +174,10 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
       serverUrl: cleanUrl,
       username: config.username,
       password: config.password,
+      token: config.token,
+      salt: config.salt,
+      version: config.version,
+      pathPrefix: config.pathPrefix,
     );
     try {
       await client.ping();
@@ -176,7 +196,11 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
           serverUrl: cleanUrl,
           username: config.username,
           password: config.password,
+          token: config.token,
+          salt: config.salt,
           displayName: config.displayName,
+          version: config.version,
+          pathPrefix: config.pathPrefix,
         );
       }
       return a;

@@ -1,6 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -64,7 +65,7 @@ class TrackMoreActionsButton extends HookConsumerWidget {
         child: const Text('下一首播放'),
         onPressed: (_) {
           notifier.addTracksAtFirst([track]);
-          Rx.toast.success('已添加到下一首');
+          context.toast.success('已添加到下一首');
         },
       ),
       MenuButton(
@@ -72,7 +73,7 @@ class TrackMoreActionsButton extends HookConsumerWidget {
         child: const Text('添加到播放列表'),
         onPressed: (_) {
           notifier.addTracks([track]);
-          Rx.toast.success('已添加到播放列表');
+          context.toast.success('已添加到播放列表');
         },
       ),
       if (onRemoveFromQueue != null)
@@ -90,7 +91,7 @@ class TrackMoreActionsButton extends HookConsumerWidget {
           ),
           onPressed: (_) {
             onRemoveFromQueue!.call();
-            Rx.toast.success('已从列表移除');
+            context.toast.success('已从列表移除');
           },
         ),
     ];
@@ -166,7 +167,7 @@ class TrackMoreActionsContent extends HookConsumerWidget {
             onTap: () {
               notifier.addTracksAtFirst([track]);
               closeOverlay(context);
-              Rx.toast.success('已添加到下一首');
+              context.toast.success('已添加到下一首');
             },
           ),
           const Divider(height: 1),
@@ -176,7 +177,7 @@ class TrackMoreActionsContent extends HookConsumerWidget {
             onTap: () {
               notifier.addTracks([track]);
               closeOverlay(context);
-              Rx.toast.success('已添加到播放列表');
+              context.toast.success('已添加到播放列表');
             },
           ),
           if (onRemoveFromQueue != null) ...[
@@ -194,7 +195,7 @@ class TrackMoreActionsContent extends HookConsumerWidget {
               onTap: () {
                 onRemoveFromQueue!.call();
                 closeOverlay(context);
-                Rx.toast.success('已从列表移除');
+                context.toast.success('已从列表移除');
               },
             ),
           ],

@@ -6,7 +6,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../providers/lx_metadata_plugin_paths_provider.dart';
@@ -60,10 +60,10 @@ class _LxPluginContent extends HookConsumerWidget {
         final paths = await pickFiles();
         if (paths.isNotEmpty) {
           await ref.read(lxMetadataPluginPathsProvider.notifier).addPlugin(paths.first);
-          Rx.toast.success('元数据插件已添加');
+          if (context.mounted) context.toast.success('元数据插件已添加');
         }
       } catch (e) {
-        Rx.toast.error('添加失败: $e');
+        if (context.mounted) context.toast.error('添加失败: $e');
       } finally {
         isLoading.value = false;
       }
@@ -75,10 +75,10 @@ class _LxPluginContent extends HookConsumerWidget {
         final paths = await pickFiles();
         if (paths.isNotEmpty) {
           await ref.read(lxMetadataPluginPathsProvider.notifier).replacePlugin(paths.first);
-          Rx.toast.success('元数据插件已替换');
+          if (context.mounted) context.toast.success('元数据插件已替换');
         }
       } catch (e) {
-        Rx.toast.error('替换失败: $e');
+        if (context.mounted) context.toast.error('替换失败: $e');
       } finally {
         isLoading.value = false;
       }
@@ -87,9 +87,9 @@ class _LxPluginContent extends HookConsumerWidget {
     Future<void> removeMetadataPlugin(String path) async {
       try {
         await ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin(path);
-        Rx.toast.success('元数据插件已移除');
+        if (context.mounted) context.toast.success('元数据插件已移除');
       } catch (e) {
-        Rx.toast.error('移除失败: $e');
+        if (context.mounted) context.toast.error('移除失败: $e');
       }
     }
 
@@ -103,10 +103,10 @@ class _LxPluginContent extends HookConsumerWidget {
           await ref.read(lxSourcePluginPathsProvider.notifier).addPlugin(path);
         }
         if (paths.isNotEmpty) {
-          Rx.toast.success('已添加 ${paths.length} 个音源插件');
+          if (context.mounted) context.toast.success('已添加 ${paths.length} 个音源插件');
         }
       } catch (e) {
-        Rx.toast.error('添加失败: $e');
+        if (context.mounted) context.toast.error('添加失败: $e');
       } finally {
         isLoading.value = false;
       }
@@ -120,10 +120,10 @@ class _LxPluginContent extends HookConsumerWidget {
           await ref
               .read(lxSourcePluginPathsProvider.notifier)
               .replacePlugin(oldPath, paths.first);
-          Rx.toast.success('音源插件已替换');
+          if (context.mounted) context.toast.success('音源插件已替换');
         }
       } catch (e) {
-        Rx.toast.error('替换失败: $e');
+        if (context.mounted) context.toast.error('替换失败: $e');
       } finally {
         isLoading.value = false;
       }
@@ -132,9 +132,9 @@ class _LxPluginContent extends HookConsumerWidget {
     Future<void> removeSourcePlugin(String path) async {
       try {
         await ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(path);
-        Rx.toast.success('音源插件已移除');
+        if (context.mounted) context.toast.success('音源插件已移除');
       } catch (e) {
-        Rx.toast.error('移除失败: $e');
+        if (context.mounted) context.toast.error('移除失败: $e');
       }
     }
 

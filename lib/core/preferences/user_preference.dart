@@ -27,12 +27,19 @@ class LxServerConfig {
   final String? displayName;
   final String? token;
 
+  /// 是否启用代理播放
+  ///
+  /// 开启后获取到播放链接后，调用 GET `/api/music/download?url=<播放链接>`
+  /// 让服务器代理获取并转发音频流，适用于 CDN 直链无法直接访问的场景。
+  final bool proxyPlayback;
+
   const LxServerConfig({
     required this.serverUrl,
     required this.username,
     required this.password,
     this.displayName,
     this.token,
+    this.proxyPlayback = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +48,7 @@ class LxServerConfig {
         'password': password,
         'displayName': displayName,
         'token': token,
+        'proxyPlayback': proxyPlayback,
       };
 
   factory LxServerConfig.fromJson(Map<String, dynamic> json) {
@@ -50,6 +58,7 @@ class LxServerConfig {
       password: json['password'] as String? ?? '',
       displayName: json['displayName'] as String?,
       token: json['token'] as String?,
+      proxyPlayback: json['proxyPlayback'] as bool? ?? false,
     );
   }
 
@@ -59,6 +68,7 @@ class LxServerConfig {
     String? password,
     String? displayName,
     String? token,
+    bool? proxyPlayback,
   }) {
     return LxServerConfig(
       serverUrl: serverUrl ?? this.serverUrl,
@@ -66,30 +76,70 @@ class LxServerConfig {
       password: password ?? this.password,
       displayName: displayName ?? this.displayName,
       token: token ?? this.token,
+      proxyPlayback: proxyPlayback ?? this.proxyPlayback,
     );
   }
 }
 
 /// Subsonic 账号配置
+///
+/// 参考接口：
+/// ```ts
+/// interface SubsonicConfig {
+///   url: string;          // serverUrl
+///   username: string;     // username
+///   password?: string;    // password（与 token/salt 二选一）
+///   token?: string;       // 预计算 token（与 salt 配对使用）
+///   salt?: string;        // 预计算 salt（与 token 配对使用）
+///   name: string;         // displayName
+///   version?: string;     // API 版本，默认 '1.16.1'
+///   pathPrefix?: string;  // API 路径前缀，默认 '/rest'，部分服务器需设为空
+/// }
+/// ```
 @immutable
 class SubsonicAccountConfig {
   final String serverUrl;
   final String username;
+
+  /// 密码（明文）。与 [token]+[salt] 二选一：
+  /// - 若提供 [token] + [salt]，则使用 token+salt 认证
+  /// - 否则使用 password + 随机 salt + MD5 生成 token
   final String password;
+
+  /// 预计算 token（与 [salt] 配对使用）
+  final String? token;
+
+  /// 预计算 salt（与 [token] 配对使用）
+  final String? salt;
+
   final String? displayName;
+
+  /// API 版本，默认 '1.16.1'
+  final String? version;
+
+  /// API 路径前缀，默认 '/rest'；LX Music Sync Server 等需设为空字符串
+  final String? pathPrefix;
 
   const SubsonicAccountConfig({
     required this.serverUrl,
     required this.username,
     required this.password,
+    this.token,
+    this.salt,
     this.displayName,
+    this.version,
+    this.pathPrefix,
   });
 
   Map<String, dynamic> toJson() => {
         'serverUrl': serverUrl,
         'username': username,
         'password': password,
+        'token': token,
+        'salt': salt,
         'displayName': displayName,
+        'version': version,
+        'pathPrefix': pathPrefix,
       };
 
   factory SubsonicAccountConfig.fromJson(Map<String, dynamic> json) {
@@ -97,7 +147,33 @@ class SubsonicAccountConfig {
       serverUrl: json['serverUrl'] as String? ?? '',
       username: json['username'] as String? ?? '',
       password: json['password'] as String? ?? '',
+      token: json['token'] as String?,
+      salt: json['salt'] as String?,
       displayName: json['displayName'] as String?,
+      version: json['version'] as String?,
+      pathPrefix: json['pathPrefix'] as String?,
+    );
+  }
+
+  SubsonicAccountConfig copyWith({
+    String? serverUrl,
+    String? username,
+    String? password,
+    String? token,
+    String? salt,
+    String? displayName,
+    String? version,
+    String? pathPrefix,
+  }) {
+    return SubsonicAccountConfig(
+      serverUrl: serverUrl ?? this.serverUrl,
+      username: username ?? this.username,
+      password: password ?? this.password,
+      token: token ?? this.token,
+      salt: salt ?? this.salt,
+      displayName: displayName ?? this.displayName,
+      version: version ?? this.version,
+      pathPrefix: pathPrefix ?? this.pathPrefix,
     );
   }
 }

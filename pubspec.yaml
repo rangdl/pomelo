@@ -39,7 +39,6 @@ dependencies:
   json_repair_flutter: ^2.0.2
   package_info_plus: ^9.0.1
   # fluxy: ^1.2.3
-  bot_toast: ^4.1.0 #null safety
   dio: ^5.9.2 # 网络请求库
 
   # 状态管理核心

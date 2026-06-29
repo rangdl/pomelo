@@ -399,6 +399,22 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     launchUrl(Uri.parse(finalUrl));
   }
 
+  /// 通过巨魔商店（TrollStore）安装 IPA
+  ///
+  /// 调用 URL scheme `apple-magnifier://install?url=<IPA_URL>` 拉起巨魔商店。
+  /// 加速地址处理与 [_download] 一致，便于在受限网络环境下使用。
+  Future<void> _openWithTrollStore() async {
+    final url = widget.result.downloadUrl;
+    if (url == null) return;
+    final proxy = _proxyController.text;
+    await widget.onSaveProxy(proxy);
+    final finalUrl = UpdateService.applyProxy(url, proxy);
+    final trollUrl =
+        'apple-magnifier://install?url=${Uri.encodeComponent(finalUrl)}';
+    _close();
+    launchUrl(Uri.parse(trollUrl));
+  }
+
   @override
   Widget build(BuildContext context) {
     final result = widget.result;
@@ -436,6 +452,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
               launchUrl(Uri.parse(UpdateService.releasesLatestUrl)),
           child: const Text('更新日志'),
         ),
+        PrimaryButton(onPressed: _openWithTrollStore, child: const Text('巨魔打开')),
         PrimaryButton(onPressed: _download, child: const Text('前往下载')),
       ],
     );
