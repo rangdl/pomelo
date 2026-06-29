@@ -78,7 +78,7 @@ class AppToast {
     return showToast(
       context: context,
       showDuration: duration ?? const Duration(seconds: 2),
-      location: ToastLocation.topCenter,
+      location: ToastLocation.topRight,
       builder: (context, overlay) => _AppToastCard(
         message: msg,
         color: color,
@@ -90,6 +90,9 @@ class AppToast {
 }
 
 /// Toast 卡片组件
+///
+/// 右上角展示，宽度根据文本自适应（最大 480）。
+/// 使用彩色左边框区分类型：成功绿、警告黄、错误红、信息蓝。
 class _AppToastCard extends StatelessWidget {
   final String message;
   final Color color;
@@ -105,46 +108,53 @@ class _AppToastCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       constraints: const BoxConstraints(maxWidth: 480),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: color,
+        color: theme.colorScheme.card,
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.white, size: 18),
-          const Gap(8),
-          Flexible(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-            ),
-          ),
-          if (onDismiss != null) ...[
+      child: IntrinsicWidth(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 18),
             const Gap(8),
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                onTap: onDismiss,
-                child: Icon(
-                  Icons.close,
-                  color: Colors.white.withValues(alpha: 0.7),
-                  size: 16,
+            Flexible(
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: theme.colorScheme.cardForeground,
+                  fontSize: 13,
                 ),
               ),
             ),
+            if (onDismiss != null) ...[
+              const Gap(8),
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: onDismiss,
+                  child: Icon(
+                    Icons.close,
+                    color: theme.colorScheme.mutedForeground,
+                    size: 16,
+                  ),
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
