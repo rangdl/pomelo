@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:bot_toast/bot_toast.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' show MediaKit;
@@ -15,6 +14,7 @@ import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/theme/app_theme.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/audio_player/audio_player_module.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/providers/current_lyric_provider.dart';
@@ -25,7 +25,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'core/helper.dart';
 
-final appRouter = AppRouter();
+final appRouter = AppRouter(navigatorKey: appNavigatorKey);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -158,9 +158,6 @@ class _AppShell extends HookConsumerWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       routerConfig: appRouter.config(),
-      builder: (context, child) {
-        return BotToastInit()(context, child ?? const SizedBox.shrink());
-      },
     );
   }
 

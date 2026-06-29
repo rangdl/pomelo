@@ -24,6 +24,7 @@ final lxServerMusicServerProvider =
         username: config.username,
         password: config.password,
         token: config.token,
+        proxyPlayback: config.proxyPlayback,
       );
 
       try {
@@ -63,6 +64,7 @@ typedef LxServerConnectionConfig = ({
   String username,
   String password,
   String? displayName,
+  bool proxyPlayback,
 });
 
 /// Lx Server 连接状态 Notifier
@@ -103,6 +105,7 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
         password: config.password,
         displayName: config.displayName,
         token: token,
+        proxyPlayback: config.proxyPlayback,
       ),
     );
 

@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/core/models/metadata/music_source_type.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
@@ -516,9 +517,9 @@ class ServicePage extends HookConsumerWidget {
         default:
           break;
       }
-      Rx.toast.success('已移除 ${service.sourceName}');
+      context.toast.success('已移除 ${service.sourceName}');
     } catch (e) {
-      Rx.toast.error('移除失败: $e');
+      context.toast.error('移除失败: $e');
     }
   }
 }

@@ -9,8 +9,16 @@ import 'subsonic_models.dart';
 
 /// Subsonic REST API HTTP 客户端
 ///
-/// 封装认证、请求构造和响应解析。
-/// 使用 token + salt 认证方式（API 1.13.0+）。
+/// 封装认证、请求构造和响应解析。参考 songloft subsonic client.ts 实现。
+///
+/// 认证策略：
+/// - 若提供 [token] + [salt]，使用预计算的 token + salt（适用于 LX Music Sync Server 等）
+/// - 否则使用 [password] + 每次请求随机生成的 salt + MD5(password + salt) 生成 token
+///
+/// 路径前缀 [pathPrefix]：
+/// - 默认 '/rest'（标准 Subsonic/Navidrome）
+/// - 设为空字符串时支持 LX Music Sync Server 等
+/// - 自定义前缀（如 '/custom/rest'）会被规范化处理
 class SubsonicClient {
   /// 服务器地址（不含尾部斜杠），如 'https://music.example.com'
   final String serverUrl;
@@ -18,11 +26,20 @@ class SubsonicClient {
   /// 用户名
   final String username;
 
-  /// 密码
+  /// 密码（明文）。当未提供 [token]+[salt] 时使用
   final String password;
 
-  /// REST API 协议版本
-  static const String _apiVersion = '1.16.1';
+  /// 预计算 token（与 [salt] 配对使用）
+  final String? token;
+
+  /// 预计算 salt（与 [token] 配对使用）
+  final String? salt;
+
+  /// REST API 协议版本，默认 '1.16.1'
+  final String apiVersion;
+
+  /// API 路径前缀，默认 '/rest'；LX Music Sync Server 等需设为空字符串
+  final String pathPrefix;
 
   /// 客户端标识
   static const String _clientName = 'pomelo';
@@ -34,18 +51,26 @@ class SubsonicClient {
     required this.serverUrl,
     required this.username,
     required this.password,
+    this.token,
+    this.salt,
+    String? version,
+    String? pathPrefix,
     Dio? dio,
-  }) : _dio = dio ?? Dio(BaseOptions(
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 30),
-        ));
+  })  : apiVersion = version ?? '1.16.1',
+        pathPrefix = pathPrefix ?? '/rest',
+        _dio = dio ??
+            Dio(BaseOptions(
+              connectTimeout: const Duration(seconds: 10),
+              receiveTimeout: const Duration(seconds: 30),
+            ));
 
   // ========== 认证 ==========
 
   /// 生成随机 salt 字符串
   String _generateSalt() {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    return List.generate(6, (_) => chars[_random.nextInt(chars.length)]).join();
+    return List.generate(6, (_) => chars[_random.nextInt(chars.length)])
+        .join();
   }
 
   /// 计算 MD5 哈希（返回 32 位小写十六进制字符串）
@@ -58,18 +83,57 @@ class SubsonicClient {
     return out.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 
+  /// 是否使用预计算的 token + salt 认证
+  bool get _useStaticToken =>
+      token != null &&
+      token!.isNotEmpty &&
+      salt != null &&
+      salt!.isNotEmpty;
+
   /// 构造每次请求的公共认证参数
   Map<String, dynamic> get _authParams {
-    final salt = _generateSalt();
-    final token = _md5Hex(password + salt);
-    return {
+    final result = <String, dynamic>{
       'u': username,
-      't': token,
-      's': salt,
-      'v': _apiVersion,
+      'v': apiVersion,
       'c': _clientName,
       'f': 'json',
     };
+    if (_useStaticToken) {
+      result['t'] = token!;
+      result['s'] = salt!;
+    } else {
+      final dynamicSalt = _generateSalt();
+      final dynamicToken = _md5Hex(password + dynamicSalt);
+      result['t'] = dynamicToken;
+      result['s'] = dynamicSalt;
+    }
+    return result;
+  }
+
+  /// 构造完整请求 URL（参考 songloft buildUrl 实现）
+  ///
+  /// 规则：
+  /// - prefix 为空 → `${url}/${endpoint}`
+  /// - prefix 不以 '/' 结尾 → `${url}${prefix}/${endpoint}`
+  /// - prefix 以 '/' 结尾 → `${url}${prefix}${endpoint}`
+  String _buildUrl(String endpoint, [Map<String, dynamic>? params]) {
+    final qs = <String>[];
+    final auth = _authParams;
+    for (final entry in auth.entries) {
+      qs.add(
+        '${Uri.encodeComponent(entry.key)}=${Uri.encodeComponent(entry.value.toString())}',
+      );
+    }
+    if (params != null) {
+      for (final entry in params.entries) {
+        qs.add(
+          '${Uri.encodeComponent(entry.key)}=${Uri.encodeComponent(entry.value.toString())}',
+        );
+      }
+    }
+    final prefix = pathPrefix;
+    final sep = prefix.isEmpty || prefix.endsWith('/') ? '' : '/';
+    return '$serverUrl$prefix$sep$endpoint?${qs.join('&')}';
   }
 
   // ========== 底层请求 ==========
@@ -79,10 +143,8 @@ class SubsonicClient {
     String endpoint, {
     Map<String, dynamic>? params,
   }) async {
-    final queryParams = {..._authParams, ...?params};
     final response = await _dio.get<Map<String, dynamic>>(
-      '$serverUrl/rest/$endpoint',
-      queryParameters: queryParams,
+      _buildUrl(endpoint, params),
       options: Options(responseType: ResponseType.json),
     );
     final json = response.data!;
@@ -262,23 +324,14 @@ class SubsonicClient {
 
   /// 构造歌曲播放 URL（带认证参数）
   String buildStreamUrl(String songId) {
-    final params = {..._authParams, 'id': songId};
-    final query = params.entries
-        .map((e) =>
-            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
-        .join('&');
-    return '$serverUrl/rest/stream?$query';
+    return _buildUrl('stream', {'id': songId});
   }
 
   /// 构造封面图片 URL（带认证参数）
   String buildCoverArtUrl(String coverArtId, {int? size}) {
-    final params = {..._authParams, 'id': coverArtId};
+    final params = <String, dynamic>{'id': coverArtId};
     if (size != null) params['size'] = size;
-    final query = params.entries
-        .map((e) =>
-            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
-        .join('&');
-    return '$serverUrl/rest/getCoverArt?$query';
+    return _buildUrl('getCoverArt', params);
   }
 
   // ========== Media Annotation ==========

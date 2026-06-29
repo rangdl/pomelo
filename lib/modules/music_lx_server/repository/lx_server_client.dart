@@ -1,9 +1,42 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:pomelo/core/log.dart';
+import 'package:pomelo/core/toast.dart';
 
 import 'lx_server_models.dart';
+
+/// SSE 进度事件
+///
+/// 由 `/api/music/progress` 端点以 Server-Sent Events 协议返回。
+class LxServerProgressEvent {
+  /// 来源名称（一般为音源标识）
+  final String name;
+
+  /// 状态：'success' | 'fail' | 其他
+  final String status;
+
+  /// 详细信息（不为空时应该用 Toast 提示用户）
+  final String message;
+
+  const LxServerProgressEvent({
+    required this.name,
+    required this.status,
+    required this.message,
+  });
+
+  factory LxServerProgressEvent.fromJson(Map<String, dynamic> json) {
+    return LxServerProgressEvent(
+      name: json['name'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      message: json['message'] as String? ?? '',
+    );
+  }
+
+  bool get isSuccess => status == 'success';
+  bool get isFail => status == 'fail';
+}
 
 /// Lx Server HTTP 客户端
 ///
@@ -22,6 +55,13 @@ class LxServerClient {
   /// 登录后获取的 Token
   String? token;
 
+  /// 是否启用代理播放
+  ///
+  /// 开启后 [getMusicUrl] 返回的 URL 会被包装成
+  /// `/api/music/download?url=<原始URL>&filename=<歌名 - 歌手.mp3>&inline=1`
+  /// 让服务器代理获取并转发音频流。
+  final bool proxyPlayback;
+
   final Dio _dio;
 
   LxServerClient({
@@ -29,6 +69,7 @@ class LxServerClient {
     required this.username,
     required this.password,
     this.token,
+    this.proxyPlayback = false,
     Dio? dio,
   }) : _dio =
            dio ??
@@ -256,24 +297,47 @@ class LxServerClient {
   /// [songInfo] 完整歌曲信息（含 source、hash、songmid、_types 及各平台特有字段），
   ///            服务端 normalizeSongInfo 会根据 source 选取所需字段。
   /// [quality] 质量标识，如 '128k'、'320k'、'flac'。
+  /// [filename] 代理播放时使用的文件名（如 "歌名 - 歌手.mp3"）。
+  ///
+  /// 请求流程：
+  /// 1. 生成随机 x-req-id，附加到请求头
+  /// 2. 发起 POST /api/music/url 获取播放链接
+  /// 3. 同时（非阻塞）调用 /api/music/progress?reqId=<> 通过 SSE 接收解析进度
+  /// 4. 若 [proxyPlayback] 为 true，将返回的 URL 包装为代理下载 URL
   Future<String> getMusicUrl({
     required Map<String, dynamic> songInfo,
     String quality = '128k',
+    String? filename,
   }) async {
     await ensureLoggedIn();
     final source = songInfo['source'] as String? ?? '';
     final hash = songInfo['hash'] as String? ?? '';
     final typesMap = songInfo['_types'] as Map<String, dynamic>? ?? const {};
+
+    // 生成随机 reqId 用于关联 SSE 进度流
+    final reqId = _generateReqId();
+
     log.info(
       'LxServer',
       '获取播放链接: source=$source, hash=$hash, quality=$quality, '
-          '可用质量=${typesMap.keys.toList()}',
+          '可用质量=${typesMap.keys.toList()}, reqId=$reqId',
     );
+
+    // 启动 SSE 进度监听（不阻塞主请求）
+    final progressFuture = _listenProgress(reqId);
+
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '$serverUrl/api/music/url',
         data: {'songInfo': songInfo, 'quality': quality},
-        options: _authOptions.copyWith(contentType: Headers.jsonContentType),
+        options: _authOptions.copyWith(
+          contentType: Headers.jsonContentType,
+          headers: {
+            'x-user-name': username,
+            'x-user-token': token ?? '',
+            'x-req-id': reqId,
+          },
+        ),
       );
       final data = response.data!;
       final url = data['url'] as String?;
@@ -291,6 +355,24 @@ class LxServerClient {
         '获取播放链接成功: source=$source, hash=$hash, quality=$quality, '
             'url=${url.length > 80 ? '${url.substring(0, 80)}...' : url}',
       );
+
+      // 等待 SSE 流结束（进度已通过 Toast 实时提示）
+      // 添加 3 秒超时，避免服务器未正确关闭 SSE 流时阻塞播放
+      try {
+        await progressFuture.timeout(const Duration(seconds: 3));
+      } catch (_) {
+        // 超时或异常都不影响主流程
+      }
+
+      // 代理播放：将原始 URL 包装为 /api/music/download
+      if (proxyPlayback) {
+        final proxyUrl = _buildProxyDownloadUrl(url, filename);
+        log.info(
+          'LxServer',
+          '代理播放已启用: filename=$filename, proxyUrl=${proxyUrl.length > 100 ? '${proxyUrl.substring(0, 100)}...' : proxyUrl}',
+        );
+        return proxyUrl;
+      }
       return url;
     } catch (e, s) {
       // 已记录过日志的 Exception 直接 rethrow
@@ -305,6 +387,108 @@ class LxServerClient {
       );
       rethrow;
     }
+  }
+
+  /// 生成随机 reqId（16 位十六进制）
+  String _generateReqId() {
+    final random = DateTime.now().microsecondsSinceEpoch;
+    final salt = random.toRadixString(16).padLeft(8, '0');
+    final randomPart = (random ^ (random << 13))
+        .toUnsigned(64)
+        .toRadixString(16)
+        .padLeft(8, '0');
+    return '$salt$randomPart'.substring(0, 16);
+  }
+
+  /// 通过 SSE 监听解析进度
+  ///
+  /// GET /api/music/progress?reqId=<>，使用 text/event-stream 协议。
+  /// 收到事件时，若 message 不为空则通过 Toast 提示。
+  Future<void> _listenProgress(String reqId) async {
+    try {
+      final response = await _dio.get<ResponseBody>(
+        '$serverUrl/api/music/progress',
+        queryParameters: {'reqId': reqId},
+        options: Options(
+          headers: {'x-user-name': username, 'x-user-token': token ?? ''},
+          responseType: ResponseType.stream,
+        ),
+      );
+
+      final stream = response.data!.stream;
+      final buffer = StringBuffer();
+
+      await for (final chunk in stream) {
+        buffer.write(utf8.decode(chunk));
+        // SSE 事件以空行分隔
+        while (true) {
+          final raw = buffer.toString();
+          final sepIndex = raw.indexOf('\n\n');
+          if (sepIndex < 0) break;
+          final eventBlock = raw.substring(0, sepIndex);
+          buffer.clear();
+          // 保留分隔符之后的内容
+          if (sepIndex + 2 < raw.length) {
+            buffer.write(raw.substring(sepIndex + 2));
+          }
+          _handleSseEvent(eventBlock);
+        }
+      }
+    } catch (e) {
+      // SSE 进度是辅助提示，失败不影响主流程
+      log.debug('LxServer', 'SSE 进度监听异常（可忽略）: $e');
+    }
+  }
+
+  /// 解析单个 SSE 事件块
+  void _handleSseEvent(String eventBlock) {
+    String? dataLine;
+    for (final line in eventBlock.split('\n')) {
+      if (line.startsWith('data:')) {
+        dataLine = line.substring(5).trim();
+      }
+    }
+    if (dataLine == null || dataLine.isEmpty) return;
+
+    try {
+      final json = jsonDecode(dataLine) as Map<String, dynamic>;
+      final event = LxServerProgressEvent.fromJson(json);
+      log.debug(
+        'LxServer',
+        'SSE 进度事件: name=${event.name}, status=${event.status}, '
+            'message=${event.message}',
+      );
+      // message 不为空时通过 Toast 提示
+      if (event.message.isNotEmpty) {
+        if (event.isFail) {
+          AppToast().error(event.message);
+        } else if (event.isSuccess) {
+          AppToast().success(event.message);
+        } else {
+          AppToast().info(event.message);
+        }
+      }
+    } catch (e) {
+      log.debug('LxServer', 'SSE 事件 JSON 解析失败: $e, raw=$dataLine');
+    }
+  }
+
+  /// 构造代理播放下载 URL
+  ///
+  /// GET /api/music/download?url=<播放链接>&filename=<歌名 - 歌手.mp3>&inline=1
+  String _buildProxyDownloadUrl(String originalUrl, String? filename) {
+    final params = <String, String>{
+      'url': originalUrl,
+      if (filename != null && filename.isNotEmpty) 'filename': filename,
+      'inline': '1',
+    };
+    final query = params.entries
+        .map(
+          (e) =>
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
+        )
+        .join('&');
+    return '$serverUrl/api/music/download?$query';
   }
 
   // ========== 歌词 ==========
@@ -371,6 +555,7 @@ class LxServerClient {
     'username': username,
     'password': password,
     'token': token,
+    'proxyPlayback': proxyPlayback,
   };
 
   /// 从 JSON 反序列化
@@ -380,6 +565,7 @@ class LxServerClient {
       username: json['username'] as String,
       password: json['password'] as String,
       token: json['token'] as String?,
+      proxyPlayback: json['proxyPlayback'] as bool? ?? false,
     );
   }
 

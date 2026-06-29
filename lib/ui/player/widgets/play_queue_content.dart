@@ -1,6 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
-import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
@@ -59,7 +59,7 @@ class PlayQueueContent extends HookConsumerWidget {
           },
           onClear: () {
             notifier.stop();
-            Rx.toast.success('已清空播放队列');
+            context.toast.success('已清空播放队列');
           },
         ),
         const Divider(height: 1),
