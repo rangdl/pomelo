@@ -15,6 +15,9 @@ class AudioServices with WidgetsBindingObserver {
   final WindowsAudioService? smtc;
   final AudioPlayerNotifier _playback;
 
+  /// 当前曲目的原始 artist（用于清除歌词时恢复）
+  String? _originalArtist;
+
   AudioServices(this.mobile, this.smtc, this._playback) {
     WidgetsBinding.instance.addObserver(this);
   }
@@ -36,10 +39,10 @@ class AudioServices with WidgetsBindingObserver {
                 (true) => "pomelo",
                 (_) => "oss.krtirtho.pomelo",
               },
-              androidNotificationChannelName: 'Pomelo',
+              androidNotificationChannelName: '柚子音乐',
               androidNotificationOngoing: false,
               androidStopForegroundOnPause: false,
-              androidNotificationChannelDescription: "Pomelo Media Controls",
+              androidNotificationChannelDescription: "柚子音乐媒体控制",
             ),
           )
         : null;
@@ -49,6 +52,7 @@ class AudioServices with WidgetsBindingObserver {
   }
 
   Future<void> addTrack(Track track) async {
+    _originalArtist = track.artist;
     await smtc?.addTrack(track);
     mobile?.addItem(
       MediaItem(
@@ -61,6 +65,24 @@ class AudioServices with WidgetsBindingObserver {
         playable: true,
       ),
     );
+  }
+
+  /// 更新歌词到 artist 展示位置
+  ///
+  /// 将当前歌词行写入系统媒体控制的 artist 字段，
+  /// 便于在各平台的音频控制位置（通知栏、锁屏、SMTC）展示歌词。
+  /// 传入 null 时恢复原始 artist。
+  Future<void> updateLyric(String? line) async {
+    final artist = line ?? _originalArtist;
+
+    // 移动端：更新 mediaItem 的 artist 字段
+    final currentMediaItem = mobile?.mediaItem.value;
+    if (currentMediaItem != null) {
+      mobile?.mediaItem.add(currentMediaItem.copyWith(artist: artist));
+    }
+
+    // Windows 端：更新 SMTC 元数据的 artist 字段
+    await smtc?.updateArtist(artist);
   }
 
   void activateSession() {

@@ -1,4 +1,4 @@
-﻿/// 音乐搜索结果页面
+/// 音乐搜索结果页面
 ///
 /// 展示根据关键词搜索到的歌曲列表。
 library;
@@ -22,7 +22,7 @@ import 'package:pomelo/ui/music/widgets/track_tile.dart';
 class MusicSearchPage extends HookConsumerWidget {
   final String keyword;
 
-  const MusicSearchPage({super.key, required this.keyword});
+  const MusicSearchPage({super.key, this.keyword = ''});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

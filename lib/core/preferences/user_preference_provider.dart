@@ -93,6 +93,11 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
   Future<void> setLocalDirectories(List<String> dirs) =>
       update((p) => p.copyWith(localDirectories: dirs));
 
+  // ==================== 缓存设置 ====================
+
+  Future<void> setCacheDirectory(String? path) =>
+      update((p) => p.copyWith(cacheDirectory: path));
+
   // ==================== music_lx 模块 ====================
 
   Future<void> setLxMetadataPluginPath(String? path) =>
