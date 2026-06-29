@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:pomelo/core/helper.dart';
 
 /// 音乐流缓存目录管理
 ///
@@ -16,6 +17,9 @@ class MusicCacheDir {
   /// 自定义缓存目录路径，null 表示使用系统默认临时目录
   static String? _customPath;
 
+  /// 缓存大小上限（GB），由 [setSizeLimit] 设置，默认 1GB
+  static int _sizeLimitGB = 1;
+
   /// 设置自定义缓存目录路径
   ///
   /// 传入 null 恢复为系统默认临时目录。
@@ -24,6 +28,14 @@ class MusicCacheDir {
     _customPath = path;
     _cachedPath = null;
   }
+
+  /// 设置缓存大小上限（GB），范围 1~5
+  static void setSizeLimit(int gb) {
+    _sizeLimitGB = gb.clamp(1, 5);
+  }
+
+  /// 获取当前缓存大小上限（GB）
+  static int get sizeLimitGB => _sizeLimitGB;
 
   /// 获取缓存目录路径（确保目录存在）
   static Future<String> get path async {
@@ -84,6 +96,34 @@ class MusicCacheDir {
     return '.mp3';
   }
 
+  /// 从扩展名推断 Content-Type
+  ///
+  /// 与 [extensionFromContentType] / [extensionFromUrl] 互逆，用于本地缓存文件响应。
+  static String contentTypeFromExtension(String extension) {
+    final ext = extension.toLowerCase();
+    if (!ext.startsWith('.')) {
+      return 'audio/mpeg';
+    }
+    switch (ext) {
+      case '.flac':
+        return 'audio/flac';
+      case '.wav':
+        return 'audio/wav';
+      case '.ogg':
+        return 'audio/ogg';
+      case '.m4a':
+      case '.mp4':
+        return 'audio/mp4';
+      case '.aac':
+        return 'audio/aac';
+      case '.wma':
+        return 'audio/x-ms-wma';
+      case '.mp3':
+      default:
+        return 'audio/mpeg';
+    }
+  }
+
   /// 检查缓存文件是否存在
   static Future<bool> exists(String trackId, String extension) async {
     final file = await getCacheFile(trackId, extension);
@@ -102,4 +142,113 @@ class MusicCacheDir {
       }
     } catch (_) {}
   }
+
+  /// 获取当前缓存总大小（字节）
+  ///
+  /// 遍历缓存目录下所有文件并累加大小。
+  /// 目录不存在或读取失败返回 0。
+  static Future<int> getCacheSize() async {
+    try {
+      final dir = await getOrCreate();
+      final cacheDir = Directory(dir);
+      if (!await cacheDir.exists()) return 0;
+      var total = 0;
+      await for (final entity in cacheDir.list(recursive: false)) {
+        if (entity is File) {
+          try {
+            total += await entity.length();
+          } catch (_) {}
+        }
+      }
+      return total;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// 按当前上限清理旧缓存文件
+  ///
+  /// 如果缓存总大小超过 [_sizeLimitGB] 转换的字节数，
+  /// 按 `lastModified` 升序删除最旧的文件，直到总大小 <= 上限。
+  static Future<void> enforceLimit() async {
+    try {
+      final limitBytes = _sizeLimitGB * 1024 * 1024 * 1024;
+      final dir = await getOrCreate();
+      final cacheDir = Directory(dir);
+      if (!await cacheDir.exists()) return;
+
+      // 收集所有文件及其大小和修改时间
+      final files = <_CacheFileEntry>[];
+      await for (final entity in cacheDir.list(recursive: false)) {
+        if (entity is File) {
+          try {
+            final stat = await entity.stat();
+            files.add(_CacheFileEntry(
+              file: entity,
+              size: stat.size,
+              modified: stat.modified,
+            ));
+          } catch (_) {}
+        }
+      }
+
+      var totalSize = files.fold<int>(0, (sum, e) => sum + e.size);
+      if (totalSize <= limitBytes) return;
+
+      // 按修改时间升序（最旧先删）
+      files.sort((a, b) => a.modified.compareTo(b.modified));
+      for (final entry in files) {
+        if (totalSize <= limitBytes) break;
+        try {
+          await entry.file.delete();
+          totalSize -= entry.size;
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  /// 在系统文件管理器中打开缓存目录
+  ///
+  /// 各平台调用方式：
+  /// - Windows: `explorer.exe "<path>"`
+  /// - macOS:   `open "<path>"`
+  /// - Linux:   `xdg-open "<path>"`
+  ///
+  /// 返回 true 表示成功打开，false 表示平台不支持或调用失败。
+  static Future<bool> openDirectory() async {
+    try {
+      final dir = await getOrCreate();
+      String command;
+      List<String> args;
+      if (Helper.isWindows) {
+        command = 'explorer.exe';
+        args = [dir];
+      } else if (Helper.isMacos) {
+        command = 'open';
+        args = [dir];
+      } else if (Helper.isLinux) {
+        command = 'xdg-open';
+        args = [dir];
+      } else {
+        return false;
+      }
+      final result = await Process.run(command, args);
+      return result.exitCode == 0;
+    } catch (_) {
+      return false;
+    }
+  }
+}
+
+/// 缓存文件条目（内部用于 [MusicCacheDir.enforceLimit] 排序）
+class _CacheFileEntry {
+  final File file;
+  final int size;
+  final DateTime modified;
+
+  const _CacheFileEntry({
+    required this.file,
+    required this.size,
+    required this.modified,
+  });
 }

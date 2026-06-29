@@ -1,8 +1,5 @@
-import 'dart:async';
-
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/player/lyric_parser.dart';
@@ -12,7 +9,9 @@ import 'package:pomelo/ui/player/lyric_parser.dart';
 /// 监听当前播放曲目的位置流，实时输出对应的歌词行文本。
 /// 当曲目无歌词或无活跃曲目时输出 null。
 /// 用于将歌词同步到系统媒体控制（audio_service / SMTC）的 artist 展示位置。
-final currentLyricLineProvider = StreamProvider.autoDispose<String?>((ref) async* {
+final currentLyricLineProvider = StreamProvider.autoDispose<String?>((
+  ref,
+) async* {
   final state = ref.watch(audioPlayerProvider.select((s) => s.activeTrack));
   final track = state;
   if (track == null) {
@@ -28,8 +27,9 @@ final currentLyricLineProvider = StreamProvider.autoDispose<String?>((ref) async
 
   // 获取音乐服务
   await ref.watch(musicServersProvider.future);
-  final service =
-      ref.watch(musicServerBySourceProvider(track.source?.id ?? ''));
+  final service = ref.watch(
+    musicServerBySourceProvider(track.source?.id ?? ''),
+  );
   if (service == null) {
     yield null;
     return;

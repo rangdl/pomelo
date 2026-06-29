@@ -8,13 +8,19 @@ import 'package:pomelo/core/models/metadata/track.dart';
 class PlayHistoryEntry {
   final Track track;
   final DateTime playedAt;
+  final int playCount;
 
-  const PlayHistoryEntry({required this.track, required this.playedAt});
+  const PlayHistoryEntry({
+    required this.track,
+    required this.playedAt,
+    required this.playCount,
+  });
 }
 
-/// 播放记录 Provider（最近播放，去重）
+/// 播放记录 Provider（最近播放）
 ///
-/// 返回去重后的最近播放记录列表，按最后播放时间倒序。
+/// 返回最近播放记录列表，按最后播放时间倒序。
+/// v2 起每个曲目仅一行（upsert 语义），[PlayHistoryEntry.playCount] 记录累计播放次数。
 /// 使用 autoDispose，通过 invalidate 手动刷新。
 final playHistoryProvider =
     FutureProvider.autoDispose<List<PlayHistoryEntry>>((ref) async {
@@ -28,6 +34,10 @@ final playHistoryProvider =
     } catch (_) {
       track = Track(id: e.trackId, title: e.title);
     }
-    return PlayHistoryEntry(track: track, playedAt: e.playedAt);
+    return PlayHistoryEntry(
+      track: track,
+      playedAt: e.playedAt,
+      playCount: e.playCount,
+    );
   }).toList();
 });

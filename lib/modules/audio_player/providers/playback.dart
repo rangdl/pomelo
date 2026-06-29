@@ -61,27 +61,66 @@ class ServerPlaybackRoutes {
 
   /// 解析并 HEAD 校验播放链接
   ///
-  /// 流程：
-  /// 1. 命中 provider 已缓存的有效链接 → 直接返回
-  /// 2. 从用户偏好音质开始向下逐个尝试：获取链接 → HEAD 校验
-  /// 3. 全部失败则回退到 `track.src` / `track.path` 并 HEAD 校验
-  /// 4. 仍失败抛出 `无法获取有效的播放链接`
+  /// 流程（优先级从高到低）：
+  /// 1. 命中 provider 内存缓存 → 直接返回（可能是 URL 或本地文件路径）
+  /// 2. 持久化的本地缓存文件（按降级序列匹配首个存在的文件）→ 返回文件路径
+  /// 3. 持久化的播放链接 + HEAD 校验 → 返回 URL
+  /// 4. 重新获取链接（按降级序列逐个 getUrlForQuality + HEAD 校验）+ 持久化 URL
+  /// 5. 回退到 `track.src` / `track.path` + HEAD 校验
+  /// 6. 仍失败抛出 `无法获取有效的播放链接`
   ///
-  /// HEAD 校验与音质降级重试在本方法中完成，[SourcedTrackNotifier] 仅负责
-  /// 提供 URL 解析能力（[SourcedTrackNotifier.getUrlForQuality] 等）。
-  /// 若 provider 不可用（container 未注入），回退到 `track.src` / `track.path`。
+  /// 返回值可能是 HTTP(S) URL，也可能是本地文件绝对路径，调用方需通过
+  /// [_isLocalPath] 判断后再决定使用 [dio] 请求或 [File] 读取。
   Future<String> _resolveValidUrl(Track track) async {
     final container = getContainer();
     if (container == null) return track.src ?? track.path ?? '';
     final notifier = container.read(sourcedTrackProvider(track).notifier);
 
-    // 命中缓存直接返回
+    // 1. 命中内存缓存直接返回
     final cached = container.read(sourcedTrackProvider(track)).url;
     if (cached != null && cached.isNotEmpty) return cached;
 
     final downgradeList = notifier.downgradeList;
     log.info('Playback', '解析开始: track=${track.title}, 降级序列=$downgradeList');
 
+    // 2. 优先使用持久化的本地缓存文件
+    try {
+      final cachedFile = await notifier.findCachedFile(downgradeList);
+      if (cachedFile != null) {
+        notifier.cacheUrl(cachedFile.path, cachedFile.quality);
+        log.info(
+          'Playback',
+          '命中本地缓存文件: quality=${cachedFile.quality}, track=${track.title}',
+        );
+        return cachedFile.path;
+      }
+    } catch (e) {
+      log.warning('Playback', '查找本地缓存文件失败: $e');
+    }
+
+    // 3. 次选持久化的播放链接（需 HEAD 校验）
+    try {
+      final cachedUrl = await notifier.findCachedUrl(downgradeList);
+      if (cachedUrl != null) {
+        if (await _headValidate(cachedUrl.url)) {
+          notifier.cacheUrl(cachedUrl.url, cachedUrl.quality);
+          log.info(
+            'Playback',
+            '命中缓存URL: quality=${cachedUrl.quality}, track=${track.title}',
+          );
+          return cachedUrl.url;
+        } else {
+          log.warning(
+            'Playback',
+            '缓存URL失效: quality=${cachedUrl.quality}, url=${cachedUrl.url}',
+          );
+        }
+      }
+    } catch (e) {
+      log.warning('Playback', '查找缓存URL失败: $e');
+    }
+
+    // 4. 全部未命中或 URL 失效，重新获取播放链接
     for (final quality in downgradeList) {
       try {
         final url = await notifier.getUrlForQuality(quality);
@@ -91,6 +130,8 @@ class ServerPlaybackRoutes {
         }
         if (await _headValidate(url)) {
           notifier.cacheUrl(url, quality);
+          // 持久化 URL，便于下次直接命中
+          await notifier.saveUrlToPersistence(quality, url);
           log.info('Playback', '解析成功: quality=$quality, track=${track.title}');
           return url;
         }
@@ -100,7 +141,7 @@ class ServerPlaybackRoutes {
       }
     }
 
-    // 所有音质路径均失败，最后回退到 track.src / track.path
+    // 5. 所有音质路径均失败，最后回退到 track.src / track.path
     final fallback = notifier.fallbackUrl;
     if (fallback.isNotEmpty && await _headValidate(fallback)) {
       notifier.cacheUrl(fallback, null);
@@ -110,6 +151,12 @@ class ServerPlaybackRoutes {
 
     log.error('Playback', '所有音质均无法获取有效播放链接: ${track.title}');
     throw Exception('无法获取有效的播放链接');
+  }
+
+  /// 判断字符串是否为本地文件路径（而非 HTTP(S) URL）
+  bool _isLocalPath(String s) {
+    final lower = s.toLowerCase();
+    return !lower.startsWith('http://') && !lower.startsWith('https://');
   }
 
   /// HEAD 校验
@@ -136,6 +183,7 @@ class ServerPlaybackRoutes {
   Future<dio_lib.Response> streamTrackInformation(
     Request request,
     Track track,
+    String url,
   ) async {
     log.debug(
       'Playback',
@@ -144,7 +192,6 @@ class ServerPlaybackRoutes {
 
     // _resolveValidUrl 已完成 HEAD 校验与音质降级，这里再做一次 HEAD
     // 以获取最新的响应头（content-length、content-type、accept-ranges 等）
-    final url = await _resolveValidUrl(track);
     final options = Options(
       headers: {
         'Cache-Control': 'max-age=3600',
@@ -160,13 +207,12 @@ class ServerPlaybackRoutes {
     Request request,
     Track track,
     Map<String, dynamic> headers,
+    String url,
   ) async {
     log.debug(
       'Playback',
       'GET request for track: ${track.title}, Headers: ${request.headers}',
     );
-
-    final url = await _resolveValidUrl(track);
 
     final options = Options(
       headers: {
@@ -197,7 +243,27 @@ class ServerPlaybackRoutes {
       if (activeTrack == null || activeTrack.src == null) {
         return Response.notFound('No active track or track is not streamable');
       }
-      final res = await streamTrackInformation(request, activeTrack);
+      final url = await _resolveValidUrl(activeTrack);
+
+      // 本地缓存文件：直接返回文件元信息
+      if (_isLocalPath(url)) {
+        final file = File(url);
+        if (!await file.exists()) {
+          return Response.notFound('Cache file not found');
+        }
+        final stat = await file.stat();
+        final extension = MusicCacheDir.extensionFromUrl(url);
+        return Response(
+          200,
+          headers: {
+            'content-type': [MusicCacheDir.contentTypeFromExtension(extension)],
+            'content-length': [stat.size.toString()],
+            'accept-ranges': ['bytes'],
+          },
+        );
+      }
+
+      final res = await streamTrackInformation(request, activeTrack, url);
 
       return Response(
         res.statusCode!,
@@ -220,17 +286,45 @@ class ServerPlaybackRoutes {
       if (activeTrack == null || activeTrack.src == null) {
         return Response.notFound('No active track or track is not streamable');
       }
-      final res = await streamTrack(request, activeTrack, request.headers);
+      final url = await _resolveValidUrl(activeTrack);
+
+      // 本地缓存文件：直接以文件流响应（无需再次缓存）
+      if (_isLocalPath(url)) {
+        final file = File(url);
+        if (!await file.exists()) {
+          return Response.notFound('Cache file not found');
+        }
+        final stat = await file.stat();
+        final extension = MusicCacheDir.extensionFromUrl(url);
+        return Response(
+          200,
+          body: file.openRead(),
+          headers: {
+            'content-type': [MusicCacheDir.contentTypeFromExtension(extension)],
+            'content-length': [stat.size.toString()],
+            'accept-ranges': ['bytes'],
+          },
+        );
+      }
+
+      final res = await streamTrack(request, activeTrack, request.headers, url);
 
       if (res.data is ResponseBody) {
         final responseBody = res.data as ResponseBody;
         final sanitizedHeaders = _sanitizeHeaders(res.headers.map);
+
+        // 读取当前解析命中的音质（用于持久化缓存路径）
+        final container = getContainer();
+        final quality = container
+            ?.read(sourcedTrackProvider(activeTrack))
+            .quality;
 
         // 缓存音频流到文件（异步，不阻塞响应）
         final cachedStream = await _teeStreamToCache(
           responseBody.stream,
           activeTrack,
           sanitizedHeaders,
+          quality: quality,
         );
 
         return Response(
@@ -254,13 +348,15 @@ class ServerPlaybackRoutes {
   /// 将流缓存到文件（流完成后写入）
   ///
   /// 在流传输过程中将数据同时传递给下游（不阻塞播放），
-  /// 并在内存中缓冲所有数据。流完成后将完整缓冲写入缓存文件。
+  /// 并在内存中缓冲所有数据。流完成后将完整缓冲写入缓存文件，
+  /// 并将缓存路径持久化到数据库（关联 [quality]）。
   /// 写入失败不影响播放，仅记录日志。
   Future<Stream<List<int>>> _teeStreamToCache(
     Stream<Uint8List> source,
     Track track,
-    Map<String, List<String>> headers,
-  ) async {
+    Map<String, List<String>> headers, {
+    String? quality,
+  }) async {
     // 推断文件扩展名
     final contentType = headers['content-type']?.first;
     final extension = track.src != null
@@ -279,7 +375,7 @@ class ServerPlaybackRoutes {
         handleDone: (sink) {
           sink.close();
           // 流完成后写入缓存文件
-          _writeBufferToCache(buffer, track, extension);
+          _writeBufferToCache(buffer, track, extension, quality: quality);
         },
         handleError: (error, stack, sink) {
           sink.addError(error, stack);
@@ -288,12 +384,13 @@ class ServerPlaybackRoutes {
     );
   }
 
-  /// 将内存缓冲写入缓存文件
+  /// 将内存缓冲写入缓存文件，并将路径持久化到数据库
   Future<void> _writeBufferToCache(
     List<int> buffer,
     Track track,
-    String extension,
-  ) async {
+    String extension, {
+    String? quality,
+  }) async {
     try {
       final file = await MusicCacheDir.getCacheFile(track.id, extension);
       await file.writeAsBytes(buffer);
@@ -301,6 +398,18 @@ class ServerPlaybackRoutes {
         'Playback',
         '缓存写入完成: track=${track.title}, ${buffer.length} bytes → ${file.path}',
       );
+
+      // 持久化缓存文件路径（需有音质信息）
+      if (quality != null) {
+        final container = getContainer();
+        if (container != null) {
+          final notifier = container.read(sourcedTrackProvider(track).notifier);
+          await notifier.saveCachePathToPersistence(quality, file.path);
+        }
+      }
+
+      // 写入完成后按缓存上限清理旧文件
+      await MusicCacheDir.enforceLimit();
     } catch (e) {
       log.warning('Playback', '缓存文件写入失败: $e');
     }

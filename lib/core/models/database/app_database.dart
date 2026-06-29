@@ -17,11 +17,13 @@ part 'app_database.g.dart';
 /// 基于 drift (SQLite) 的持久化数据库，负责：
 /// - 播放器状态持久化（替代旧的 freezed + Hive 方案）
 /// - 当前播放列表持久化
-/// - 播放记录
+/// - 播放记录（含播放次数）
+/// - 已解析音源曲目持久化（播放链接与缓存路径）
 @DriftDatabase(tables: [
   PlayerStateTable,
   PlayerTrackTable,
   PlayHistoryTable,
+  SourcedTrackTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
@@ -30,7 +32,19 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            // v2: 新增 SourcedTrackTable + PlayHistoryTable.playCount 列
+            await m.createTable(sourcedTrackTable);
+            await m.addColumn(playHistoryTable, playHistoryTable.playCount);
+          }
+        },
+      );
 
   // ========== 播放器状态 ==========
 
@@ -81,9 +95,29 @@ class AppDatabase extends _$AppDatabase {
 
   // ========== 播放记录 ==========
 
-  /// 添加播放记录
-  Future<void> addPlayHistory(PlayHistoryTableCompanion companion) {
-    return into(playHistoryTable).insert(companion);
+  /// 添加播放记录（upsert：曲目已存在时递增 playCount 并更新信息）
+  Future<void> addPlayHistory(PlayHistoryTableCompanion companion) async {
+    final trackId = companion.trackId.value;
+    final existing = await (select(playHistoryTable)
+          ..where((t) => t.trackId.equals(trackId)))
+        .getSingleOrNull();
+    if (existing != null) {
+      await (update(playHistoryTable)
+            ..where((t) => t.trackId.equals(trackId)))
+          .write(PlayHistoryTableCompanion(
+        trackJson: companion.trackJson,
+        sourceId: companion.sourceId,
+        sourceName: companion.sourceName,
+        title: companion.title,
+        artist: companion.artist,
+        coverArt: companion.coverArt,
+        duration: companion.duration,
+        playedAt: companion.playedAt,
+        playCount: Value(existing.playCount + 1),
+      ));
+    } else {
+      await into(playHistoryTable).insert(companion);
+    }
   }
 
   /// 获取播放记录（按时间倒序）
@@ -94,21 +128,14 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
-  /// 获取最近播放的曲目（去重，按最后播放时间倒序）
-  Future<List<PlayHistoryEntity>> getRecentPlayed({int limit = 50}) async {
-    // 取全部记录后在 Dart 中去重，避免复杂 SQL
-    final all = await (select(playHistoryTable)
-          ..orderBy([(t) => OrderingTerm.desc(t.playedAt)]))
+  /// 获取最近播放的曲目（按最后播放时间倒序）
+  ///
+  /// v2 起每个曲目仅一行（upsert 语义），无需去重。
+  Future<List<PlayHistoryEntity>> getRecentPlayed({int limit = 50}) {
+    return (select(playHistoryTable)
+          ..orderBy([(t) => OrderingTerm.desc(t.playedAt)])
+          ..limit(limit))
         .get();
-    final seen = <String>{};
-    final result = <PlayHistoryEntity>[];
-    for (final entity in all) {
-      if (seen.add(entity.trackId)) {
-        result.add(entity);
-        if (result.length >= limit) break;
-      }
-    }
-    return result;
   }
 
   /// 清空播放记录
@@ -119,6 +146,27 @@ class AppDatabase extends _$AppDatabase {
   /// 删除指定曲目的播放记录
   Future<void> deletePlayHistoryByTrackId(String trackId) {
     return (delete(playHistoryTable)
+          ..where((t) => t.trackId.equals(trackId)))
+        .go();
+  }
+
+  // ========== 已解析音源曲目持久化 ==========
+
+  /// 获取指定曲目的持久化记录
+  Future<SourcedTrackEntity?> getSourcedTrack(String trackId) {
+    return (select(sourcedTrackTable)
+          ..where((t) => t.trackId.equals(trackId)))
+        .getSingleOrNull();
+  }
+
+  /// 插入或更新已解析音源曲目记录（upsert）
+  Future<void> upsertSourcedTrack(SourcedTrackTableCompanion companion) async {
+    await into(sourcedTrackTable).insertOnConflictUpdate(companion);
+  }
+
+  /// 删除指定曲目的持久化记录
+  Future<void> deleteSourcedTrack(String trackId) {
+    return (delete(sourcedTrackTable)
           ..where((t) => t.trackId.equals(trackId)))
         .go();
   }

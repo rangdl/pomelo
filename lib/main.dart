@@ -40,10 +40,10 @@ void main() async {
   // 迁移旧的散落 Settings key 到统一的 UserPreference
   // （必须在 ProviderContainer 创建前执行，UserPreferenceNotifier.build 会读取迁移结果）
   await UserPreferenceNotifier.migrateFromLegacySettings();
-  // 初始化 MusicCacheDir 自定义目录（从持久化的 UserPreference 加载）
-  MusicCacheDir.setCustomDirectory(
-    UserPreference.loadFromBox().cacheDirectory,
-  );
+  // 初始化 MusicCacheDir 自定义目录与大小上限（从持久化的 UserPreference 加载）
+  final persistedPref = UserPreference.loadFromBox();
+  MusicCacheDir.setCustomDirectory(persistedPref.cacheDirectory);
+  MusicCacheDir.setSizeLimit(persistedPref.cacheSizeLimitGB);
   // ================================
 
   // ========== 核心模块初始化 ==========
@@ -142,6 +142,14 @@ class _AppShell extends HookConsumerWidget {
       userPreferenceProvider.select((p) => p.cacheDirectory),
       (previous, next) {
         MusicCacheDir.setCustomDirectory(next);
+      },
+    );
+
+    // 监听缓存大小上限变化，同步到 MusicCacheDir
+    ref.listen(
+      userPreferenceProvider.select((p) => p.cacheSizeLimitGB),
+      (previous, next) {
+        MusicCacheDir.setSizeLimit(next);
       },
     );
 
