@@ -3,23 +3,21 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path/path.dart' as p;
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
-import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:pomelo/modules/my/service/update_service.dart';
-import 'package:pomelo/ui/my/playback_settings_page.dart';
+import 'package:pomelo/ui/settings/playback_settings_page.dart';
 
-/// 我的页面 — 用户设置中心
+/// 设置页面 — 用户设置中心
 ///
-/// 包含应用全局设置项，各设置直接通过 Settings 读写，
-/// 其他模块可通过 ref.watch(settingWatcherProvider('key')) 响应式监听。
+/// 包含应用全局设置项，各设置直接通过 UserPreference 读写。
 @RoutePage()
-class MyPage extends HookConsumerWidget {
-  const MyPage({super.key});
+class SettingsPage extends HookConsumerWidget {
+  const SettingsPage({super.key});
 
   static const _themeOptions = [
     ('system', '跟随系统', Icons.settings_brightness),
@@ -32,7 +30,9 @@ class MyPage extends HookConsumerWidget {
     final themeMode = ref.watch(
       userPreferenceProvider.select((p) => p.themeMode),
     );
-    final localDirs = ref.watch(localMusicDirsProvider);
+    final cacheDirectory = ref.watch(
+      userPreferenceProvider.select((p) => p.cacheDirectory),
+    );
     final checking = useState(false);
 
     Future<void> checkForUpdate() async {
@@ -45,6 +45,32 @@ class MyPage extends HookConsumerWidget {
         _showUpdateResult(context, ref, result);
       } finally {
         checking.value = false;
+      }
+    }
+
+    Future<void> pickCacheDirectory() async {
+      final result = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: '选择缓存目录',
+      );
+      if (result == null) return;
+      await ref.read(userPreferenceProvider.notifier).setCacheDirectory(result);
+      if (context.mounted) {
+        showToast(
+          context: context,
+          builder: (ctx, overlay) =>
+              const _ToastCard(text: '缓存目录已更新'),
+        );
+      }
+    }
+
+    Future<void> clearCache() async {
+      await MusicCacheDir.clear();
+      if (context.mounted) {
+        showToast(
+          context: context,
+          builder: (ctx, overlay) =>
+              const _ToastCard(text: '缓存已清除'),
+        );
       }
     }
 
@@ -92,9 +118,9 @@ class MyPage extends HookConsumerWidget {
       ),
       const Gap(24),
 
-      // ===== 本地音乐 =====
+      // ===== 缓存 =====
       Text(
-        '本地音乐',
+        '缓存',
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
@@ -106,53 +132,36 @@ class MyPage extends HookConsumerWidget {
         child: Column(
           children: [
             ListTile(
-              leading: const Icon(Icons.folder_open, size: 20),
-              title: const Text('添加音乐目录'),
+              leading: const Icon(Icons.storage, size: 20),
+              title: const Text('缓存目录'),
               subtitle: Text(
-                '已扫描 ${ref.watch(localMusicSongCountProvider)} 首歌曲',
+                cacheDirectory ?? '系统默认',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              trailing: const Icon(Icons.add, size: 20),
-              onTap: () async {
-                final result = await FilePicker.platform.getDirectoryPath(
-                  dialogTitle: '选择音乐目录',
-                );
-                if (result != null) {
-                  await ref
-                      .read(localMusicDirsProvider.notifier)
-                      .addDirectory(result);
-                }
-              },
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton.text(
+                    icon: const Icon(Icons.folder_open, size: 18),
+                    onPressed: pickCacheDirectory,
+                  ),
+                  if (cacheDirectory != null)
+                    IconButton.text(
+                      icon: const Icon(Icons.restore, size: 18),
+                      onPressed: () => ref
+                          .read(userPreferenceProvider.notifier)
+                          .setCacheDirectory(null),
+                    ),
+                ],
+              ),
             ),
-            if (localDirs.isNotEmpty) ...[
-              const Divider(height: 1),
-              ...localDirs.map(
-                (dir) => ListTile(
-                  leading: const Icon(Icons.folder, size: 20),
-                  title: Text(p.basename(dir)),
-                  subtitle: Text(
-                    dir,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: IconButton.text(
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    onPressed: () {
-                      ref
-                          .read(localMusicDirsProvider.notifier)
-                          .removeDirectory(dir);
-                    },
-                  ),
-                ),
-              ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.refresh, size: 20),
-                title: const Text('重新扫描'),
-                onTap: () async {
-                  await ref.read(localMusicDirsProvider.notifier).rescanAll();
-                },
-              ),
-            ],
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.cleaning_services_outlined, size: 20),
+              title: const Text('清除缓存'),
+              onTap: clearCache,
+            ),
           ],
         ),
       ),

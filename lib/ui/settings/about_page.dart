@@ -68,7 +68,7 @@ class AboutPage extends HookConsumerWidget {
             ),
             const Gap(16),
             const Text(
-              'Pomelo',
+              '柚子音乐',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
             const Gap(4),
@@ -152,7 +152,7 @@ class AboutPage extends HookConsumerWidget {
       // 版权
       Center(
         child: Text(
-          '© ${DateTime.now().year} Pomelo',
+          '© ${DateTime.now().year} 柚子音乐',
           style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
         ),
       ),

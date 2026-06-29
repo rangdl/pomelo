@@ -11,16 +11,16 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i13;
 import 'package:pomelo/ui/example/example_page.dart' as _i2;
-import 'package:pomelo/ui/example/js_engine_test_page.dart' as _i5;
-import 'package:pomelo/ui/favorite/favorite_page.dart' as _i3;
-import 'package:pomelo/ui/home/home_page.dart' as _i4;
-import 'package:pomelo/ui/log/log_page.dart' as _i6;
-import 'package:pomelo/ui/music/playlist_detail_page.dart' as _i10;
-import 'package:pomelo/ui/music/search_page.dart' as _i7;
-import 'package:pomelo/ui/my/about_page.dart' as _i1;
-import 'package:pomelo/ui/my/my_page.dart' as _i8;
-import 'package:pomelo/ui/player/playback_page.dart' as _i9;
-import 'package:pomelo/ui/root/root_page.dart' as _i11;
+import 'package:pomelo/ui/example/js_engine_test_page.dart' as _i4;
+import 'package:pomelo/ui/home/home_page.dart' as _i3;
+import 'package:pomelo/ui/log/log_page.dart' as _i5;
+import 'package:pomelo/ui/music/playlist_detail_page.dart' as _i8;
+import 'package:pomelo/ui/music/search_page.dart' as _i6;
+import 'package:pomelo/ui/player/playback_page.dart' as _i7;
+import 'package:pomelo/ui/root/root_page.dart' as _i9;
+import 'package:pomelo/ui/service/service_page.dart' as _i10;
+import 'package:pomelo/ui/settings/about_page.dart' as _i1;
+import 'package:pomelo/ui/settings/settings_page.dart' as _i11;
 import 'package:pomelo/ui/statistics/statistics_page.dart' as _i12;
 import 'package:shadcn_flutter/shadcn_flutter.dart' as _i14;
 
@@ -73,23 +73,7 @@ class ExListRoute extends _i13.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i3.FavoritePage]
-class FavoriteRoute extends _i13.PageRouteInfo<void> {
-  const FavoriteRoute({List<_i13.PageRouteInfo>? children})
-    : super(FavoriteRoute.name, initialChildren: children);
-
-  static const String name = 'FavoriteRoute';
-
-  static _i13.PageInfo page = _i13.PageInfo(
-    name,
-    builder: (data) {
-      return const _i3.FavoritePage();
-    },
-  );
-}
-
-/// generated route for
-/// [_i4.HomePage]
+/// [_i3.HomePage]
 class HomeRoute extends _i13.PageRouteInfo<void> {
   const HomeRoute({List<_i13.PageRouteInfo>? children})
     : super(HomeRoute.name, initialChildren: children);
@@ -99,13 +83,13 @@ class HomeRoute extends _i13.PageRouteInfo<void> {
   static _i13.PageInfo page = _i13.PageInfo(
     name,
     builder: (data) {
-      return const _i4.HomePage();
+      return const _i3.HomePage();
     },
   );
 }
 
 /// generated route for
-/// [_i5.JsEngineTestPage]
+/// [_i4.JsEngineTestPage]
 class JsEngineTestRoute extends _i13.PageRouteInfo<void> {
   const JsEngineTestRoute({List<_i13.PageRouteInfo>? children})
     : super(JsEngineTestRoute.name, initialChildren: children);
@@ -115,13 +99,13 @@ class JsEngineTestRoute extends _i13.PageRouteInfo<void> {
   static _i13.PageInfo page = _i13.PageInfo(
     name,
     builder: (data) {
-      return const _i5.JsEngineTestPage();
+      return const _i4.JsEngineTestPage();
     },
   );
 }
 
 /// generated route for
-/// [_i6.LogPage]
+/// [_i5.LogPage]
 class LogRoute extends _i13.PageRouteInfo<void> {
   const LogRoute({List<_i13.PageRouteInfo>? children})
     : super(LogRoute.name, initialChildren: children);
@@ -131,17 +115,17 @@ class LogRoute extends _i13.PageRouteInfo<void> {
   static _i13.PageInfo page = _i13.PageInfo(
     name,
     builder: (data) {
-      return const _i6.LogPage();
+      return const _i5.LogPage();
     },
   );
 }
 
 /// generated route for
-/// [_i7.MusicSearchPage]
+/// [_i6.MusicSearchPage]
 class MusicSearchRoute extends _i13.PageRouteInfo<MusicSearchRouteArgs> {
   MusicSearchRoute({
     _i14.Key? key,
-    required String keyword,
+    String keyword = '',
     List<_i13.PageRouteInfo>? children,
   }) : super(
          MusicSearchRoute.name,
@@ -154,14 +138,16 @@ class MusicSearchRoute extends _i13.PageRouteInfo<MusicSearchRouteArgs> {
   static _i13.PageInfo page = _i13.PageInfo(
     name,
     builder: (data) {
-      final args = data.argsAs<MusicSearchRouteArgs>();
-      return _i7.MusicSearchPage(key: args.key, keyword: args.keyword);
+      final args = data.argsAs<MusicSearchRouteArgs>(
+        orElse: () => const MusicSearchRouteArgs(),
+      );
+      return _i6.MusicSearchPage(key: args.key, keyword: args.keyword);
     },
   );
 }
 
 class MusicSearchRouteArgs {
-  const MusicSearchRouteArgs({this.key, required this.keyword});
+  const MusicSearchRouteArgs({this.key, this.keyword = ''});
 
   final _i14.Key? key;
 
@@ -174,23 +160,7 @@ class MusicSearchRouteArgs {
 }
 
 /// generated route for
-/// [_i8.MyPage]
-class MyRoute extends _i13.PageRouteInfo<void> {
-  const MyRoute({List<_i13.PageRouteInfo>? children})
-    : super(MyRoute.name, initialChildren: children);
-
-  static const String name = 'MyRoute';
-
-  static _i13.PageInfo page = _i13.PageInfo(
-    name,
-    builder: (data) {
-      return const _i8.MyPage();
-    },
-  );
-}
-
-/// generated route for
-/// [_i9.PlaybackPage]
+/// [_i7.PlaybackPage]
 class PlaybackRoute extends _i13.PageRouteInfo<void> {
   const PlaybackRoute({List<_i13.PageRouteInfo>? children})
     : super(PlaybackRoute.name, initialChildren: children);
@@ -200,13 +170,13 @@ class PlaybackRoute extends _i13.PageRouteInfo<void> {
   static _i13.PageInfo page = _i13.PageInfo(
     name,
     builder: (data) {
-      return const _i9.PlaybackPage();
+      return const _i7.PlaybackPage();
     },
   );
 }
 
 /// generated route for
-/// [_i10.PlaylistDetailPage]
+/// [_i8.PlaylistDetailPage]
 class PlaylistDetailRoute extends _i13.PageRouteInfo<PlaylistDetailRouteArgs> {
   PlaylistDetailRoute({
     _i14.Key? key,
@@ -237,7 +207,7 @@ class PlaylistDetailRoute extends _i13.PageRouteInfo<PlaylistDetailRouteArgs> {
     name,
     builder: (data) {
       final args = data.argsAs<PlaylistDetailRouteArgs>();
-      return _i10.PlaylistDetailPage(
+      return _i8.PlaylistDetailPage(
         key: args.key,
         playlistId: args.playlistId,
         sourceId: args.sourceId,
@@ -282,7 +252,7 @@ class PlaylistDetailRouteArgs {
 }
 
 /// generated route for
-/// [_i11.RootPage]
+/// [_i9.RootPage]
 class RootRoute extends _i13.PageRouteInfo<void> {
   const RootRoute({List<_i13.PageRouteInfo>? children})
     : super(RootRoute.name, initialChildren: children);
@@ -292,7 +262,39 @@ class RootRoute extends _i13.PageRouteInfo<void> {
   static _i13.PageInfo page = _i13.PageInfo(
     name,
     builder: (data) {
-      return const _i11.RootPage();
+      return const _i9.RootPage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i10.ServicePage]
+class ServiceRoute extends _i13.PageRouteInfo<void> {
+  const ServiceRoute({List<_i13.PageRouteInfo>? children})
+    : super(ServiceRoute.name, initialChildren: children);
+
+  static const String name = 'ServiceRoute';
+
+  static _i13.PageInfo page = _i13.PageInfo(
+    name,
+    builder: (data) {
+      return const _i10.ServicePage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i11.SettingsPage]
+class SettingsRoute extends _i13.PageRouteInfo<void> {
+  const SettingsRoute({List<_i13.PageRouteInfo>? children})
+    : super(SettingsRoute.name, initialChildren: children);
+
+  static const String name = 'SettingsRoute';
+
+  static _i13.PageInfo page = _i13.PageInfo(
+    name,
+    builder: (data) {
+      return const _i11.SettingsPage();
     },
   );
 }

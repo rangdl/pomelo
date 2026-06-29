@@ -251,9 +251,10 @@ class ServerPlaybackRoutes {
     }
   }
 
-  /// 将流同时写入缓存文件（tee 模式）
+  /// 将流缓存到文件（流完成后写入）
   ///
-  /// 先创建缓存文件，再返回一个同时向文件和下游传递数据的 Stream。
+  /// 在流传输过程中将数据同时传递给下游（不阻塞播放），
+  /// 并在内存中缓冲所有数据。流完成后将完整缓冲写入缓存文件。
   /// 写入失败不影响播放，仅记录日志。
   Future<Stream<List<int>>> _teeStreamToCache(
     Stream<Uint8List> source,
@@ -266,40 +267,43 @@ class ServerPlaybackRoutes {
         ? MusicCacheDir.extensionFromUrl(track.src!)
         : MusicCacheDir.extensionFromContentType(contentType);
 
-    // 预先创建缓存文件
-    IOSink? cacheSink;
-    try {
-      final file = await MusicCacheDir.getCacheFile(track.id, extension);
-      cacheSink = file.openWrite();
-      log.debug('Playback', '缓存写入开始: ${file.path}');
-    } catch (e) {
-      log.warning('Playback', '缓存文件创建失败: $e');
-    }
+    // 内存缓冲：流完成后写入文件
+    final buffer = <int>[];
 
-    // tee 流：每块数据同时写入文件和传递给下游
     return source.transform(
       StreamTransformer<Uint8List, List<int>>.fromHandlers(
         handleData: (chunk, sink) {
-          cacheSink?.add(chunk);
+          buffer.addAll(chunk);
           sink.add(chunk);
         },
         handleDone: (sink) {
-          cacheSink
-              ?.close()
-              .then((_) {
-                log.debug('Playback', '缓存写入完成: track=${track.title}');
-              })
-              .catchError((e) {
-                log.warning('Playback', '缓存文件关闭失败: $e');
-              });
           sink.close();
+          // 流完成后写入缓存文件
+          _writeBufferToCache(buffer, track, extension);
         },
         handleError: (error, stack, sink) {
-          cacheSink?.close().catchError((e) {});
           sink.addError(error, stack);
         },
       ),
     );
+  }
+
+  /// 将内存缓冲写入缓存文件
+  Future<void> _writeBufferToCache(
+    List<int> buffer,
+    Track track,
+    String extension,
+  ) async {
+    try {
+      final file = await MusicCacheDir.getCacheFile(track.id, extension);
+      await file.writeAsBytes(buffer);
+      log.debug(
+        'Playback',
+        '缓存写入完成: track=${track.title}, ${buffer.length} bytes → ${file.path}',
+      );
+    } catch (e) {
+      log.warning('Playback', '缓存文件写入失败: $e');
+    }
   }
 
   /// @get('/playback/toggle-playback')

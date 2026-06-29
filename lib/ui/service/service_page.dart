@@ -38,8 +38,8 @@ enum _PlatformType {
 /// 展示所有已注册的音乐服务，按类型分组。
 /// 右上角"+"按钮可添加新平台。
 @RoutePage()
-class FavoritePage extends HookConsumerWidget {
-  const FavoritePage({super.key});
+class ServicePage extends HookConsumerWidget {
+  const ServicePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

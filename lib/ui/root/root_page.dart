@@ -18,7 +18,7 @@ const _navDestinations = [
   (key: ValueKey(0), icon: Icons.home, label: '首页'),
   (key: ValueKey(1), icon: Icons.layers, label: '平台'),
   (key: ValueKey(2), icon: Icons.bar_chart, label: '统计'),
-  (key: ValueKey(3), icon: Icons.person, label: '我的'),
+  (key: ValueKey(3), icon: Icons.settings, label: '设置'),
 ];
 
 /// Root 路由页面 — 响应式壳导航
@@ -38,9 +38,9 @@ class RootPage extends StatelessWidget {
     return AutoTabsRouter.builder(
       routes: const [
         HomeRoute(),
-        FavoriteRoute(),
+        ServiceRoute(),
         StatisticsRoute(),
-        MyRoute(),
+        SettingsRoute(),
       ],
       builder: (context, children, tabsRouter) {
         return Rx.layout(
@@ -123,7 +123,20 @@ class _PhoneLayout extends HookConsumerWidget {
   }
 }
 
-/// 平板 / 桌面 / TV 布局 — NavigationRail + 顶部固定标题栏
+/// 平板 / 桌面 / TV 布局 — 顶部标题栏 + 右侧 NavigationRail
+///
+/// 布局结构：
+/// ```
+/// ┌────────────────────┬──────────┐
+/// │  TopTitleBar       │          │
+/// ├────────────────────┤  NavRail │
+/// │  Content           │  (全高)  │
+/// │  (tabRouter)       │          │
+/// ├────────────────────┤          │
+/// │  MiniPlayer        │          │
+/// └────────────────────┴──────────┘
+/// ```
+/// 顶部标题栏与 tabRouter 内容区对齐；右侧 NavigationRail 占满全高。
 class _NavigationRailLayout extends HookConsumerWidget {
   final TabsRouter tabsRouter;
   final List<Widget> children;
@@ -150,48 +163,44 @@ class _NavigationRailLayout extends HookConsumerWidget {
     }, [tabsRouter.activeIndex]);
 
     return Scaffold(
-      child: Column(
+      child: Row(
         children: [
-          // 顶部固定标题栏
-          const _DesktopTitleBar(),
+          // 左侧：顶部标题栏 + 内容 + MiniPlayer
           Expanded(
-            child: Row(
+            child: Column(
               children: [
-                NavigationRail(
-                  alignment: NavigationRailAlignment.start,
-                  labelType: NavigationLabelType.none,
-                  expanded: extended,
-                  onSelected: (key) {
-                    final index = _navDestinations.indexWhere(
-                      (d) => d.key == key,
-                    );
-                    if (index >= 0 && index != tabsRouter.activeIndex) {
-                      selectedKey.value = key;
-                      tabsRouter.setActiveIndex(index);
-                    }
-                  },
-                  selectedKey: selectedKey.value,
-                  children: _navDestinations
-                      .map(
-                        (d) => NavigationItem(
-                          key: d.key,
-                          label: Text(d.label),
-                          child: Icon(d.icon),
-                        ),
-                      )
-                      .toList(),
-                ),
-                const VerticalDivider(width: 1, thickness: 1),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(child: children[tabsRouter.activeIndex]),
-                      const MiniPlayer(),
-                    ],
-                  ),
-                ),
+                const _TopTitleBar(),
+                const Divider(height: 1, thickness: 1),
+                Expanded(child: children[tabsRouter.activeIndex]),
+                const MiniPlayer(),
               ],
             ),
+          ),
+          const VerticalDivider(width: 1, thickness: 1),
+          // 右侧 NavigationRail — 占满全高
+          NavigationRail(
+            alignment: NavigationRailAlignment.start,
+            labelType: NavigationLabelType.none,
+            expanded: extended,
+            onSelected: (key) {
+              final index = _navDestinations.indexWhere(
+                (d) => d.key == key,
+              );
+              if (index >= 0 && index != tabsRouter.activeIndex) {
+                selectedKey.value = key;
+                tabsRouter.setActiveIndex(index);
+              }
+            },
+            selectedKey: selectedKey.value,
+            children: _navDestinations
+                .map(
+                  (d) => NavigationItem(
+                    key: d.key,
+                    label: Text(d.label),
+                    child: Icon(d.icon),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
@@ -199,25 +208,24 @@ class _NavigationRailLayout extends HookConsumerWidget {
   }
 }
 
-/// 桌面端固定标题栏
+/// 顶部水平标题栏
 ///
-/// 左侧：返回按钮（监听内联导航状态）+ 库切换 + 平台切换 + 搜索框
-/// 右侧：最小化 + 关闭（仅桌面平台显示）
-class _DesktopTitleBar extends HookConsumerWidget {
-  const _DesktopTitleBar();
+/// 自左而右：返回按钮 → 库切换 → 平台切换 → 搜索入口 → 弹性间距 →
+/// 窗口控制按钮（最小化 / 关闭，仅 Windows 显示）。
+class _TopTitleBar extends HookConsumerWidget {
+  const _TopTitleBar();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
     final canPop = ref.watch(rootCanPopProvider);
     final popCallback = ref.watch(rootPopCallbackProvider);
-    final searchController = useTextEditingController();
 
     return Container(
-      height: 44,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: colorScheme.card,
-        border: Border(bottom: BorderSide(color: colorScheme.border, width: 1)),
       ),
       child: Row(
         children: [
@@ -232,32 +240,19 @@ class _DesktopTitleBar extends HookConsumerWidget {
             enabled: canPop,
             onPressed: () => popCallback?.call(),
           ),
-          const Gap(4),
           // 库切换
           const LibrarySwitchButton(),
-          const Gap(4),
           // 平台切换
           const SourceSwitchButton(),
-          const Gap(12),
-          // 搜索框
-          Expanded(
-            child: TextField(
-              controller: searchController,
-              placeholder: const Text('搜索歌曲...'),
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
-                  context.pushRoute(MusicSearchRoute(keyword: value.trim()));
-                  searchController.clear();
-                }
-              },
-              features: [
-                InputFeature.leading(const Icon(Icons.search, size: 18)),
-              ],
-            ),
+          // 搜索入口 — 点击跳转搜索页
+          IconButton.ghost(
+            density: ButtonDensity.icon,
+            icon: const Icon(Icons.search, size: 20),
+            onPressed: () => context.pushRoute(MusicSearchRoute()),
           ),
-          const Gap(8),
-          // 窗口控制按钮 — 仅桌面平台
-          if (Helper.isDesktop) ...[
+          const Spacer(),
+          // 窗口控制按钮 — 仅 Windows
+          if (Helper.isWindows) ...[
             IconButton.ghost(
               density: ButtonDensity.icon,
               icon: const Icon(Icons.horizontal_rule, size: 18),

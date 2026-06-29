@@ -10,11 +10,14 @@ import 'package:pomelo/core/log/log_module.dart';
 import 'package:pomelo/core/log/log_providers.dart';
 import 'package:pomelo/core/routers/app_router.dart';
 import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/core/models/database/database_provider.dart';
+import 'package:pomelo/core/preferences/user_preference.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/theme/app_theme.dart';
 import 'package:pomelo/modules/audio_player/audio_player_module.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
+import 'package:pomelo/modules/audio_player/providers/current_lyric_provider.dart';
 import 'package:pomelo/modules/home/home_module.dart';
 import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -37,6 +40,10 @@ void main() async {
   // 迁移旧的散落 Settings key 到统一的 UserPreference
   // （必须在 ProviderContainer 创建前执行，UserPreferenceNotifier.build 会读取迁移结果）
   await UserPreferenceNotifier.migrateFromLegacySettings();
+  // 初始化 MusicCacheDir 自定义目录（从持久化的 UserPreference 加载）
+  MusicCacheDir.setCustomDirectory(
+    UserPreference.loadFromBox().cacheDirectory,
+  );
   // ================================
 
   // ========== 核心模块初始化 ==========
@@ -122,6 +129,22 @@ class _AppShell extends HookConsumerWidget {
       },
     );
 
+    // 监听当前歌词行，同步到系统媒体控制的 artist 展示位置
+    ref.listen(currentLyricLineProvider, (previous, next) {
+      final audioServices = ref.read(audioServicesProvider).value;
+      if (audioServices == null) return;
+      audioServices.updateLyric(next.value);
+    });
+
+    // 监听缓存目录设置变化，同步到 MusicCacheDir
+    // 初始值已在 main() 中从持久化存储加载并应用，此处仅处理运行时变更
+    ref.listen(
+      userPreferenceProvider.select((p) => p.cacheDirectory),
+      (previous, next) {
+        MusicCacheDir.setCustomDirectory(next);
+      },
+    );
+
     return ShadcnApp.router(
       themeMode: themeMode,
       theme: AppTheme.light,
@@ -146,9 +169,12 @@ Future<void> _runPlatformSpecificCode() async {
   if (!Helper.isDesktop) return;
   await windowManager.ensureInitialized();
   final windowOptions = WindowOptions(
-    size: Size(1050, 700),
+    size: const Size(1050, 700),
     center: true,
     skipTaskbar: false,
+    // Windows 隐藏原生标题栏，使用自定义右侧标题栏
+    titleBarStyle:
+        Helper.isWindows ? TitleBarStyle.hidden : TitleBarStyle.normal,
   );
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.setPreventClose(true);
