@@ -51,8 +51,11 @@ dependencies:
   
   hive_ce: ^2.19.3  # 高性能 NoSQL
   # shared_preferences: ^2.2.3  # 简单键值对
-  # sqflite: ^2.3.3  # SQLite 数据库
-  # drift: ^2.14.2  # 类型安全的 SQLite ORM
+  sqflite: ^2.4.2 # SQLite 数据库
+  sqflite_common_ffi: ^2.3.5
+  sqlite3: ^2.4.3
+  sqlite3_flutter_libs: ^0.5.23
+  drift: ^2.21.0  # 类型安全的 SQLite ORM
 
   # 桌面
   path_provider: ^2.1.5  # 各平台标准目录
@@ -87,6 +90,7 @@ dependencies:
   pointycastle: ^3.9.1
   convert: ^3.1.1          # hex 编解码
   url_launcher: ^6.3.1     # 打开浏览器下载更新
+  collection: ^1.18.0      # 列表工具
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
@@ -104,6 +108,7 @@ dev_dependencies:
   freezed: ^2.5.4
   json_serializable: ^6.6.2
   auto_route_generator: ^9.0.0
+  drift_dev: ^2.21.0
 
   # build
   process_run: ^0.14.2

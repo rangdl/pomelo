@@ -10,6 +10,7 @@ import 'package:pomelo/core/log/log_module.dart';
 import 'package:pomelo/core/log/log_providers.dart';
 import 'package:pomelo/core/routers/app_router.dart';
 import 'package:pomelo/core/storage/settings.dart';
+import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/theme/app_theme.dart';
 import 'package:pomelo/modules/audio_player/audio_player_module.dart';
@@ -81,6 +82,7 @@ void main() async {
       logServiceProvider.overrideWithValue(logModule.service),
       homeModuleProvider.overrideWithValue(homeModule),
       audioPlayerModuleProvider.overrideWithValue(audioPlayerModule),
+      appDatabaseProvider.overrideWithValue(audioPlayerModule.database),
     ],
   );
   audioPlayerModule.container = container;

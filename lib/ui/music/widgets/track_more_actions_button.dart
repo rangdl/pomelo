@@ -2,7 +2,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 曲目「更多操作」按钮

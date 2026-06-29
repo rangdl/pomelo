@@ -2,7 +2,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart' hide Stack, Positioned;
 import 'package:flutter/widgets.dart' show Stack, Positioned;
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/rx.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
 
 /// 统一的曲目列表项组件

@@ -1,4 +1,4 @@
-/// 音乐搜索结果页面
+﻿/// 音乐搜索结果页面
 ///
 /// 展示根据关键词搜索到的歌曲列表。
 library;
@@ -9,7 +9,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/core/rx.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';

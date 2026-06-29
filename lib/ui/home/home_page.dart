@@ -1,9 +1,9 @@
-import 'package:auto_route/auto_route.dart';
+﻿import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/ui/music/music_section.dart';
 import 'package:pomelo/ui/music/playlist_detail_page.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';

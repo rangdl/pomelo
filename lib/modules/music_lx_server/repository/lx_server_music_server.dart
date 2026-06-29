@@ -1,6 +1,6 @@
-import 'package:pomelo/core/core.dart';
+﻿import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/modules/music/model/models.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 
 import 'lx_server_client.dart';
 

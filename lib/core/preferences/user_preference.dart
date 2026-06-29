@@ -119,6 +119,7 @@ class UserPreference {
   final LogLevel logStorageLevel;
 
   // === music_local 模块 ===
+  final String localServerName;
   final List<String> localDirectories;
 
   // === music_lx 模块 ===
@@ -140,6 +141,7 @@ class UserPreference {
     this.selectedSourceId,
     this.selectedLibraryId,
     this.logStorageLevel = LogLevel.warning,
+    this.localServerName = '本地音乐',
     this.localDirectories = const [],
     this.lxMetadataPluginPath,
     this.lxSourcePluginPaths = const [],
@@ -161,6 +163,7 @@ class UserPreference {
         (e) => e.name == json['logStorageLevel'],
         orElse: () => LogLevel.warning,
       ),
+      localServerName: json['localServerName'] as String? ?? '本地音乐',
       localDirectories: (json['localDirectories'] as List?)
               ?.map((e) => e as String)
               .toList() ??
@@ -193,6 +196,7 @@ class UserPreference {
         'selectedSourceId': selectedSourceId,
         'selectedLibraryId': selectedLibraryId,
         'logStorageLevel': logStorageLevel.name,
+        'localServerName': localServerName,
         'localDirectories': localDirectories,
         'lxMetadataPluginPath': lxMetadataPluginPath,
         'lxSourcePluginPaths': lxSourcePluginPaths,
@@ -230,6 +234,7 @@ class UserPreference {
     Object? selectedSourceId = _unset,
     Object? selectedLibraryId = _unset,
     LogLevel? logStorageLevel,
+    String? localServerName,
     List<String>? localDirectories,
     Object? lxMetadataPluginPath = _unset,
     List<String>? lxSourcePluginPaths,
@@ -250,6 +255,7 @@ class UserPreference {
           ? this.selectedLibraryId
           : selectedLibraryId as String?,
       logStorageLevel: logStorageLevel ?? this.logStorageLevel,
+      localServerName: localServerName ?? this.localServerName,
       localDirectories: localDirectories ?? this.localDirectories,
       lxMetadataPluginPath: lxMetadataPluginPath == _unset
           ? this.lxMetadataPluginPath

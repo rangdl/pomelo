@@ -1,4 +1,5 @@
-// Music 模块模型导出
+// 音乐元数据模型导出
+// 统一的音乐数据模型定义，迁移自 lib/modules/music/model/
 
 export 'track.dart';
 export 'album.dart';

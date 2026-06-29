@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/log.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
@@ -25,9 +26,10 @@ import 'repository/audio_player_repository.dart';
 import 'service/audio_player_service.dart';
 
 class AudioPlayerModule extends Module {
-  AudioPlayerModule() : _repository = AudioPlayerRepository();
+  AudioPlayerModule() : _db = AppDatabase();
 
-  final AudioPlayerRepository _repository;
+  final AppDatabase _db;
+  late final AudioPlayerRepository _repository;
   late final AudioPlayerService _service;
   HttpServer? _server;
 
@@ -53,8 +55,8 @@ class AudioPlayerModule extends Module {
 
   @override
   Future<void> onInit() async {
-    // 初始化仓储
-    await _repository.onInit();
+    // 初始化仓储（基于 drift 数据库）
+    _repository = AudioPlayerRepository(_db);
 
     // 初始化服务
     _service = AudioPlayerService(_repository);
@@ -72,8 +74,8 @@ class AudioPlayerModule extends Module {
   @override
   Future<void> onDispose() async {
     await _stopServer();
-    await _repository.onDispose();
     await _service.onDispose();
+    await _db.close();
   }
 
   /// 启动本地 HTTP 代理服务（用于在线曲目流式转发）
@@ -135,6 +137,9 @@ class AudioPlayerModule extends Module {
 
   /// 获取服务实例（供外部使用）
   AudioPlayerService get service => _service;
+
+  /// 获取数据库实例（供 appDatabaseProvider override 使用）
+  AppDatabase get database => _db;
 
   /// 获取服务器端口
   int get serverPort => PomeloMedia.serverPort;

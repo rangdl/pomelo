@@ -2,9 +2,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
+import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/rx.dart';
-import 'package:pomelo/modules/music/model/music_source_type.dart';
-import 'package:pomelo/modules/music/model/music_server.dart';
+import 'package:pomelo/core/models/metadata/music_source_type.dart';
+import 'package:pomelo/core/models/metadata/music_server.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_server.dart';
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
@@ -18,6 +19,7 @@ import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/ui/platform/widgets/add_lx_script_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/add_subsonic_account_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/add_lx_server_dialog.dart';
+import 'package:pomelo/ui/platform/widgets/edit_local_music_dialog.dart';
 
 /// 支持添加的平台类型
 enum _PlatformType {
@@ -324,17 +326,106 @@ class FavoritePage extends HookConsumerWidget {
         ? '$libraryCount 个库'
         : '已加载';
 
+    // 是否允许编辑（本地 + LxServer + Subsonic 可编辑，Lx 插件由文件管理）
+    final canEdit = service.sourceType == MusicSourceType.local ||
+        service.sourceType == MusicSourceType.lxServer ||
+        service.sourceType == MusicSourceType.subsonic ||
+        service.sourceType == MusicSourceType.navidrome ||
+        service.sourceType == MusicSourceType.emby;
+
     return ListTile(
       leading: Icon(_typeIcon(service.sourceType), size: 20),
       title: Text(service.sourceName),
       subtitle: Text(subtitle),
-      trailing: _canRemove(service.sourceType)
-          ? IconButton.text(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (canEdit)
+            IconButton.text(
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              onPressed: () => _editService(context, ref, service),
+            ),
+          if (_canRemove(service.sourceType))
+            IconButton.text(
               icon: const Icon(Icons.delete_outline, size: 18),
               onPressed: () => _removeService(context, ref, service, subsonicAccounts),
-            )
-          : null,
+            ),
+        ],
+      ),
     );
+  }
+
+  /// 编辑服务配置
+  void _editService(BuildContext context, WidgetRef ref, MusicServer service) {
+    switch (service.sourceType) {
+      case MusicSourceType.local:
+        Rx.action(
+          context,
+          mobile: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const EditLocalMusicPage(),
+              ),
+            );
+          },
+          tablet: () {
+            showDialog(
+              context: context,
+              builder: (_) => const EditLocalMusicDialog(),
+            );
+          },
+        );
+      case MusicSourceType.lxServer:
+        final config = ref.read(userPreferenceProvider).lxServerConfig;
+        Rx.action(
+          context,
+          mobile: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    AddLxServerAccountPage(initialConfig: config),
+              ),
+            );
+          },
+          tablet: () {
+            showDialog(
+              context: context,
+              builder: (_) =>
+                  AddLxServerAccountDialog(initialConfig: config),
+            );
+          },
+        );
+      case MusicSourceType.subsonic:
+      case MusicSourceType.navidrome:
+      case MusicSourceType.emby:
+        final config = ref
+            .read(subsonicAccountsProvider.notifier)
+            .getAccount(service.sourceId);
+        Rx.action(
+          context,
+          mobile: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => AddSubsonicAccountPage(
+                  initialConfig: config,
+                  sourceId: service.sourceId,
+                ),
+              ),
+            );
+          },
+          tablet: () {
+            showDialog(
+              context: context,
+              builder: (_) => AddSubsonicAccountDialog(
+                initialConfig: config,
+                sourceId: service.sourceId,
+              ),
+            );
+          },
+        );
+      default:
+        break;
+    }
   }
 
   /// 类型对应的图标

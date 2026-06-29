@@ -11,7 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
-import 'package:pomelo/modules/music/model/track.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 
 /// 已解析音源曲目状态

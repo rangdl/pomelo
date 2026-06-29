@@ -1,4 +1,4 @@
-import 'package:pomelo/modules/music/model/models.dart';
+﻿import 'package:pomelo/core/models/metadata/metadata.dart';
 
 /// Lx Server 歌曲质量类型
 class LxServerQuality {
