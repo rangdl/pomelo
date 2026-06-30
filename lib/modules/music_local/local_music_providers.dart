@@ -14,8 +14,8 @@ import 'service/local_music_server.dart';
 /// 后续的 addDirectory/removeDirectory 通过 [LocalMusicDirsNotifier] 直接操作实例。
 /// 监听 [UserPreference.localServerName] 以响应名称变更。
 final localMusicServerProvider = FutureProvider<LocalMusicServer>((ref) async {
-  final pref = UserPreference.loadFromBox();
-  final name = ref.watch(userPreferenceProvider.select((p) => p.localServerName));
+  final pref = ref.watch(userPreferenceProvider);
+  final name = pref.localServerName;
   var dirs = pref.localDirectories;
 
   // 缓存目录作为默认目录：用户未配置任何目录时自动添加

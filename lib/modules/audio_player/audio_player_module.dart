@@ -26,7 +26,7 @@ import 'repository/audio_player_repository.dart';
 import 'service/audio_player_service.dart';
 
 class AudioPlayerModule extends Module {
-  AudioPlayerModule() : _db = AppDatabase();
+  AudioPlayerModule({required AppDatabase db}) : _db = db;
 
   final AppDatabase _db;
   late final AudioPlayerRepository _repository;

@@ -1,15 +1,14 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:hive_ce/hive.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' show MediaKit;
 import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/log/log_module.dart';
 import 'package:pomelo/core/log/log_providers.dart';
 import 'package:pomelo/core/routers/app_router.dart';
-import 'package:pomelo/core/storage/settings.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
@@ -34,28 +33,25 @@ void main() async {
   await _runPlatformSpecificCode();
 
   // ========== 存储层初始化 ==========
-  final appDir = await Helper.getAppDataDir();
-  Hive.init(appDir);
-  await Settings.init();
-  // 迁移旧的散落 Settings key 到统一的 UserPreference
-  // （必须在 ProviderContainer 创建前执行，UserPreferenceNotifier.build 会读取迁移结果）
-  await UserPreferenceNotifier.migrateFromLegacySettings();
-  // 初始化 MusicCacheDir 自定义目录与大小上限（从持久化的 UserPreference 加载）
-  final persistedPref = UserPreference.loadFromBox();
+  // 提前创建 drift 数据库（所有模块共享同一实例）
+  final database = AppDatabase();
+
+  // 从 drift 数据库加载 UserPreference（用于初始化 MusicCacheDir）
+  final persistedPref = await UserPreference.loadFromDatabase(database);
   MusicCacheDir.setCustomDirectory(persistedPref.cacheDirectory);
   MusicCacheDir.setSizeLimit(persistedPref.cacheSizeLimitGB);
   // ================================
 
   // ========== 核心模块初始化 ==========
   // LogModule 必须先初始化，后续模块依赖日志服务
-  final logModule = LogModule();
+  final logModule = LogModule(db: database);
   await logModule.onInit();
   setLogService(logModule.service);
 
   final homeModule = HomeModule();
   await homeModule.onInit();
 
-  final audioPlayerModule = AudioPlayerModule();
+  final audioPlayerModule = AudioPlayerModule(db: database);
   await audioPlayerModule.onInit();
   // ===================================
 
@@ -89,10 +85,13 @@ void main() async {
       logServiceProvider.overrideWithValue(logModule.service),
       homeModuleProvider.overrideWithValue(homeModule),
       audioPlayerModuleProvider.overrideWithValue(audioPlayerModule),
-      appDatabaseProvider.overrideWithValue(audioPlayerModule.database),
+      appDatabaseProvider.overrideWithValue(database),
     ],
   );
   audioPlayerModule.container = container;
+
+  // 异步加载 UserPreference 到 Riverpod 状态
+  await container.read(userPreferenceProvider.notifier).initialize();
   // ===============================================
 
   runApp(

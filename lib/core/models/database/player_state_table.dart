@@ -117,3 +117,18 @@ class SourcedTrackTable extends Table {
   @override
   Set<Column> get primaryKey => {trackId};
 }
+
+/// 用户偏好设置表（单行，id 固定为 0）
+///
+/// 存储整体 UserPreference 的 JSON 字符串，实现零迁移 schema 升级。
+@DataClassName('PreferenceEntity')
+class PreferenceTable extends Table {
+  /// 固定为 0，确保单行
+  IntColumn get id => integer().withDefault(const Constant(0))();
+
+  /// UserPreference 的 JSON 字符串
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

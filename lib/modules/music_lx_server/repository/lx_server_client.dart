@@ -136,6 +136,59 @@ class LxServerClient {
     responseType: ResponseType.json,
   );
 
+  // ========== 搜索 ==========
+
+  /// 搜索音乐
+  ///
+  /// GET /api/music/search?source=&keyword=&page=&limit=
+  /// [source] 库标识（kg/kw/tx/mg/wy）
+  /// [keyword] 搜索关键词
+  /// 返回分页歌曲列表。
+  Future<({List<LxServerSong> list, int total, int limit, int page})> searchMusic({
+    required String source,
+    required String keyword,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    await ensureLoggedIn();
+    log.info('LxServer', '搜索: source=$source, keyword=$keyword, page=$page');
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$serverUrl/api/music/search',
+        queryParameters: {
+          'source': source,
+          'keyword': keyword,
+          'page': page,
+          'limit': limit,
+        },
+        options: _authOptions,
+      );
+      final data = response.data!;
+      final list =
+          (data['list'] as List<dynamic>?)
+              ?.map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      final total = (data['total'] as num?)?.toInt() ?? 0;
+      final respLimit = (data['limit'] as num?)?.toInt() ?? limit;
+      final respPage = (data['page'] as num?)?.toInt() ?? page;
+      log.info(
+        'LxServer',
+        '搜索成功: source=$source, keyword=$keyword, '
+            '返回 ${list.length} 首, 总计 $total 首',
+      );
+      return (list: list, total: total, limit: respLimit, page: respPage);
+    } catch (e, s) {
+      log.error(
+        'LxServer',
+        '搜索失败: source=$source, keyword=$keyword, page=$page',
+        error: e,
+        stackTrace: s,
+      );
+      rethrow;
+    }
+  }
+
   // ========== 歌单 ==========
 
   /// 获取歌单分类标签
@@ -311,7 +364,6 @@ class LxServerClient {
   }) async {
     await ensureLoggedIn();
     final source = songInfo['source'] as String? ?? '';
-    final hash = songInfo['hash'] as String? ?? '';
     final typesMap = songInfo['_types'] as Map<String, dynamic>? ?? const {};
 
     // 生成随机 reqId 用于关联 SSE 进度流
@@ -501,8 +553,7 @@ class LxServerClient {
   Future<String?> getLyric({required Map<String, dynamic> songInfo}) async {
     await ensureLoggedIn();
     final source = songInfo['source'] as String? ?? '';
-    final hash = songInfo['hash'] as String? ?? '';
-    log.debug('LxServer', '获取歌词: source=$source, hash=$hash');
+    log.debug('LxServer', '获取歌词: source=$source, songInfo=$songInfo');
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/lyric',

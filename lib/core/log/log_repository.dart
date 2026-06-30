@@ -9,8 +9,8 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:hive_ce/hive.dart';
 import 'package:pomelo/core/core.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
 
 import 'log_entry.dart';
@@ -21,6 +21,9 @@ class LogRepository extends Repository<LogEntry> {
 
   final int maxEntries;
 
+  /// drift 数据库实例（用于持久化日志级别到 UserPreference）
+  final AppDatabase _db;
+
   /// 按时间排序的内存日志队列
   final Queue<LogEntry> _entries = Queue();
 
@@ -29,10 +32,11 @@ class LogRepository extends Repository<LogEntry> {
 
   /// 文件写入的最低级别（低于此级别的日志仅存内存，不写文件）
   ///
-  /// 默认 warning，可通过 [setStorageLevel] 修改，持久化到 Settings。
+  /// 默认 warning，可通过 [setStorageLevel] 修改，持久化到 drift 数据库。
   LogLevel _storageLevel = LogLevel.warning;
 
-  LogRepository({this.maxEntries = defaultMaxEntries});
+  LogRepository({this.maxEntries = defaultMaxEntries, required AppDatabase db})
+      : _db = db;
 
   @override
   String get id => 'log_repository';
@@ -43,10 +47,10 @@ class LogRepository extends Repository<LogEntry> {
   /// 设置文件存储的最低日志级别并持久化
   Future<void> setStorageLevel(LogLevel level) async {
     _storageLevel = level;
-    final box = Hive.box<String>('app_settings');
-    final pref = UserPreference.loadFromBox();
+    // 从 drift 数据库加载当前 UserPreference，更新日志级别后写回
+    final pref = await UserPreference.loadFromDatabase(_db);
     final newPref = pref.copyWith(logStorageLevel: level);
-    await box.put('user_preference', newPref.toJsonString());
+    await _db.upsertPreference(newPref.toJsonString());
   }
 
   /// 初始化文件存储
@@ -54,8 +58,9 @@ class LogRepository extends Repository<LogEntry> {
   /// [logDir] 日志文件所在目录（建议使用应用文档目录下的 logs 子目录）。
   /// 加载已有的日志文件，并从 UserPreference 读取存储级别。
   Future<void> initFileStorage(String logDir) async {
-    // 从 UserPreference 读取存储级别（已为 LogLevel 枚举，无需再解析）
-    _storageLevel = UserPreference.loadFromBox().logStorageLevel;
+    // 从 drift 数据库读取存储级别
+    final pref = await UserPreference.loadFromDatabase(_db);
+    _storageLevel = pref.logStorageLevel;
 
     // 确保目录存在
     final dir = Directory(logDir);
