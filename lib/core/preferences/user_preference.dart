@@ -1,18 +1,18 @@
 /// 用户偏好设置实体类
 ///
-/// 统一管理应用所有持久化设置，替代散落的 [Settings] + [StorageKeys] 调用。
+/// 统一管理应用所有持久化设置，替代散落的 Settings + StorageKeys 调用。
 /// 通过 [UserPreferenceNotifier]（Riverpod Notifier）管理状态，
 /// 任何字段变更都会自动触发依赖该字段的 Provider 重建。
 ///
-/// 序列化策略：整体序列化为 JSON 字符串存入 Hive Box（key = `user_preference`），
+/// 序列化策略：整体序列化为 JSON 字符串存入 drift 数据库（PreferenceTable），
 /// 加载时缺字段容忍（`??` 兜底），支持零迁移 schema 升级。
 library;
 
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:pomelo/core/log/log_entry.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/modules/music_lx_server/model/lx_server_quality.dart';
 
 /// Sentinel 对象，用于 [UserPreference.copyWith] 区分"不更新"与"清除为 null"。
@@ -33,6 +33,13 @@ class LxServerConfig {
   /// 让服务器代理获取并转发音频流，适用于 CDN 直链无法直接访问的场景。
   final bool proxyPlayback;
 
+  /// 是否允许换源
+  ///
+  /// 开启后，当当前库所有音质的播放链接获取均失败时，自动搜索其他库
+  /// （使用 "歌名 歌手" 作为关键词），比对歌曲信息后切换到匹配的新源
+  /// 重新获取播放链接。
+  final bool allowSourceSwitching;
+
   const LxServerConfig({
     required this.serverUrl,
     required this.username,
@@ -40,6 +47,7 @@ class LxServerConfig {
     this.displayName,
     this.token,
     this.proxyPlayback = false,
+    this.allowSourceSwitching = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -49,6 +57,7 @@ class LxServerConfig {
         'displayName': displayName,
         'token': token,
         'proxyPlayback': proxyPlayback,
+        'allowSourceSwitching': allowSourceSwitching,
       };
 
   factory LxServerConfig.fromJson(Map<String, dynamic> json) {
@@ -59,6 +68,7 @@ class LxServerConfig {
       displayName: json['displayName'] as String?,
       token: json['token'] as String?,
       proxyPlayback: json['proxyPlayback'] as bool? ?? false,
+      allowSourceSwitching: json['allowSourceSwitching'] as bool? ?? false,
     );
   }
 
@@ -69,6 +79,7 @@ class LxServerConfig {
     String? displayName,
     String? token,
     bool? proxyPlayback,
+    bool? allowSourceSwitching,
   }) {
     return LxServerConfig(
       serverUrl: serverUrl ?? this.serverUrl,
@@ -77,6 +88,7 @@ class LxServerConfig {
       displayName: displayName ?? this.displayName,
       token: token ?? this.token,
       proxyPlayback: proxyPlayback ?? this.proxyPlayback,
+      allowSourceSwitching: allowSourceSwitching ?? this.allowSourceSwitching,
     );
   }
 }
@@ -365,10 +377,9 @@ class UserPreference {
     );
   }
 
-  /// 从 Hive Box 静态加载（供非 Riverpod 上下文使用，如 Module.onInit）
-  static UserPreference loadFromBox() {
-    final box = Hive.box<String>('app_settings');
-    return UserPreference.fromJsonString(box.get('user_preference')) ??
-        const UserPreference();
+  /// 从 drift 数据库静态加载（供非 Riverpod 上下文使用，如 main.dart 启动、Module.onInit）
+  static Future<UserPreference> loadFromDatabase(AppDatabase db) async {
+    final json = await db.getPreference();
+    return UserPreference.fromJsonString(json) ?? const UserPreference();
   }
 }

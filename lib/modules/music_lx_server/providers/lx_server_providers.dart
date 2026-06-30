@@ -51,6 +51,7 @@ final lxServerMusicServerProvider =
         client: client,
         sourceId: sourceId,
         sourceName: sourceName,
+        allowSourceSwitching: config.allowSourceSwitching,
       );
 
       ref.onDispose(() => client.dispose());
@@ -65,6 +66,7 @@ typedef LxServerConnectionConfig = ({
   String password,
   String? displayName,
   bool proxyPlayback,
+  bool allowSourceSwitching,
 });
 
 /// Lx Server 连接状态 Notifier
@@ -106,6 +108,7 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
         displayName: config.displayName,
         token: token,
         proxyPlayback: config.proxyPlayback,
+        allowSourceSwitching: config.allowSourceSwitching,
       ),
     );
 

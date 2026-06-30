@@ -24,6 +24,7 @@ part 'app_database.g.dart';
   PlayerTrackTable,
   PlayHistoryTable,
   SourcedTrackTable,
+  PreferenceTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
@@ -32,7 +33,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -42,6 +43,10 @@ class AppDatabase extends _$AppDatabase {
             // v2: 新增 SourcedTrackTable + PlayHistoryTable.playCount 列
             await m.createTable(sourcedTrackTable);
             await m.addColumn(playHistoryTable, playHistoryTable.playCount);
+          }
+          if (from < 3) {
+            // v3: 新增 PreferenceTable（迁移自 hive_ce 存储）
+            await m.createTable(preferenceTable);
           }
         },
       );
@@ -169,6 +174,26 @@ class AppDatabase extends _$AppDatabase {
     return (delete(sourcedTrackTable)
           ..where((t) => t.trackId.equals(trackId)))
         .go();
+  }
+
+  // ========== 用户偏好设置 ==========
+
+  /// 获取用户偏好设置 JSON 字符串（单行，id=0）
+  Future<String?> getPreference() async {
+    final result = await (select(preferenceTable)
+          ..where((t) => t.id.equals(0)))
+        .get();
+    return result.isEmpty ? null : result.first.value;
+  }
+
+  /// 保存用户偏好设置（upsert，单行 id=0）
+  Future<void> upsertPreference(String json) async {
+    await into(preferenceTable).insertOnConflictUpdate(
+      PreferenceTableCompanion.insert(
+        id: const Value(0),
+        value: json,
+      ),
+    );
   }
 }
 

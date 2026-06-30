@@ -123,7 +123,7 @@ class AboutPage extends HookConsumerWidget {
               value: 'media_kit',
             ),
             const Divider(height: 1),
-            _TechRow(icon: Icons.storage, name: '本地存储', value: 'hive_ce'),
+            _TechRow(icon: Icons.storage, name: '本地存储', value: 'drift (SQLite)'),
           ],
         ),
       ),

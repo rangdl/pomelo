@@ -3,6 +3,7 @@ import 'package:pomelo/core/log.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
 import 'lx_server_client.dart';
+import 'lx_server_models.dart';
 
 /// Lx Server 音乐服务
 ///
@@ -20,6 +21,12 @@ class LxServerMusicServer extends MusicServer {
 
   /// 服务显示名称
   final String _sourceName;
+
+  /// 是否允许换源
+  ///
+  /// 开启后，当当前库所有音质的播放链接获取均失败时，
+  /// 自动搜索其他库并切换到匹配的新源重新获取播放链接。
+  final bool allowSourceSwitching;
 
   /// 所有可用库
   ///
@@ -39,6 +46,7 @@ class LxServerMusicServer extends MusicServer {
     required this.client,
     required String sourceId,
     required String sourceName,
+    this.allowSourceSwitching = false,
   }) : _sourceId = sourceId,
        _sourceName = sourceName;
 
@@ -90,9 +98,31 @@ class LxServerMusicServer extends MusicServer {
     int page = 1,
     int limit = 20,
     String? libraryId,
-  }) {
-    // lx-server API 无搜索接口
-    throw UnimplementedError('$sourceName(searchTracks) 尚未实现');
+  }) async {
+    final source = libraryId ?? _currentSource;
+    final result = await client.searchMusic(
+      source: source,
+      keyword: keyword,
+      page: page,
+      limit: limit,
+    );
+    final items = result.list
+        .map(
+          (s) => s.toTrack(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: source,
+            libraryName: _libraryName(source),
+          ),
+        )
+        .toList();
+    return PaginationResponse<Track>(
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      hasMore: result.page * result.limit < result.total,
+      items: items,
+    );
   }
 
   @override
@@ -234,7 +264,12 @@ class LxServerMusicServer extends MusicServer {
       id: id,
       name: '',
       owner: '',
-      source: (id: _sourceId, name: _sourceName, libraryId: _currentSource, libraryName: _libraryName(_currentSource)),
+      source: (
+        id: _sourceId,
+        name: _sourceName,
+        libraryId: _currentSource,
+        libraryName: _libraryName(_currentSource),
+      ),
       tracks: tracks,
     );
   }
@@ -294,28 +329,144 @@ class LxServerMusicServer extends MusicServer {
     final songInfo = Map<String, dynamic>.from(track.meta ?? {});
     // 确保必要字段存在
     songInfo['source'] ??= track.source?.libraryId ?? _currentSource;
-    songInfo['hash'] ??= track.id;
 
     // 按用户偏好选择音质，不可用则降级
     final typesMap = (songInfo['_types'] as Map<String, dynamic>?) ?? const {};
     final selectedQuality = _selectQuality(typesMap, preferredQuality: quality);
     final source = songInfo['source'] as String? ?? '';
-    final hash = songInfo['hash'] as String? ?? '';
     log.debug(
       'LxServer',
       'getMusicUrl: 歌曲=${track.title} - ${track.artist}, '
-          'source=$source, hash=$hash, 偏好=$quality, 选中质量=$selectedQuality',
+          'source=$source, 偏好=$quality, 选中质量=$selectedQuality, songInfo=$songInfo',
     );
 
     // 构造代理播放时使用的文件名：歌名 - 歌手.mp3
     final filename = _buildFilename(track);
 
-    return client.getMusicUrl(
-      songInfo: songInfo,
-      quality: selectedQuality,
-      filename: filename,
-    );
+    try {
+      return await client.getMusicUrl(
+        songInfo: songInfo,
+        quality: selectedQuality,
+        filename: filename,
+      );
+    } catch (e) {
+      // 获取失败，若开启换源则尝试切换到其他库
+      if (allowSourceSwitching) {
+        log.info(
+          'LxServer',
+          '获取播放链接失败，尝试换源: ${track.title} - ${track.artist}, '
+              '原库=$source, quality=$selectedQuality, 错误=$e',
+        );
+        final switchedUrl = await _trySourceSwitching(track, selectedQuality);
+        if (switchedUrl != null) return switchedUrl;
+      }
+      rethrow;
+    }
   }
+
+  /// 换源逻辑
+  ///
+  /// 遍历除当前库外的其他库，使用 "歌名 歌手" 搜索，
+  /// 比对歌曲信息（标题 + 歌手），匹配成功则用新源的 songInfo 重新获取播放链接。
+  /// 返回 null 表示所有库均未匹配或获取失败。
+  Future<String?> _trySourceSwitching(Track track, String quality) async {
+    final originalSource = track.source?.libraryId ?? _currentSource;
+    final keyword = _buildSearchKeyword(track);
+    if (keyword.isEmpty) {
+      log.warning('LxServer', '换源跳过: 搜索关键词为空');
+      return null;
+    }
+
+    log.info('LxServer', '换源搜索: keyword="$keyword", 原库=$originalSource');
+
+    for (final lib in _allLibraries) {
+      if (lib.id == originalSource) continue;
+
+      try {
+        final result = await client.searchMusic(
+          source: lib.id,
+          keyword: keyword,
+          page: 1,
+          limit: 20,
+        );
+
+        final matched = _findMatchedSong(track, result.list);
+        if (matched == null) {
+          log.debug('LxServer', '换源: 库=${lib.id} 未找到匹配歌曲');
+          continue;
+        }
+
+        log.info(
+          'LxServer',
+          '换源匹配成功: 库=${lib.id}(${lib.name}), '
+              '匹配歌曲=${matched.name} - ${matched.singer}',
+        );
+
+        // 用匹配歌曲的 songInfo 重新获取播放链接
+        final newSongInfo = matched.toSongInfo();
+        final typesMap =
+            (newSongInfo['_types'] as Map<String, dynamic>?) ?? const {};
+        final newQuality = _selectQuality(typesMap, preferredQuality: quality);
+        final filename = _buildFilename(track);
+
+        final url = await client.getMusicUrl(
+          songInfo: newSongInfo,
+          quality: newQuality,
+          filename: filename,
+        );
+        log.info(
+          'LxServer',
+          '换源成功: 库=${lib.id}, quality=$newQuality, track=${track.title}',
+        );
+        return url;
+      } catch (e) {
+        log.warning(
+          'LxServer',
+          '换源失败: 库=${lib.id}(${lib.name}): $e',
+        );
+      }
+    }
+
+    log.warning('LxServer', '换源结束: 所有库均未成功, track=${track.title}');
+    return null;
+  }
+
+  /// 构造搜索关键词："歌名 歌手"
+  String _buildSearchKeyword(Track track) {
+    final title = track.title.trim();
+    final artist = track.artist?.trim() ?? '';
+    if (title.isEmpty && artist.isEmpty) return '';
+    if (artist.isEmpty) return title;
+    return '$title $artist';
+  }
+
+  /// 在搜索结果中查找与原曲匹配的歌曲
+  ///
+  /// 匹配规则（均忽略大小写、去除首尾空白）：
+  /// - 标题完全相同
+  /// - 歌手包含关系（一方包含另一方）
+  LxServerSong? _findMatchedSong(Track track, List<LxServerSong> candidates) {
+    final targetTitle = _normalize(track.title);
+    final targetArtist = _normalize(track.artist ?? '');
+
+    for (final song in candidates) {
+      final songTitle = _normalize(song.name);
+      if (songTitle != targetTitle) continue;
+
+      final songArtist = _normalize(song.singer);
+      if (targetArtist.isEmpty || songArtist.isEmpty) {
+        return song;
+      }
+      if (songArtist.contains(targetArtist) ||
+          targetArtist.contains(songArtist)) {
+        return song;
+      }
+    }
+    return null;
+  }
+
+  /// 字符串归一化：小写 + 去除首尾空白
+  String _normalize(String s) => s.trim().toLowerCase();
 
   /// 构造代理播放文件名
   ///
@@ -335,7 +486,6 @@ class LxServerMusicServer extends MusicServer {
   Future<String?> getLyric(Track track) async {
     final songInfo = Map<String, dynamic>.from(track.meta ?? {});
     songInfo['source'] ??= track.source?.libraryId ?? _currentSource;
-    songInfo['hash'] ??= track.id;
     return client.getLyric(songInfo: songInfo);
   }
 
