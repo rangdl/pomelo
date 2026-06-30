@@ -75,6 +75,9 @@ class AppToast {
   }) {
     final context = _effectiveContext;
     if (context == null) return null;
+    // 在原始 context 上读取主题色（Toast overlay 的 context 不在主题树内，
+    // 直接 Theme.of(overlayContext) 会触发 inherited_theme 断言失败）
+    final colorScheme = Theme.of(context).colorScheme;
     return showToast(
       context: context,
       showDuration: duration ?? const Duration(seconds: 2),
@@ -83,6 +86,9 @@ class AppToast {
         message: msg,
         color: color,
         icon: icon,
+        cardColor: colorScheme.card,
+        cardForegroundColor: colorScheme.cardForeground,
+        mutedForegroundColor: colorScheme.mutedForeground,
         onDismiss: overlay.close,
       ),
     );
@@ -92,28 +98,34 @@ class AppToast {
 /// Toast 卡片组件
 ///
 /// 右上角展示，宽度根据文本自适应（最大 480）。
-/// 使用彩色左边框区分类型：成功绿、警告黄、错误红、信息蓝。
+/// 使用彩色边框区分类型：成功绿、警告黄、错误红、信息蓝。
+/// 主题色由调用方传入，避免在 Toast overlay context 上调用 [Theme.of]。
 class _AppToastCard extends StatelessWidget {
   final String message;
   final Color color;
   final IconData icon;
+  final Color cardColor;
+  final Color cardForegroundColor;
+  final Color mutedForegroundColor;
   final VoidCallback? onDismiss;
 
   const _AppToastCard({
     required this.message,
     required this.color,
     required this.icon,
+    required this.cardColor,
+    required this.cardForegroundColor,
+    required this.mutedForegroundColor,
     this.onDismiss,
   });
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       constraints: const BoxConstraints(maxWidth: 480),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.card,
+        color: cardColor,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
         boxShadow: [
@@ -133,10 +145,7 @@ class _AppToastCard extends StatelessWidget {
             Flexible(
               child: Text(
                 message,
-                style: TextStyle(
-                  color: theme.colorScheme.cardForeground,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: cardForegroundColor, fontSize: 13),
               ),
             ),
             if (onDismiss != null) ...[
@@ -147,7 +156,7 @@ class _AppToastCard extends StatelessWidget {
                   onTap: onDismiss,
                   child: Icon(
                     Icons.close,
-                    color: theme.colorScheme.mutedForeground,
+                    color: mutedForegroundColor,
                     size: 16,
                   ),
                 ),
