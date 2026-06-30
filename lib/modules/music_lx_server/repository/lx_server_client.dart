@@ -144,7 +144,8 @@ class LxServerClient {
   /// [source] 库标识（kg/kw/tx/mg/wy）
   /// [keyword] 搜索关键词
   /// 返回分页歌曲列表。
-  Future<({List<LxServerSong> list, int total, int limit, int page})> searchMusic({
+  Future<({List<LxServerSong> list, int total, int limit, int page})>
+  searchMusic({
     required String source,
     required String keyword,
     int page = 1,
@@ -371,7 +372,7 @@ class LxServerClient {
 
     log.info(
       'LxServer',
-      '获取播放链接: source=$source, hash=$hash, quality=$quality, '
+      '获取播放链接: source=$source, quality=$quality, '
           '可用质量=${typesMap.keys.toList()}, reqId=$reqId',
     );
 
@@ -397,15 +398,14 @@ class LxServerClient {
         final msg = data['message'] ?? '服务器未返回有效 URL';
         log.error(
           'LxServer',
-          '获取播放链接失败: source=$source, hash=$hash, quality=$quality, '
+          '获取播放链接失败: source=$source, quality=$quality, '
               '原因=$msg',
         );
         throw Exception('获取播放链接失败: $msg');
       }
       log.info(
         'LxServer',
-        '获取播放链接成功: source=$source, hash=$hash, quality=$quality, '
-            'url=${url.length > 80 ? '${url.substring(0, 80)}...' : url}',
+        '获取播放链接成功: source=$source, quality=$quality, url=$url',
       );
 
       // 等待 SSE 流结束（进度已通过 Toast 实时提示）
@@ -433,7 +433,8 @@ class LxServerClient {
       }
       log.error(
         'LxServer',
-        '获取播放链接异常: source=$source, hash=$hash, quality=$quality',
+        '获取播放链接异常: source=$source, quality=$quality, songInfo=$songInfo, '
+            '异常=$e',
         error: e,
         stackTrace: s,
       );
@@ -563,15 +564,15 @@ class LxServerClient {
       final data = response.data!;
       final lyric = data['lyric'] as String?;
       if (lyric == null || lyric.isEmpty) {
-        log.debug('LxServer', '获取歌词为空: source=$source, hash=$hash');
+        log.debug('LxServer', '获取歌词为空: source=$source, songInfo=$songInfo');
         return null;
       }
-      log.debug('LxServer', '获取歌词成功: source=$source, hash=$hash');
+      log.debug('LxServer', '获取歌词成功: source=$source, songInfo=$songInfo');
       return lyric;
     } catch (e, s) {
       log.error(
         'LxServer',
-        '获取歌词异常: source=$source, hash=$hash',
+        '获取歌词异常: source=$source, songInfo=$songInfo',
         error: e,
         stackTrace: s,
       );
