@@ -50,10 +50,38 @@ class UpdateService {
 
   static const _pubspecLatestUrl =
       'https://cdn.jsdelivr.net/gh/rangdl/pomelo@latest/pubspec.yaml';
+  static const _purgeUrl =
+      'https://purge.jsdelivr.net/gh/rangdl/pomelo@latest/pubspec.yaml';
   static const _downloadUrlTemplate =
       'https://github.com/rangdl/pomelo/releases/download/{tag}/{filename}';
   static const releasesLatestUrl =
       'https://github.com/rangdl/pomelo/releases/latest';
+
+  /// 刷新 jsDelivr CDN 缓存
+  ///
+  /// 调用 purge API 清除 `pubspec.yaml` 的 CDN 缓存。
+  /// 返回 `true` 表示 CF 和 FY 两个 CDN 提供商均刷新成功。
+  Future<bool> purgeCdnCache() async {
+    try {
+      final response = await _dio.get<dynamic>(_purgeUrl);
+      final data = response.data;
+      if (data is! Map) return false;
+      final paths = data['paths'];
+      if (paths is! Map) return false;
+      // 取第一个路径的 providers 状态
+      final pathEntry = paths.values.firstOrNull;
+      if (pathEntry is! Map) return false;
+      final providers = pathEntry['providers'];
+      if (providers is! Map) return false;
+      final cf = providers['CF'] == true;
+      final fy = providers['FY'] == true;
+      log.info('UpdateService', 'CDN 缓存刷新: CF=$cf, FY=$fy');
+      return cf && fy;
+    } catch (e, s) {
+      log.error('UpdateService', 'CDN 缓存刷新失败', error: e, stackTrace: s);
+      return false;
+    }
+  }
 
   /// 将 GitHub 加速地址应用到下载链接
   ///
