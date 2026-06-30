@@ -44,6 +44,9 @@ class SettingsPage extends HookConsumerWidget {
     );
     final cacheSizeAsync = ref.watch(_cacheSizeProvider);
     final checking = useState(false);
+    // 检查更新点击计数（短时间连续点击 3 次以上未发现新版本时，提示刷新 CDN 缓存）
+    final checkClickCount = useState(0);
+    final firstClickTime = useState<DateTime?>(null);
 
     Future<void> checkForUpdate() async {
       if (checking.value) return;
@@ -52,6 +55,27 @@ class SettingsPage extends HookConsumerWidget {
         final info = await PackageInfo.fromPlatform();
         final result = await UpdateService().checkForUpdate(info.version);
         if (!context.mounted) return;
+
+        // 记录点击时间戳，10 秒内累计计数
+        final now = DateTime.now();
+        if (firstClickTime.value == null ||
+            now.difference(firstClickTime.value!).inSeconds > 10) {
+          firstClickTime.value = now;
+          checkClickCount.value = 1;
+        } else {
+          checkClickCount.value++;
+        }
+
+        // 未发现新版本且短时间点击 3 次以上，提示刷新 CDN 缓存
+        if (!result.hasUpdate &&
+            result.errorMessage == null &&
+            checkClickCount.value >= 3) {
+          checkClickCount.value = 0;
+          firstClickTime.value = null;
+          _showCdnPurgeDialog(context, ref);
+          return;
+        }
+
         _showUpdateResult(context, ref, result);
       } finally {
         checking.value = false;
@@ -301,6 +325,43 @@ class SettingsPage extends HookConsumerWidget {
         maxWidth: 800,
         padding: const EdgeInsets.all(16),
         children: children,
+      ),
+    );
+  }
+
+  /// 提示是否刷新 CDN 缓存
+  ///
+  /// 短时间内连续检查更新 3 次以上未发现新版本时触发。
+  void _showCdnPurgeDialog(BuildContext context, WidgetRef ref) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('刷新 CDN 缓存'),
+        content: const SizedBox(
+          width: 380,
+          child: Text(
+            '多次检查未发现新版本，可能是 CDN 缓存未更新。\n是否刷新 jsDelivr CDN 缓存后重新检查？',
+          ),
+        ),
+        actions: [
+          GhostButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          PrimaryButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final success = await UpdateService().purgeCdnCache();
+              if (!context.mounted) return;
+              if (success) {
+                context.toast.success('CDN 缓存刷新成功');
+              } else {
+                context.toast.error('CDN 缓存刷新失败');
+              }
+            },
+            child: const Text('确定'),
+          ),
+        ],
       ),
     );
   }
