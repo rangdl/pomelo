@@ -1,0 +1,2 @@
+1.当短时间点击检查更新三次以上,并未检查到新版本时触发弹窗提示是否刷新cdn缓存,点击确定之后调用 `https://purge.jsdelivr.net/gh/rangdl/pomelo@latest/pubspec.yaml` 其返回结果如下{"id": "pm1RCHSb9sJTXwKL","status": "finished","timestamp": "2026-06-30T07:01:34.703Z","paths": {"/gh/rangdl/pomelo@latest/pubspec.yaml": {"throttled": false,"providers": {"CF": true,"FY": true}}}}检查其中CF和FY为true则缓存刷新成功
+2.在添加平台时保存按钮报错'package:flutter/src/widgets/inherited theme.dart': Failed assertion: line 122 pos 7: 'debugDidFindAncestor': The provided to' context must be an ancestor of the `from' context.
