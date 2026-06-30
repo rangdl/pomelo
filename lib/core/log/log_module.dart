@@ -7,12 +7,13 @@ library;
 
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/core.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
 
 import 'log_repository.dart';
 import 'log_service.dart';
 
 class LogModule extends Module {
-  LogModule() : _repository = LogRepository();
+  LogModule({required AppDatabase db}) : _repository = LogRepository(db: db);
 
   final LogRepository _repository;
   late final LogService _service;

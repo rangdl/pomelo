@@ -30,7 +30,7 @@ class Helper {
 
   static bool get isDebug => kDebugMode;
 
-  /// 获取应用文档目录（用于 hive_ce 存储）
+  /// 获取应用文档目录（用于 drift 数据库和日志存储）
   ///
   /// 各平台路径:
   /// - Windows: C:\Users\<用户名>\Documents\pomelo\

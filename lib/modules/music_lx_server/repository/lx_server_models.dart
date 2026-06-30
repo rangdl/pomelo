@@ -253,7 +253,12 @@ class LxServerSong {
     required String libraryName,
   }) {
     return Track(
-      id: songmid?.toString() ?? songId?.toString() ?? hash ?? '',
+      id:
+          songmid?.toString() ??
+          songId?.toString() ??
+          hash ??
+          copyrightId ??
+          '',
       title: name,
       artist: singer.isEmpty ? '未知艺术家' : singer,
       albumId: albumId,

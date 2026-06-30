@@ -34,6 +34,9 @@ class _LxServerAccountContent extends HookConsumerWidget {
     final error = useState<String?>(null);
     final isEditing = initialConfig != null;
     final proxyPlayback = useState(initialConfig?.proxyPlayback ?? false);
+    final allowSourceSwitching = useState(
+      initialConfig?.allowSourceSwitching ?? false,
+    );
 
     Future<void> submit() async {
       final serverUrl = serverUrlController.text.trim();
@@ -56,6 +59,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
           password: password,
           displayName: displayName.isEmpty ? null : displayName,
           proxyPlayback: proxyPlayback.value,
+          allowSourceSwitching: allowSourceSwitching.value,
         ));
         if (context.mounted) context.toast.success(isEditing ? '已更新' : '连接成功');
       } catch (e) {
@@ -137,6 +141,19 @@ class _LxServerAccountContent extends HookConsumerWidget {
         const Gap(4),
         Text(
           '代理播放：开启后通过服务器代理获取音频流，适用于 CDN 直链无法直接访问的场景',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.mutedForeground,
+          ),
+        ),
+        const Gap(12),
+        Switch(
+          value: allowSourceSwitching.value,
+          onChanged: (v) => allowSourceSwitching.value = v,
+        ),
+        const Gap(4),
+        Text(
+          '允许换源：开启后当所有音质的播放链接获取失败时，自动搜索其他库并切换到匹配的新源重新获取',
           style: TextStyle(
             fontSize: 12,
             color: Theme.of(context).colorScheme.mutedForeground,
