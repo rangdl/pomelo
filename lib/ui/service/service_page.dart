@@ -2,11 +2,12 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
-import 'package:pomelo/core/preferences/user_preference_provider.dart';
-import 'package:pomelo/core/rx.dart';
-import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/core/models/metadata/music_source_type.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_server.dart';
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
@@ -377,7 +378,8 @@ class ServicePage extends HookConsumerWidget {
           },
         );
       case MusicSourceType.lxServer:
-        final config = ref.read(userPreferenceProvider).lxServerConfig;
+        final configs = ref.read(musicServerConfigsProvider).value ?? const [];
+        final config = configs.whereType<LxServerConfig>().firstOrNull;
         Rx.action(
           context,
           mobile: () {
@@ -517,9 +519,14 @@ class ServicePage extends HookConsumerWidget {
         default:
           break;
       }
-      context.toast.success('已移除 ${service.sourceName}');
+      // 若删除的正是当前选中来源，清除选中态避免 stale sourceId 导致歌单循环切换
+      final selection = ref.read(selectedSourceProvider);
+      if (selection.sourceId == service.sourceId) {
+        ref.read(selectedSourceProvider.notifier).selectAll();
+      }
+      AppToast().success('已移除 ${service.sourceName}');
     } catch (e) {
-      context.toast.error('移除失败: $e');
+      AppToast().error('移除失败: $e');
     }
   }
 }

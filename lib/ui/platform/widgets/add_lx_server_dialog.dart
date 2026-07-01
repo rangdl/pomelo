@@ -1,6 +1,6 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/preferences/user_preference.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
@@ -27,7 +27,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
       text: initialConfig?.password ?? '',
     );
     final displayNameController = useTextEditingController(
-      text: initialConfig?.displayName ?? '',
+      text: initialConfig?.name ?? '',
     );
 
     final isLoading = useState(false);
@@ -57,7 +57,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
           serverUrl: serverUrl,
           username: username,
           password: password,
-          displayName: displayName.isEmpty ? null : displayName,
+          name: displayName.isEmpty ? 'Lx Server' : displayName,
           proxyPlayback: proxyPlayback.value,
           allowSourceSwitching: allowSourceSwitching.value,
         ));

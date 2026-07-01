@@ -1,5 +1,4 @@
-import 'package:flutter/widgets.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart' hide Row, Flexible;
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 全局 Navigator Key，用于在非 UI 上下文中获取 [BuildContext] 显示 Toast。
 ///
@@ -54,11 +53,7 @@ class AppToast {
   ToastOverlay? warning(String msg, {Duration? duration}) =>
       _show(msg, AppToastType.warning, duration: duration);
 
-  ToastOverlay? info(
-    String msg, {
-    Duration? duration,
-    Color? color,
-  }) {
+  ToastOverlay? info(String msg, {Duration? duration, Color? color}) {
     if (color == null) return _show(msg, AppToastType.info, duration: duration);
     return _showCustom(msg, color, Icons.info, duration: duration);
   }
@@ -81,53 +76,13 @@ class AppToast {
     return showToast(
       context: context,
       showDuration: duration ?? const Duration(seconds: 2),
-      location: ToastLocation.topRight,
-      builder: (context, overlay) => _AppToastCard(
-        message: msg,
-        color: color,
-        icon: icon,
-        cardColor: colorScheme.card,
-        cardForegroundColor: colorScheme.cardForeground,
-        mutedForegroundColor: colorScheme.mutedForeground,
-        onDismiss: overlay.close,
-      ),
-    );
-  }
-}
-
-/// Toast 卡片组件
-///
-/// 右上角展示，宽度根据文本自适应（最大 480）。
-/// 使用彩色边框区分类型：成功绿、警告黄、错误红、信息蓝。
-/// 主题色由调用方传入，避免在 Toast overlay context 上调用 [Theme.of]。
-class _AppToastCard extends StatelessWidget {
-  final String message;
-  final Color color;
-  final IconData icon;
-  final Color cardColor;
-  final Color cardForegroundColor;
-  final Color mutedForegroundColor;
-  final VoidCallback? onDismiss;
-
-  const _AppToastCard({
-    required this.message,
-    required this.color,
-    required this.icon,
-    required this.cardColor,
-    required this.cardForegroundColor,
-    required this.mutedForegroundColor,
-    this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 480),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.5), width: 1),
+      location: ToastLocation.topCenter,
+      builder: (context, overlay) => SurfaceCard(
+        borderWidth: 1,
+        filled: true,
+        fillColor: colorScheme.card,
+        // borderColor: colorScheme.card,
+        borderColor: color.withValues(alpha: 0.5),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.15),
@@ -135,34 +90,26 @@ class _AppToastCard extends StatelessWidget {
             offset: const Offset(0, 4),
           ),
         ],
-      ),
-      child: IntrinsicWidth(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: color, size: 18),
-            const Gap(8),
-            Flexible(
-              child: Text(
-                message,
-                style: TextStyle(color: cardForegroundColor, fontSize: 13),
+        child: Basic(
+          leading: Icon(icon, color: color, size: 16),
+          title: Text(
+            msg,
+            style: TextStyle(color: colorScheme.cardForeground, fontSize: 13),
+          ),
+          // subtitle: Text(msg),
+          trailing: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: overlay.close,
+              child: Icon(
+                Icons.close,
+                color: colorScheme.mutedForeground,
+                size: 16,
               ),
             ),
-            if (onDismiss != null) ...[
-              const Gap(8),
-              MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: onDismiss,
-                  child: Icon(
-                    Icons.close,
-                    color: mutedForegroundColor,
-                    size: 16,
-                  ),
-                ),
-              ),
-            ],
-          ],
+          ),
+          trailingAlignment: Alignment.centerRight,
+          leadingAlignment: Alignment.centerLeft,
         ),
       ),
     );
