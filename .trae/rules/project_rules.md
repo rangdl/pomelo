@@ -1,18 +1,22 @@
-# Pomelo 项目架构规范
+# Pomelo 项目规则
 
-## 技术栈
-
-- **UI 框架**: shadcn_flutter
-- **状态管理**: Riverpod (hooks_riverpod, flutter_riverpod) + flutter_hooks
-- **路由**: auto_route
-- **响应式布局**: Rx.layout() / Rx.action()
-- **持久化**: hive_ce + `UserPreference`（统一设置实体）
+> 本文件是项目唯一规则来源，整合架构规范、代码模板、组件约定与 Git 规范。
+> 所有 AI 辅助编码与代码生成**必须**遵循本文件。
 
 ---
 
-## 核心架构原则
+## 一、技术栈
 
-### 1. 分层架构
+- **UI 框架**: shadcn_flutter
+- **状态管理**: Riverpod（hooks_riverpod / flutter_riverpod）+ flutter_hooks
+- **路由**: auto_route
+- **响应式布局**: `Rx.layout()` / `Rx.action()`
+- **持久化**: drift（SQLite），统一 `AppDatabase`（schema v4）
+- **日志**: 自研 `Logger` + `LogService`（JSON Lines 文件存储）
+
+---
+
+## 二、分层架构
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -23,43 +27,242 @@
 │  - 业务模块、MusicServer、仓储、模块级 Provider │
 ├─────────────────────────────────────────────┤
 │  Core Layer (lib/core/)                    │
-│  - 框架基类、存储、路由、日志、UserPreference │
+│  - 框架基类、数据库、路由、日志、UserPreference │
 └─────────────────────────────────────────────┘
 ```
 
-### 2. 模块系统（已移除 M.A.R.S.）
-
-项目已移除 M.A.R.S. 模块化架构（`ModuleManager` 单例 + 拓扑排序 + 懒加载机制）。
-原因：数据刷新不及时，模块间状态同步依赖手动调用，难以与 Riverpod 响应式系统集成。
-
-**当前模式**：
-
-- **核心模块**（`LogModule`、`HomeModule`、`AudioPlayerModule`）：在 `main.dart` 中直接实例化并 `onInit()`，通过 `Provider.overrideWithValue` 注入到 Riverpod
-- **业务模块**（`music_local`、`music_lx`、`music_lx_server`、`music_subsonic` 等）：无 `Module` 类，直接通过 Riverpod Provider 创建 `MusicServer` 实例
-- **日志服务**：通过全局静态引用 `setLogService()` 注入，`Logger` 内部通过 `_logService` 静态变量访问（避免每次 `ref.read`）
-- **Module 基类**：保留 `lib/core/module/module.dart`，仅用于核心模块的生命周期（`onInit`/`onReady`/`onDispose`）
-
-### 3. Provider 分层原则
+### Provider 分层
 
 | 层级 | 位置 | 职责 |
 |------|------|------|
 | Core | `lib/core/preferences/` | 全局设置 Provider（`userPreferenceProvider`） |
+| Core | `lib/core/providers/` | 全局配置 Provider（`musicServerConfigsProvider`） |
 | 模块级 | `lib/modules/*/providers/` | MusicServer 实例、服务、仓储、业务状态 |
 | UI 级 | `lib/ui/*/providers/` | 页面选中态、派生数据、UI 状态 |
 
-### 4. 持久化策略
+---
 
-- **统一设置**: 使用 `UserPreference` 实体类（`lib/core/preferences/user_preference.dart`），通过 `userPreferenceProvider` 管理状态，整体序列化为 JSON 存入 Hive Box（key = `user_preference`）
-- **模块级仓储**: 使用 `PersistentRepository<T>`（基于 hive_ce）
-- **播放器状态**: 单独通过 `StorageKeys.audioPlayerState` 持久化（freezed + json_serializable）
-- **文件存储**: 仅 `lib/core/log/` 模块使用（JSON Lines）
-- **内存存储**: 使用 `InMemoryRepository<T>`（`favorite`、`home`、`statistics`）
+## 三、模块系统
 
-> **迁移说明**: 旧的散落 `Settings.get/set(StorageKeys.xxx)` 已通过 `UserPreferenceNotifier.migrateFromLegacySettings()` 迁移到统一格式。新代码**必须**使用 `UserPreference`，不要直接调用 `Settings` + `StorageKeys`。
+### 1. 核心模块（Riverpod FutureProvider 模式）
+
+核心模块（`LogModule`、`HomeModule`、`AudioPlayerModule`）通过 Riverpod `FutureProvider` 注册，模块创建 + `onInit` 在 Provider 内部异步完成。
+
+| 模块 | Provider | 文件 |
+|------|----------|------|
+| `LogModule` | `logModuleProvider` | `lib/core/log/log_providers.dart` |
+| `HomeModule` | `homeModuleProvider` | `lib/modules/home/providers/home_providers.dart` |
+| `AudioPlayerModule` | `audioPlayerModuleProvider` | `lib/modules/audio_player/module_providers.dart` |
+
+**初始化流程**（`main.dart`）：
+
+```dart
+final database = AppDatabase();
+final container = ProviderContainer(
+  overrides: [appDatabaseProvider.overrideWithValue(database)],
+);
+
+// 在 runApp 前 await 各模块 Provider.future 触发初始化
+await container.read(homeModuleProvider.future);
+final audioPlayerModule = await container.read(audioPlayerModuleProvider.future);
+audioPlayerModule.container = container; // 供 ServerPlaybackRoutes 使用
+await container.read(userPreferenceProvider.notifier).initialize();
+
+runApp(UncontrolledProviderScope(container: container, child: const Pomelo()));
+```
+
+**下游同步访问**：main.dart 在 `runApp` 前 `await` 各模块 Provider.future，下游同步 Provider 使用 `requireValue` 安全访问：
+
+```dart
+final logServiceProvider = Provider<LogService>((ref) {
+  return ref.watch(logModuleProvider).requireValue.service;
+});
+```
+
+### 2. 业务模块
+
+业务模块（`music_local`、`music_lx`、`music_lx_server`、`music_subsonic` 等）**无** `Module` 类，直接通过 Riverpod Provider 创建 `MusicServer` 实例，配置统一从 `musicServerConfigsProvider` 读取。
+
+### 3. Module 基类
+
+`lib/core/module/module.dart` 仅用于核心模块的生命周期（`onInit`/`onReady`/`onDispose`）。**不要**为业务模块创建 `Module` 子类。
+
+### 4. 日志服务注入
+
+`LogModule` 在 `logModuleProvider` 内部调用 `setLogService(module.service)`，`Logger` 内部通过 `_logService` 静态变量访问（避免每次 `ref.read`）。
 
 ---
 
-## MusicServer 实体（音乐源统一架构）
+## 四、持久化策略（drift）
+
+### 1. AppDatabase
+
+- 文件：`lib/core/models/database/app_database.dart`
+- schema 版本：**v4**
+- 数据库文件路径：`<documents>/pomelo/app.db`（Windows 平台 `getApplicationDocumentsDirectory()` 返回文档根目录，故增加 `pomelo` 子目录）
+
+### 2. 表结构
+
+| 表 | 用途 | 版本 |
+|----|------|------|
+| `PlayerStateTable` | 播放器状态（单行 id=0） | v1 |
+| `PlayerTrackTable` | 当前播放列表曲目 | v1 |
+| `PlayHistoryTable` | 播放记录（含 playCount，upsert 语义） | v1/v2 |
+| `SourcedTrackTable` | 已解析音源曲目（播放链接与缓存路径持久化） | v2 |
+| `PreferenceTable` | UserPreference JSON（单行 id=0） | v3 |
+| `MusicServerConfigTable` | 音乐服务配置（单表多行） | v4 |
+
+### 3. schema 升级约定
+
+新增表时：
+1. 创建 `xxx_table.dart` 定义 `Table` 子类
+2. 在 `AppDatabase` 的 `@DriftDatabase(tables: [...])` 添加
+3. `schemaVersion` 递增
+4. 在 `migration.onUpgrade` 添加 `if (from < N) await m.createTable(xxxTable)`
+5. 运行 `dart run build_runner build --delete-conflicting-outputs`
+
+### 4. Provider 访问
+
+```dart
+// AppDatabase Provider（在 main.dart 中 overrideWithValue）
+final appDatabaseProvider = Provider<AppDatabase>((ref) => throw UnimplementedError());
+```
+
+### 5. 存储相关文件
+
+- `lib/core/storage/music_cache_dir.dart`：音频流缓存目录管理
+- **已删除**：`settings.dart`、`storage_keys.dart`、`persistent_repository.dart`（旧 hive_ce 方案）
+
+---
+
+## 五、UserPreference（用户偏好设置）
+
+### 1. 字段清单
+
+所有用户偏好集中在 `UserPreference` 实体类（`lib/core/preferences/user_preference.dart`），整体序列化为 JSON 存入 `PreferenceTable`（单行 id=0）。
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `themeMode` | `String` | 主题模式（'light'/'dark'/'system'） |
+| `lyricFontSize` | `int` | 歌词字体大小 |
+| `autoPlay` | `bool` | 自动播放开关 |
+| `updateProxy` | `String?` | 更新代理地址 |
+| `selectedSourceId` | `String?` | 当前选中音乐源 |
+| `selectedLibraryId` | `String?` | 当前选中库 |
+| `logStorageLevel` | `LogLevel` | 日志存储级别 |
+| `cacheDirectory` | `String?` | 音频流缓存目录（null=系统默认） |
+| `cacheSizeLimitGB` | `int` | 缓存上限（1~5，默认 1） |
+| `lxServerQuality` | `LxServerQuality` | 全局音质偏好 |
+
+> **注意**：音乐源配置（local/lx/lxServer/subsonic）已迁移到 `MusicServerConfigTable`，**不在** `UserPreference` 中。
+
+### 2. 读写约定
+
+**必须**通过 `userPreferenceProvider` 读写：
+
+```dart
+// ✅ 读取
+final themeMode = ref.watch(userPreferenceProvider.select((p) => p.themeMode));
+
+// ✅ 写入
+await ref.read(userPreferenceProvider.notifier).setThemeMode('dark');
+
+// ❌ 错误：旧的 Settings/StorageKeys 已删除
+// await Settings.set(StorageKeys.myThemeMode, 'dark');
+```
+
+### 3. 新增字段流程
+
+1. 在 `UserPreference` 类添加 `final` 字段 + 构造函数默认值
+2. 在 `fromJson` 添加解析（`??` 兜底）
+3. 在 `toJson` 添加序列化
+4. 在 `copyWith` 添加参数（可空字段用 sentinel 对象区分"不更新"与"清除为 null"）
+5. 在 `UserPreferenceNotifier` 添加 `setXxx` 方法
+
+### 4. copyWith 可空字段约定
+
+可空字段（`updateProxy`/`selectedSourceId`/`selectedLibraryId`/`cacheDirectory`）使用 sentinel 对象：
+
+```dart
+Object? selectedSourceId = _unset,
+// 传 null = 显式清除；不传 = 保持原值
+```
+
+---
+
+## 六、MusicServerConfig（音乐源统一配置）
+
+### 1. 配置基类与子类
+
+文件：`lib/core/models/music_server_config.dart`
+
+`sealed class MusicServerConfig` 定义公共字段 `id`/`name`/`type`，各子类继承并增加自身特定字段：
+
+| 子类 | type | 特有字段 | sourceId 格式 |
+|------|------|----------|---------------|
+| `LocalMusicConfig` | `local` | `directories: List<String>` | `local` |
+| `LxPluginConfig` | `lx` | `metadataPluginPath: String`、`sourcePluginPaths: List<String>` | `lx-$pluginId` |
+| `LxServerConfig` | `lxServer` | `serverUrl`/`username`/`password`/`token?`/`proxyPlayback`/`allowSourceSwitching` | `lx-server-$hash` |
+| `SubsonicConfig` | `subsonic` | `serverUrl`/`username`/`password`/`token?`/`salt?`/`version?`/`pathPrefix?` | `subsonic-$hash-$username` |
+
+- `name` 替代原 `LxServerConfig.displayName` / `SubsonicAccountConfig.displayName`
+- 子类提供 `extraToJson()` 和 `fromJson(id, name, extra)` 用于序列化额外字段
+
+### 2. 持久化策略
+
+drift `MusicServerConfigTable`（单表多行）：
+- 基类字段（id/name/type）映射到表列
+- 子类额外字段以 JSON 字符串存入 `config_json` 列
+- `enabled` 列默认 true
+
+```dart
+class MusicServerConfigTable extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get type => text()();
+  TextColumn get configJson => text().withDefault(const Constant('{}'))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  @override
+  Set<Column> get primaryKey => {id};
+}
+```
+
+### 3. Provider 架构
+
+文件：`lib/core/providers/music_server_config_provider.dart`
+
+```dart
+// 所有配置列表（FutureProvider）
+final musicServerConfigsProvider = FutureProvider<List<MusicServerConfig>>((ref) async {
+  final db = ref.watch(appDatabaseProvider);
+  final rows = await db.getAllMusicServerConfigs();
+  return rows.map(_entityToConfig).toList();
+});
+
+// 配置管理 Notifier（upsert/remove/getByType/getById）
+final musicServerConfigsNotifierProvider =
+    NotifierProvider<MusicServerConfigsNotifier, List<MusicServerConfig>>(...);
+```
+
+**关键特性**：配置变更通过 `ref.invalidate(musicServerConfigsProvider)` 触发刷新，所有依赖它的音乐源 Provider 自动重建。
+
+### 4. 各音乐源 Provider 读取配置
+
+| 来源 | Provider | 读取的配置类型 |
+|------|----------|---------------|
+| local | `localMusicServerProvider` | `LocalMusicConfig` |
+| lx | `lxMetadataEngineProvider` / `lxSourceEngineProvider` | `LxPluginConfig` |
+| lxServer | `lxServerMusicServerProvider` | `LxServerConfig` |
+| subsonic | `subsonicServersProvider` | `SubsonicConfig` |
+
+```dart
+final configs = await ref.watch(musicServerConfigsProvider.future);
+final config = configs.whereType<LxServerConfig>().firstOrNull;
+```
+
+---
+
+## 七、MusicServer 实体
 
 ### 1. 核心抽象
 
@@ -67,21 +270,14 @@
 
 | 子类 | 文件 | 说明 |
 |------|------|------|
-| `LocalMusicServer` | [local_music_server.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music_local/service/local_music_server.dart) | 本地音乐 |
-| `LxMusicServer` | [lx_music_server.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music_lx/model/lx_music_server.dart) | Lx 音乐（JS 插件） |
-| `LxServerMusicServer` | [lx_server_music_server.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music_lx_server/repository/lx_server_music_server.dart) | Lx Server |
-| `SubsonicMusicServer` | [subsonic_music_server.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music_subsonic/repository/subsonic_music_server.dart) | Subsonic/Navidrome |
+| `LocalMusicServer` | `lib/modules/music_local/service/local_music_server.dart` | 本地音乐 |
+| `LxMusicServer` | `lib/modules/music_lx/model/lx_music_server.dart` | Lx 音乐（JS 插件） |
+| `LxServerMusicServer` | `lib/modules/music_lx_server/repository/lx_server_music_server.dart` | Lx Server |
+| `SubsonicMusicServer` | `lib/modules/music_subsonic/repository/subsonic_music_server.dart` | Subsonic/Navidrome |
 
-### 2. Provider 聚合架构
+### 2. Provider 聚合
 
 ```dart
-// 各来源的 FutureProvider（依赖 userPreferenceProvider）
-final localMusicServerProvider = FutureProvider<MusicServer>(...);
-final lxMusicServerProvider = FutureProvider<MusicServer?>(...);
-final lxServerMusicServerProvider = FutureProvider<MusicServer?>(...);
-final subsonicServersProvider = FutureProvider<List<MusicServer>>(...);
-
-// 聚合所有来源
 final musicServersProvider = FutureProvider<List<MusicServer>>((ref) async {
   final local = await ref.watch(localMusicServerProvider.future);
   final lx = await ref.watch(lxMusicServerProvider.future);
@@ -90,54 +286,49 @@ final musicServersProvider = FutureProvider<List<MusicServer>>((ref) async {
   return [local, ?lx, ?lxServer, ...subsonic];
 });
 
-// 按 sourceId 查找
 final musicServerBySourceProvider = Provider.family<MusicServer?, String>(...);
 ```
 
-**关键特性**：当 `userPreferenceProvider` 中任一配置字段变化时，对应来源的 `FutureProvider` 自动重建，`musicServersProvider` 随之刷新，所有依赖它的 UI Provider 自动更新。这解决了旧架构数据刷新不及时的问题。
+### 3. MusicServer 方法命名
 
-### 3. sourceId 命名约定
-
-| 来源 | sourceId 格式 | 示例 |
-|------|--------------|------|
-| 本地 | `local` | `local` |
-| Lx 插件 | `lx-$pluginId` | `lx-music_search` |
-| Lx Server | `lx-server` | `lx-server` |
-| Subsonic | `subsonic-$hash` | `subsonic-a1b2c3` |
+| 方法 | 说明 |
+|------|------|
+| `searchTracks(keyword)` | 搜索曲目（非 `searchSongs`） |
+| `getPlaylistTracks(id)` | 获取歌单曲目（非 `getPlaylistSongs`） |
+| `getLeaderboardTracks(...)` | 获取排行榜曲目 |
+| `LocalMusicServer.trackCount` | 本地曲目数（非 `songCount`） |
 
 ---
 
-## 模型层规范
+## 八、模型层规范
 
 ### 1. 核心模型类
 
 所有模型位于 `lib/modules/music/model/`，通过 `models.dart` barrel 导出。
 
-| 类 | 文件 | 说明 |
-|----|------|------|
-| `Track` | [track.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music/model/track.dart) | 曲目（替代旧 `Song`） |
-| `Album` / `AlbumWithTracks` | [album.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music/model/album.dart) | 专辑 / 带曲目列表的专辑 |
-| `Artist` / `ArtistWithAlbums` | [artist.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music/model/artist.dart) | 艺术家 / 带专辑列表的艺术家 |
-| `Playlist` / `PlaylistCategory` | [playlist.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/modules/music/model/playlist.dart) | 歌单 / 歌单分类 |
+| 类 | 说明 |
+|----|------|
+| `Track` | 曲目（替代旧 `Song`） |
+| `Album` / `AlbumWithTracks` | 专辑 / 带曲目列表的专辑 |
+| `Artist` / `ArtistWithAlbums` | 艺术家 / 带专辑列表的艺术家 |
+| `Playlist` / `PlaylistCategory` | 歌单 / 歌单分类 |
 
 ### 2. 模型设计约定
 
-- **`@immutable` 注解**: 所有模型类使用 `@immutable`（来自 `package:flutter/foundation.dart`），字段全 `final`
-- **手写 `copyWith`**: 不使用 freezed；nullable 字段的 `copyWith` 带 `clearX` 布尔参数（如 `clearStarred`）
-- **`fromJson` / `toJson`**: 手写，缺 key 容忍（`??` 兜底），支持零迁移 schema 升级
-- **DateTime 解析**: 使用 `tryParseDateTime(dynamic)`（[date_time.dart](file:///Users/rang/Documents/codes/fluteer/pomelo/lib/core/extensions/date_time.dart)），兼容 ISO8601、epoch 毫秒、常见字符串格式
-- **`==` / `hashCode`**: 按 `id` 判等
+- **`@immutable` 注解**：所有模型类使用 `@immutable`，字段全 `final`
+- **手写 `copyWith`**：不使用 freezed；nullable 字段的 `copyWith` 带 `clearX` 布尔参数
+- **`fromJson` / `toJson`**：手写，缺 key 容忍（`??` 兜底），支持零迁移 schema 升级
+- **DateTime 解析**：使用 `tryParseDateTime(dynamic)`，兼容 ISO8601、epoch 毫秒、常见字符串格式
+- **`==` / `hashCode`**：按 `id` 判等
 
 ### 3. Track 模型要点
 
-- **扁平结构**: 无 `SongFull` / `SongLocal` 联合类型，单一 `Track` 类用 `src`（在线地址）和 `path`（本地路径）区分
+- **扁平结构**：单一 `Track` 类用 `src`（在线地址）和 `path`（本地路径）区分
   - `bool get isLocal => path != null;`
   - `bool get isOnline => src != null;`
-- **字段命名遵循 Subsonic 风格**: `title`（非 `name`）、`coverArt`（非 `coverUrl`）、`album`（非 `albumName`）
-- **可空字段**: `artist`、`source`、`meta` 为可空，访问需 `?.` 或 `?? ''`
-- **`source` 字段类型**: `({String id, String name, String? libraryId, String? libraryName})?`
-  - `id` = 服务标识（如 `lx-server`、`lx-$pluginId`、`subsonic-xxx`、`local`）
-  - `libraryId` = 库标识（如 `tx`、`kg`），无库概念时为 null
+- **字段命名遵循 Subsonic 风格**：`title`（非 `name`）、`coverArt`（非 `coverUrl`）、`album`（非 `albumName`）
+- **可空字段**：`artist`、`source`、`meta` 为可空，访问需 `?.` 或 `?? ''`
+- **`source` 字段类型**：`({String id, String name, String? libraryId, String? libraryName})?`
 
 ### 4. Playlist 模型要点
 
@@ -157,11 +348,17 @@ import 'package:media_kit/media_kit.dart' hide Track;
 
 - **仅** `AudioPlayerState`（`lib/modules/audio_player/model/state.dart`）使用 freezed + json_serializable
 - 音乐模型（Track/Album/Artist/Playlist）**不使用** freezed
-- 修改 `state.dart` 后需运行 `dart run build_runner build --delete-conflicting-outputs`
+- 修改 `state.dart` 或 drift 表后需运行 `dart run build_runner build --delete-conflicting-outputs`
+
+### 7. LxServerQuality（全局音质偏好）
+
+文件：`lib/core/models/lx_server_quality.dart`
+
+音质偏好为**全局**设置，持久化到 `UserPreference.lxServerQuality`。`LxServerQuality` 枚举已从 `modules/music_lx_server/model/` 移动到 `core/models/`。
 
 ---
 
-## 关键约定
+## 九、Widget 基类与响应式
 
 ### 1. Widget 基类选择
 
@@ -180,18 +377,20 @@ import 'package:media_kit/media_kit.dart' hide Track;
 | desktop | 1024-1440px | 多栏布局、展开侧边栏 |
 | tv | >= 1440px | 最大宽度约束、多列网格 |
 
-### 3. 导航模式
+---
 
-#### 3.1 响应式导航壳
+## 十、导航模式
+
+### 1. 响应式导航壳
 
 | 端 | 导航壳 | 标题栏 |
 |----|--------|--------|
 | mobile (< 600px) | 底部 `NavigationBar` + 各页面自带 `AppBar` | 无统一标题栏 |
-| tablet/desktop (>= 600px) | 左侧 `NavigationRail` + 顶部固定 `_DesktopTitleBar` | 统一标题栏 |
+| tablet/desktop (>= 600px) | 左侧 `NavigationRail`（左侧固定） + 顶部固定 `_DesktopTitleBar` | 统一标题栏 |
 
-#### 3.2 桌面端标题栏（`_DesktopTitleBar`）
+### 2. 桌面端标题栏（`_DesktopTitleBar`）
 
-位于 `lib/ui/root/root_page.dart`，固定在 Root 页面顶部，包含：
+位于 `lib/ui/root/root_page.dart`，固定在 Root 页面顶部：
 
 | 位置 | 内容 | 说明 |
 |------|------|------|
@@ -200,17 +399,19 @@ import 'package:media_kit/media_kit.dart' hide Track;
 | 右侧 | 最小化 + 关闭 | `windowManager.minimize()` / `windowManager.destroy()`，仅 `Helper.isDesktop` 时显示 |
 
 - 关闭使用 `destroy()` 而非 `close()`（`main.dart` 中 `setPreventClose(true)`）
-- 桌面端各 Tab 页面不再自带 `AppBar`（搜索/切换由标题栏承载），移动端保留各自 `AppBar`
+- 桌面端各 Tab 页面不再自带 `AppBar`，移动端保留各自 `AppBar`
 
-#### 3.3 Root 导航 Provider（`lib/ui/root/root_providers.dart`）
+### 3. Root 导航 Provider
+
+文件：`lib/ui/root/root_providers.dart`
 
 | Provider | 类型 | 说明 |
 |----------|------|------|
-| `activeTabIndexProvider` | `NotifierProvider<_, int>` | 当前激活 Tab 索引，由 Root 布局在 Tab 切换时 `set()` |
+| `activeTabIndexProvider` | `NotifierProvider<_, int>` | 当前激活 Tab 索引 |
 | `rootCanPopProvider` | `NotifierProvider<_, bool>` | 当前 Tab 是否有可返回的内联导航 |
-| `rootPopCallbackProvider` | `NotifierProvider<_, VoidCallback?>` | 返回回调，标题栏返回按钮调用 |
+| `rootPopCallbackProvider` | `NotifierProvider<_, VoidCallback?>` | 返回回调 |
 
-**Tab 页面注册内联导航状态的约定**：
+**Tab 页面注册内联导航状态**：
 
 ```dart
 final activeTabIndex = ref.watch(activeTabIndexProvider);
@@ -228,30 +429,25 @@ useEffect(() {
 }, [activeTabIndex, inlineNavState]);
 ```
 
-- 必须以 `activeTabIndex` 作为依赖之一，确保切换 Tab 时正确设置/清除状态
-- 清理函数（`return () => ...`）负责清除状态，防止非激活 Tab 污染标题栏
-
-#### 3.4 页面打开位置约定
+### 4. 页面打开位置约定
 
 **除非特别指定，新页面默认在对应的 Tab 中内联打开**，不作为覆盖全屏的顶级路由。
 
 | 方式 | 适用场景 | 实现 |
 |------|----------|------|
-| 内联状态导航（推荐） | Tab 内子页面（如歌单详情） | `useState<Ref?>` + `onClose` 回调，渲染在 Tab 内容区 |
-| `openSheet` | 播放详情、播放队列等浮层 | 底部/右侧 Sheet，覆盖当前页面 |
-| `showDialog` | 表单、确认框等对话框 | 桌面端对话框 |
-| `context.pushRoute` | **仅限**需要覆盖全屏（含底部导航）的场景 | 谨慎使用 |
+| 内联状态导航（推荐） | Tab 内子页面 | `useState<Ref?>` + `onClose` 回调 |
+| `openSheet` | 播放详情、播放队列等浮层 | 底部/右侧 Sheet |
+| `showDialog` | 表单、确认框 | 桌面端对话框 |
+| `context.pushRoute` | **仅限**覆盖全屏（含底部导航） | 谨慎使用 |
 
 **内联页面模式**（参考 `PlaylistDetailPage`）：
 
 ```dart
-// 子页面添加可选 onClose 回调
 class DetailPage extends HookConsumerWidget {
   final VoidCallback? onClose;
-  // onClose 非 null 时，返回按钮调用 onClose；否则用 context.router.maybePop()
+  // onClose 非 null 时，返回按钮调用 onClose()；否则用 context.router.maybePop()
 }
 
-// Tab 页面用 useState 控制内联渲染
 final viewingDetail = useState<Ref?>(null);
 if (viewingDetail.value != null) {
   return DetailPage(..., onClose: () => viewingDetail.value = null);
@@ -259,25 +455,73 @@ if (viewingDetail.value != null) {
 return NormalContent(...);
 ```
 
-#### 3.5 弹窗与菜单交互模式
+---
 
-沿用 `Rx.action(context, mobile:, tablet:)` 模式，详见下方 [弹窗与菜单交互模式](#弹窗与菜单交互模式) 章节。
+## 十一、弹窗与菜单交互模式
 
-**关闭面板约定（按弹层类型区分）**：
+### 1. 响应式分流
+
+所有"次要面板/菜单"统一用 `Rx.action(context, mobile: ..., tablet: ...)`：
+
+| 场景 | 移动端 | 桌面端 |
+|------|--------|--------|
+| 全屏页面（如播放队列页） | `context.pushRoute(XxxRoute())` | `openSheet(position: OverlayPosition.right, builder:)` |
+| 表单/详情对话框 | `Navigator.push(MaterialPageRoute)` 全屏页 | `showDialog(builder:)` |
+| 曲目更多操作菜单 | `openSheet(position: OverlayPosition.bottom, draggable: true)` | `showDropdown(builder: (_) => DropdownMenu(children:))` |
+| 危险/确认操作 | `showDialog` 确认框 | `showDialog` 确认框 |
+
+### 2. 关闭面板约定（关键）
 
 | 弹层类型 | 关闭方式 | 原因 |
 |----------|----------|------|
-| `openSheet` / `showDropdown` | `closeOverlay(context)` | shadcn_flutter 的 sheet/dropdown 走 Overlay（非 Navigator 栈），`Navigator.pop()` 会误弹真实路由导致白屏 |
-| `showDialog` | `Navigator.of(context).pop()` 或 `Navigator.of(context, rootNavigator: true).pop()` | 走 Flutter 标准的 `DialogRoute`（Navigator 栈） |
+| `openSheet` / `showDropdown` | `closeOverlay(context)` | 走 Overlay（非 Navigator 栈），`Navigator.pop()` 会误弹真实路由导致白屏 |
+| `showDialog` | `Navigator.of(context).pop()` | 走 Flutter 标准 `DialogRoute`（Navigator 栈） |
 
 **关键注意**：
-- `closeOverlay(context)` 通过 `Data.maybeFind<OverlayHandlerStateMixin>(context)` 查找最近 sheet/dropdown 的状态并关闭，`context` 必须是 sheet/dropdown **内部**的 BuildContext
-- 每个 `Scaffold` 都会创建一个空的 `DrawerOverlay`，其 `PopScope(canPop: _entries.isEmpty)` 在空时为 `true`，因此从 sheet 内部的 Scaffold 调用 `Navigator.pop()` 会穿透到父 Navigator 弹出真实路由（如 RootPage），造成白屏
+- `closeOverlay(context)` 的 `context` 必须是 sheet/dropdown **内部**的 BuildContext
+- 每个 `Scaffold` 都会创建一个空的 `DrawerOverlay`，其 `PopScope(canPop: true)` 在空时为 true，因此从 sheet 内部的 Scaffold 调用 `Navigator.pop()` 会穿透到父 Navigator 弹出真实路由（如 RootPage），造成白屏
 - `MenuButton` 默认 `autoClose: true`，按下后自动关闭 dropdown，无需手动调用 `closeOverlay`
+
+### 3. 下拉选择统一组件
+
+所有下拉选择按钮**必须**使用 `showSelectionPicker`（`lib/core/framework/selection_picker.dart`）：
+- 桌面端：`showDropdown` + `DropdownMenu`
+- 移动端：`openSheet` 从底部弹出
+- 覆盖平台/库/排序等所有选择场景
+
+```dart
+showSelectionPicker<T>(
+  context: context,
+  title: '选择平台',
+  options: [
+    SelectionOption(value: 'a', label: '选项A', selected: true),
+    SelectionOption(value: 'b', label: '选项B'),
+  ],
+  onSelected: (value) => _handleSelect(value),
+);
+```
+
+### 4. shadcn_flutter 菜单/按钮 API
+
+| 组件 | 用途 | 关键参数 |
+|------|------|---------|
+| `openSheet` | 侧边/底部面板 | `position`、`draggable`、`barrierDismissible` |
+| `showDropdown<T>` | 命令式下拉菜单 | `builder` 返回 `DropdownMenu` |
+| `DropdownMenu` | 菜单容器 | `children: List<MenuItem>` |
+| `MenuButton` | 菜单项（具体类） | `leading`、`child`、`onPressed: (BuildContext) =>`、`trailing` |
+| `MenuLabel` | 菜单标题（不可点） | `child` |
+| `MenuDivider` | 菜单分隔线 | 无参数 |
+| `PrimaryButton` | 主按钮 | `leading:`（图标）、`child:`、`onPressed:`、`enabled:` |
+| `GhostButton` / `DestructiveButton` | 次要/危险按钮 | 同上 |
+
+**易错点**：
+- `MenuItem` 是**抽象类**，不能直接 `MenuItem(...)`，必须用具体子类 `MenuButton`
+- `PrimaryButton` 没有 `.icon` 命名构造，加图标用 `leading:` 参数
+- `MenuButton.onPressed` 签名是 `void Function(BuildContext)`，不是 `VoidCallback`
 
 ---
 
-## 组件使用规范
+## 十二、组件使用规范
 
 ### 1. 列表项
 
@@ -295,6 +539,8 @@ return NormalContent(...);
 | `IconButton.ghost()` | 工具栏次要操作 |
 | `IconButton.destructive()` | 删除/危险操作 |
 
+> `IconButton` 必须使用命名构造函数，不能直接 `IconButton()`
+
 ### 3. 间距组件
 
 - 优先使用 `Gap()`（shadcn_flutter）
@@ -311,9 +557,97 @@ return NormalContent(...);
 | `PlayPauseButton` | 播放/暂停按钮，参数 `track:` |
 | `PlayAllButton` | 全部播放，参数 `tracks:` |
 
+### 5. 居中滚动列表
+
+需要居中内容 + maxWidth 约束的滚动页面，使用 `CenteredListView`（`lib/core/framework/centered_list_view.dart`），确保滚动条出现在屏幕右边缘而非居中容器边缘。
+
+### 6. AppChip（标签筛选）
+
+文件：`lib/ui/music/widgets/app_chip.dart`
+
+```dart
+AppChip(
+  label: '${label}',
+  isSelected: isSelected,
+  onTap: () => _handleSelect(),
+  fill: ${fill},
+  borderRadius: ${borderRadius},
+  fontSize: ${fontSize},
+)
+```
+
+常用场景参数：
+
+| 场景 | fill | borderRadius | fontSize |
+|------|------|-------------|----------|
+| 父分类标签 | `true` | 18 | 13 |
+| 子分类标签 | `false` | 14 | 12 |
+| Tab 标签 | `true` | 8 | 13 |
+| 排序标签 | `false` | 14 | 12 |
+
 ---
 
-## Provider 约定
+## 十三、Toast 组件
+
+文件：`lib/core/toast.dart`
+
+### 1. 用法
+
+```dart
+// 1. 在 Widget 回调中（推荐）
+context.toast.success('已保存');
+context.toast.error('失败');
+context.toast.warning('警告');
+context.toast.info('信息');
+
+// 2. 在非 UI 层（如 Provider/Service）
+AppToast().success('解析中...');
+```
+
+### 2. 样式规范
+
+Toast 使用 `SurfaceCard` + `Basic` 组件构建，统一样式：
+
+- **位置**：`ToastLocation.topCenter`
+- **卡片**：`SurfaceCard`，带 1px 边框（类型色 50% 透明度）+ 阴影
+- **填充色**：`colorScheme.card`（跟随主题）
+- **左侧图标**：类型色，16px
+- **标题**：`colorScheme.cardForeground`，13px
+- **右侧关闭按钮**：`Icons.close`，16px，`colorScheme.mutedForeground`，点击调用 `overlay.close`
+- **默认时长**：2 秒
+
+### 3. 类型与颜色
+
+| 类型 | 颜色 | 图标 |
+|------|------|------|
+| success | `Color(0xFF22C55E)` | `Icons.check_circle` |
+| error | `Color(0xFFEF4444)` | `Icons.error` |
+| warning | `Color(0xFFF59E0B)` | `Icons.warning` |
+| info | `Color(0xFF3B82F6)` | `Icons.info` |
+
+### 4. 非上下文调用
+
+`AppToast` 优先使用传入的 `BuildContext`；未传入时回退到 `appNavigatorKey.currentContext`。`appNavigatorKey` 在 `ShadcnApp.router` 的 `navigatorKey` 参数中传入。
+
+### 5. 主题色读取
+
+Toast overlay 的 context 不在主题树内，直接 `Theme.of(overlayContext)` 会触发 `inherited_theme` 断言失败。**必须**在原始 context 上读取主题色后传入 builder：
+
+```dart
+final colorScheme = Theme.of(context).colorScheme;
+return showToast(
+  context: context,
+  builder: (context, overlay) => SurfaceCard(
+    fillColor: colorScheme.card,
+    borderColor: color.withValues(alpha: 0.5),
+    // ...
+  ),
+);
+```
+
+---
+
+## 十四、Provider 约定
 
 ### 1. 获取音乐服务
 
@@ -321,52 +655,40 @@ return NormalContent(...);
 // ✅ 正确：通过 Riverpod Provider 获取 MusicServer
 await ref.watch(musicServersProvider.future);
 final service = ref.watch(musicServerBySourceProvider(sourceId));
-
-// ❌ 错误：旧的 ModuleManager 模式已移除
-// final module = ModuleManager().find<MusicModule>('music');
-// final service = module?.service(sourceId);
 ```
 
 ### 2. 异步数据
 
-使用 `FutureProvider`，避免手动管理 loading/error 状态：
+使用 `FutureProvider`，避免手动管理 loading/error 状态，使用 `AsyncValue.when`：
 
 ```dart
 final searchResultsProvider = FutureProvider.family<SearchListData, Params>(
-  (ref, params) async {
-    // ...
-  },
+  (ref, params) async { ... },
+);
+
+// 使用
+data.when(
+  loading: () => const CircularProgressIndicator(),
+  error: (e, _) => Text('加载失败: $e'),
+  data: (data) => _buildContent(data),
 );
 ```
 
+> **勿用** `FutureBuilder`，使用 Provider + `AsyncValue.when`
+
 ### 3. 选中态
 
-跨页面状态使用 `NotifierProvider`，避免 `useState`：
+跨页面状态使用 `NotifierProvider`，避免 `useState`（页面切换后状态丢失）：
 
 ```dart
 // ✅ 正确
 ref.watch(selectedLeaderboardProvider);
 
-// ❌ 错误（页面切换后状态丢失）
+// ❌ 错误
 final selectedId = useState<String?>(null);
 ```
 
-### 4. 持久化设置
-
-**必须**通过 `userPreferenceProvider` 读写持久化设置：
-
-```dart
-// ✅ 正确：读取
-final themeMode = ref.watch(userPreferenceProvider.select((p) => p.themeMode));
-
-// ✅ 正确：写入
-await ref.read(userPreferenceProvider.notifier).setThemeMode('dark');
-
-// ❌ 错误：旧的散落 Settings 调用
-// await Settings.set(StorageKeys.myThemeMode, 'dark');
-```
-
-### 5. 持久化选中态
+### 4. 持久化选中态
 
 | 选中态 | 持久化方式 | 说明 |
 |----------|--------|------|
@@ -377,6 +699,10 @@ await ref.read(userPreferenceProvider.notifier).setThemeMode('dark');
 | `selectedPlaylistCategoryProvider` | ❌ 否 | 仅内存 |
 | `selectedPlaylistSortProvider` | ❌ 否 | 仅内存 |
 
+### 5. 选中态 Provider 自动重置
+
+选中态 Provider（`selectedLeaderboardProvider` 等）**必须**在 `build()` 中 watch `selectedSourceProvider`，当来源/库变化时自动重置为 null，避免 stale 选中态导致白屏或 UI 错配。
+
 ### 6. 曲目相关 Provider 命名
 
 | Provider | 说明 |
@@ -386,141 +712,22 @@ await ref.read(userPreferenceProvider.notifier).setThemeMode('dark');
 | `playlistTracksProvider` | 歌单曲目（非 `playlistSongsProvider`） |
 | `searchResultsProvider` | 搜索结果，返回 `SearchListData`（含 `.tracks` 字段） |
 
-### 7. MusicServer 方法命名
+### 7. 构建期 Provider 修改
 
-| 方法 | 说明 |
-|------|------|
-| `searchTracks(keyword)` | 搜索曲目（非 `searchSongs`） |
-| `getPlaylistTracks(id)` | 获取歌单曲目（非 `getPlaylistSongs`） |
-| `getLeaderboardTracks(...)` | 获取排行榜曲目 |
-| `LocalMusicServer.trackCount` | 本地曲目数（非 `songCount`） |
-
----
-
-## UserPreference 字段管理
-
-所有用户偏好设置集中在 `UserPreference` 实体类（`lib/core/preferences/user_preference.dart`）：
-
-| 字段 | 类型 | 所属模块 | 说明 |
-|------|------|----------|------|
-| `themeMode` | `String` | my | 主题模式（'light'/'dark'/'system'） |
-| `lyricFontSize` | `int` | my | 歌词字体大小 |
-| `autoPlay` | `bool` | my | 自动播放开关 |
-| `updateProxy` | `String?` | my | 更新代理地址 |
-| `selectedSourceId` | `String?` | music UI | 当前选中音乐源 |
-| `selectedLibraryId` | `String?` | music UI | 当前选中库 |
-| `logStorageLevel` | `LogLevel` | log | 日志存储级别 |
-| `localDirectories` | `List<String>` | music_local | 本地音乐扫描目录 |
-| `lxMetadataPluginPath` | `String?` | music_lx | Lx 元数据插件路径 |
-| `lxSourcePluginPaths` | `List<String>` | music_lx | Lx 音源插件路径列表 |
-| `lxServerConfig` | `LxServerConfig?` | music_lx_server | Lx Server 连接配置 |
-| `lxServerQuality` | `LxServerQuality` | music_lx_server | Lx Server 音质设置 |
-| `subsonicAccounts` | `List<SubsonicAccountConfig>` | music_subsonic | Subsonic 账号列表 |
-
-**新增字段流程**：
-1. 在 `UserPreference` 类添加 `final` 字段 + 构造函数默认值
-2. 在 `fromJson` 添加解析（`??` 兜底）
-3. 在 `toJson` 添加序列化
-4. 在 `copyWith` 添加参数
-5. 在 `UserPreferenceNotifier` 添加 `setXxx` 方法
-6. 在 `migrateFromLegacySettings` 添加旧数据迁移（如适用）
-
-> **旧 StorageKeys 保留**：`StorageKeys.audioPlayerState` 仍用于播放器状态持久化（freezed 模型），`StorageKeys` 类本身保留作为旧 key 的引用，但**不应**用于新的用户设置。
-
----
-
-## Lx 音乐模块架构
-
-### 双引擎设计
-
-| 引擎 | 职责 | 插件数量 |
-|------|------|----------|
-| `LxMetadataEngine` | 搜索、元信息、歌单、排行榜 | 仅 1 份 |
-| `LxSourceEngine` | 获取播放链接 | 支持多份 |
-
-### 响应式模式
-
-桌面端用对话框，移动端用全屏页面：
+**禁止**在 Widget 树构建期间修改 Provider 状态，需用 `Future.microtask()` 延迟到构建完成后：
 
 ```dart
-Rx.action(
-  context,
-  mobile: () => Navigator.push(...),
-  tablet: () => showDialog(...),
-);
+useEffect(() {
+  Future.microtask(() async {
+    ref.read(xxxProvider.notifier).update(...);
+  });
+  return null;
+}, []);
 ```
-
-### 弹窗与菜单交互模式
-
-所有"次要面板/菜单"按场景分流，统一用 `Rx.action(context, mobile: ..., tablet: ...)`：
-
-| 场景 | 移动端 | 桌面端 |
-|------|--------|--------|
-| 全屏页面（如播放队列页） | `context.pushRoute(XxxRoute())` | `openSheet(position: OverlayPosition.right, builder:)` |
-| 表单/详情对话框 | `Navigator.push(MaterialPageRoute)` 全屏页 | `showDialog(builder:)` |
-| 曲目更多操作菜单 | `openSheet(position: OverlayPosition.bottom, draggable: true)` | `showDropdown(builder: (_) => DropdownMenu(children:))` |
-| 危险/确认操作 | `showDialog` 确认框 | `showDialog` 确认框 |
-
-```dart
-// 播放队列入口（移动端全屏 / 桌面端右侧 Sheet）
-void _openPlayQueue(BuildContext context) {
-  Rx.action(
-    context,
-    mobile: () => context.pushRoute(const PlayQueueRoute()),
-    tablet: () => openSheet(
-      context: context,
-      position: OverlayPosition.right,
-      builder: (_) => const SizedBox(width: 360, child: PlayQueueContent()),
-    ),
-  );
-}
-
-// 曲目更多操作菜单（移动端底部 Sheet / 桌面端 DropdownMenu）
-void _openActions(BuildContext context, WidgetRef ref) {
-  Rx.action(
-    context,
-    mobile: () => openSheet(
-      context: context,
-      position: OverlayPosition.bottom,
-      draggable: true,
-      builder: (_) => TrackMoreActionsContent(track: track, onRemoveFromQueue: onRemoveFromQueue),
-    ),
-    tablet: () => showDropdown(
-      context: context,
-      builder: (_) => DropdownMenu(children: _buildMenuItems(context, ref)),
-    ),
-  );
-}
-
-// 移动端 sheet 内容组件内部用 closeOverlay(context) 关闭
-// 桌面端 dropdown 的 MenuButton 默认 autoClose: true，无需手动关闭
-```
-
-**共享内容组件模式**：移动端与桌面端复用同一组件，移动端用 `Column + ListTile + Divider(height: 1)` 嵌入 `openSheet`，桌面端用 `DropdownMenu(children: List<MenuItem>)`。
-
-**关闭面板约定**：见上方 [3.5 弹窗与菜单交互模式](#35-弹窗与菜单交互模式) 章节。`openSheet`/`showDropdown` 必须用 `closeOverlay(context)`，`showDialog` 用 `Navigator.pop()`。
-
-### shadcn_flutter 菜单/按钮 API
-
-| 组件 | 用途 | 关键参数 |
-|------|------|---------|
-| `openSheet` | 侧边/底部面板 | `position: OverlayPosition.right/bottom/left/top`、`draggable`、`barrierDismissible` |
-| `showDropdown<T>` | 命令式下拉菜单 | `context`、`builder` 返回 `DropdownMenu`，返回 `OverlayCompleter<T?>` |
-| `DropdownMenu` | 菜单容器 | `children: List<MenuItem>` |
-| `MenuButton` | 菜单项（具体类） | `leading`、`child`、`onPressed: (BuildContext) =>`、`trailing` |
-| `MenuLabel` | 菜单标题（不可点） | `child` |
-| `MenuDivider` | 菜单分隔线 | 无参数 |
-| `PrimaryButton` | 主按钮 | `leading:`（图标）、`child:`（文案）、`onPressed:`、`enabled:` |
-| `GhostButton` / `DestructiveButton` | 次要/危险按钮 | 同上 |
-
-**易错点**：
-- `MenuItem` 是**抽象类**，不能直接 `MenuItem(...)`，必须用具体子类 `MenuButton`
-- `PrimaryButton` 没有 `.icon` 命名构造，加图标用 `leading:` 参数
-- `MenuButton.onPressed` 签名是 `void Function(BuildContext)`，不是 `VoidCallback`
 
 ---
 
-## 多源错误处理
+## 十五、多源错误处理
 
 使用 `ServiceResult<T>` + `safeCallServices<T>()` 逐服务隔离异常：
 
@@ -531,51 +738,366 @@ final results = await safeCallServices<PaginationResponse<Track>>(
   getId: (s) => s.sourceId,
   getName: (s) => s.sourceName,
 );
+
+for (final success in results.successes) { /* ... */ }
+if (results.failures.isNotEmpty) {
+  ProviderErrorBanner(errors: results.failures);
+}
 ```
 
 ---
 
-## 常见错误避免
+## 十六、Lx 音乐模块架构
 
-1. **不要使用 Material 的 ListTile** - 必须使用自定义的
-2. **不要编造不存在的组件** - 如 `ShadDialog`、`ShadButton` 等不存在
-3. **IconButton 必须使用命名构造函数** - `IconButton.text()` 等
-4. **ListTile 必须在 Card 内** - 不要单独使用
-5. **间距优先使用 Gap** - 而不是 SizedBox
-6. **AppBar.leading 是 List\<Widget\>** - 不是单个 Widget
-7. **不要直接调用 `Settings` + `StorageKeys`** - 必须使用 `userPreferenceProvider`
-8. **导入 media_kit 时 hide Track** - 避免与 pomelo Track 歧义
-9. **勿用 `FutureBuilder`** - 使用 Provider + `AsyncValue.when`
-10. **不要使用 `Song` 命名** - 已统一为 `Track`（API 契约层 `SubsonicSong`/`LxServerSong` 除外）
-11. **Track 可空字段访问** - `artist`、`source`、`meta` 为可空，Text 组件需 `?? ''`，属性访问需 `?.`
-12. **新页面默认在 Tab 内联打开** - 使用 `useState` + `onClose` 回调模式，不作为顶级路由覆盖全屏（除非特别指定）
-13. **桌面端页面不再自带 AppBar** - 搜索/切换由 Root 标题栏统一承载，仅移动端保留各自 AppBar
-14. **窗口关闭用 `destroy()`** - `main.dart` 中 `setPreventClose(true)`，`close()` 会被拦截
-15. **内联导航状态需注册到 Root Provider** - Tab 页面用 `useEffect` 监听 `activeTabIndexProvider`，设置/清除 `rootCanPopProvider` 和 `rootPopCallbackProvider`
-16. **不要使用 `MusicService` 命名** - 已统一为 `MusicServer`（`LocalMusicServer`/`LxMusicServer`/`LxServerMusicServer`/`SubsonicMusicServer`）
-17. **不要创建 `Module` 子类用于业务模块** - 仅核心模块（Log/Home/AudioPlayer）保留 `Module` 基类，业务模块直接通过 Provider 创建
+### 1. 双引擎设计
+
+| 引擎 | 职责 | 插件数量 |
+|------|------|----------|
+| `LxMetadataEngine` | 搜索、元信息、歌单、排行榜 | 仅 1 份 |
+| `LxSourceEngine` | 获取播放链接 | 支持多份 |
+
+### 2. 插件存储
+
+Lx 插件文件复制到 `<appSupportDir>/lx_scripts/` 目录，配置（路径列表）存入 `MusicServerConfigTable`（`LxPluginConfig`）。
 
 ---
 
-## 已删除/废弃代码
+## 十七、日志模块
 
-- **M.A.R.S. 架构** — `ModuleManager`、`ModuleWidget`、`modules.dart` barrel、9 个空/dead code 模块类（`MusicModule`/`FavoriteModule`/`MyModule`/`StatisticsModule`/`ExampleModule`/各 music_*_module）已删除
+### 1. 日志路径
+
+- 桌面端：`<documents>/pomelo/logs/`（Windows 平台 `getApplicationDocumentsDirectory()` 返回文档根目录，故增加 `pomelo` 子目录）
+- 文件格式：JSON Lines
+
+### 2. 日志页面刷新
+
+日志页面打开时**必须**重新加载日志（`latestLogsProvider`、`logLevelStatsProvider`、`logTagsProvider`）。
+
+### 3. 日志存储级别
+
+通过 `UserPreference.logStorageLevel` 控制，持久化到 drift。
+
+---
+
+## 十八、播放器与缓存
+
+### 1. 播放器状态持久化
+
+- `AudioPlayerState` 使用 freezed + json_serializable
+- 持久化到 `PlayerStateTable` + `PlayerTrackTable`
+- 播放列表曲目以 `trackJson`（JSON 字符串）存储
+
+### 2. 音频流缓存
+
+- 文件：`lib/core/storage/music_cache_dir.dart`
+- 缓存目录：`UserPreference.cacheDirectory`（null=系统默认）
+- 缓存上限：`UserPreference.cacheSizeLimitGB`（1~5GB，默认 1）
+- 缓存大小限制在 1-5GB 之间，默认值 1GB
+- 清理缓存时仅删除音频扩展名文件（白名单），保护数据库/配置文件
+
+### 3. 播放链接解析
+
+Lx Server 播放链接**必须**通过 HEAD 请求验证后使用；若无效则音质降级，全部失败时抛出"无法获取有效的播放链接"错误。
+
+### 4. Lx Server 换源
+
+`LxServerConfig.allowSourceSwitching`（默认 false）启用后，当所有音质获取播放链接失败时，跨其他库搜索（`title artist` 关键词），按 title（大小写不敏感精确匹配）+ artist（包含匹配）匹配新源。
+
+### 5. 播放记录
+
+播放记录 upsert 语义：重复播放时 `playCount` 递增 1。
+
+### 6. SourcedTrack 持久化
+
+已解析音源曲目持久化优先级：
+1. 本地缓存文件
+2. 缓存 URL（HEAD 验证）
+3. 重新获取 URL
+
+---
+
+## 十九、平台与窗口
+
+### 1. 桌面端窗口
+
+- `main.dart` 中 `setPreventClose(true)`，关闭用 `windowManager.destroy()`（非 `close()`）
+- Windows 隐藏原生标题栏（`TitleBarStyle.hidden`），使用自定义右侧标题栏
+- 窗口标题通过 Dart 侧 `windowManager.setTitle('柚子音乐')` 设置（避免 C++ 源文件编码乱码）
+
+### 2. 平台与库切换分离
+
+- 平台切换按钮：仅切换平台
+- 库切换按钮：仅当平台有多个库时显示，切换库
+
+### 3. 平台选择 UI
+
+平台选择 UI（`music_section.dart`、`search_page.dart`）使用扁平列表展示，不按类型分组。
+
+### 4. Lx Server 显示名称
+
+`LxServerConfig.name` 为可选显示名称，未提供时默认 'Lx Server'。
+
+---
+
+## 二十、代码生成模板
+
+### 1. 标准页面结构
+
+```dart
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:pomelo/core/framework/framework.dart';
+
+@RoutePage()
+class ${PageName}Page extends HookConsumerWidget {
+  const ${PageName}Page({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final items = ref.watch(${providerName}Provider);
+    final isLoading = useState(false);
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: const Text('${PageTitle}'),
+          trailing: [
+            IconButton.text(
+              icon: const Icon(Icons.add),
+              onPressed: () => _handleAdd(context),
+            ),
+          ],
+        ),
+      ],
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [],
+      ),
+    );
+  }
+}
+```
+
+### 2. 响应式页面结构
+
+```dart
+@RoutePage()
+class ${PageName}Page extends HookConsumerWidget {
+  const ${PageName}Page({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Scaffold(
+      headers: [AppBar(title: const Text('${PageTitle}'))],
+      child: Rx.layout(
+        context,
+        mobile: () => _MobileLayout(),
+        tablet: () => _TabletLayout(),
+        desktop: () => _DesktopLayout(),
+      ),
+    );
+  }
+}
+```
+
+### 3. 列表项
+
+```dart
+Card(
+  child: Column(
+    children: [
+      ListTile(
+        leading: Icon(Icons.${iconName}, size: 20),
+        title: Text('${title}'),
+        subtitle: Text('${subtitle}'),
+        trailing: IconButton.text(
+          icon: const Icon(Icons.close, size: 18),
+          onPressed: () => _handleDelete(),
+        ),
+      ),
+      const Divider(height: 1),
+    ],
+  ),
+)
+```
+
+### 4. 对话框
+
+```dart
+AlertDialog(
+  title: const Text('${Title}'),
+  content: SizedBox(
+    width: 420,
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [],
+    ),
+  ),
+  actions: [
+    GhostButton(
+      onPressed: () => Navigator.pop(context),
+      child: const Text('取消'),
+    ),
+    PrimaryButton(
+      onPressed: () => _handleConfirm(),
+      child: const Text('确认'),
+    ),
+  ],
+)
+```
+
+### 5. 响应式对话框/页面
+
+```dart
+Rx.action(
+  context,
+  mobile: () => Navigator.of(context).push(
+    MaterialPageRoute(builder: (_) => const ${PageName}Page()),
+  ),
+  tablet: () => showDialog(
+    context: context,
+    builder: (_) => const ${DialogName}Dialog(),
+  ),
+);
+```
+
+### 6. Provider 模板
+
+```dart
+// NotifierProvider
+final ${providerName}Provider = NotifierProvider<${NotifierName}, ${StateType}>(
+  ${NotifierName}.new,
+);
+
+class ${NotifierName} extends Notifier<${StateType}> {
+  @override
+  ${StateType} build() => ${initialValue};
+
+  void update(${Params} params) {
+    state = newValue;
+  }
+}
+
+// FutureProvider
+final ${providerName}Provider = FutureProvider<${ReturnType}>((ref) async {
+  final service = ref.watch(${serviceProvider});
+  return await service.fetchData();
+});
+```
+
+### 7. 状态管理（Hooks）
+
+```dart
+// useState（本地状态）
+final isLoading = useState(false);
+
+// useEffect（副作用）
+useEffect(() {
+  // 初始化逻辑
+  return () => /* 清理 */;
+}, [dependency]);
+```
+
+### 8. 导入规范
+
+```dart
+// UI 组件
+import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:pomelo/core/framework/framework.dart';
+
+// 状态管理
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+
+// 路由
+import 'package:auto_route/auto_route.dart';
+
+// 响应式
+import 'package:pomelo/core/rx.dart';
+
+// 持久化（drift）
+import 'package:pomelo/core/models/database/app_database.dart';
+import 'package:pomelo/core/models/database/database_provider.dart';
+
+// 用户偏好
+import 'package:pomelo/core/preferences/user_preference_provider.dart';
+
+// 音乐源配置
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
+
+// Toast
+import 'package:pomelo/core/toast.dart';
+```
+
+---
+
+## 二十一、Git Commit 规范
+
+- 所有 git commit message **必须**使用简体中文
+- 严格使用格式：`<类型>: <描述>`
+- 允许类型：`feat`（新功能）、`fix`（修复）、`docs`（文档）、`refactor`（重构）、`test`（测试）
+- 只输出最终 commit message，不要附加解释
+- 描述要短、准、清晰
+
+示例：
+- `feat: 新增歌单详情页内联导航`
+- `fix: 修复桌面端关闭窗口白屏问题`
+- `refactor: 音乐源配置迁移到 drift 统一存储`
+
+---
+
+## 二十二、常见错误避免清单
+
+| 错误 | 正确做法 |
+|------|----------|
+| 使用 `IconButton()` | 使用 `IconButton.text()` / `IconButton.ghost()` 等命名构造函数 |
+| 使用 Material 的 `ListTile` | 使用 `package:pomelo/core/framework/framework.dart` 中的 `ListTile` |
+| `ListTile` 单独使用 | `ListTile` 必须放在 `Card` 内部 |
+| 使用 `SizedBox` 做间距 | 优先使用 `Gap()` |
+| `AppBar.leading` 传单个 Widget | 传 `List<Widget>` |
+| 页面继承 `StatelessWidget` | 优先继承 `HookConsumerWidget` |
+| 编造不存在的组件 | 如 `ShadDialog`、`ShadButton` 等不存在 |
+| 使用 `FutureBuilder` | 使用 Provider + `AsyncValue.when` |
+| 使用 `Song` 命名 | 已统一为 `Track`（API 契约层 `SubsonicSong`/`LxServerSong` 除外） |
+| Track 可空字段直接访问 | `artist`/`source`/`meta` 为可空，Text 需 `?? ''`，属性访问需 `?.` |
+| 导入 media_kit 不 hide Track | `import 'package:media_kit/media_kit.dart' hide Track;` |
+| 直接调用 `Settings`/`StorageKeys` | 已删除，必须用 `userPreferenceProvider` |
+| 使用 `MusicService` 命名 | 已统一为 `MusicServer` |
+| 为业务模块创建 `Module` 子类 | 仅核心模块保留 `Module`，业务模块直接通过 Provider |
+| 新页面用顶级路由覆盖全屏 | 默认 Tab 内联打开（`useState` + `onClose`） |
+| 桌面端页面自带 `AppBar` | 搜索/切换由 Root 标题栏承载，仅移动端保留 `AppBar` |
+| 窗口关闭用 `close()` | 用 `destroy()`（`setPreventClose(true)`） |
+| `openSheet`/`showDropdown` 用 `Navigator.pop()` | 用 `closeOverlay(context)` |
+| `showDialog` 用 `closeOverlay()` | 用 `Navigator.pop()` |
+| `MenuItem(...)` 直接实例化 | `MenuItem` 是抽象类，用 `MenuButton` |
+| `PrimaryButton.icon()` | 不存在，用 `leading:` 参数 |
+| 构建期修改 Provider 状态 | 用 `Future.microtask()` 延迟 |
+| 选中态用 `useState` | 跨页面用 `NotifierProvider` |
+| 音乐源配置写入 `UserPreference` | 用 `musicServerConfigsNotifierProvider` |
+| `MenuItem.onPressed` 当 `VoidCallback` | 签名是 `void Function(BuildContext)` |
+
+---
+
+## 二十三、已删除/废弃代码
+
+- **M.A.R.S. 架构** — `ModuleManager`、`ModuleWidget`、`modules.dart` barrel、各空/dead code 模块类已删除
 - **`MusicService` 接口** — 已重命名为 `MusicServer`，4 个子类同步重命名
-- **`musicServicesProvider` / `musicServiceBySourceProvider` / `musicServicesListProvider`** — 已重命名为 `musicServersProvider` / `musicServerBySourceProvider` / 移除
-- **`musicModuleProvider` / `musicReadyProvider` / `musicProvidersBridgeProvider`** — 已删除，直接使用 `musicServersProvider`
+- **`musicServicesProvider` 等** — 已重命名为 `musicServersProvider` / `musicServerBySourceProvider`
+- **`musicModuleProvider` / `musicReadyProvider` 等** — 已删除，直接使用 `musicServersProvider`
 - **散落的 `Settings.get/set(StorageKeys.xxx)`** — 已迁移到 `UserPreference`，通过 `userPreferenceProvider` 管理
-- `Song` 类 — 已重命名为 `Track`，字段 `name`→`title`、`coverUrl`→`coverArt`、`albumName`→`album`
-- `SongFull` / `SongLocal` 联合类型 — 已扁平化为 `Track`（用 `src`/`path` 区分）
-- `SongTile` / `SongList` / `SongMoreActionsButton` — 已重命名为 `TrackTile` / `TrackList` / `TrackMoreActionsButton`
-- `playlistSongsProvider` / `leaderboardSongsProvider` — 已重命名为 `playlistTracksProvider` / `leaderboardTracksProvider`
-- `searchSongs()` / `getPlaylistSongs()` — 已重命名为 `searchTracks()` / `getPlaylistTracks()`
-- `lib/ui/music/model/provider_result.dart` — 已删除
-- `lib/modules/log/` — 已迁移至 `lib/core/log/`
-- 音乐模型的 freezed 依赖 — 已移除，改为手写 `@immutable` + `copyWith`
-- `FutureBuilder` — 勿用，改用 Provider + `AsyncValue.when`
-
----
-
-## 代码生成
-
-代码生成相关的模板和模式请参考：[code_templates.md](code_templates.md)
+- **`Settings` / `StorageKeys` / `PersistentRepository`** — 文件已删除（hive_ce 依赖已移除）
+- **`Song` 类** — 已重命名为 `Track`，字段 `name`→`title`、`coverUrl`→`coverArt`、`albumName`→`album`
+- **`SongFull` / `SongLocal` 联合类型** — 已扁平化为 `Track`（用 `src`/`path` 区分）
+- **`SongTile` / `SongList` / `SongMoreActionsButton`** — 已重命名为 `TrackTile` / `TrackList` / `TrackMoreActionsButton`
+- **`playlistSongsProvider` / `leaderboardSongsProvider`** — 已重命名为 `playlistTracksProvider` / `leaderboardTracksProvider`
+- **`searchSongs()` / `getPlaylistSongs()`** — 已重命名为 `searchTracks()` / `getPlaylistTracks()`
+- **音乐源配置散落在 `UserPreference`** — 已迁移到 `MusicServerConfigTable`（`localDirectories`/`lxMetadataPluginPath`/`lxSourcePluginPaths`/`lxServerConfig`/`subsonicAccounts` 字段已从 `UserPreference` 移除）
+- **`LxServerConfig`（旧 user_preference 中的）** — 已替换为 `core/models/music_server_config.dart` 中的 `LxServerConfig`（继承 `MusicServerConfig`）
+- **`SubsonicAccountConfig`** — 已替换为 `SubsonicConfig`
+- **`LxServerQuality` 在 modules 中** — 已移动到 `core/models/lx_server_quality.dart`（全局音质偏好）
+- **`lib/modules/log/`** — 已迁移至 `lib/core/log/`
+- **核心模块在 `main.dart` 直接实例化** — 已改为 Riverpod `FutureProvider`
+- **音乐模型的 freezed 依赖** — 已移除，改为手写 `@immutable` + `copyWith`
+- **`FutureBuilder`** — 勿用，改用 Provider + `AsyncValue.when`
+- **`lib/ui/music/model/provider_result.dart`** — 已删除
