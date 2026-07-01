@@ -2061,6 +2061,375 @@ class PreferenceTableCompanion extends UpdateCompanion<PreferenceEntity> {
   }
 }
 
+class $MusicServerConfigTableTable extends MusicServerConfigTable
+    with TableInfo<$MusicServerConfigTableTable, MusicServerConfigEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $MusicServerConfigTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _configJsonMeta = const VerificationMeta(
+    'configJson',
+  );
+  @override
+  late final GeneratedColumn<String> configJson = GeneratedColumn<String>(
+    'config_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, type, configJson, enabled];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'music_server_config_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<MusicServerConfigEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('config_json')) {
+      context.handle(
+        _configJsonMeta,
+        configJson.isAcceptableOrUnknown(data['config_json']!, _configJsonMeta),
+      );
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  MusicServerConfigEntity map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return MusicServerConfigEntity(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      configJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}config_json'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+    );
+  }
+
+  @override
+  $MusicServerConfigTableTable createAlias(String alias) {
+    return $MusicServerConfigTableTable(attachedDatabase, alias);
+  }
+}
+
+class MusicServerConfigEntity extends DataClass
+    implements Insertable<MusicServerConfigEntity> {
+  /// 配置唯一标识（如 'local'、'lx'、'lx-server-xxx'、'subsonic-xxx'）
+  final String id;
+
+  /// 显示名称
+  final String name;
+
+  /// 来源类型（MusicSourceType.name）
+  final String type;
+
+  /// 子类额外字段的 JSON 字符串
+  final String configJson;
+
+  /// 是否启用
+  final bool enabled;
+  const MusicServerConfigEntity({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.configJson,
+    required this.enabled,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['type'] = Variable<String>(type);
+    map['config_json'] = Variable<String>(configJson);
+    map['enabled'] = Variable<bool>(enabled);
+    return map;
+  }
+
+  MusicServerConfigTableCompanion toCompanion(bool nullToAbsent) {
+    return MusicServerConfigTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      type: Value(type),
+      configJson: Value(configJson),
+      enabled: Value(enabled),
+    );
+  }
+
+  factory MusicServerConfigEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return MusicServerConfigEntity(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      type: serializer.fromJson<String>(json['type']),
+      configJson: serializer.fromJson<String>(json['configJson']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'type': serializer.toJson<String>(type),
+      'configJson': serializer.toJson<String>(configJson),
+      'enabled': serializer.toJson<bool>(enabled),
+    };
+  }
+
+  MusicServerConfigEntity copyWith({
+    String? id,
+    String? name,
+    String? type,
+    String? configJson,
+    bool? enabled,
+  }) => MusicServerConfigEntity(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    type: type ?? this.type,
+    configJson: configJson ?? this.configJson,
+    enabled: enabled ?? this.enabled,
+  );
+  MusicServerConfigEntity copyWithCompanion(
+    MusicServerConfigTableCompanion data,
+  ) {
+    return MusicServerConfigEntity(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      type: data.type.present ? data.type.value : this.type,
+      configJson: data.configJson.present
+          ? data.configJson.value
+          : this.configJson,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MusicServerConfigEntity(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('configJson: $configJson, ')
+          ..write('enabled: $enabled')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, type, configJson, enabled);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MusicServerConfigEntity &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.type == this.type &&
+          other.configJson == this.configJson &&
+          other.enabled == this.enabled);
+}
+
+class MusicServerConfigTableCompanion
+    extends UpdateCompanion<MusicServerConfigEntity> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> type;
+  final Value<String> configJson;
+  final Value<bool> enabled;
+  final Value<int> rowid;
+  const MusicServerConfigTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.type = const Value.absent(),
+    this.configJson = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  MusicServerConfigTableCompanion.insert({
+    required String id,
+    required String name,
+    required String type,
+    this.configJson = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       type = Value(type);
+  static Insertable<MusicServerConfigEntity> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? type,
+    Expression<String>? configJson,
+    Expression<bool>? enabled,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (type != null) 'type': type,
+      if (configJson != null) 'config_json': configJson,
+      if (enabled != null) 'enabled': enabled,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  MusicServerConfigTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? type,
+    Value<String>? configJson,
+    Value<bool>? enabled,
+    Value<int>? rowid,
+  }) {
+    return MusicServerConfigTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      configJson: configJson ?? this.configJson,
+      enabled: enabled ?? this.enabled,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (configJson.present) {
+      map['config_json'] = Variable<String>(configJson.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('MusicServerConfigTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('configJson: $configJson, ')
+          ..write('enabled: $enabled, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2078,6 +2447,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PreferenceTableTable preferenceTable = $PreferenceTableTable(
     this,
   );
+  late final $MusicServerConfigTableTable musicServerConfigTable =
+      $MusicServerConfigTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2088,6 +2459,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     playHistoryTable,
     sourcedTrackTable,
     preferenceTable,
+    musicServerConfigTable,
   ];
 }
 
@@ -3207,6 +3579,227 @@ typedef $$PreferenceTableTableProcessedTableManager =
       PreferenceEntity,
       PrefetchHooks Function()
     >;
+typedef $$MusicServerConfigTableTableCreateCompanionBuilder =
+    MusicServerConfigTableCompanion Function({
+      required String id,
+      required String name,
+      required String type,
+      Value<String> configJson,
+      Value<bool> enabled,
+      Value<int> rowid,
+    });
+typedef $$MusicServerConfigTableTableUpdateCompanionBuilder =
+    MusicServerConfigTableCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> type,
+      Value<String> configJson,
+      Value<bool> enabled,
+      Value<int> rowid,
+    });
+
+class $$MusicServerConfigTableTableFilterComposer
+    extends Composer<_$AppDatabase, $MusicServerConfigTableTable> {
+  $$MusicServerConfigTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get configJson => $composableBuilder(
+    column: $table.configJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$MusicServerConfigTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $MusicServerConfigTableTable> {
+  $$MusicServerConfigTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get configJson => $composableBuilder(
+    column: $table.configJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$MusicServerConfigTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $MusicServerConfigTableTable> {
+  $$MusicServerConfigTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get configJson => $composableBuilder(
+    column: $table.configJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+}
+
+class $$MusicServerConfigTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $MusicServerConfigTableTable,
+          MusicServerConfigEntity,
+          $$MusicServerConfigTableTableFilterComposer,
+          $$MusicServerConfigTableTableOrderingComposer,
+          $$MusicServerConfigTableTableAnnotationComposer,
+          $$MusicServerConfigTableTableCreateCompanionBuilder,
+          $$MusicServerConfigTableTableUpdateCompanionBuilder,
+          (
+            MusicServerConfigEntity,
+            BaseReferences<
+              _$AppDatabase,
+              $MusicServerConfigTableTable,
+              MusicServerConfigEntity
+            >,
+          ),
+          MusicServerConfigEntity,
+          PrefetchHooks Function()
+        > {
+  $$MusicServerConfigTableTableTableManager(
+    _$AppDatabase db,
+    $MusicServerConfigTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$MusicServerConfigTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$MusicServerConfigTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$MusicServerConfigTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> configJson = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MusicServerConfigTableCompanion(
+                id: id,
+                name: name,
+                type: type,
+                configJson: configJson,
+                enabled: enabled,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String type,
+                Value<String> configJson = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => MusicServerConfigTableCompanion.insert(
+                id: id,
+                name: name,
+                type: type,
+                configJson: configJson,
+                enabled: enabled,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$MusicServerConfigTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $MusicServerConfigTableTable,
+      MusicServerConfigEntity,
+      $$MusicServerConfigTableTableFilterComposer,
+      $$MusicServerConfigTableTableOrderingComposer,
+      $$MusicServerConfigTableTableAnnotationComposer,
+      $$MusicServerConfigTableTableCreateCompanionBuilder,
+      $$MusicServerConfigTableTableUpdateCompanionBuilder,
+      (
+        MusicServerConfigEntity,
+        BaseReferences<
+          _$AppDatabase,
+          $MusicServerConfigTableTable,
+          MusicServerConfigEntity
+        >,
+      ),
+      MusicServerConfigEntity,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3221,4 +3814,9 @@ class $AppDatabaseManager {
       $$SourcedTrackTableTableTableManager(_db, _db.sourcedTrackTable);
   $$PreferenceTableTableTableManager get preferenceTable =>
       $$PreferenceTableTableTableManager(_db, _db.preferenceTable);
+  $$MusicServerConfigTableTableTableManager get musicServerConfigTable =>
+      $$MusicServerConfigTableTableTableManager(
+        _db,
+        _db.musicServerConfigTable,
+      );
 }

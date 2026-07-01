@@ -1,24 +1,27 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/core/preferences/user_preference.dart';
+import 'package:pomelo/core/models/lx_server_quality.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
 
-import '../model/lx_server_quality.dart';
 import '../repository/lx_server_client.dart';
 import '../repository/lx_server_music_server.dart';
 
+/// 去除 serverUrl 末尾的多余斜杠
+String _cleanUrl(String url) => url.replaceAll(RegExp(r'/+$'), '');
+
 /// Lx Server 音乐服务实例
 ///
-/// 依赖 [UserPreference.lxServerConfig]：配置变化时自动重建。
-/// 配置为 null 或连接失败时返回 null。
+/// 从 [musicServerConfigsProvider] 读取 LxServerConfig，
+/// 配置变化时自动重建。配置为 null 或连接失败时返回 null。
 final lxServerMusicServerProvider =
     FutureProvider<LxServerMusicServer?>((ref) async {
-      final config = ref.watch(
-        userPreferenceProvider.select((p) => p.lxServerConfig),
-      );
+      final configs = await ref.watch(musicServerConfigsProvider.future);
+      final config = configs.whereType<LxServerConfig>().firstOrNull;
       if (config == null) return null;
 
-      final cleanUrl = config.serverUrl.replaceAll(RegExp(r'/+$'), '');
+      final cleanUrl = _cleanUrl(config.serverUrl);
       final client = LxServerClient(
         serverUrl: cleanUrl,
         username: config.username,
@@ -42,15 +45,10 @@ final lxServerMusicServerProvider =
         return null;
       }
 
-      final sourceId = 'lx-server-${cleanUrl.hashCode.abs()}';
-      final sourceName =
-          (config.displayName != null && config.displayName!.isNotEmpty)
-          ? config.displayName!
-          : 'Lx Server';
       final server = LxServerMusicServer(
         client: client,
-        sourceId: sourceId,
-        sourceName: sourceName,
+        sourceId: config.id,
+        sourceName: config.name,
         allowSourceSwitching: config.allowSourceSwitching,
       );
 
@@ -64,7 +62,7 @@ typedef LxServerConnectionConfig = ({
   String serverUrl,
   String username,
   String password,
-  String? displayName,
+  String name,
   bool proxyPlayback,
   bool allowSourceSwitching,
 });
@@ -72,7 +70,7 @@ typedef LxServerConnectionConfig = ({
 /// Lx Server 连接状态 Notifier
 ///
 /// 本 Notifier 仅负责连接/断开操作，实际的服务实例由
-/// [lxServerMusicServerProvider] 基于 [UserPreference.lxServerConfig] 创建。
+/// [lxServerMusicServerProvider] 基于 [musicServerConfigsProvider] 创建。
 class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
   @override
   LxServerMusicServer? build() {
@@ -81,11 +79,10 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
 
   /// 连接到 lx-server
   ///
-  /// 先用临时 client 验证登录，成功后写入 [UserPreference.lxServerConfig]，
+  /// 先用临时 client 验证登录，成功后写入 LxServerConfig 到配置表，
   /// 由 [lxServerMusicServerProvider] 自动创建服务实例。
-  /// 连接失败抛出异常。
   Future<LxServerMusicServer> connect(LxServerConnectionConfig config) async {
-    final cleanUrl = config.serverUrl.replaceAll(RegExp(r'/+$'), '');
+    final cleanUrl = _cleanUrl(config.serverUrl);
     final client = LxServerClient(
       serverUrl: cleanUrl,
       username: config.username,
@@ -100,17 +97,19 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
     final token = client.token;
     client.dispose();
 
-    await ref.read(userPreferenceProvider.notifier).setLxServerConfig(
-      LxServerConfig(
-        serverUrl: cleanUrl,
-        username: config.username,
-        password: config.password,
-        displayName: config.displayName,
-        token: token,
-        proxyPlayback: config.proxyPlayback,
-        allowSourceSwitching: config.allowSourceSwitching,
-      ),
-    );
+    final configId = 'lx-server-${cleanUrl.hashCode.abs()}';
+    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+          LxServerConfig(
+            id: configId,
+            name: config.name,
+            serverUrl: cleanUrl,
+            username: config.username,
+            password: config.password,
+            token: token,
+            proxyPlayback: config.proxyPlayback,
+            allowSourceSwitching: config.allowSourceSwitching,
+          ),
+        );
 
     final server = await ref.read(lxServerMusicServerProvider.future);
     if (server == null) {
@@ -121,10 +120,13 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
 
   /// 断开连接
   ///
-  /// 清除 [UserPreference.lxServerConfig]，由 [lxServerMusicServerProvider]
-  /// 自动重建为 null。
+  /// 删除 LxServerConfig，由 [lxServerMusicServerProvider] 自动重建为 null。
   Future<void> disconnect() async {
-    await ref.read(userPreferenceProvider.notifier).setLxServerConfig(null);
+    final configs = ref.read(musicServerConfigsProvider).value ?? const [];
+    final config = configs.whereType<LxServerConfig>().firstOrNull;
+    if (config != null) {
+      await ref.read(musicServerConfigsNotifierProvider.notifier).remove(config.id);
+    }
   }
 }
 
@@ -134,9 +136,8 @@ final lxServerConnectionProvider =
       LxServerConnectionNotifier.new,
     );
 
-/// 用户选择的 lx_server 音质偏好
+/// 用户选择的音质偏好（全局，持久化到 UserPreference）
 ///
-/// 持久化到 UserPreference。
 /// 应用到 [LxServerMusicServer.getMusicUrl] 时若该音质不可用则按优先级降级。
 final selectedLxServerQualityProvider =
     NotifierProvider<SelectedLxServerQualityNotifier, LxServerQuality>(

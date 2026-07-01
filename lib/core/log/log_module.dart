@@ -35,10 +35,12 @@ class LogModule extends Module {
     // 初始化仓储
     await _repository.onInit();
 
-    // 初始化文件存储（应用文档目录/logs/）
+    // 初始化文件存储（应用文档目录/pomelo/logs/）
+    // Windows 平台 getApplicationDocumentsDirectory 返回文档根目录，
+    // 需加一层项目子目录避免污染文档根目录。
     try {
       final appDir = await getApplicationDocumentsDirectory();
-      await _repository.initFileStorage('${appDir.path}/logs');
+      await _repository.initFileStorage('${appDir.path}/pomelo/logs');
     } catch (_) {
       // 文件存储初始化失败不影响内存日志
     }

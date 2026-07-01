@@ -520,6 +520,10 @@ class LxServerClient {
         } else {
           AppToast().info(event.message);
         }
+      } else {
+        if (event.isSuccess) {
+          AppToast().info('${event.name} 解析成功');
+        }
       }
     } catch (e) {
       log.debug('LxServer', 'SSE 事件 JSON 解析失败: $e, raw=$dataLine');

@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/core/preferences/user_preference.dart';
-import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
 
 import '../repository/subsonic_client.dart';
 import '../repository/subsonic_music_server.dart';
@@ -13,7 +13,7 @@ typedef SubsonicAccountRecord = ({
   String password,
   String? token,
   String? salt,
-  String? displayName,
+  String name,
   String? version,
   String? pathPrefix,
 });
@@ -23,27 +23,26 @@ String _cleanUrl(String url) => url.replaceAll(RegExp(r'/+$'), '');
 
 /// 所有已配置的 Subsonic 服务列表
 ///
-/// 依赖 [UserPreference.subsonicAccounts]：账号列表变化时自动重建。
-/// 每个账号创建独立的 [SubsonicClient] + [SubsonicMusicServer]，
+/// 从 [musicServerConfigsProvider] 读取所有 SubsonicConfig，
+/// 配置变化时自动重建。每个账号创建独立的 [SubsonicClient] + [SubsonicMusicServer]，
 /// 连接失败的账号会被跳过。
 final subsonicServersProvider =
     FutureProvider<List<SubsonicMusicServer>>((ref) async {
-      final accounts = ref.watch(
-        userPreferenceProvider.select((p) => p.subsonicAccounts),
-      );
+      final configs = await ref.watch(musicServerConfigsProvider.future);
+      final subsonicConfigs = configs.whereType<SubsonicConfig>().toList();
       final clients = <SubsonicClient>[];
       final servers = <SubsonicMusicServer>[];
 
-      for (final account in accounts) {
-        final cleanUrl = _cleanUrl(account.serverUrl);
+      for (final config in subsonicConfigs) {
+        final cleanUrl = _cleanUrl(config.serverUrl);
         final client = SubsonicClient(
           serverUrl: cleanUrl,
-          username: account.username,
-          password: account.password,
-          token: account.token,
-          salt: account.salt,
-          version: account.version,
-          pathPrefix: account.pathPrefix,
+          username: config.username,
+          password: config.password,
+          token: config.token,
+          salt: config.salt,
+          version: config.version,
+          pathPrefix: config.pathPrefix,
         );
 
         try {
@@ -51,7 +50,7 @@ final subsonicServersProvider =
         } catch (e) {
           log.error(
             'MusicSubsonic',
-            '账号 ${account.username}@$cleanUrl 连接失败: $e',
+            '账号 ${config.username}@$cleanUrl 连接失败: $e',
             error: e,
           );
           client.dispose();
@@ -61,8 +60,8 @@ final subsonicServersProvider =
         final server = SubsonicMusicServer(
           client: client,
           serverUrl: cleanUrl,
-          username: account.username,
-          displayName: account.displayName,
+          username: config.username,
+          displayName: config.name,
         );
         clients.add(client);
         servers.add(server);
@@ -81,7 +80,7 @@ final subsonicServersProvider =
 /// 已配置的 Subsonic 账号服务列表 Notifier
 ///
 /// 本 Notifier 仅负责增删账号操作，实际的服务实例由
-/// [subsonicServersProvider] 基于 [UserPreference.subsonicAccounts] 创建。
+/// [subsonicServersProvider] 基于 [musicServerConfigsProvider] 创建。
 class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
   @override
   List<SubsonicMusicServer> build() {
@@ -90,9 +89,8 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
 
   /// 添加账号
   ///
-  /// 先用临时 client 验证连接（ping），成功后写入 [UserPreference.subsonicAccounts]，
+  /// 先用临时 client 验证连接（ping），成功后写入 SubsonicConfig 到配置表，
   /// 由 [subsonicServersProvider] 自动创建服务实例。
-  /// 连接失败抛出异常。
   Future<SubsonicMusicServer> addAccount(SubsonicAccountRecord config) async {
     final cleanUrl = _cleanUrl(config.serverUrl);
     final client = SubsonicClient(
@@ -112,27 +110,25 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
     }
     client.dispose();
 
-    final currentAccounts = ref.read(userPreferenceProvider).subsonicAccounts;
-    final newAccount = SubsonicAccountConfig(
-      serverUrl: cleanUrl,
-      username: config.username,
-      password: config.password,
-      token: config.token,
-      salt: config.salt,
-      displayName: config.displayName,
-      version: config.version,
-      pathPrefix: config.pathPrefix,
-    );
-    await ref.read(userPreferenceProvider.notifier).setSubsonicAccounts([
-      ...currentAccounts,
-      newAccount,
-    ]);
+    final configId = 'subsonic-${cleanUrl.hashCode.abs()}-${config.username}';
+    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+          SubsonicConfig(
+            id: configId,
+            name: config.name,
+            serverUrl: cleanUrl,
+            username: config.username,
+            password: config.password,
+            token: config.token,
+            salt: config.salt,
+            version: config.version,
+            pathPrefix: config.pathPrefix,
+          ),
+        );
 
     final servers = await ref.read(subsonicServersProvider.future);
-    final sourceId = 'subsonic-${cleanUrl.hashCode.abs()}-${config.username}';
     SubsonicMusicServer? server;
     for (final s in servers) {
-      if (s.sourceId == sourceId) {
+      if (s.sourceId == configId) {
         server = s;
         break;
       }
@@ -145,26 +141,15 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
 
   /// 移除账号
   ///
-  /// 根据 sourceId 从 [UserPreference.subsonicAccounts] 中移除对应账号，
+  /// 根据 sourceId 删除对应 SubsonicConfig，
   /// 由 [subsonicServersProvider] 自动重建服务列表。
   Future<void> removeAccount(String sourceId) async {
-    final currentAccounts = ref.read(userPreferenceProvider).subsonicAccounts;
-    final newAccounts =
-        currentAccounts.where((a) {
-          final cleanUrl = _cleanUrl(a.serverUrl);
-          final id = 'subsonic-${cleanUrl.hashCode.abs()}-${a.username}';
-          return id != sourceId;
-        }).toList();
-    await ref
-        .read(userPreferenceProvider.notifier)
-        .setSubsonicAccounts(newAccounts);
+    await ref.read(musicServerConfigsNotifierProvider.notifier).remove(sourceId);
   }
 
   /// 更新账号
   ///
-  /// 先用临时 client 验证新配置的连接，成功后替换 [UserPreference.subsonicAccounts]
-  /// 中对应 sourceId 的账号。由 [subsonicServersProvider] 自动重建服务列表。
-  /// 连接失败抛出异常。
+  /// 先用临时 client 验证新配置的连接，成功后更新 SubsonicConfig。
   Future<void> updateAccount(
     String sourceId,
     SubsonicAccountRecord config,
@@ -187,36 +172,26 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
     }
     client.dispose();
 
-    final currentAccounts = ref.read(userPreferenceProvider).subsonicAccounts;
-    final newAccounts = currentAccounts.map((a) {
-      final aCleanUrl = _cleanUrl(a.serverUrl);
-      final id = 'subsonic-${aCleanUrl.hashCode.abs()}-${a.username}';
-      if (id == sourceId) {
-        return SubsonicAccountConfig(
-          serverUrl: cleanUrl,
-          username: config.username,
-          password: config.password,
-          token: config.token,
-          salt: config.salt,
-          displayName: config.displayName,
-          version: config.version,
-          pathPrefix: config.pathPrefix,
+    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+          SubsonicConfig(
+            id: sourceId,
+            name: config.name,
+            serverUrl: cleanUrl,
+            username: config.username,
+            password: config.password,
+            token: config.token,
+            salt: config.salt,
+            version: config.version,
+            pathPrefix: config.pathPrefix,
+          ),
         );
-      }
-      return a;
-    }).toList();
-    await ref
-        .read(userPreferenceProvider.notifier)
-        .setSubsonicAccounts(newAccounts);
   }
 
   /// 根据 sourceId 获取账号配置
-  SubsonicAccountConfig? getAccount(String sourceId) {
-    final accounts = ref.read(userPreferenceProvider).subsonicAccounts;
-    for (final a in accounts) {
-      final cleanUrl = _cleanUrl(a.serverUrl);
-      final id = 'subsonic-${cleanUrl.hashCode.abs()}-${a.username}';
-      if (id == sourceId) return a;
+  SubsonicConfig? getAccount(String sourceId) {
+    final configs = ref.read(musicServerConfigsProvider).value ?? const [];
+    for (final c in configs.whereType<SubsonicConfig>()) {
+      if (c.id == sourceId) return c;
     }
     return null;
   }

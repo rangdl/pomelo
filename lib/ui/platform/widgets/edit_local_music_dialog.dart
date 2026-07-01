@@ -3,7 +3,8 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
@@ -18,11 +19,13 @@ class _EditLocalMusicContent extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final configs = ref.watch(musicServerConfigsProvider).value ?? const [];
+    final localConfig = configs.whereType<LocalMusicConfig>().firstOrNull;
     final nameController = useTextEditingController(
-      text: ref.read(userPreferenceProvider).localServerName,
+      text: localConfig?.name ?? '本地音乐',
     );
     final dirs = useState<List<String>>(
-      ref.read(userPreferenceProvider).localDirectories,
+      localConfig?.directories ?? const [],
     );
     final cacheDir = useState<String?>(null);
     final trackCount = ref.watch(localMusicSongCountProvider);
@@ -57,10 +60,10 @@ class _EditLocalMusicContent extends HookConsumerWidget {
       }
 
       // 更新名称
-      await ref.read(userPreferenceProvider.notifier).setLocalServerName(name);
+      await ref.read(localMusicDirsProvider.notifier).setName(name);
 
       // 同步目录变更：对比新增/删除
-      final currentDirs = ref.read(userPreferenceProvider).localDirectories;
+      final currentDirs = ref.read(localMusicDirsProvider);
       final newDirs = dirs.value;
 
       // 删除被移除的目录

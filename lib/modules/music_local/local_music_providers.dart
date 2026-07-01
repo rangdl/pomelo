@@ -1,29 +1,39 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/core/preferences/user_preference.dart';
-import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 
 import 'service/local_music_server.dart';
 
+/// 本地音乐配置 ID（固定）
+const _localConfigId = 'local';
+
 /// 本地音乐服务实例
 ///
-/// 在初始化时创建实例并加载已保存的目录。
+/// 从 [musicServerConfigsProvider] 读取 LocalMusicConfig，
+/// 配置变化时自动重建。
 /// 若用户未配置任何目录，自动将音频流缓存目录作为默认目录添加。
-/// 不监听 [UserPreference.localDirectories]，避免每次目录变化都重建整个实例。
-/// 后续的 addDirectory/removeDirectory 通过 [LocalMusicDirsNotifier] 直接操作实例。
-/// 监听 [UserPreference.localServerName] 以响应名称变更。
 final localMusicServerProvider = FutureProvider<LocalMusicServer>((ref) async {
-  final pref = ref.watch(userPreferenceProvider);
-  final name = pref.localServerName;
-  var dirs = pref.localDirectories;
+  final configs = await ref.watch(musicServerConfigsProvider.future);
+  final localConfig = configs.whereType<LocalMusicConfig>().firstOrNull;
+
+  var name = localConfig?.name ?? '本地音乐';
+  var dirs = localConfig?.directories ?? const <String>[];
 
   // 缓存目录作为默认目录：用户未配置任何目录时自动添加
   if (dirs.isEmpty) {
     try {
       final cacheDir = await MusicCacheDir.getOrCreate();
       dirs = [cacheDir];
-      await ref.read(userPreferenceProvider.notifier).setLocalDirectories(dirs);
+      // 自动写入默认配置
+      await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+            LocalMusicConfig(
+              id: _localConfigId,
+              name: name,
+              directories: dirs,
+            ),
+          );
       log.info('LocalMusic', '已自动添加缓存目录作为默认目录: $cacheDir');
     } catch (e) {
       log.warning('LocalMusic', '获取缓存目录失败: $e');
@@ -55,11 +65,14 @@ final localMusicVersionProvider =
     );
 
 /// 本地音乐目录列表 Notifier
+///
+/// 读写 LocalMusicConfig（通过 [musicServerConfigsNotifierProvider]）。
 class LocalMusicDirsNotifier extends Notifier<List<String>> {
   @override
   List<String> build() {
-    // 从 UserPreference 初始化
-    return ref.watch(userPreferenceProvider.select((p) => p.localDirectories));
+    final configs = ref.watch(musicServerConfigsProvider).value ?? const [];
+    final localConfig = configs.whereType<LocalMusicConfig>().firstOrNull;
+    return localConfig?.directories ?? const [];
   }
 
   /// 添加目录
@@ -67,8 +80,8 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
     if (state.contains(path)) return;
     final server = await ref.read(localMusicServerProvider.future);
     await server.addDirectory(path);
-    state = [...state, path];
-    await _save();
+    final newDirs = [...state, path];
+    await _save(newDirs);
     _bumpVersion();
   }
 
@@ -77,8 +90,8 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
     if (!state.contains(path)) return;
     final server = ref.read(localMusicServerProvider).value;
     server?.removeDirectory(path);
-    state = state.where((d) => d != path).toList();
-    _save();
+    final newDirs = state.where((d) => d != path).toList();
+    _save(newDirs);
     _bumpVersion();
   }
 
@@ -89,13 +102,35 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
     _bumpVersion();
   }
 
+  /// 更新服务名称
+  Future<void> setName(String name) async {
+    final configs = ref.read(musicServerConfigsProvider).value ?? const [];
+    final localConfig = configs.whereType<LocalMusicConfig>().firstOrNull;
+    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+          LocalMusicConfig(
+            id: _localConfigId,
+            name: name,
+            directories: localConfig?.directories ?? state,
+          ),
+        );
+  }
+
   /// 递增版本号，通知下游 Provider 刷新
   void _bumpVersion() {
     ref.read(localMusicVersionProvider.notifier).bump();
   }
 
-  Future<void> _save() async {
-    await ref.read(userPreferenceProvider.notifier).setLocalDirectories(state);
+  Future<void> _save(List<String> dirs) async {
+    final configs = ref.read(musicServerConfigsProvider).value ?? const [];
+    final localConfig = configs.whereType<LocalMusicConfig>().firstOrNull;
+    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+          LocalMusicConfig(
+            id: _localConfigId,
+            name: localConfig?.name ?? '本地音乐',
+            directories: dirs,
+          ),
+        );
+    state = dirs;
   }
 }
 

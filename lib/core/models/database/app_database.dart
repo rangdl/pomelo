@@ -8,6 +8,7 @@ import 'package:pomelo/core/helper.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
+import 'music_server_config_table.dart';
 import 'player_state_table.dart';
 
 part 'app_database.g.dart';
@@ -19,12 +20,14 @@ part 'app_database.g.dart';
 /// - 当前播放列表持久化
 /// - 播放记录（含播放次数）
 /// - 已解析音源曲目持久化（播放链接与缓存路径）
+/// - 音乐服务配置（统一管理所有音乐源配置）
 @DriftDatabase(tables: [
   PlayerStateTable,
   PlayerTrackTable,
   PlayHistoryTable,
   SourcedTrackTable,
   PreferenceTable,
+  MusicServerConfigTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
@@ -33,7 +36,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -47,6 +50,10 @@ class AppDatabase extends _$AppDatabase {
           if (from < 3) {
             // v3: 新增 PreferenceTable（迁移自 hive_ce 存储）
             await m.createTable(preferenceTable);
+          }
+          if (from < 4) {
+            // v4: 新增 MusicServerConfigTable（统一音乐源配置存储）
+            await m.createTable(musicServerConfigTable);
           }
         },
       );
@@ -194,6 +201,28 @@ class AppDatabase extends _$AppDatabase {
         value: json,
       ),
     );
+  }
+
+  // ========== 音乐服务配置 ==========
+
+  /// 获取所有音乐服务配置
+  Future<List<MusicServerConfigEntity>> getAllMusicServerConfigs() {
+    return (select(musicServerConfigTable)
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .get();
+  }
+
+  /// 插入或更新音乐服务配置（upsert）
+  Future<void> upsertMusicServerConfig(
+      MusicServerConfigTableCompanion companion) async {
+    await into(musicServerConfigTable).insertOnConflictUpdate(companion);
+  }
+
+  /// 删除指定 id 的音乐服务配置
+  Future<void> deleteMusicServerConfig(String id) {
+    return (delete(musicServerConfigTable)
+          ..where((t) => t.id.equals(id)))
+        .go();
   }
 }
 
