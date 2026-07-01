@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/toast.dart';
 
 import 'lx_server_models.dart';
@@ -103,7 +103,7 @@ class LxServerClient {
     if (token == null || token!.isEmpty) {
       throw Exception('登录失败: 服务器未返回有效 Token');
     }
-    log.info('LxServer', '登录成功: $username');
+    AppLogger.log.i('[LxServer] 登录成功: $username');
   }
 
   /// 验证当前 Token 是否有效
@@ -119,7 +119,7 @@ class LxServerClient {
       final data = response.data!;
       return data['valid'] as bool? ?? false;
     } catch (e) {
-      log.warning('LxServer', 'Token 验证失败: $e');
+      AppLogger.log.w('[LxServer] Token 验证失败: $e');
       return false;
     }
   }
@@ -152,7 +152,7 @@ class LxServerClient {
     int limit = 20,
   }) async {
     await ensureLoggedIn();
-    log.info('LxServer', '搜索: source=$source, keyword=$keyword, page=$page');
+    AppLogger.log.i('[LxServer] 搜索: source=$source, keyword=$keyword, page=$page');
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/search',
@@ -173,18 +173,16 @@ class LxServerClient {
       final total = (data['total'] as num?)?.toInt() ?? 0;
       final respLimit = (data['limit'] as num?)?.toInt() ?? limit;
       final respPage = (data['page'] as num?)?.toInt() ?? page;
-      log.info(
-        'LxServer',
-        '搜索成功: source=$source, keyword=$keyword, '
+      AppLogger.log.i(
+        '[LxServer] 搜索成功: source=$source, keyword=$keyword, '
             '返回 ${list.length} 首, 总计 $total 首',
       );
       return (list: list, total: total, limit: respLimit, page: respPage);
     } catch (e, s) {
-      log.error(
-        'LxServer',
-        '搜索失败: source=$source, keyword=$keyword, page=$page',
-        error: e,
-        stackTrace: s,
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 搜索失败: source=$source, keyword=$keyword, page=$page',
       );
       rethrow;
     }
@@ -272,7 +270,7 @@ class LxServerClient {
   /// GET /api/music/leaderboard/boards?source=
   Future<List<LxServerLeaderboard>> getLeaderboardBoards(String source) async {
     await ensureLoggedIn();
-    log.info('LxServer', '获取排行榜列表: source=$source');
+    AppLogger.log.i('[LxServer] 获取排行榜列表: source=$source');
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/leaderboard/boards',
@@ -287,14 +285,13 @@ class LxServerClient {
               )
               .toList() ??
           [];
-      log.info('LxServer', '排行榜列表获取成功: source=$source, 共 ${list.length} 个榜单');
+      AppLogger.log.i('[LxServer] 排行榜列表获取成功: source=$source, 共 ${list.length} 个榜单');
       return list;
     } catch (e, s) {
-      log.error(
-        'LxServer',
-        '获取排行榜列表失败: source=$source',
-        error: e,
-        stackTrace: s,
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 获取排行榜列表失败: source=$source',
       );
       rethrow;
     }
@@ -310,7 +307,7 @@ class LxServerClient {
     int page = 1,
   }) async {
     await ensureLoggedIn();
-    log.info('LxServer', '获取排行榜歌曲: source=$source, bangid=$bangid, page=$page');
+    AppLogger.log.i('[LxServer] 获取排行榜歌曲: source=$source, bangid=$bangid, page=$page');
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/leaderboard/list',
@@ -326,18 +323,16 @@ class LxServerClient {
       final total = (data['total'] as num?)?.toInt() ?? 0;
       final limit = (data['limit'] as num?)?.toInt() ?? 100;
       final respPage = (data['page'] as num?)?.toInt() ?? page;
-      log.info(
-        'LxServer',
-        '排行榜歌曲获取成功: source=$source, bangid=$bangid, '
+      AppLogger.log.i(
+        '[LxServer] 排行榜歌曲获取成功: source=$source, bangid=$bangid, '
             '返回 ${list.length} 首, 总计 $total 首',
       );
       return (list: list, total: total, limit: limit, page: respPage);
     } catch (e, s) {
-      log.error(
-        'LxServer',
-        '获取排行榜歌曲失败: source=$source, bangid=$bangid, page=$page',
-        error: e,
-        stackTrace: s,
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 获取排行榜歌曲失败: source=$source, bangid=$bangid, page=$page',
       );
       rethrow;
     }
@@ -370,9 +365,8 @@ class LxServerClient {
     // 生成随机 reqId 用于关联 SSE 进度流
     final reqId = _generateReqId();
 
-    log.info(
-      'LxServer',
-      '获取播放链接: source=$source, quality=$quality, '
+    AppLogger.log.i(
+      '[LxServer] 获取播放链接: source=$source, quality=$quality, '
           '可用质量=${typesMap.keys.toList()}, reqId=$reqId',
     );
 
@@ -396,16 +390,14 @@ class LxServerClient {
       final url = data['url'] as String?;
       if (url == null || url.isEmpty) {
         final msg = data['message'] ?? '服务器未返回有效 URL';
-        log.error(
-          'LxServer',
-          '获取播放链接失败: source=$source, quality=$quality, '
+        AppLogger.log.e(
+          '[LxServer] 获取播放链接失败: source=$source, quality=$quality, '
               '原因=$msg',
         );
         throw Exception('获取播放链接失败: $msg');
       }
-      log.info(
-        'LxServer',
-        '获取播放链接成功: source=$source, quality=$quality, url=$url',
+      AppLogger.log.i(
+        '[LxServer] 获取播放链接成功: source=$source, quality=$quality, url=$url',
       );
 
       // 等待 SSE 流结束（进度已通过 Toast 实时提示）
@@ -419,9 +411,8 @@ class LxServerClient {
       // 代理播放：将原始 URL 包装为 /api/music/download
       if (proxyPlayback) {
         final proxyUrl = _buildProxyDownloadUrl(url, filename);
-        log.info(
-          'LxServer',
-          '代理播放已启用: filename=$filename, proxyUrl=${proxyUrl.length > 100 ? '${proxyUrl.substring(0, 100)}...' : proxyUrl}',
+        AppLogger.log.i(
+          '[LxServer] 代理播放已启用: filename=$filename, proxyUrl=${proxyUrl.length > 100 ? '${proxyUrl.substring(0, 100)}...' : proxyUrl}',
         );
         return proxyUrl;
       }
@@ -431,12 +422,11 @@ class LxServerClient {
       if (e is Exception && e.toString().startsWith('Exception: 获取播放链接失败')) {
         rethrow;
       }
-      log.error(
-        'LxServer',
-        '获取播放链接异常: source=$source, quality=$quality, songInfo=$songInfo, '
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 获取播放链接异常: source=$source, quality=$quality, songInfo=$songInfo, '
             '异常=$e',
-        error: e,
-        stackTrace: s,
       );
       rethrow;
     }
@@ -489,7 +479,7 @@ class LxServerClient {
       }
     } catch (e) {
       // SSE 进度是辅助提示，失败不影响主流程
-      log.debug('LxServer', 'SSE 进度监听异常（可忽略）: $e');
+      AppLogger.log.d('[LxServer] SSE 进度监听异常（可忽略）: $e');
     }
   }
 
@@ -506,9 +496,8 @@ class LxServerClient {
     try {
       final json = jsonDecode(dataLine) as Map<String, dynamic>;
       final event = LxServerProgressEvent.fromJson(json);
-      log.debug(
-        'LxServer',
-        'SSE 进度事件: name=${event.name}, status=${event.status}, '
+      AppLogger.log.d(
+        '[LxServer] SSE 进度事件: name=${event.name}, status=${event.status}, '
             'message=${event.message}',
       );
       // message 不为空时通过 Toast 提示
@@ -526,7 +515,7 @@ class LxServerClient {
         }
       }
     } catch (e) {
-      log.debug('LxServer', 'SSE 事件 JSON 解析失败: $e, raw=$dataLine');
+      AppLogger.log.d('[LxServer] SSE 事件 JSON 解析失败: $e, raw=$dataLine');
     }
   }
 
@@ -558,7 +547,7 @@ class LxServerClient {
   Future<String?> getLyric({required Map<String, dynamic> songInfo}) async {
     await ensureLoggedIn();
     final source = songInfo['source'] as String? ?? '';
-    log.debug('LxServer', '获取歌词: source=$source, songInfo=$songInfo');
+    AppLogger.log.d('[LxServer] 获取歌词: source=$source, songInfo=$songInfo');
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/lyric',
@@ -568,17 +557,16 @@ class LxServerClient {
       final data = response.data!;
       final lyric = data['lyric'] as String?;
       if (lyric == null || lyric.isEmpty) {
-        log.debug('LxServer', '获取歌词为空: source=$source, songInfo=$songInfo');
+        AppLogger.log.d('[LxServer] 获取歌词为空: source=$source, songInfo=$songInfo');
         return null;
       }
-      log.debug('LxServer', '获取歌词成功: source=$source, songInfo=$songInfo');
+      AppLogger.log.d('[LxServer] 获取歌词成功: source=$source, songInfo=$songInfo');
       return lyric;
     } catch (e, s) {
-      log.error(
-        'LxServer',
-        '获取歌词异常: source=$source, songInfo=$songInfo',
-        error: e,
-        stackTrace: s,
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 获取歌词异常: source=$source, songInfo=$songInfo',
       );
       return null;
     }
@@ -595,7 +583,7 @@ class LxServerClient {
       );
       return true;
     } catch (e) {
-      log.warning('LxServer', '服务器连接失败: $e');
+      AppLogger.log.w('[LxServer] 服务器连接失败: $e');
       return false;
     }
   }

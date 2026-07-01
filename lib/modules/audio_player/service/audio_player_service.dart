@@ -9,8 +9,7 @@ import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit/media_kit.dart' hide Track;
 
-import 'package:pomelo/core/core.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/modules/audio_player/model/media.dart';
 import 'package:pomelo/modules/audio_player/model/custom_player.dart';
 import 'package:pomelo/modules/audio_player/model/playback_state.dart';
@@ -210,10 +209,7 @@ class AudioPlayerService extends AudioPlayerInterface
   }
 }
 
-class AudioPlayerInterface extends Service {
-  @override
-  String get id => 'audio_player_service';
-
+class AudioPlayerInterface {
   final CustomPlayer _mkPlayer;
 
   AudioPlayerInterface()
@@ -225,8 +221,7 @@ class AudioPlayerInterface extends Service {
         ),
       ) {
     _mkPlayer.stream.error.listen((event) {
-      // AppLogger.reportError(event, StackTrace.current);
-      log.error('AudioPlayer', event.toString());
+      AppLogger.log.e('[AudioPlayer] ${event.toString()}');
     });
   }
 
@@ -297,15 +292,8 @@ class AudioPlayerInterface extends Service {
     return _mkPlayer.state.buffering;
   }
 
-  @override
-  Future<void> onInit() async {
-    await super.onInit();
-  }
-
-  @override
   Future<void> onDispose() async {
     await _mkPlayer.dispose();
-    await super.onDispose();
   }
 }
 

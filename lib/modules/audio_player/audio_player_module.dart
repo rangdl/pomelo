@@ -1,11 +1,7 @@
-/// 音频播放器模块 - 模块定义
+/// 音频播放器模块
 ///
 /// 提供音频播放控制、播放队列管理和播放状态持久化功能。
-/// 遵循 M.A.R.S. 架构：
-/// - Model: state.dart, audio_player.dart
-/// - Action: (模块初始化/就绪/销毁)
-/// - Repository: AudioPlayerRepository
-/// - Service/State: AudioPlayerService / Riverpod Provider
+/// 通过 Riverpod Provider 创建并初始化。
 library;
 
 import 'dart:io';
@@ -13,8 +9,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/core.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
@@ -25,7 +20,7 @@ import 'providers/playback.dart';
 import 'repository/audio_player_repository.dart';
 import 'service/audio_player_service.dart';
 
-class AudioPlayerModule extends Module {
+class AudioPlayerModule {
   AudioPlayerModule({required AppDatabase db}) : _db = db;
 
   final AppDatabase _db;
@@ -41,41 +36,19 @@ class AudioPlayerModule extends Module {
   ProviderContainer? _container;
   set container(ProviderContainer? value) => _container = value;
 
-  @override
-  String get id => 'audio_player';
-
-  @override
-  String get displayName => '音频播放器';
-
-  @override
-  bool get lazy => false; // 播放器非延迟加载，应用启动即初始化
-
-  @override
-  List<String> get dependencies => ['log'];
-
-  @override
-  Future<void> onInit() async {
-    // 初始化仓储（基于 drift 数据库）
+  /// 初始化模块：创建仓储、服务，启动 HTTP 代理服务
+  Future<void> init() async {
     _repository = AudioPlayerRepository(_db);
-
-    // 初始化服务
     _service = AudioPlayerService(_repository);
-    await _service.onInit();
 
     // 启动本地 HTTP 代理服务
     await _startServer();
   }
 
-  @override
-  Future<void> onReady() async {
-    // 所有依赖模块就绪后的逻辑
-  }
-
-  @override
-  Future<void> onDispose() async {
+  /// 销毁模块：停止 HTTP 服务、释放播放器
+  Future<void> dispose() async {
     await _stopServer();
     await _service.onDispose();
-    await _db.close();
   }
 
   /// 启动本地 HTTP 代理服务（用于在线曲目流式转发）
@@ -119,9 +92,8 @@ class AudioPlayerModule extends Module {
       PomeloMedia.serverPort,
     );
 
-    log.info(
-      'AudioPlayer',
-      'HTTP server started at http://${_server!.address.host}:${_server!.port}',
+    AppLogger.log.i(
+      '[AudioPlayer] HTTP server started at http://${_server!.address.host}:${_server!.port}',
     );
   }
 
@@ -129,7 +101,7 @@ class AudioPlayerModule extends Module {
   Future<void> _stopServer() async {
     await _server?.close();
     _server = null;
-    log.info('AudioPlayer', 'HTTP server stopped');
+    AppLogger.log.i('[AudioPlayer] HTTP server stopped');
   }
 
   /// 获取仓储实例（供外部使用）

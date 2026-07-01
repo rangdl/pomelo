@@ -10,7 +10,7 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pomelo/core/helper.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 
 /// 更新检查结果
 @immutable
@@ -75,10 +75,10 @@ class UpdateService {
       if (providers is! Map) return false;
       final cf = providers['CF'] == true;
       final fy = providers['FY'] == true;
-      log.info('UpdateService', 'CDN 缓存刷新: CF=$cf, FY=$fy');
+      AppLogger.log.i('[UpdateService] CDN 缓存刷新: CF=$cf, FY=$fy');
       return cf && fy;
     } catch (e, s) {
-      log.error('UpdateService', 'CDN 缓存刷新失败', error: e, stackTrace: s);
+      AppLogger.reportError(e, s, '[UpdateService] CDN 缓存刷新失败');
       return false;
     }
   }
@@ -132,9 +132,8 @@ class UpdateService {
           .replaceAll('{tag}', tag)
           .replaceAll('{filename}', filename);
 
-      log.info(
-        'UpdateService',
-        '发现新版本: $currentVersion → $fullVersion, 下载: $downloadUrl',
+      AppLogger.log.i(
+        '[UpdateService] 发现新版本: $currentVersion → $fullVersion, 下载: $downloadUrl',
       );
 
       return UpdateCheckResult(
@@ -145,7 +144,7 @@ class UpdateService {
         downloadUrl: downloadUrl,
       );
     } catch (e, s) {
-      log.error('UpdateService', '检查更新失败', error: e, stackTrace: s);
+      AppLogger.reportError(e, s, '[UpdateService] 检查更新失败');
       return UpdateCheckResult(
         hasUpdate: false,
         currentVersion: currentVersion,

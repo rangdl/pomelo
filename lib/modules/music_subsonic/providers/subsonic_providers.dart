@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/providers/music_server_config_provider.dart';
 
@@ -48,10 +48,10 @@ final subsonicServersProvider =
         try {
           await client.ping();
         } catch (e) {
-          log.error(
-            'MusicSubsonic',
-            '账号 ${config.username}@$cleanUrl 连接失败: $e',
-            error: e,
+          AppLogger.reportError(
+            e,
+            null,
+            '[MusicSubsonic] 账号 ${config.username}@$cleanUrl 连接失败: $e',
           );
           client.dispose();
           continue;
@@ -65,7 +65,7 @@ final subsonicServersProvider =
         );
         clients.add(client);
         servers.add(server);
-        log.info('MusicSubsonic', '已连接 ${server.sourceName}');
+        AppLogger.log.i('[MusicSubsonic] 已连接 ${server.sourceName}');
       }
 
       ref.onDispose(() {

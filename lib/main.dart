@@ -13,7 +13,6 @@ import 'package:pomelo/core/theme/app_theme.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/providers/current_lyric_provider.dart';
-import 'package:pomelo/modules/home/providers/home_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -47,10 +46,7 @@ void main() async {
       observers: [AppLoggerProviderObserver()],
     );
 
-    // ========== 核心模块初始化（由 Provider 内部完成 onInit） ==========
-    // LogModule 必须先初始化，后续模块依赖日志服务
-    // await container.read(logModuleProvider.future);
-    await container.read(homeModuleProvider.future);
+    // ========== 核心模块初始化 ==========
     final audioPlayerModule = await container.read(
       audioPlayerModuleProvider.future,
     );

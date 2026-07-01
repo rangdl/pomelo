@@ -12,7 +12,7 @@
 - **路由**: auto_route
 - **响应式布局**: `Rx.layout()` / `Rx.action()`
 - **持久化**: drift（SQLite），统一 `AppDatabase`（schema v4）
-- **日志**: 自研 `Logger` + `LogService`（JSON Lines 文件存储）
+- **日志**: `AppLogger`（`lib/services/logger.dart`，基于 `package:logger`，JSON Lines 文件存储）
 
 ---
 
@@ -27,7 +27,7 @@
 │  - 业务模块、MusicServer、仓储、模块级 Provider │
 ├─────────────────────────────────────────────┤
 │  Core Layer (lib/core/)                    │
-│  - 框架基类、数据库、路由、日志、UserPreference │
+│  - 框架工具、数据库、路由、UserPreference     │
 └─────────────────────────────────────────────┘
 ```
 
@@ -37,21 +37,19 @@
 |------|------|------|
 | Core | `lib/core/preferences/` | 全局设置 Provider（`userPreferenceProvider`） |
 | Core | `lib/core/providers/` | 全局配置 Provider（`musicServerConfigsProvider`） |
-| 模块级 | `lib/modules/*/providers/` | MusicServer 实例、服务、仓储、业务状态 |
+| 模块级 | `lib/modules/*/providers/` | MusicServer 实例、业务状态 |
 | UI 级 | `lib/ui/*/providers/` | 页面选中态、派生数据、UI 状态 |
 
 ---
 
 ## 三、模块系统
 
-### 1. 核心模块（Riverpod FutureProvider 模式）
+### 1. 核心模块（AudioPlayerModule）
 
-核心模块（`LogModule`、`HomeModule`、`AudioPlayerModule`）通过 Riverpod `FutureProvider` 注册，模块创建 + `onInit` 在 Provider 内部异步完成。
+`AudioPlayerModule` 是普通类（非 `Module` 子类），通过 Riverpod `FutureProvider` 注册，模块创建 + `init()` 在 Provider 内部异步完成。
 
 | 模块 | Provider | 文件 |
 |------|----------|------|
-| `LogModule` | `logModuleProvider` | `lib/core/log/log_providers.dart` |
-| `HomeModule` | `homeModuleProvider` | `lib/modules/home/providers/home_providers.dart` |
 | `AudioPlayerModule` | `audioPlayerModuleProvider` | `lib/modules/audio_player/module_providers.dart` |
 
 **初始化流程**（`main.dart`）：
@@ -62,8 +60,7 @@ final container = ProviderContainer(
   overrides: [appDatabaseProvider.overrideWithValue(database)],
 );
 
-// 在 runApp 前 await 各模块 Provider.future 触发初始化
-await container.read(homeModuleProvider.future);
+// 在 runApp 前 await AudioPlayerModule Provider.future 触发初始化
 final audioPlayerModule = await container.read(audioPlayerModuleProvider.future);
 audioPlayerModule.container = container; // 供 ServerPlaybackRoutes 使用
 await container.read(userPreferenceProvider.notifier).initialize();
@@ -71,25 +68,15 @@ await container.read(userPreferenceProvider.notifier).initialize();
 runApp(UncontrolledProviderScope(container: container, child: const Pomelo()));
 ```
 
-**下游同步访问**：main.dart 在 `runApp` 前 `await` 各模块 Provider.future，下游同步 Provider 使用 `requireValue` 安全访问：
-
-```dart
-final logServiceProvider = Provider<LogService>((ref) {
-  return ref.watch(logModuleProvider).requireValue.service;
-});
-```
-
 ### 2. 业务模块
 
-业务模块（`music_local`、`music_lx`、`music_lx_server`、`music_subsonic` 等）**无** `Module` 类，直接通过 Riverpod Provider 创建 `MusicServer` 实例，配置统一从 `musicServerConfigsProvider` 读取。
+业务模块（`music_local`、`music_lx`、`music_lx_server`、`music_subsonic` 等）直接通过 Riverpod Provider 创建 `MusicServer` 实例，配置统一从 `musicServerConfigsProvider` 读取。
 
-### 3. Module 基类
+### 3. 日志
 
-`lib/core/module/module.dart` 仅用于核心模块的生命周期（`onInit`/`onReady`/`onDispose`）。**不要**为业务模块创建 `Module` 子类。
-
-### 4. 日志服务注入
-
-`LogModule` 在 `logModuleProvider` 内部调用 `setLogService(module.service)`，`Logger` 内部通过 `_logService` 静态变量访问（避免每次 `ref.read`）。
+使用 `AppLogger`（`lib/services/logger.dart`）：
+- `AppLogger.log.d/i/w/e(...)` 用于普通日志
+- `AppLogger.reportError(error, stackTrace, message)` 用于错误上报
 
 ---
 
@@ -286,7 +273,10 @@ final musicServersProvider = FutureProvider<List<MusicServer>>((ref) async {
   return [local, ?lx, ?lxServer, ...subsonic];
 });
 
-final musicServerBySourceProvider = Provider.family<MusicServer?, String>(...);
+final musicServerByProvider = FutureProvider.family<MusicServer?, String>(...);
+
+// 当前选中的音乐服务（监听 selectedSourceId，自动选择/初始化）
+final musicServerProvider = FutureProvider<MusicServer?>((ref) async { ... });
 ```
 
 ### 3. MusicServer 方法命名
@@ -654,7 +644,10 @@ return showToast(
 ```dart
 // ✅ 正确：通过 Riverpod Provider 获取 MusicServer
 await ref.watch(musicServersProvider.future);
-final service = ref.watch(musicServerBySourceProvider(sourceId));
+final service = await ref.watch(musicServerByProvider(sourceId).future);
+
+// ✅ 正确：获取当前选中的音乐服务
+final service = await ref.watch(musicServerProvider.future);
 ```
 
 ### 2. 异步数据
@@ -762,18 +755,29 @@ Lx 插件文件复制到 `<appSupportDir>/lx_scripts/` 目录，配置（路径�
 
 ---
 
-## 十七、日志模块
+## 十七、日志
 
-### 1. 日志路径
+### 1. AppLogger
+
+文件：`lib/services/logger.dart`
+
+- `AppLogger.log`：`Logger` 实例（基于 `package:logger`）
+  - `AppLogger.log.d('[Tag] msg')` — debug
+  - `AppLogger.log.i('[Tag] msg')` — info
+  - `AppLogger.log.w('[Tag] msg')` — warning
+  - `AppLogger.log.e('[Tag] msg')` — error
+- `AppLogger.reportError(error, stackTrace, message)` — 错误上报（带堆栈）
+
+### 2. 日志路径
 
 - 桌面端：`<documents>/pomelo/logs/`（Windows 平台 `getApplicationDocumentsDirectory()` 返回文档根目录，故增加 `pomelo` 子目录）
 - 文件格式：JSON Lines
 
-### 2. 日志页面刷新
+### 3. 日志页面刷新
 
 日志页面打开时**必须**重新加载日志（`latestLogsProvider`、`logLevelStatsProvider`、`logTagsProvider`）。
 
-### 3. 日志存储级别
+### 4. 日志存储级别
 
 通过 `UserPreference.logStorageLevel` 控制，持久化到 drift。
 
@@ -1064,7 +1068,7 @@ import 'package:pomelo/core/toast.dart';
 | 导入 media_kit 不 hide Track | `import 'package:media_kit/media_kit.dart' hide Track;` |
 | 直接调用 `Settings`/`StorageKeys` | 已删除，必须用 `userPreferenceProvider` |
 | 使用 `MusicService` 命名 | 已统一为 `MusicServer` |
-| 为业务模块创建 `Module` 子类 | 仅核心模块保留 `Module`，业务模块直接通过 Provider |
+| 为业务模块创建 `Module` 子类 | `Module` 基类已删除，所有模块直接通过 Provider |
 | 新页面用顶级路由覆盖全屏 | 默认 Tab 内联打开（`useState` + `onClose`） |
 | 桌面端页面自带 `AppBar` | 搜索/切换由 Root 标题栏承载，仅移动端保留 `AppBar` |
 | 窗口关闭用 `close()` | 用 `destroy()`（`setPreventClose(true)`） |
@@ -1081,9 +1085,13 @@ import 'package:pomelo/core/toast.dart';
 
 ## 二十三、已删除/废弃代码
 
-- **M.A.R.S. 架构** — `ModuleManager`、`ModuleWidget`、`modules.dart` barrel、各空/dead code 模块类已删除
+- **M.A.R.S. 架构** — `Module`/`Service`/`Repository` 基类、`ModuleManager`、`ModuleWidget`、`modules.dart` barrel、`HomeModule`/`LogModule` 等模块类已删除。`AudioPlayerModule` 保留为普通类（无 `Module` 基类）
+- **`core/core.dart` 中的 M.A.R.S. 导出** — `module/module.dart`、`repository/repository.dart`、`service/service.dart` 已删除
+- **旧日志系统** — `lib/core/log.dart`、`lib/core/log/` 目录（`LogModule`/`LogService`/`LogRepository`/`log_providers.dart`）已删除，迁移到 `lib/services/logger.dart` 的 `AppLogger`
 - **`MusicService` 接口** — 已重命名为 `MusicServer`，4 个子类同步重命名
-- **`musicServicesProvider` 等** — 已重命名为 `musicServersProvider` / `musicServerBySourceProvider`
+- **`musicServicesProvider` 等** — 已重命名为 `musicServersProvider` / `musicServerByProvider`
+- **`musicServerBySourceProvider`** — 已重命名为 `musicServerByProvider`（改为 `FutureProvider.family`，监听配置变化自动重建）
+- **`currentMusicServerProvider`** — 已替换为 `musicServerProvider`（监听 `selectedSourceId`，选中为空时自动选择第一个）
 - **`musicModuleProvider` / `musicReadyProvider` 等** — 已删除，直接使用 `musicServersProvider`
 - **散落的 `Settings.get/set(StorageKeys.xxx)`** — 已迁移到 `UserPreference`，通过 `userPreferenceProvider` 管理
 - **`Settings` / `StorageKeys` / `PersistentRepository`** — 文件已删除（hive_ce 依赖已移除）
@@ -1096,8 +1104,8 @@ import 'package:pomelo/core/toast.dart';
 - **`LxServerConfig`（旧 user_preference 中的）** — 已替换为 `core/models/music_server_config.dart` 中的 `LxServerConfig`（继承 `MusicServerConfig`）
 - **`SubsonicAccountConfig`** — 已替换为 `SubsonicConfig`
 - **`LxServerQuality` 在 modules 中** — 已移动到 `core/models/lx_server_quality.dart`（全局音质偏好）
-- **`lib/modules/log/`** — 已迁移至 `lib/core/log/`
-- **核心模块在 `main.dart` 直接实例化** — 已改为 Riverpod `FutureProvider`
+- **`lib/modules/log/`** — 已迁移至 `lib/services/logger.dart`
+- **`lib/modules/home/`** — 已删除（死代码）
 - **音乐模型的 freezed 依赖** — 已移除，改为手写 `@immutable` + `copyWith`
 - **`FutureBuilder`** — 勿用，改用 Provider + `AsyncValue.when`
 - **`lib/ui/music/model/provider_result.dart`** — 已删除

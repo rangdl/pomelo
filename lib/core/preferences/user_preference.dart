@@ -14,8 +14,8 @@ library;
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:pomelo/core/log/log_entry.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
+import 'package:pomelo/core/models/log_level.dart';
 import 'package:pomelo/core/models/lx_server_quality.dart';
 
 /// Sentinel 对象，用于 [UserPreference.copyWith] 区分"不更新"与"清除为 null"。

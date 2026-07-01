@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/providers/music_server_config_provider.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
@@ -34,9 +34,9 @@ final localMusicServerProvider = FutureProvider<LocalMusicServer>((ref) async {
               directories: dirs,
             ),
           );
-      log.info('LocalMusic', '已自动添加缓存目录作为默认目录: $cacheDir');
+      AppLogger.log.i('[LocalMusic] 已自动添加缓存目录作为默认目录: $cacheDir');
     } catch (e) {
-      log.warning('LocalMusic', '获取缓存目录失败: $e');
+      AppLogger.log.w('[LocalMusic] 获取缓存目录失败: $e');
     }
   }
 
