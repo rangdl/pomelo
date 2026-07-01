@@ -138,14 +138,15 @@ final currentSourceTracksProvider = FutureProvider<MusicListData>((ref) async {
 
 /// 当前选中的音乐服务
 ///
-/// 监听 [userPreferenceProvider.selectedSourceId]，
+/// 监听 [selectedSourceProvider]（含 sourceId 和 libraryId），
 /// 通过 [musicServerByProvider] 获取对应的 MusicServer 实例。
 /// 若选中为空或无效，自动选择列表第一个并持久化；
 /// 若服务列表为空，自动添加本地音乐配置。
+///
+/// 监听 libraryId 确保切换库时所有依赖此 Provider 的下游（排行榜、歌单等）自动刷新。
 final musicServerProvider = FutureProvider<MusicServer?>((ref) async {
-  final selectedId = ref.watch(
-    userPreferenceProvider.select((p) => p.selectedSourceId),
-  );
+  final selection = ref.watch(selectedSourceProvider);
+  final selectedId = selection.sourceId;
   final servers = await ref.watch(musicServersProvider.future);
 
   // 服务列表为空时自动添加本地音乐配置
