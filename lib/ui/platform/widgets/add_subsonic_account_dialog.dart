@@ -118,14 +118,15 @@ class _SubsonicAccountContent extends HookConsumerWidget {
           await ref
               .read(subsonicAccountsProvider.notifier)
               .updateAccount(sourceId!, config);
-          context.toast.success('已更新');
         } else {
           await ref
               .read(subsonicAccountsProvider.notifier)
               .addAccount(config);
-          context.toast.success('账号添加成功');
         }
-        if (context.mounted) Navigator.of(context).pop(true);
+        if (context.mounted) {
+          Navigator.of(context).pop(true);
+          AppToast().success(isEditing ? '已更新' : '账号添加成功');
+        }
       } catch (e) {
         isLoading.value = false;
         final msg = e
@@ -133,9 +134,7 @@ class _SubsonicAccountContent extends HookConsumerWidget {
             .replaceFirst('StateError: ', '')
             .replaceFirst('Exception: ', '');
         error.value = msg;
-        if (context.mounted) {
-          context.toast.error(isEditing ? '更新失败: $msg' : '添加失败: $msg');
-        }
+        AppToast().error(isEditing ? '更新失败: $msg' : '添加失败: $msg');
       }
     }
 

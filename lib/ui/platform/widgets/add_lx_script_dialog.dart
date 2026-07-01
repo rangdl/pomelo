@@ -59,11 +59,13 @@ class _LxPluginContent extends HookConsumerWidget {
       try {
         final paths = await pickFiles();
         if (paths.isNotEmpty) {
-          await ref.read(lxMetadataPluginPathsProvider.notifier).addPlugin(paths.first);
-          if (context.mounted) context.toast.success('元数据插件已添加');
+          await ref
+              .read(lxMetadataPluginPathsProvider.notifier)
+              .addPlugin(paths.first);
+          if (context.mounted) AppToast().success('元数据插件已添加');
         }
       } catch (e) {
-        if (context.mounted) context.toast.error('添加失败: $e');
+        AppToast().error('添加失败: $e');
       } finally {
         isLoading.value = false;
       }
@@ -74,11 +76,13 @@ class _LxPluginContent extends HookConsumerWidget {
       try {
         final paths = await pickFiles();
         if (paths.isNotEmpty) {
-          await ref.read(lxMetadataPluginPathsProvider.notifier).replacePlugin(paths.first);
-          if (context.mounted) context.toast.success('元数据插件已替换');
+          await ref
+              .read(lxMetadataPluginPathsProvider.notifier)
+              .replacePlugin(paths.first);
+          if (context.mounted) AppToast().success('元数据插件已替换');
         }
       } catch (e) {
-        if (context.mounted) context.toast.error('替换失败: $e');
+        AppToast().error('替换失败: $e');
       } finally {
         isLoading.value = false;
       }
@@ -86,10 +90,12 @@ class _LxPluginContent extends HookConsumerWidget {
 
     Future<void> removeMetadataPlugin(String path) async {
       try {
-        await ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin(path);
-        if (context.mounted) context.toast.success('元数据插件已移除');
+        await ref
+            .read(lxMetadataPluginPathsProvider.notifier)
+            .removePlugin(path);
+        if (context.mounted) AppToast().success('元数据插件已移除');
       } catch (e) {
-        if (context.mounted) context.toast.error('移除失败: $e');
+        AppToast().error('移除失败: $e');
       }
     }
 
@@ -103,10 +109,10 @@ class _LxPluginContent extends HookConsumerWidget {
           await ref.read(lxSourcePluginPathsProvider.notifier).addPlugin(path);
         }
         if (paths.isNotEmpty) {
-          if (context.mounted) context.toast.success('已添加 ${paths.length} 个音源插件');
+          if (context.mounted) AppToast().success('已添加 ${paths.length} 个音源插件');
         }
       } catch (e) {
-        if (context.mounted) context.toast.error('添加失败: $e');
+        AppToast().error('添加失败: $e');
       } finally {
         isLoading.value = false;
       }
@@ -120,10 +126,10 @@ class _LxPluginContent extends HookConsumerWidget {
           await ref
               .read(lxSourcePluginPathsProvider.notifier)
               .replacePlugin(oldPath, paths.first);
-          if (context.mounted) context.toast.success('音源插件已替换');
+          if (context.mounted) AppToast().success('音源插件已替换');
         }
       } catch (e) {
-        if (context.mounted) context.toast.error('替换失败: $e');
+        AppToast().error('替换失败: $e');
       } finally {
         isLoading.value = false;
       }
@@ -132,9 +138,9 @@ class _LxPluginContent extends HookConsumerWidget {
     Future<void> removeSourcePlugin(String path) async {
       try {
         await ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(path);
-        if (context.mounted) context.toast.success('音源插件已移除');
+        if (context.mounted) AppToast().success('音源插件已移除');
       } catch (e) {
-        if (context.mounted) context.toast.error('移除失败: $e');
+        AppToast().error('移除失败: $e');
       }
     }
 
@@ -143,11 +149,25 @@ class _LxPluginContent extends HookConsumerWidget {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        _buildMetadataPluginSection(colorScheme, ref, isLoading.value,
-            addMetadataPlugin, replaceMetadataPlugin, removeMetadataPlugin, isLoading),
+        _buildMetadataPluginSection(
+          colorScheme,
+          ref,
+          isLoading.value,
+          addMetadataPlugin,
+          replaceMetadataPlugin,
+          removeMetadataPlugin,
+          isLoading,
+        ),
         const Gap(24),
-        _buildSourcePluginSection(colorScheme, ref, isLoading.value,
-            addSourcePlugins, replaceSourcePlugin, removeSourcePlugin, isLoading),
+        _buildSourcePluginSection(
+          colorScheme,
+          ref,
+          isLoading.value,
+          addSourcePlugins,
+          replaceSourcePlugin,
+          removeSourcePlugin,
+          isLoading,
+        ),
       ],
     );
   }
@@ -199,7 +219,11 @@ class _LxPluginContent extends HookConsumerWidget {
         if (hasPlugin)
           Card(
             child: ListTile(
-              leading: Icon(Icons.description, size: 20, color: colorScheme.primary),
+              leading: Icon(
+                Icons.description,
+                size: 20,
+                color: colorScheme.primary,
+              ),
               title: Text(
                 p.basename(plugins.first),
                 maxLines: 1,
@@ -232,11 +256,18 @@ class _LxPluginContent extends HookConsumerWidget {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.add_circle_outline, size: 28, color: colorScheme.mutedForeground),
+                    Icon(
+                      Icons.add_circle_outline,
+                      size: 28,
+                      color: colorScheme.mutedForeground,
+                    ),
                     const Gap(6),
                     Text(
                       '尚未添加元数据插件',
-                      style: TextStyle(fontSize: 13, color: colorScheme.mutedForeground),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.mutedForeground,
+                      ),
                     ),
                   ],
                 ),
@@ -316,7 +347,11 @@ class _LxPluginContent extends HookConsumerWidget {
               children: [
                 for (int i = 0; i < plugins.length; i++) ...[
                   ListTile(
-                    leading: Icon(Icons.description, size: 20, color: colorScheme.primary),
+                    leading: Icon(
+                      Icons.description,
+                      size: 20,
+                      color: colorScheme.primary,
+                    ),
                     title: Text(
                       p.basename(plugins[i]),
                       maxLines: 1,
@@ -355,11 +390,18 @@ class _LxPluginContent extends HookConsumerWidget {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.add_circle_outline, size: 28, color: colorScheme.mutedForeground),
+                    Icon(
+                      Icons.add_circle_outline,
+                      size: 28,
+                      color: colorScheme.mutedForeground,
+                    ),
                     const Gap(6),
                     Text(
                       '尚未添加音源插件',
-                      style: TextStyle(fontSize: 13, color: colorScheme.mutedForeground),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: colorScheme.mutedForeground,
+                      ),
                     ),
                   ],
                 ),
@@ -392,7 +434,11 @@ class AddLxPluginDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Lx 音乐插件管理'),
-      content: const SizedBox(width: 460, height: 500, child: _LxPluginContent()),
+      content: const SizedBox(
+        width: 460,
+        height: 500,
+        child: _LxPluginContent(),
+      ),
       actions: [
         GhostButton(
           onPressed: () => Navigator.of(context).pop(false),

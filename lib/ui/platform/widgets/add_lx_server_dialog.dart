@@ -61,7 +61,10 @@ class _LxServerAccountContent extends HookConsumerWidget {
           proxyPlayback: proxyPlayback.value,
           allowSourceSwitching: allowSourceSwitching.value,
         ));
-        if (context.mounted) context.toast.success(isEditing ? '已更新' : '连接成功');
+        if (context.mounted) {
+          Navigator.of(context).pop(true);
+          AppToast().success(isEditing ? '已更新' : '连接成功');
+        }
       } catch (e) {
         isLoading.value = false;
         final msg = e
@@ -69,7 +72,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
             .replaceFirst('StateError: ', '')
             .replaceFirst('Exception: ', '');
         error.value = msg;
-        if (context.mounted) context.toast.error(isEditing ? '更新失败: $msg' : '连接失败: $msg');
+        AppToast().error(isEditing ? '更新失败: $msg' : '连接失败: $msg');
       }
     }
 
