@@ -11,7 +11,7 @@ import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/modules/audio_player/providers/play_history_provider.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
-import 'package:pomelo/core/log/log_providers.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 
 import '../model/media.dart';
@@ -114,12 +114,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
       // 刷新播放记录 Provider
       ref.invalidate(playHistoryProvider);
     } catch (e, stack) {
-      ref.read(logServiceProvider).error(
-            'playHistory',
-            e.toString(),
-            error: e,
-            stackTrace: stack,
-          );
+      AppLogger.reportError(e, stack, '[playHistory] ${e.toString()}');
     }
   }
 
@@ -135,15 +130,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
             state,
           );
         } catch (e, stack) {
-          ref
-              .read(logServiceProvider)
-              .error(
-                'audioPlayerState',
-                e.toString(),
-                error: e,
-                stackTrace: stack,
-              );
-          // AppLogger.reportError(e, stack);
+          AppLogger.reportError(e, stack, '[audioPlayerState] ${e.toString()}');
         }
       }),
       audioPlayer.loopModeStream.listen((loopMode) async {
@@ -155,15 +142,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
             // AudioPlayerStateTableCompanion(loopMode: Value(loopMode)),
           );
         } catch (e, stack) {
-          ref
-              .read(logServiceProvider)
-              .error(
-                'audioPlayerState',
-                e.toString(),
-                error: e,
-                stackTrace: stack,
-              );
-          // AppLogger.reportError(e, stack);
+          AppLogger.reportError(e, stack, '[audioPlayerState] ${e.toString()}');
         }
       }),
       audioPlayer.shuffledStream.listen((shuffled) async {
@@ -175,15 +154,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
             // AudioPlayerStateTableCompanion(shuffled: Value(shuffled)),
           );
         } catch (e, stack) {
-          ref
-              .read(logServiceProvider)
-              .error(
-                'audioPlayerState',
-                e.toString(),
-                error: e,
-                stackTrace: stack,
-              );
-          // AppLogger.reportError(e, stack);
+          AppLogger.reportError(e, stack, '[audioPlayerState] ${e.toString()}');
         }
       }),
       audioPlayer.playlistStream.listen((playlist) async {
@@ -204,15 +175,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
             // ),
           );
         } catch (e, stack) {
-          ref
-              .read(logServiceProvider)
-              .error(
-                'audioPlayerState',
-                e.toString(),
-                error: e,
-                stackTrace: stack,
-              );
-          // AppLogger.reportError(e, stack);
+          AppLogger.reportError(e, stack, '[audioPlayerState] ${e.toString()}');
         }
       }),
       // 监听当前曲目索引变化，记录播放历史

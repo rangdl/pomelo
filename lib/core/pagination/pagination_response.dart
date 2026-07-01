@@ -1,7 +1,6 @@
 /// 分页查询结果
 ///
 /// 所有分页接口统一使用此模型返回。
-/// 作为 M.A.R.S. 基础能力，供所有模块使用。
 class PaginationResponse<T> {
   /// 当前页码，从 1 开始
   final int page;

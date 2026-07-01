@@ -1,5 +1,5 @@
 import 'package:pomelo/core/core.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
 import 'lx_server_client.dart';
@@ -334,9 +334,8 @@ class LxServerMusicServer extends MusicServer {
     final typesMap = (songInfo['_types'] as Map<String, dynamic>?) ?? const {};
     final selectedQuality = _selectQuality(typesMap, preferredQuality: quality);
     final source = songInfo['source'] as String? ?? '';
-    log.debug(
-      'LxServer',
-      'getMusicUrl: 歌曲=${track.title} - ${track.artist}, '
+    AppLogger.log.d(
+      '[LxServer] getMusicUrl: 歌曲=${track.title} - ${track.artist}, '
           'source=$source, 偏好=$quality, 选中质量=$selectedQuality, songInfo=$songInfo',
     );
 
@@ -352,9 +351,8 @@ class LxServerMusicServer extends MusicServer {
     } catch (e) {
       // 获取失败，若开启换源则尝试切换到其他库
       if (allowSourceSwitching) {
-        log.info(
-          'LxServer',
-          '获取播放链接失败，尝试换源: ${track.title} - ${track.artist}, '
+        AppLogger.log.i(
+          '[LxServer] 获取播放链接失败，尝试换源: ${track.title} - ${track.artist}, '
               '原库=$source, quality=$selectedQuality, 错误=$e',
         );
         final switchedUrl = await _trySourceSwitching(track, selectedQuality);
@@ -373,11 +371,11 @@ class LxServerMusicServer extends MusicServer {
     final originalSource = track.source?.libraryId ?? _currentSource;
     final keyword = _buildSearchKeyword(track);
     if (keyword.isEmpty) {
-      log.warning('LxServer', '换源跳过: 搜索关键词为空');
+      AppLogger.log.w('[LxServer] 换源跳过: 搜索关键词为空');
       return null;
     }
 
-    log.info('LxServer', '换源搜索: keyword="$keyword", 原库=$originalSource');
+    AppLogger.log.i('[LxServer] 换源搜索: keyword="$keyword", 原库=$originalSource');
 
     for (final lib in _allLibraries) {
       if (lib.id == originalSource) continue;
@@ -392,13 +390,12 @@ class LxServerMusicServer extends MusicServer {
 
         final matched = _findMatchedSong(track, result.list);
         if (matched == null) {
-          log.debug('LxServer', '换源: 库=${lib.id} 未找到匹配歌曲');
+          AppLogger.log.d('[LxServer] 换源: 库=${lib.id} 未找到匹配歌曲');
           continue;
         }
 
-        log.info(
-          'LxServer',
-          '换源匹配成功: 库=${lib.id}(${lib.name}), '
+        AppLogger.log.i(
+          '[LxServer] 换源匹配成功: 库=${lib.id}(${lib.name}), '
               '匹配歌曲=${matched.name} - ${matched.singer}',
         );
 
@@ -414,20 +411,18 @@ class LxServerMusicServer extends MusicServer {
           quality: newQuality,
           filename: filename,
         );
-        log.info(
-          'LxServer',
-          '换源成功: 库=${lib.id}, quality=$newQuality, track=${track.title}',
+        AppLogger.log.i(
+          '[LxServer] 换源成功: 库=${lib.id}, quality=$newQuality, track=${track.title}',
         );
         return url;
       } catch (e) {
-        log.warning(
-          'LxServer',
-          '换源失败: 库=${lib.id}(${lib.name}): $e',
+        AppLogger.log.w(
+          '[LxServer] 换源失败: 库=${lib.id}(${lib.name}): $e',
         );
       }
     }
 
-    log.warning('LxServer', '换源结束: 所有库均未成功, track=${track.title}');
+    AppLogger.log.w('[LxServer] 换源结束: 所有库均未成功, track=${track.title}');
     return null;
   }
 
@@ -522,21 +517,19 @@ class LxServerMusicServer extends MusicServer {
 
   @override
   Future<List<Leaderboard>> getBoards() async {
-    log.debug('LxServer', 'getBoards: source=$_currentSource');
+    AppLogger.log.d('[LxServer] getBoards: source=$_currentSource');
     final boards = await client.getLeaderboardBoards(_currentSource);
     final result = boards.map((b) => b.toLeaderboard()).toList();
-    log.debug(
-      'LxServer',
-      'getBoards 完成: source=$_currentSource, 共 ${result.length} 个榜单',
+    AppLogger.log.d(
+      '[LxServer] getBoards 完成: source=$_currentSource, 共 ${result.length} 个榜单',
     );
     return result;
   }
 
   @override
   Future<List<Track>> getLeaderboardTracks(String leaderboardId) async {
-    log.debug(
-      'LxServer',
-      'getLeaderboardSongs: source=$_currentSource, bangid=$leaderboardId',
+    AppLogger.log.d(
+      '[LxServer] getLeaderboardSongs: source=$_currentSource, bangid=$leaderboardId',
     );
     final result = await client.getLeaderboardSongs(
       source: _currentSource,
@@ -552,9 +545,8 @@ class LxServerMusicServer extends MusicServer {
           ),
         )
         .toList();
-    log.debug(
-      'LxServer',
-      'getLeaderboardSongs 完成: source=$_currentSource, bangid=$leaderboardId, '
+    AppLogger.log.d(
+      '[LxServer] getLeaderboardSongs 完成: source=$_currentSource, bangid=$leaderboardId, '
           '转换 ${tracks.length} 首歌曲',
     );
     return tracks;

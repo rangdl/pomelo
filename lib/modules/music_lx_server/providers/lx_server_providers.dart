@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
@@ -40,7 +40,7 @@ final lxServerMusicServerProvider =
           await client.login();
         }
       } catch (e) {
-        log.error('LxServer', '连接 ${config.username}@$cleanUrl 失败: $e', error: e);
+        AppLogger.reportError(e, null, '[LxServer] 连接 ${config.username}@$cleanUrl 失败: $e');
         client.dispose();
         return null;
       }
@@ -53,7 +53,7 @@ final lxServerMusicServerProvider =
       );
 
       ref.onDispose(() => client.dispose());
-      log.info('LxServer', '已连接 ${config.username}@$cleanUrl');
+      AppLogger.log.i('[LxServer] 已连接 ${config.username}@$cleanUrl');
       return server;
     });
 

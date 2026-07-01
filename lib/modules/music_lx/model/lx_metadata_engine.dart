@@ -1,4 +1,4 @@
-﻿import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
@@ -45,18 +45,18 @@ class LxMetadataEngine {
   bool loadPlugin(String scriptContent) {
     final result = jsEngine.jsRuntime.evaluate(scriptContent);
     if (result.isError) {
-      log.error('LxMetadataEngine', '元数据插件加载失败: ${result.toString()}');
+      AppLogger.log.e('[LxMetadataEngine] 元数据插件加载失败: ${result.toString()}');
       return false;
     }
-    log.info('LxMetadataEngine', '元数据插件加载成功');
+    AppLogger.log.i('[LxMetadataEngine] 元数据插件加载成功');
 
     // 调用脚本初始化方法
     final resultSetup = jsEngine.jsRuntime.evaluate('setup()');
     if (resultSetup.isError) {
-      log.error('LxMetadataEngine', '元数据插件初始化失败: ${result.toString()}');
+      AppLogger.log.e('[LxMetadataEngine] 元数据插件初始化失败: ${result.toString()}');
       return false;
     }
-    log.info('LxMetadataEngine', '元数据插件初始化成功');
+    AppLogger.log.i('[LxMetadataEngine] 元数据插件初始化成功');
     return true;
   }
 
@@ -76,7 +76,7 @@ class LxMetadataEngine {
           )
           .toList();
     } catch (e) {
-      log.error('LxMetadataEngine', e.toString(), error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] $e');
       return [];
     }
   }
@@ -109,7 +109,7 @@ class LxMetadataEngine {
       );
 
       if (raw == null) {
-        log.error('LxMetadataEngine', '搜索歌曲返回 null');
+        AppLogger.log.e('[LxMetadataEngine] 搜索歌曲返回 null');
         return PaginationResponse<Track>(
           limit: limit,
           page: page,
@@ -142,7 +142,7 @@ class LxMetadataEngine {
       );
       return res;
     } catch (e) {
-      log.error('LxMetadataEngine', '搜索歌曲失败: $e', error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] 搜索歌曲失败: $e');
       return PaginationResponse<Track>(
         limit: limit,
         page: page,
@@ -169,7 +169,7 @@ class LxMetadataEngine {
       );
 
       if (raw == null) {
-        log.error('LxMetadataEngine', '搜索歌单返回 null');
+        AppLogger.log.e('[LxMetadataEngine] 搜索歌单返回 null');
         return PaginationResponse<Playlist>(
           limit: limit,
           page: page,
@@ -204,7 +204,7 @@ class LxMetadataEngine {
         items: items,
       );
     } catch (e) {
-      log.error('LxMetadataEngine', '搜索歌单失败: $e', error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] 搜索歌单失败: $e');
       return PaginationResponse<Playlist>(
         limit: limit,
         page: page,
@@ -230,7 +230,7 @@ class LxMetadataEngine {
       );
 
       if (raw == null) {
-        log.error('LxMetadataEngine', '获取歌单分类返回 null');
+        AppLogger.log.e('[LxMetadataEngine] 获取歌单分类返回 null');
         return [];
       }
 
@@ -282,7 +282,7 @@ class LxMetadataEngine {
 
       return categories;
     } catch (e) {
-      log.error('LxMetadataEngine', '获取歌单分类失败: $e', error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] 获取歌单分类失败: $e');
       return [];
     }
   }
@@ -314,7 +314,7 @@ class LxMetadataEngine {
         );
       }).toList();
     } catch (e) {
-      log.error('LxMetadataEngine', '获取歌单排序方式失败: $e', error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] 获取歌单排序方式失败: $e');
       return [];
     }
   }
@@ -339,7 +339,7 @@ class LxMetadataEngine {
       );
 
       if (raw == null) {
-        log.error('LxMetadataEngine', '获取歌单列表返回 null');
+        AppLogger.log.e('[LxMetadataEngine] 获取歌单列表返回 null');
         return [];
       }
 
@@ -361,7 +361,7 @@ class LxMetadataEngine {
 
       return items;
     } catch (e) {
-      log.error('LxMetadataEngine', '获取歌单列表失败: $e', error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] 获取歌单列表失败: $e');
       return [];
     }
   }
@@ -389,7 +389,7 @@ class LxMetadataEngine {
       );
 
       if (raw == null) {
-        log.error('LxMetadataEngine', '获取歌单详情返回 null');
+        AppLogger.log.e('[LxMetadataEngine] 获取歌单详情返回 null');
         return [];
       }
 
@@ -409,7 +409,7 @@ class LxMetadataEngine {
           )
           .toList();
     } catch (e) {
-      log.error('LxMetadataEngine', '获取歌单详情失败: $e', error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] 获取歌单详情失败: $e');
       return [];
     }
   }
@@ -431,7 +431,7 @@ class LxMetadataEngine {
       );
 
       if (raw == null) {
-        log.error('LxMetadataEngine', '获取排行榜列表返回 null');
+        AppLogger.log.e('[LxMetadataEngine] 获取排行榜列表返回 null');
         return [];
       }
 
@@ -448,7 +448,7 @@ class LxMetadataEngine {
       }
       return leaderboards;
     } catch (e) {
-      log.error('LxMetadataEngine', '获取排行榜列表失败: $e', error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] 获取排行榜列表失败: $e');
       return [];
     }
   }
@@ -475,7 +475,7 @@ class LxMetadataEngine {
       );
 
       if (raw == null) {
-        log.error('LxMetadataEngine', '获取排行榜歌曲返回 null');
+        AppLogger.log.e('[LxMetadataEngine] 获取排行榜歌曲返回 null');
         return [];
       }
 
@@ -495,7 +495,7 @@ class LxMetadataEngine {
           )
           .toList();
     } catch (e) {
-      log.error('LxMetadataEngine', '获取排行榜歌曲失败: $e', error: e);
+      AppLogger.reportError(e, null, '[LxMetadataEngine] 获取排行榜歌曲失败: $e');
       return [];
     }
   }

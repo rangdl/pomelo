@@ -7,7 +7,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/providers/music_server_config_provider.dart';
 import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
@@ -29,7 +29,7 @@ String _derivePluginId(String path) {
 /// 检查插件文件是否存在，不存在则记录警告日志。
 Future<bool> _pluginExists(String path, String label) async {
   if (!await File(path).exists()) {
-    log.warning('LxMusic', '$label文件不存在 $path');
+    AppLogger.log.w('[LxMusic] $label文件不存在 $path');
     return false;
   }
   return true;
@@ -63,16 +63,15 @@ final lxMetadataEngineProvider =
       final content = await File(pluginPath).readAsString();
       final libraries = await engine.loadPluginWithLibraries(content);
       if (libraries.isEmpty) {
-        log.warning('LxMusic', '元数据插件 $pluginPath 未注册任何库，跳过');
+        AppLogger.log.w('[LxMusic] 元数据插件 $pluginPath 未注册任何库，跳过');
         engine.dispose();
         return null;
       }
 
       final pluginId = _derivePluginId(pluginPath);
       ref.onDispose(() => engine.dispose());
-      log.info(
-        'LxMusic',
-        '插件加载成功，注册了 ${libraries.length} 个库: '
+      AppLogger.log.i(
+        '[LxMusic] 插件加载成功，注册了 ${libraries.length} 个库: '
         '${libraries.map((l) => l.id).join(", ")}',
       );
       return (engine: engine, libraries: libraries, pluginId: pluginId);
