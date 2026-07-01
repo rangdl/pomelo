@@ -1,4 +1,4 @@
-﻿/// 歌单详情页面
+/// 歌单详情页面
 ///
 /// 展示歌单信息（封面、名称、创建者）及其中的歌曲列表。
 library;
@@ -20,7 +20,7 @@ final playlistTracksProvider =
     FutureProvider.family<List<Track>, ({String sourceId, String playlistId})>(
   (ref, params) async {
     await ref.watch(musicServersProvider.future);
-    final service = ref.watch(musicServerBySourceProvider(params.sourceId));
+    final service = await ref.watch(musicServerByProvider(params.sourceId).future);
     if (service == null) return [];
     return service.getPlaylistTracks(params.playlistId);
   },

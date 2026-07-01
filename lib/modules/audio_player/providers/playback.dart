@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/modules/audio_player/providers/sourced_track.dart';
 import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
@@ -81,21 +81,20 @@ class ServerPlaybackRoutes {
     if (cached != null && cached.isNotEmpty) return cached;
 
     final downgradeList = notifier.downgradeList;
-    log.info('Playback', '解析开始: track=${track.title}, 降级序列=$downgradeList');
+    AppLogger.log.i('[Playback] 解析开始: track=${track.title}, 降级序列=$downgradeList');
 
     // 2. 优先使用持久化的本地缓存文件
     try {
       final cachedFile = await notifier.findCachedFile(downgradeList);
       if (cachedFile != null) {
         notifier.cacheUrl(cachedFile.path, cachedFile.quality);
-        log.info(
-          'Playback',
-          '命中本地缓存文件: quality=${cachedFile.quality}, track=${track.title}',
+        AppLogger.log.i(
+          '[Playback] 命中本地缓存文件: quality=${cachedFile.quality}, track=${track.title}',
         );
         return cachedFile.path;
       }
     } catch (e) {
-      log.warning('Playback', '查找本地缓存文件失败: $e');
+      AppLogger.log.w('[Playback] 查找本地缓存文件失败: $e');
     }
 
     // 3. 次选持久化的播放链接（需 HEAD 校验）
@@ -104,20 +103,18 @@ class ServerPlaybackRoutes {
       if (cachedUrl != null) {
         if (await _headValidate(cachedUrl.url)) {
           notifier.cacheUrl(cachedUrl.url, cachedUrl.quality);
-          log.info(
-            'Playback',
-            '命中缓存URL: quality=${cachedUrl.quality}, track=${track.title}',
+          AppLogger.log.i(
+            '[Playback] 命中缓存URL: quality=${cachedUrl.quality}, track=${track.title}',
           );
           return cachedUrl.url;
         } else {
-          log.warning(
-            'Playback',
-            '缓存URL失效: quality=${cachedUrl.quality}, url=${cachedUrl.url}',
+          AppLogger.log.w(
+            '[Playback] 缓存URL失效: quality=${cachedUrl.quality}, url=${cachedUrl.url}',
           );
         }
       }
     } catch (e) {
-      log.warning('Playback', '查找缓存URL失败: $e');
+      AppLogger.log.w('[Playback] 查找缓存URL失败: $e');
     }
 
     // 4. 全部未命中或 URL 失效，重新获取播放链接
@@ -125,19 +122,19 @@ class ServerPlaybackRoutes {
       try {
         final url = await notifier.getUrlForQuality(quality);
         if (url.isEmpty) {
-          log.warning('Playback', '获取链接为空 quality=$quality');
+          AppLogger.log.w('[Playback] 获取链接为空 quality=$quality');
           continue;
         }
         if (await _headValidate(url)) {
           notifier.cacheUrl(url, quality);
           // 持久化 URL，便于下次直接命中
           await notifier.saveUrlToPersistence(quality, url);
-          log.info('Playback', '解析成功: quality=$quality, track=${track.title}');
+          AppLogger.log.i('[Playback] 解析成功: quality=$quality, track=${track.title}');
           return url;
         }
-        log.warning('Playback', 'HEAD 失败 quality=$quality, url=$url');
+        AppLogger.log.w('[Playback] HEAD 失败 quality=$quality, url=$url');
       } catch (e) {
-        log.warning('Playback', '获取链接失败 quality=$quality: $e');
+        AppLogger.log.w('[Playback] 获取链接失败 quality=$quality: $e');
       }
     }
 
@@ -145,11 +142,11 @@ class ServerPlaybackRoutes {
     final fallback = notifier.fallbackUrl;
     if (fallback.isNotEmpty && await _headValidate(fallback)) {
       notifier.cacheUrl(fallback, null);
-      log.info('Playback', '回退成功: src/path, track=${track.title}');
+      AppLogger.log.i('[Playback] 回退成功: src/path, track=${track.title}');
       return fallback;
     }
 
-    log.error('Playback', '所有音质均无法获取有效播放链接: ${track.title}');
+    AppLogger.log.e('[Playback] 所有音质均无法获取有效播放链接: ${track.title}');
     throw Exception('无法获取有效的播放链接');
   }
 
@@ -175,7 +172,7 @@ class ServerPlaybackRoutes {
       final res = await dio.head(url, options: options);
       return res.statusCode != null && res.statusCode! < 400;
     } catch (e) {
-      log.warning('Playback', 'HEAD 异常 url=$url: $e');
+      AppLogger.log.w('[Playback] HEAD 异常 url=$url: $e');
       return false;
     }
   }
@@ -185,9 +182,8 @@ class ServerPlaybackRoutes {
     Track track,
     String url,
   ) async {
-    log.debug(
-      'Playback',
-      'HEAD request for track: ${track.title}, Headers: ${request.headers}',
+    AppLogger.log.d(
+      '[Playback] HEAD request for track: ${track.title}, Headers: ${request.headers}',
     );
 
     // _resolveValidUrl 已完成 HEAD 校验与音质降级，这里再做一次 HEAD
@@ -209,9 +205,8 @@ class ServerPlaybackRoutes {
     Map<String, dynamic> headers,
     String url,
   ) async {
-    log.debug(
-      'Playback',
-      'GET request for track: ${track.title}, Headers: ${request.headers}',
+    AppLogger.log.d(
+      '[Playback] GET request for track: ${track.title}, Headers: ${request.headers}',
     );
 
     final options = Options(
@@ -227,9 +222,8 @@ class ServerPlaybackRoutes {
 
     final res = await dio.get<ResponseBody>(url, options: options);
 
-    log.debug(
-      'Playback',
-      'Response for track: ${track.title}, '
+    AppLogger.log.d(
+      '[Playback] Response for track: ${track.title}, '
           'Status: ${res.statusCode}, Headers: ${res.headers.map}',
     );
 
@@ -271,10 +265,10 @@ class ServerPlaybackRoutes {
       );
     } on Exception catch (e) {
       // 降级穷尽等业务异常，返回明确的错误信息
-      log.error('Playback', e.toString(), error: e);
+      AppLogger.reportError(e, null, '[Playback] ${e.toString()}');
       return Response.internalServerError(body: e.toString());
     } catch (e, stack) {
-      log.error('Playback', e.toString(), error: e, stackTrace: stack);
+      AppLogger.reportError(e, stack, '[Playback] ${e.toString()}');
       return Response.internalServerError();
     }
   }
@@ -340,7 +334,7 @@ class ServerPlaybackRoutes {
         headers: _sanitizeHeaders(res.headers.map),
       );
     } catch (e, stack) {
-      log.error('Playback', e.toString(), error: e, stackTrace: stack);
+      AppLogger.reportError(e, stack, '[Playback] ${e.toString()}');
       return Response.internalServerError();
     }
   }
@@ -394,9 +388,8 @@ class ServerPlaybackRoutes {
     try {
       final file = await MusicCacheDir.getCacheFile(track.id, extension);
       await file.writeAsBytes(buffer);
-      log.debug(
-        'Playback',
-        '缓存写入完成: track=${track.title}, ${buffer.length} bytes → ${file.path}',
+      AppLogger.log.d(
+        '[Playback] 缓存写入完成: track=${track.title}, ${buffer.length} bytes → ${file.path}',
       );
 
       // 持久化缓存文件路径（需有音质信息）
@@ -411,7 +404,7 @@ class ServerPlaybackRoutes {
       // 写入完成后按缓存上限清理旧文件
       await MusicCacheDir.enforceLimit();
     } catch (e) {
-      log.warning('Playback', '缓存文件写入失败: $e');
+      AppLogger.log.w('[Playback] 缓存文件写入失败: $e');
     }
   }
 

@@ -1,6 +1,7 @@
-﻿import 'package:collection/collection.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:pomelo/modules/music_lx/providers/lx_providers.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
@@ -27,12 +28,15 @@ final musicServersProvider = FutureProvider<List<MusicServer>>((ref) async {
 
 /// 根据 sourceId 获取特定 MusicServer
 ///
+/// 通过监听 [musicServerConfigsProvider] 确保配置变化时 Provider 自动重建。
 /// 两阶段查找：先按 sourceId 精确匹配，再按 libraryId 匹配。
-final musicServerBySourceProvider = Provider.family<MusicServer?, String>((
+final musicServerByProvider = FutureProvider.family<MusicServer?, String>((
   ref,
   sourceId,
-) {
-  final servers = ref.watch(musicServersProvider).value ?? [];
+) async {
+  // 监听配置变化，确保 config 变更时 Provider 自动重建
+  await ref.watch(musicServerConfigsProvider.future);
+  final servers = await ref.watch(musicServersProvider.future);
   return servers.firstWhereOrNull((s) => s.sourceId == sourceId) ??
       servers.firstWhereOrNull(
         (s) => s.libraries.any((v) => v.id == sourceId),

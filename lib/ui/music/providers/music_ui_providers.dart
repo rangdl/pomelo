@@ -5,6 +5,9 @@ import 'package:pomelo/core/models/metadata/music_source_type.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
 import 'package:pomelo/core/models/metadata/playlist.dart';
 import 'package:pomelo/core/models/metadata/leaderboard.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
@@ -40,18 +43,19 @@ class SelectedSourceNotifier
     // 应用持久化的库选择：
     // 监听对应 sourceId 的 MusicServer，当其加载完成时应用持久化的 libraryId。
     if (initialState.sourceId != null && initialState.libraryId != null) {
-      ref.listen<MusicServer?>(
-        musicServerBySourceProvider(initialState.sourceId!),
+      ref.listen<AsyncValue<MusicServer?>>(
+        musicServerByProvider(initialState.sourceId!),
         (prev, next) {
-          if (next != null && prev == null) {
-            next.setDefaultLibrary(initialState.libraryId!);
+          final server = next.value;
+          if (server != null && prev?.value == null) {
+            server.setDefaultLibrary(initialState.libraryId!);
           }
         },
       );
       // 兜底：若服务在 build 前已就绪
       final server = ref.read(
-        musicServerBySourceProvider(initialState.sourceId!),
-      );
+        musicServerByProvider(initialState.sourceId!),
+      ).value;
       if (server != null) {
         server.setDefaultLibrary(initialState.libraryId!);
       }
@@ -72,7 +76,7 @@ class SelectedSourceNotifier
         .selectSource(sourceId, libraryId: libraryId);
     // 如果选中了多库服务的某个库，更新服务的默认库
     if (libraryId != null) {
-      final service = ref.read(musicServerBySourceProvider(sourceId));
+      final service = ref.read(musicServerByProvider(sourceId)).value;
       service?.setDefaultLibrary(libraryId);
     }
   }
@@ -103,7 +107,7 @@ final currentSourceTracksProvider = FutureProvider<MusicListData>((ref) async {
 
   Iterable<MusicServer> targets = services;
   if (selection.sourceId != null) {
-    final s = ref.watch(musicServerBySourceProvider(selection.sourceId!));
+    final s = await ref.watch(musicServerByProvider(selection.sourceId!).future);
     targets = s != null ? [s] : [];
   }
 
@@ -132,15 +136,49 @@ final currentSourceTracksProvider = FutureProvider<MusicListData>((ref) async {
   return MusicListData(tracks: tracks, errors: errors);
 });
 
-/// 当前选中的单个音乐服务（null 表示"全部来源"或服务未就绪）
+/// 当前选中的音乐服务
 ///
-/// 集中处理"选中来源 → 服务实例"逻辑，消除各 FutureProvider 的样板代码。
-/// 依赖 [selectedSourceProvider] 与 [musicServersProvider]，任一变化时自动重建。
-final currentMusicServerProvider = FutureProvider<MusicServer?>((ref) async {
-  final selection = ref.watch(selectedSourceProvider);
-  if (selection.sourceId == null) return null;
-  await ref.watch(musicServersProvider.future);
-  return ref.watch(musicServerBySourceProvider(selection.sourceId!));
+/// 监听 [userPreferenceProvider.selectedSourceId]，
+/// 通过 [musicServerByProvider] 获取对应的 MusicServer 实例。
+/// 若选中为空或无效，自动选择列表第一个并持久化；
+/// 若服务列表为空，自动添加本地音乐配置。
+final musicServerProvider = FutureProvider<MusicServer?>((ref) async {
+  final selectedId = ref.watch(
+    userPreferenceProvider.select((p) => p.selectedSourceId),
+  );
+  final servers = await ref.watch(musicServersProvider.future);
+
+  // 服务列表为空时自动添加本地音乐配置
+  if (servers.isEmpty) {
+    final configs = await ref.watch(musicServerConfigsProvider.future);
+    if (configs.isEmpty) {
+      final cacheDir = await MusicCacheDir.getOrCreate();
+      await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+            LocalMusicConfig(
+              id: 'local',
+              name: '本地音乐',
+              directories: [cacheDir],
+            ),
+          );
+    }
+    return null;
+  }
+
+  // 选中的服务为空或无效时，自动选择第一个并持久化
+  final serverExists = selectedId != null &&
+      servers.any((s) =>
+          s.sourceId == selectedId ||
+          s.libraries.any((v) => v.id == selectedId));
+
+  final effectiveId = serverExists ? selectedId : servers.first.sourceId;
+
+  if (!serverExists) {
+    Future.microtask(() {
+      ref.read(userPreferenceProvider.notifier).selectSource(effectiveId);
+    });
+  }
+
+  return ref.watch(musicServerByProvider(effectiveId).future);
 });
 
 /// 当前选中服务的歌单分类列表
@@ -150,7 +188,7 @@ final currentMusicServerProvider = FutureProvider<MusicServer?>((ref) async {
 final playlistCategoriesProvider = FutureProvider<List<PlaylistCategory>>((
   ref,
 ) async {
-  final service = await ref.watch(currentMusicServerProvider.future);
+  final service = await ref.watch(musicServerProvider.future);
   if (service == null) return [];
   return service.getPlaylistCategories();
 });
@@ -203,7 +241,7 @@ final selectedPlaylistSortProvider = NotifierProvider<
 final playlistSortOrdersProvider = FutureProvider<List<({String id, String name})>>((
   ref,
 ) async {
-  final service = await ref.watch(currentMusicServerProvider.future);
+  final service = await ref.watch(musicServerProvider.future);
   if (service == null) return [];
   return service.getPlaylistSortOrders();
 });
@@ -216,7 +254,7 @@ final playlistsByCategoryProvider = FutureProvider<PaginationResponse<Playlist>>
   final sortId = ref.watch(selectedPlaylistSortProvider);
   if (categoryId == null) return PaginationResponse.empty();
 
-  final service = await ref.watch(currentMusicServerProvider.future);
+  final service = await ref.watch(musicServerProvider.future);
   if (service == null) return PaginationResponse.empty();
 
   return service.getPlaylistsByCategory(categoryId, sortId: sortId);
@@ -224,7 +262,7 @@ final playlistsByCategoryProvider = FutureProvider<PaginationResponse<Playlist>>
 
 /// 当前选中服务的排行榜列表
 final leaderboardsProvider = FutureProvider<List<Leaderboard>>((ref) async {
-  final service = await ref.watch(currentMusicServerProvider.future);
+  final service = await ref.watch(musicServerProvider.future);
   if (service == null) return [];
   return service.getBoards();
 });
@@ -244,7 +282,7 @@ final leaderboardTracksProvider = FutureProvider.family<List<Track>, String>((
   ref,
   leaderboardId,
 ) async {
-  final service = await ref.watch(currentMusicServerProvider.future);
+  final service = await ref.watch(musicServerProvider.future);
   if (service == null) return [];
   return service.getLeaderboardTracks(leaderboardId);
 });
@@ -268,7 +306,7 @@ final searchResultsProvider = FutureProvider.family<
 
   Iterable<MusicServer> targets = services;
   if (params.sourceId != null) {
-    final s = ref.watch(musicServerBySourceProvider(params.sourceId!));
+    final s = await ref.watch(musicServerByProvider(params.sourceId!).future);
     targets = s != null ? [s] : [];
   }
 

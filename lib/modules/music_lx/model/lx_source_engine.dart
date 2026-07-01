@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music_lx/model/preload.dart';
 import 'js_engine.dart';
@@ -61,7 +61,7 @@ class LxSourceEngine {
     // 加载Preloadjs
     final resultPreload = engine.jsRuntime.evaluate(preloadJS);
     if (resultPreload.isError) {
-      log.error('LxSourceEngine', 'preloadJS加载失败: ${resultPreload.toString()}');
+      AppLogger.log.e('[LxSourceEngine] preloadJS加载失败: ${resultPreload.toString()}');
       engine.dispose();
       return [];
     }
@@ -73,7 +73,7 @@ class LxSourceEngine {
     // 初始化脚本运行环境
     final resultEnv = engine.jsRuntime.evaluate('initEnv($userApiText)');
     if (resultEnv.isError) {
-      log.error('LxSourceEngine', 'Env初始化失败: ${resultEnv.toString()}');
+      AppLogger.log.e('[LxSourceEngine] Env初始化失败: ${resultEnv.toString()}');
       engine.dispose();
       return [];
     }
@@ -89,7 +89,7 @@ class LxSourceEngine {
     // 桥接 事件监听 updateAlert
     engine.jsRuntime.onMessage('updateAlert', (arguments) {
       final updateUrl = arguments['updateUrl'] ?? '';
-      log.info('LxSourceEngine', '需要更新: $updateUrl');
+      AppLogger.log.i('[LxSourceEngine] 需要更新: $updateUrl');
       completer.complete(false);
     });
     // 执行脚本
@@ -97,7 +97,7 @@ class LxSourceEngine {
       '!(function (){$scriptContent})();',
     );
     if (result.isError) {
-      log.error('LxSourceEngine', '音源插件加载失败: ${result.toString()}');
+      AppLogger.log.e('[LxSourceEngine] 音源插件加载失败: ${result.toString()}');
       engine.dispose();
       return [];
     }
@@ -106,15 +106,14 @@ class LxSourceEngine {
     await completer.future;
 
     if (libraries.isEmpty) {
-      log.warning('LxSourceEngine', '音源插件未注册任何库');
+      AppLogger.log.w('[LxSourceEngine] 音源插件未注册任何库');
       engine.dispose();
       return [];
     }
 
     _plugins.add(_SourcePluginEntry(engine: engine, libraries: libraries));
-    log.info(
-      'LxSourceEngine',
-      '音源插件加载成功，支持库: ${libraries.map((l) => l.id).join(", ")}',
+    AppLogger.log.i(
+      '[LxSourceEngine] 音源插件加载成功，支持库: ${libraries.map((l) => l.id).join(", ")}',
     );
     return libraries;
   }
@@ -161,7 +160,7 @@ class LxSourceEngine {
     // 找到支持该库的音源插件引擎
     final entry = _findEntry(libraryId);
     if (entry == null) {
-      log.error('LxSourceEngine', '库 $libraryId 未找到对应的音源插件');
+      AppLogger.log.e('[LxSourceEngine] 库 $libraryId 未找到对应的音源插件');
       return '';
     }
 
@@ -190,7 +189,7 @@ class LxSourceEngine {
       final url = dynamicUrl.toString();
       return url;
     } catch (e) {
-      log.error('LxSourceEngine', '获取 $libraryId 播放链接异常: $e', error: e);
+      AppLogger.reportError(e, null, '[LxSourceEngine] 获取 $libraryId 播放链接异常: $e');
       return '';
     }
   }

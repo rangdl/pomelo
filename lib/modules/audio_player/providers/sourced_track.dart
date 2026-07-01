@@ -16,7 +16,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/log.dart';
+import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
@@ -92,9 +92,8 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
       preferredQuality,
     );
 
-    log.info(
-      'SourcedTrack',
-      '解析开始: track=${track.title}, 偏好=$preferredQuality, '
+    AppLogger.log.i(
+      '[SourcedTrack] 解析开始: track=${track.title}, 偏好=$preferredQuality, '
           '可用=$availableQualities, 降级序列=$downgradeList',
     );
 
@@ -102,19 +101,17 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
       try {
         final url = await _getMusicUrl(track, quality: quality);
         if (url.isEmpty) {
-          log.warning('SourcedTrack', '获取链接为空 quality=$quality');
+          AppLogger.log.w('[SourcedTrack] 获取链接为空 quality=$quality');
           continue;
         }
         state = state.copyWith(url: url, quality: quality);
-        log.info(
-          'SourcedTrack',
-          '解析成功: quality=$quality, track=${track.title}',
+        AppLogger.log.i(
+          '[SourcedTrack] 解析成功: quality=$quality, track=${track.title}',
         );
         return url;
       } catch (e) {
-        log.warning(
-          'SourcedTrack',
-          '获取链接失败 quality=$quality: $e',
+        AppLogger.log.w(
+          '[SourcedTrack] 获取链接失败 quality=$quality: $e',
         );
       }
     }
@@ -123,16 +120,14 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
     final fallback = track.src ?? track.path ?? '';
     if (fallback.isNotEmpty) {
       state = state.copyWith(url: fallback, quality: null);
-      log.info(
-        'SourcedTrack',
-        '回退成功: src/path, track=${track.title}',
+      AppLogger.log.i(
+        '[SourcedTrack] 回退成功: src/path, track=${track.title}',
       );
       return fallback;
     }
 
-    log.error(
-      'SourcedTrack',
-      '所有音质均无法获取播放链接: ${track.title}',
+    AppLogger.log.e(
+      '[SourcedTrack] 所有音质均无法获取播放链接: ${track.title}',
     );
     throw Exception('无法获取有效的播放链接');
   }
@@ -181,7 +176,7 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
 
     // 等待服务列表加载完成，然后查找对应服务
     await ref.read(musicServersProvider.future);
-    final service = ref.read(musicServerBySourceProvider(sourceId));
+    final service = await ref.read(musicServerByProvider(sourceId).future);
     if (service == null) return track.src ?? track.path ?? '';
     return service.getMusicUrl(track, quality: quality);
   }
@@ -237,7 +232,7 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
       final db = ref.read(appDatabaseProvider);
       return db.getSourcedTrack(track.id);
     } catch (e) {
-      log.warning('SourcedTrack', '加载持久化记录失败: $e');
+      AppLogger.log.w('[SourcedTrack] 加载持久化记录失败: $e');
       return null;
     }
   }
@@ -302,9 +297,9 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
         cachePathMap: Value(existing?.cachePathMap ?? '{}'),
         updatedAt: Value(DateTime.now()),
       ));
-      log.debug('SourcedTrack', '持久化URL: quality=$quality, track=${track.title}');
+      AppLogger.log.d('[SourcedTrack] 持久化URL: quality=$quality, track=${track.title}');
     } catch (e) {
-      log.warning('SourcedTrack', '持久化URL失败: $e');
+      AppLogger.log.w('[SourcedTrack] 持久化URL失败: $e');
     }
   }
 
@@ -329,9 +324,9 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
         cachePathMap: Value(jsonEncode(cachePathMap)),
         updatedAt: Value(DateTime.now()),
       ));
-      log.debug('SourcedTrack', '持久化缓存路径: quality=$quality, track=${track.title}');
+      AppLogger.log.d('[SourcedTrack] 持久化缓存路径: quality=$quality, track=${track.title}');
     } catch (e) {
-      log.warning('SourcedTrack', '持久化缓存路径失败: $e');
+      AppLogger.log.w('[SourcedTrack] 持久化缓存路径失败: $e');
     }
   }
 

@@ -10,8 +10,8 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:pomelo/core/log/log_entry.dart';
 import 'package:pomelo/core/models/database/database_provider.dart';
+import 'package:pomelo/core/models/log_level.dart';
 import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
 

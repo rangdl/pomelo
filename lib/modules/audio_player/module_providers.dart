@@ -14,14 +14,14 @@ import 'services/audio_services.dart';
 
 /// AudioPlayerModule 实例 Provider
 ///
-/// 内部完成 AudioPlayerModule 的创建与 onInit 初始化（含 HTTP 服务器启动）。
+/// 内部完成 AudioPlayerModule 的创建与 init 初始化（含 HTTP 服务器启动）。
 /// main.dart 通过 `container.read(audioPlayerModuleProvider.future)` 触发初始化，
 /// 随后注入 ProviderContainer（供 ServerPlaybackRoutes 访问 sourcedTrackProvider）。
 final audioPlayerModuleProvider = FutureProvider<AudioPlayerModule>((ref) async {
   final db = ref.watch(appDatabaseProvider);
   final module = AudioPlayerModule(db: db);
-  await module.onInit();
-  ref.onDispose(module.onDispose);
+  await module.init();
+  ref.onDispose(module.dispose);
   return module;
 });
 
