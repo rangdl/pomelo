@@ -489,14 +489,21 @@ class _UpdateDialogState extends State<_UpdateDialog> {
         ),
       ),
       actions: [
-        GhostButton(onPressed: _close, child: const Text('稍后再说')),
-        GhostButton(
-          onPressed: () =>
-              launchUrl(Uri.parse(UpdateService.releasesLatestUrl)),
-          child: const Text('更新日志'),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            GhostButton(onPressed: _close, child: const Text('稍后再说')),
+            GhostButton(
+              onPressed: () =>
+                  launchUrl(Uri.parse(UpdateService.releasesLatestUrl)),
+              child: const Text('更新日志'),
+            ),
+            PrimaryButton(onPressed: _openWithTrollStore, child: const Text('巨魔打开')),
+            PrimaryButton(onPressed: _download, child: const Text('前往下载')),
+          ],
         ),
-        PrimaryButton(onPressed: _openWithTrollStore, child: const Text('巨魔打开')),
-        PrimaryButton(onPressed: _download, child: const Text('前往下载')),
       ],
     );
   }
