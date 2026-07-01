@@ -1,11 +1,12 @@
-/// Lx Server 音质等级定义
+
+/// 音质等级定义（全局）
 ///
-/// 集中管理 lx_server 支持的音质标识、显示名与优先级。
+/// 集中管理应用支持的音质标识、显示名与优先级。
 /// 用户偏好存储为字符串标识（[LxServerQuality.id]），
-/// 应用到 [LxServerMusicServer.getMusicUrl] 时若不可用则按 [priority] 降级。
+/// 应用到各 MusicServer.getMusicUrl 时若不可用则按 [priority] 降级。
 library;
 
-/// Lx Server 音质等级
+/// 音质等级
 enum LxServerQuality {
   /// 无损 Hi-Res（24bit/192kHz）
   flac24bit('flac24bit', 'Hi-Res 无损'),
@@ -45,7 +46,10 @@ enum LxServerQuality {
   }
 
   /// 按 id 查找，未匹配返回 [fallback]
-  static LxServerQuality fromIdOrDefault(String? id, {LxServerQuality fallback = LxServerQuality.flac}) {
+  static LxServerQuality fromIdOrDefault(
+    String? id, {
+    LxServerQuality fallback = LxServerQuality.flac,
+  }) {
     return fromId(id) ?? fallback;
   }
 }

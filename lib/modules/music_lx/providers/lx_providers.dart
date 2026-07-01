@@ -1,17 +1,21 @@
 /// Lx 音乐模块 - Riverpod Providers
 ///
-/// 管理 Lx 插件路径的响应式状态，并通过 Provider 直接创建 [LxMusicServer] 实例。
-/// Provider 依赖 [userPreferenceProvider]，配置变化时自动重建。
+/// 管理 Lx 插件配置的响应式状态，并通过 Provider 直接创建 [LxMusicServer] 实例。
+/// 配置从 [musicServerConfigsProvider] 读取 LxPluginConfig。
 library;
 
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/log.dart';
-import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/core/providers/music_server_config_provider.dart';
 import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 import 'package:pomelo/modules/music_lx/model/lx_music_server.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
+
+/// Lx 插件配置 ID（固定）
+const _lxConfigId = 'lx';
 
 /// 从插件路径生成 pluginId（取文件名的 hash）
 String _derivePluginId(String path) {
@@ -23,7 +27,6 @@ String _derivePluginId(String path) {
 }
 
 /// 检查插件文件是否存在，不存在则记录警告日志。
-/// [label] 用于日志描述（如"元数据插件"/"音源插件"）。
 Future<bool> _pluginExists(String path, String label) async {
   if (!await File(path).exists()) {
     log.warning('LxMusic', '$label文件不存在 $path');
@@ -33,21 +36,21 @@ Future<bool> _pluginExists(String path, String label) async {
 }
 
 /// LxMetadataEngine + 已加载的插件信息
-///
-/// 依赖 [UserPreference.lxMetadataPluginPath]：
-/// - 路径为空或文件不存在或加载失败时返回 null
-/// - 路径变化时自动重建（dispose 旧引擎）
 typedef LxMetadataEngineResult = ({
   LxMetadataEngine engine,
   List<({String id, String name})> libraries,
   String pluginId,
 });
 
+/// LxMetadataEngine Provider
+///
+/// 从 [musicServerConfigsProvider] 读取 LxPluginConfig.metadataPluginPath。
+/// 路径为空或文件不存在或加载失败时返回 null。
 final lxMetadataEngineProvider =
     FutureProvider<LxMetadataEngineResult?>((ref) async {
-      final pluginPath = ref.watch(
-        userPreferenceProvider.select((p) => p.lxMetadataPluginPath),
-      );
+      final configs = await ref.watch(musicServerConfigsProvider.future);
+      final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
+      final pluginPath = lxConfig?.metadataPluginPath;
       if (pluginPath == null || pluginPath.isEmpty) return null;
 
       final engine = LxMetadataEngine();
@@ -75,13 +78,13 @@ final lxMetadataEngineProvider =
       return (engine: engine, libraries: libraries, pluginId: pluginId);
     });
 
-/// LxSourceEngine + 已加载的音源插件
+/// LxSourceEngine Provider
 ///
-/// 依赖 [UserPreference.lxSourcePluginPaths]：路径列表变化时自动重建。
+/// 从 [musicServerConfigsProvider] 读取 LxPluginConfig.sourcePluginPaths。
 final lxSourceEngineProvider = FutureProvider<LxSourceEngine>((ref) async {
-  final paths = ref.watch(
-    userPreferenceProvider.select((p) => p.lxSourcePluginPaths),
-  );
+  final configs = await ref.watch(musicServerConfigsProvider.future);
+  final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
+  final paths = lxConfig?.sourcePluginPaths ?? const <String>[];
   final engine = LxSourceEngine();
   for (final path in paths) {
     if (!await _pluginExists(path, '音源插件')) continue;
@@ -112,53 +115,50 @@ final lxMusicServerProvider = FutureProvider<LxMusicServer?>((ref) async {
 /// Lx 元数据插件路径 Notifier
 ///
 /// 管理 Lx 元数据插件文件（仅允许一份），
-/// 供平台页面和设置页面共用。
-/// 元数据插件用于提供音乐搜索、歌曲详情等元信息。
-///
-/// 注意：本 Notifier 仅负责路径状态与持久化，
-/// 实际的引擎/服务创建由 [lxMetadataEngineProvider] / [lxMusicServerProvider] 自动完成。
+/// 读写 LxPluginConfig.metadataPluginPath（通过 [musicServerConfigsNotifierProvider]）。
 class LxMetadataPluginPathsNotifier extends Notifier<List<String>> {
   @override
   List<String> build() {
-    final path = ref.watch(
-      userPreferenceProvider.select((p) => p.lxMetadataPluginPath),
-    );
-    return path != null ? [path] : [];
+    final configs = ref.watch(musicServerConfigsProvider).value ?? const [];
+    final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
+    final path = lxConfig?.metadataPluginPath;
+    return (path != null && path.isNotEmpty) ? [path] : [];
   }
 
-  /// 添加元数据插件
-  ///
-  /// 仅允许上传一份。若已有插件则忽略。
-  /// 如需替换请使用 [replacePlugin]。
-  /// 返回是否添加成功（文件存在即视为成功，实际加载由 Provider 完成）。
+  /// 添加元数据插件（仅允许一份）
   Future<bool> addPlugin(String path) async {
     if (state.isNotEmpty) return false;
     if (!await _pluginExists(path, '元数据插件')) return false;
-    await ref
-        .read(userPreferenceProvider.notifier)
-        .setLxMetadataPluginPath(path);
+    await _save(metadataPath: path);
     state = [path];
     return true;
   }
 
   /// 替换元数据插件
-  ///
-  /// 用新文件替换现有的元数据插件。
   Future<bool> replacePlugin(String newPath) async {
     if (!await _pluginExists(newPath, '元数据插件')) return false;
-    await ref
-        .read(userPreferenceProvider.notifier)
-        .setLxMetadataPluginPath(newPath);
+    await _save(metadataPath: newPath);
     state = [newPath];
     return true;
   }
 
   /// 移除元数据插件
   Future<void> removePlugin(String path) async {
-    await ref
-        .read(userPreferenceProvider.notifier)
-        .setLxMetadataPluginPath(null);
+    await _save(metadataPath: '');
     state = [];
+  }
+
+  Future<void> _save({required String metadataPath}) async {
+    final configs = ref.read(musicServerConfigsProvider).value ?? const [];
+    final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
+    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+          LxPluginConfig(
+            id: _lxConfigId,
+            name: lxConfig?.name ?? 'Lx 音乐',
+            metadataPluginPath: metadataPath,
+            sourcePluginPaths: lxConfig?.sourcePluginPaths ?? const [],
+          ),
+        );
   }
 }
 
@@ -171,53 +171,55 @@ final lxMetadataPluginPathsProvider =
 /// Lx 音源插件路径列表 Notifier
 ///
 /// 管理 Lx 音源插件（source plugin）的添加、替换与移除，
-/// 支持多份音源插件，每份提供音乐播放链接查询能力。
-///
-/// 注意：本 Notifier 仅负责路径状态与持久化，
-/// 实际的引擎创建由 [lxSourceEngineProvider] 自动完成。
+/// 读写 LxPluginConfig.sourcePluginPaths（通过 [musicServerConfigsNotifierProvider]）。
 class LxSourcePluginPathsNotifier extends Notifier<List<String>> {
   @override
   List<String> build() {
-    return ref.watch(
-      userPreferenceProvider.select((p) => p.lxSourcePluginPaths),
-    );
+    final configs = ref.watch(musicServerConfigsProvider).value ?? const [];
+    final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
+    return lxConfig?.sourcePluginPaths ?? const [];
   }
 
   /// 添加音源插件
-  ///
-  /// 返回插件支持的库信息列表（兼容旧接口，新设计下实际加载由 Provider 完成，
-  /// 此处返回空列表）。
   Future<List<LxSourceLibrary>> addPlugin(String path) async {
     if (state.contains(path)) return [];
-    state = [...state, path];
-    await _save();
+    final newPaths = [...state, path];
+    await _save(sourcePaths: newPaths);
+    state = newPaths;
     return [];
   }
 
   /// 替换音源插件
-  ///
-  /// 用新文件替换旧插件，返回新插件支持的库列表（兼容旧接口，返回空列表）。
   Future<List<LxSourceLibrary>> replacePlugin(
     String oldPath,
     String newPath,
   ) async {
     if (!state.contains(oldPath)) return [];
-    state = state.map((p) => p == oldPath ? newPath : p).toList();
-    await _save();
+    final newPaths = state.map((p) => p == oldPath ? newPath : p).toList();
+    await _save(sourcePaths: newPaths);
+    state = newPaths;
     return [];
   }
 
   /// 移除音源插件
   Future<void> removePlugin(String path) async {
     if (!state.contains(path)) return;
-    state = state.where((p) => p != path).toList();
-    await _save();
+    final newPaths = state.where((p) => p != path).toList();
+    await _save(sourcePaths: newPaths);
+    state = newPaths;
   }
 
-  Future<void> _save() async {
-    await ref
-        .read(userPreferenceProvider.notifier)
-        .setLxSourcePluginPaths(state);
+  Future<void> _save({required List<String> sourcePaths}) async {
+    final configs = ref.read(musicServerConfigsProvider).value ?? const [];
+    final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
+    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+          LxPluginConfig(
+            id: _lxConfigId,
+            name: lxConfig?.name ?? 'Lx 音乐',
+            metadataPluginPath: lxConfig?.metadataPluginPath ?? '',
+            sourcePluginPaths: sourcePaths,
+          ),
+        );
   }
 }
 

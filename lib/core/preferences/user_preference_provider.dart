@@ -4,21 +4,15 @@
 /// 任何字段变更通过 `state = state.copyWith(...)` 更新后，
 /// 依赖该字段的 Provider 会自动重建。
 ///
-/// 用法：
-/// ```dart
-/// // 读取
-/// final themeMode = ref.watch(userPreferenceProvider.select((p) => p.themeMode));
-///
-/// // 写入
-/// await ref.read(userPreferenceProvider.notifier).setThemeMode('dark');
-/// ```
+/// 注意：音乐源配置已迁移到 [musicServerConfigsProvider]，
+/// 此 Provider 仅管理用户偏好设置（主题、缓存、音质等）。
 library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:pomelo/core/log/log_entry.dart';
 import 'package:pomelo/core/models/database/database_provider.dart';
-import 'package:pomelo/modules/music_lx_server/model/lx_server_quality.dart';
+import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
 
 /// 全局用户偏好设置 Provider
@@ -83,14 +77,6 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
   Future<void> setLogStorageLevel(LogLevel level) =>
       update((p) => p.copyWith(logStorageLevel: level));
 
-  // ==================== music_local 模块 ====================
-
-  Future<void> setLocalServerName(String name) =>
-      update((p) => p.copyWith(localServerName: name));
-
-  Future<void> setLocalDirectories(List<String> dirs) =>
-      update((p) => p.copyWith(localDirectories: dirs));
-
   // ==================== 缓存设置 ====================
 
   Future<void> setCacheDirectory(String? path) =>
@@ -99,24 +85,8 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
   Future<void> setCacheSizeLimitGB(int gb) =>
       update((p) => p.copyWith(cacheSizeLimitGB: gb));
 
-  // ==================== music_lx 模块 ====================
-
-  Future<void> setLxMetadataPluginPath(String? path) =>
-      update((p) => p.copyWith(lxMetadataPluginPath: path));
-
-  Future<void> setLxSourcePluginPaths(List<String> paths) =>
-      update((p) => p.copyWith(lxSourcePluginPaths: paths));
-
-  // ==================== music_lx_server 模块 ====================
-
-  Future<void> setLxServerConfig(LxServerConfig? config) =>
-      update((p) => p.copyWith(lxServerConfig: config));
+  // ==================== 音质偏好（全局） ====================
 
   Future<void> setLxServerQuality(LxServerQuality quality) =>
       update((p) => p.copyWith(lxServerQuality: quality));
-
-  // ==================== music_subsonic 模块 ====================
-
-  Future<void> setSubsonicAccounts(List<SubsonicAccountConfig> accounts) =>
-      update((p) => p.copyWith(subsonicAccounts: accounts));
 }

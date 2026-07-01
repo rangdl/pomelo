@@ -130,14 +130,26 @@ class MusicCacheDir {
     return file.exists();
   }
 
+  /// 已知的音频缓存文件扩展名
+  static const _audioExtensions = {
+    '.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.wma',
+  };
+
   /// 清空缓存目录
+  ///
+  /// 仅删除已知音频扩展名的文件，避免误删同目录下的非缓存文件（如数据库）。
   static Future<void> clear() async {
     try {
       final dir = await getOrCreate();
       final cacheDir = Directory(dir);
       if (await cacheDir.exists()) {
         await for (final entity in cacheDir.list()) {
-          await entity.delete(recursive: true);
+          if (entity is File) {
+            final ext = p.extension(entity.path).toLowerCase();
+            if (_audioExtensions.contains(ext)) {
+              await entity.delete();
+            }
+          }
         }
       }
     } catch (_) {}
@@ -145,7 +157,7 @@ class MusicCacheDir {
 
   /// 获取当前缓存总大小（字节）
   ///
-  /// 遍历缓存目录下所有文件并累加大小。
+  /// 仅统计已知音频扩展名的文件大小。
   /// 目录不存在或读取失败返回 0。
   static Future<int> getCacheSize() async {
     try {
@@ -155,6 +167,8 @@ class MusicCacheDir {
       var total = 0;
       await for (final entity in cacheDir.list(recursive: false)) {
         if (entity is File) {
+          final ext = p.extension(entity.path).toLowerCase();
+          if (!_audioExtensions.contains(ext)) continue;
           try {
             total += await entity.length();
           } catch (_) {}
@@ -177,10 +191,12 @@ class MusicCacheDir {
       final cacheDir = Directory(dir);
       if (!await cacheDir.exists()) return;
 
-      // 收集所有文件及其大小和修改时间
+      // 收集所有音频缓存文件及其大小和修改时间
       final files = <_CacheFileEntry>[];
       await for (final entity in cacheDir.list(recursive: false)) {
         if (entity is File) {
+          final ext = p.extension(entity.path).toLowerCase();
+          if (!_audioExtensions.contains(ext)) continue;
           try {
             final stat = await entity.stat();
             files.add(_CacheFileEntry(

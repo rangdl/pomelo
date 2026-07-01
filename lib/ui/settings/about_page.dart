@@ -97,58 +97,6 @@ class AboutPage extends HookConsumerWidget {
       ),
       const Gap(32),
 
-      // 技术栈
-      _SectionTitle(text: '技术栈'),
-      const Gap(8),
-      Card(
-        child: Column(
-          children: [
-            _TechRow(
-              icon: Icons.widgets_outlined,
-              name: 'UI 框架',
-              value: 'shadcn_flutter',
-            ),
-            const Divider(height: 1),
-            _TechRow(
-              icon: Icons.settings_input_component,
-              name: '状态管理',
-              value: 'Riverpod + flutter_hooks',
-            ),
-            const Divider(height: 1),
-            _TechRow(icon: Icons.alt_route, name: '路由', value: 'auto_route'),
-            const Divider(height: 1),
-            _TechRow(
-              icon: Icons.play_circle_outline,
-              name: '播放引擎',
-              value: 'media_kit',
-            ),
-            const Divider(height: 1),
-            _TechRow(icon: Icons.storage, name: '本地存储', value: 'drift (SQLite)'),
-          ],
-        ),
-      ),
-      const Gap(24),
-
-      // 功能特性
-      _SectionTitle(text: '功能特性'),
-      const Gap(8),
-      Card(
-        child: Column(
-          children: [
-            _FeatureRow(text: '多源音乐聚合（本地 / Lx Server / Subsonic）'),
-            const Divider(height: 1),
-            _FeatureRow(text: '响应式布局，适配移动端与桌面端'),
-            const Divider(height: 1),
-            _FeatureRow(text: '歌词滚动展示与播放队列管理'),
-            const Divider(height: 1),
-            _FeatureRow(text: '主题切换（跟随系统 / 浅色 / 深色）'),
-            const Divider(height: 1),
-            _FeatureRow(text: '内置本地 HTTP 流代理，支持外部播放器接入'),
-          ],
-        ),
-      ),
-      const Gap(24),
-
       // 版权
       Center(
         child: Text(
@@ -158,64 +106,5 @@ class AboutPage extends HookConsumerWidget {
       ),
       const Gap(16),
     ];
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  final String text;
-
-  const _SectionTitle({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: Theme.of(context).colorScheme.mutedForeground,
-      ),
-    );
-  }
-}
-
-class _TechRow extends StatelessWidget {
-  final IconData icon;
-  final String name;
-  final String value;
-
-  const _TechRow({required this.icon, required this.name, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, size: 20),
-      title: Text(name),
-      trailing: Text(
-        value,
-        style: TextStyle(
-          fontSize: 13,
-          color: Theme.of(context).colorScheme.mutedForeground,
-        ),
-      ),
-    );
-  }
-}
-
-class _FeatureRow extends StatelessWidget {
-  final String text;
-
-  const _FeatureRow({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(
-        Icons.check_circle_outline,
-        size: 20,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-      title: Text(text, style: const TextStyle(fontSize: 14)),
-    );
   }
 }

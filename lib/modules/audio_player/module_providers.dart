@@ -4,6 +4,7 @@
 library;
 
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
 
 import 'audio_player_module.dart';
@@ -11,16 +12,25 @@ import 'model/state.dart';
 import 'service/audio_player_service.dart';
 import 'services/audio_services.dart';
 
-/// 音频播放器 Module Provider
-final audioPlayerModuleProvider = Provider<AudioPlayerModule>((ref) {
-  throw UnimplementedError(
-    'AudioPlayerModule must be provided via overrides in main.dart',
-  );
+/// AudioPlayerModule 实例 Provider
+///
+/// 内部完成 AudioPlayerModule 的创建与 onInit 初始化（含 HTTP 服务器启动）。
+/// main.dart 通过 `container.read(audioPlayerModuleProvider.future)` 触发初始化，
+/// 随后注入 ProviderContainer（供 ServerPlaybackRoutes 访问 sourcedTrackProvider）。
+final audioPlayerModuleProvider = FutureProvider<AudioPlayerModule>((ref) async {
+  final db = ref.watch(appDatabaseProvider);
+  final module = AudioPlayerModule(db: db);
+  await module.onInit();
+  ref.onDispose(module.onDispose);
+  return module;
 });
 
 /// 音频播放器 Service Provider
+///
+/// 同步派生自 [audioPlayerModuleProvider]。main.dart 在 runApp 前已 await
+/// `audioPlayerModuleProvider.future`，故 UI 访问时必定为 data 状态。
 final audioPlayerServiceProvider = Provider<AudioPlayerService>((ref) {
-  return ref.watch(audioPlayerModuleProvider).service;
+  return ref.watch(audioPlayerModuleProvider).requireValue.service;
 });
 
 /// 音频播放器状态 state Provider

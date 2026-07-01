@@ -36,9 +36,18 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  fluentui_system_icons: ^1.1.234
+  flutter_feather_icons: ^2.0.0+1
+  simple_icons: ^10.1.3
   json_repair_flutter: ^2.0.2
   package_info_plus: ^9.0.1
-  # fluxy: ^1.2.3
+  logger: ^2.0.2
+  logging: ^1.3.0
+  flutter_undraw: ^0.2.1
+  draggable_scrollbar:
+    git:
+      ref: cfd570035bf393de541d32e9b28808b5d7e602df
+      url: https://github.com/thielepaul/flutter-draggable-scrollbar.git
   dio: ^5.9.2 # 网络请求库
 
   # 状态管理核心

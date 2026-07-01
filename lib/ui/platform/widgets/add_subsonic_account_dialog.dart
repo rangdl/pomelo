@@ -1,6 +1,6 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/preferences/user_preference.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
@@ -15,7 +15,7 @@ import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart'
 /// 用于支持 LX Music Sync Server 等非标准 Subsonic 服务。
 class _SubsonicAccountContent extends HookConsumerWidget {
   /// 编辑模式时传入的初始配置
-  final SubsonicAccountConfig? initialConfig;
+  final SubsonicConfig? initialConfig;
 
   /// 编辑模式时传入的 sourceId（用于定位待更新账号）
   final String? sourceId;
@@ -34,7 +34,7 @@ class _SubsonicAccountContent extends HookConsumerWidget {
       text: initialConfig?.password ?? '',
     );
     final displayNameController = useTextEditingController(
-      text: initialConfig?.displayName ?? '',
+      text: initialConfig?.name ?? '',
     );
     final tokenController = useTextEditingController(
       text: initialConfig?.token ?? '',
@@ -73,9 +73,11 @@ class _SubsonicAccountContent extends HookConsumerWidget {
       final serverUrl = serverUrlController.text.trim();
       final username = usernameController.text.trim();
       final password = passwordController.text;
-      final displayName = displayNameController.text.trim().isEmpty
-          ? null
-          : displayNameController.text.trim();
+      // 新 SubsonicConfig.name 为非空 String，留空时使用 用户名@主机名 作为默认
+      final displayName = displayNameController.text.trim();
+      final name = displayName.isEmpty
+          ? '$username@${Uri.tryParse(serverUrl)?.host ?? serverUrl}'
+          : displayName;
       final token = tokenController.text.trim().isEmpty
           ? null
           : tokenController.text.trim();
@@ -110,7 +112,7 @@ class _SubsonicAccountContent extends HookConsumerWidget {
           password: password,
           token: token,
           salt: salt,
-          displayName: displayName,
+          name: name,
           version: version,
           pathPrefix: pathPrefix,
         );
@@ -319,7 +321,7 @@ class _SubsonicAccountContent extends HookConsumerWidget {
 /// 添加 Subsonic 账号对话框（桌面端使用）
 class AddSubsonicAccountDialog extends StatelessWidget {
   /// 编辑模式时传入的初始配置
-  final SubsonicAccountConfig? initialConfig;
+  final SubsonicConfig? initialConfig;
 
   /// 编辑模式时传入的 sourceId
   final String? sourceId;
@@ -350,7 +352,7 @@ class AddSubsonicAccountDialog extends StatelessWidget {
 /// 添加 Subsonic 账号页面（移动端使用）
 class AddSubsonicAccountPage extends StatelessWidget {
   /// 编辑模式时传入的初始配置
-  final SubsonicAccountConfig? initialConfig;
+  final SubsonicConfig? initialConfig;
 
   /// 编辑模式时传入的 sourceId
   final String? sourceId;
