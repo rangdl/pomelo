@@ -152,7 +152,9 @@ class LxServerClient {
     int limit = 20,
   }) async {
     await ensureLoggedIn();
-    AppLogger.log.i('[LxServer] 搜索: source=$source, keyword=$keyword, page=$page');
+    AppLogger.log.i(
+      '[LxServer] 搜索: source=$source, keyword=$keyword, page=$page',
+    );
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/search',
@@ -175,7 +177,7 @@ class LxServerClient {
       final respPage = (data['page'] as num?)?.toInt() ?? page;
       AppLogger.log.i(
         '[LxServer] 搜索成功: source=$source, keyword=$keyword, '
-            '返回 ${list.length} 首, 总计 $total 首',
+        '返回 ${list.length} 首, 总计 $total 首',
       );
       return (list: list, total: total, limit: respLimit, page: respPage);
     } catch (e, s) {
@@ -186,6 +188,218 @@ class LxServerClient {
       );
       rethrow;
     }
+  }
+
+  /// 通用搜索（支持 type 参数）
+  ///
+  /// GET /api/music/search?source=&name=&type=&page=&limit=
+  /// [source] 库标识（kg/kw/tx/mg/wy）
+  /// [name] 搜索关键词（对应 API 的 name 参数）
+  /// [type] 搜索类型：song/singer/album/playlist
+  ///
+  /// 返回原始 JSON 列表，调用方根据 type 自行解析。
+  /// 兼容两种响应格式：{list: [...], total, limit, page} 或裸数组 [...]。
+  Future<({List<Map<String, dynamic>> list, int total, int limit, int page})>
+  searchByType({
+    required String source,
+    required String name,
+    required String type,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    await ensureLoggedIn();
+    AppLogger.log.i(
+      '[LxServer] 搜索(type): source=$source, name=$name, type=$type, page=$page',
+    );
+    try {
+      final response = await _dio.get(
+        '$serverUrl/api/music/search',
+        queryParameters: {
+          'source': source,
+          'name': name,
+          'type': type,
+          'page': page,
+          'limit': limit,
+        },
+        options: _authOptions,
+      );
+      final dynamic rawData = response.data;
+
+      // 兼容裸数组与包装对象两种格式
+      List<dynamic> rawList;
+      int total = 0;
+      int respLimit = limit;
+      int respPage = page;
+      if (rawData is List) {
+        rawList = rawData;
+      } else if (rawData is Map<String, dynamic>) {
+        rawList = rawData['list'] as List<dynamic>? ?? const [];
+        total = (rawData['total'] as num?)?.toInt() ?? 0;
+        respLimit = (rawData['limit'] as num?)?.toInt() ?? limit;
+        respPage = (rawData['page'] as num?)?.toInt() ?? page;
+      } else {
+        rawList = const [];
+      }
+
+      final list = rawList
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      AppLogger.log.i(
+        '[LxServer] 搜索(type)成功: source=$source, name=$name, type=$type, '
+        '返回 ${list.length} 项',
+      );
+      return (list: list, total: total, limit: respLimit, page: respPage);
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 搜索(type)失败: source=$source, name=$name, type=$type, page=$page',
+      );
+      rethrow;
+    }
+  }
+
+  /// 搜索歌手
+  ///
+  /// 调用 [searchByType] 并解析为 [LxServerArtist] 列表。
+  Future<({List<LxServerArtist> list, int total, int limit, int page})>
+  searchArtists({
+    required String source,
+    required String name,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final result = await searchByType(
+      source: source,
+      name: name,
+      type: 'singer',
+      page: page,
+      limit: limit,
+    );
+    final list = result.list.map((e) => LxServerArtist.fromJson(e)).toList();
+    return (
+      list: list,
+      total: result.total,
+      limit: result.limit,
+      page: result.page,
+    );
+  }
+
+  /// 搜索专辑
+  ///
+  /// 调用 [searchByType] 并解析为 [LxServerAlbum] 列表。
+  Future<({List<LxServerAlbum> list, int total, int limit, int page})>
+  searchAlbums({
+    required String source,
+    required String name,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final result = await searchByType(
+      source: source,
+      name: name,
+      type: 'album',
+      page: page,
+      limit: limit,
+    );
+    final list = result.list.map((e) => LxServerAlbum.fromJson(e)).toList();
+    return (
+      list: list,
+      total: result.total,
+      limit: result.limit,
+      page: result.page,
+    );
+  }
+
+  /// 搜索歌单
+  ///
+  /// 调用 [searchByType] 并解析为 [LxServerSearchPlaylist] 列表。
+  Future<({List<LxServerSearchPlaylist> list, int total, int limit, int page})>
+  searchPlaylistsByType({
+    required String source,
+    required String name,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final result = await searchByType(
+      source: source,
+      name: name,
+      type: 'playlist',
+      page: page,
+      limit: limit,
+    );
+    final list = result.list
+        .map((e) => LxServerSearchPlaylist.fromJson(e))
+        .toList();
+    return (
+      list: list,
+      total: result.total,
+      limit: result.limit,
+      page: result.page,
+    );
+  }
+
+  // ========== 用户收藏 ==========
+
+  /// 获取用户列表数据（默认列表 + 收藏列表 + 用户歌单）
+  ///
+  /// GET /api/user/list
+  Future<LxServerUserListResponse> getUserLists() async {
+    await ensureLoggedIn();
+    AppLogger.log.i('[LxServer] 获取用户列表');
+    final response = await _dio.get<Map<String, dynamic>>(
+      '$serverUrl/api/user/list',
+      options: _authOptions,
+    );
+    final data = response.data!;
+    final success = data['success'] as bool? ?? true;
+    if (!success) {
+      throw Exception('获取用户列表失败: ${data['message'] ?? '未知错误'}');
+    }
+    AppLogger.log.i('[LxServer] 用户列表获取成功');
+    return LxServerUserListResponse.fromJson(data);
+  }
+
+  /// 获取收藏的歌手列表
+  ///
+  /// GET /api/user/library/artists
+  Future<List<LxServerArtist>> getFavoriteArtists() async {
+    await ensureLoggedIn();
+    AppLogger.log.i('[LxServer] 获取收藏歌手');
+    final response = await _dio.get(
+      '$serverUrl/api/user/library/artists',
+      options: _authOptions,
+    );
+    final data = response.data;
+    final list = data is List
+        ? data
+        : (data is Map<String, dynamic>
+              ? (data['list'] as List<dynamic>? ?? const [])
+              : const []);
+    return list
+        .map((e) => LxServerArtist.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// 获取收藏的专辑列表
+  ///
+  /// GET /api/user/library/albums
+  Future<List<LxServerAlbum>> getFavoriteAlbums() async {
+    await ensureLoggedIn();
+    AppLogger.log.i('[LxServer] 获取收藏专辑');
+    final response = await _dio.get(
+      '$serverUrl/api/user/library/albums',
+      options: _authOptions,
+    );
+    final data = response.data;
+    final list = data is List
+        ? data
+        : (data is Map<String, dynamic>
+              ? (data['list'] as List<dynamic>? ?? const [])
+              : const []);
+    return list
+        .map((e) => LxServerAlbum.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ========== 歌单 ==========
@@ -285,14 +499,12 @@ class LxServerClient {
               )
               .toList() ??
           [];
-      AppLogger.log.i('[LxServer] 排行榜列表获取成功: source=$source, 共 ${list.length} 个榜单');
+      AppLogger.log.i(
+        '[LxServer] 排行榜列表获取成功: source=$source, 共 ${list.length} 个榜单',
+      );
       return list;
     } catch (e, s) {
-      AppLogger.reportError(
-        e,
-        s,
-        '[LxServer] 获取排行榜列表失败: source=$source',
-      );
+      AppLogger.reportError(e, s, '[LxServer] 获取排行榜列表失败: source=$source');
       rethrow;
     }
   }
@@ -307,7 +519,9 @@ class LxServerClient {
     int page = 1,
   }) async {
     await ensureLoggedIn();
-    AppLogger.log.i('[LxServer] 获取排行榜歌曲: source=$source, bangid=$bangid, page=$page');
+    AppLogger.log.i(
+      '[LxServer] 获取排行榜歌曲: source=$source, bangid=$bangid, page=$page',
+    );
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/leaderboard/list',
@@ -325,7 +539,7 @@ class LxServerClient {
       final respPage = (data['page'] as num?)?.toInt() ?? page;
       AppLogger.log.i(
         '[LxServer] 排行榜歌曲获取成功: source=$source, bangid=$bangid, '
-            '返回 ${list.length} 首, 总计 $total 首',
+        '返回 ${list.length} 首, 总计 $total 首',
       );
       return (list: list, total: total, limit: limit, page: respPage);
     } catch (e, s) {
@@ -367,7 +581,7 @@ class LxServerClient {
 
     AppLogger.log.i(
       '[LxServer] 获取播放链接: source=$source, quality=$quality, '
-          '可用质量=${typesMap.keys.toList()}, reqId=$reqId',
+      '可用质量=${typesMap.keys.toList()}, reqId=$reqId',
     );
 
     // 启动 SSE 进度监听（不阻塞主请求）
@@ -392,7 +606,7 @@ class LxServerClient {
         final msg = data['message'] ?? '服务器未返回有效 URL';
         AppLogger.log.e(
           '[LxServer] 获取播放链接失败: source=$source, quality=$quality, '
-              '原因=$msg',
+          '原因=$msg',
         );
         throw Exception('获取播放链接失败: $msg');
       }
@@ -426,7 +640,7 @@ class LxServerClient {
         e,
         s,
         '[LxServer] 获取播放链接异常: source=$source, quality=$quality, songInfo=$songInfo, '
-            '异常=$e',
+        '异常=$e',
       );
       rethrow;
     }
@@ -498,7 +712,7 @@ class LxServerClient {
       final event = LxServerProgressEvent.fromJson(json);
       AppLogger.log.d(
         '[LxServer] SSE 进度事件: name=${event.name}, status=${event.status}, '
-            'message=${event.message}',
+        'message=${event.message}',
       );
       // message 不为空时通过 Toast 提示
       if (event.message.isNotEmpty) {
@@ -557,7 +771,9 @@ class LxServerClient {
       final data = response.data!;
       final lyric = data['lyric'] as String?;
       if (lyric == null || lyric.isEmpty) {
-        AppLogger.log.d('[LxServer] 获取歌词为空: source=$source, songInfo=$songInfo');
+        AppLogger.log.d(
+          '[LxServer] 获取歌词为空: source=$source, songInfo=$songInfo',
+        );
         return null;
       }
       AppLogger.log.d('[LxServer] 获取歌词成功: source=$source, songInfo=$songInfo');

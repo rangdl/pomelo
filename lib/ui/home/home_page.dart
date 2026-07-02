@@ -1,9 +1,13 @@
-﻿import 'package:auto_route/auto_route.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/framework/pomelo_icons.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
+import 'package:pomelo/ui/home/home_providers.dart';
+import 'package:pomelo/ui/home/favorites_page.dart';
 import 'package:pomelo/ui/music/music_section.dart';
 import 'package:pomelo/ui/music/playlist_detail_page.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
@@ -14,15 +18,6 @@ import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:pomelo/ui/root/root_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-
-/// 歌单引用 — 用于在首页 Tab 内联打开歌单详情
-typedef _PlaylistRef = ({
-  String playlistId,
-  String sourceId,
-  String playlistName,
-  String? coverUrl,
-  String creator,
-});
 
 /// Home 页面
 ///
@@ -37,8 +32,8 @@ class HomePage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 0 = 排行榜, 1 = 歌单
     final tabIndex = useState(0);
-    // 当前内联查看的歌单引用；非 null 时渲染歌单详情页（占据 Home tab 区域，保留底部导航和迷你播放器）
-    final viewingPlaylist = useState<_PlaylistRef?>(null);
+    // Home Tab 内联导航状态（默认列表/我的收藏/歌单详情）
+    final homeNav = ref.watch(homeNavProvider);
     // 当前激活的 Tab 索引 — 用于判断 Home tab 是否处于前台
     final activeTabIndex = ref.watch(activeTabIndexProvider);
     // 移动端显示自带 AppBar（搜索/切换）；桌面端由 Root 标题栏统一承载
@@ -49,28 +44,43 @@ class HomePage extends HookConsumerWidget {
     // 使用 Future.microtask 延迟到 build 后执行，避免在 build 期间修改 provider
     useEffect(() {
       final isHomeActive = activeTabIndex == 0;
-      final hasInlineNav = viewingPlaylist.value != null;
+      final hasInlineNav = homeNav is! HomeNavNormal;
       final shouldEnable = isHomeActive && hasInlineNav;
       Future.microtask(() {
         ref.read(rootCanPopProvider.notifier).set(shouldEnable);
         ref.read(rootPopCallbackProvider.notifier).set(
-              shouldEnable ? () => viewingPlaylist.value = null : null,
+              shouldEnable
+                  ? () => ref.read(homeNavProvider.notifier).showNormal()
+                  : null,
             );
       });
       return null;
-    }, [activeTabIndex, viewingPlaylist.value]);
+    }, [activeTabIndex, homeNav]);
 
-    // 内联查看歌单详情：与首页/平台页位于相同位置（tab 内容区），
-    // 保留根部的底部导航栏和迷你播放器。
-    if (viewingPlaylist.value != null) {
-      final p = viewingPlaylist.value!;
+    // 内联视图：歌单详情
+    if (homeNav is HomeNavPlaylist) {
+      final p = homeNav.ref;
       return PlaylistDetailPage(
         playlistId: p.playlistId,
         sourceId: p.sourceId,
         playlistName: p.playlistName,
         coverUrl: p.coverUrl,
         creator: p.creator,
-        onClose: () => viewingPlaylist.value = null,
+        onClose: () => ref.read(homeNavProvider.notifier).showNormal(),
+      );
+    }
+
+    // 内联视图：我的收藏
+    if (homeNav is HomeNavFavorites) {
+      return FavoritesPage(
+        onClose: () => ref.read(homeNavProvider.notifier).showNormal(),
+      );
+    }
+
+    // 内联视图：默认列表
+    if (homeNav is HomeNavDefaultList) {
+      return _DefaultListView(
+        onClose: () => ref.read(homeNavProvider.notifier).showNormal(),
       );
     }
 
@@ -96,6 +106,8 @@ class HomePage extends HookConsumerWidget {
       ],
       child: Column(
         children: [
+          // 移动端顶部快捷入口卡片
+          if (isMobile) const _MobileQuickCard(),
           // 顶部 Tab 切换栏
           _HomeTabBar(tabIndex: tabIndex),
           const Divider(height: 1),
@@ -104,7 +116,8 @@ class HomePage extends HookConsumerWidget {
             child: tabIndex.value == 0
                 ? const _LeaderboardContent()
                 : _PlaylistContent(
-                    onOpenPlaylist: (p) => viewingPlaylist.value = p,
+                    onOpenPlaylist: (p) =>
+                        ref.read(homeNavProvider.notifier).showPlaylist(p),
                   ),
           ),
         ],
@@ -437,7 +450,7 @@ class _LeaderboardSongs extends ConsumerWidget {
 
 /// 歌单内容容器 — 响应式布局
 class _PlaylistContent extends HookConsumerWidget {
-  final void Function(_PlaylistRef) onOpenPlaylist;
+  final void Function(PlaylistRef) onOpenPlaylist;
 
   const _PlaylistContent({required this.onOpenPlaylist});
 
@@ -516,7 +529,7 @@ class _PlaylistMobile extends HookConsumerWidget {
   final List<PlaylistCategory> childCategories;
   final String activeParentId;
   final String? effectiveChildId;
-  final void Function(_PlaylistRef) onOpenPlaylist;
+  final void Function(PlaylistRef) onOpenPlaylist;
 
   const _PlaylistMobile({
     required this.parentCategories,
@@ -613,7 +626,7 @@ class _PlaylistDesktop extends HookConsumerWidget {
   final List<PlaylistCategory> parentCategories;
   final String activeParentId;
   final String? effectiveChildId;
-  final void Function(_PlaylistRef) onOpenPlaylist;
+  final void Function(PlaylistRef) onOpenPlaylist;
 
   const _PlaylistDesktop({
     required this.allCategories,
@@ -732,7 +745,7 @@ class _PlaylistDesktop extends HookConsumerWidget {
 /// 歌单网格内容（含排序）
 class _PlaylistGridContent extends HookConsumerWidget {
   final String? childCategoryId;
-  final void Function(_PlaylistRef) onOpenPlaylist;
+  final void Function(PlaylistRef) onOpenPlaylist;
 
   const _PlaylistGridContent({
     required this.childCategoryId,
@@ -832,7 +845,7 @@ class _PlaylistGridContent extends HookConsumerWidget {
 /// 歌单网格（响应式列数）
 class _PlaylistGrid extends StatelessWidget {
   final List<Playlist> playlists;
-  final void Function(_PlaylistRef) onOpenPlaylist;
+  final void Function(PlaylistRef) onOpenPlaylist;
 
   const _PlaylistGrid({
     required this.playlists,
@@ -876,7 +889,7 @@ class _PlaylistGrid extends StatelessWidget {
 /// 单个歌单卡片
 class _PlaylistCard extends StatelessWidget {
   final Playlist playlist;
-  final void Function(_PlaylistRef) onOpenPlaylist;
+  final void Function(PlaylistRef) onOpenPlaylist;
 
   const _PlaylistCard({
     required this.playlist,
@@ -888,7 +901,7 @@ class _PlaylistCard extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: () => onOpenPlaylist((
+      onTap: () => onOpenPlaylist(PlaylistRef(
         playlistId: (playlist.meta?['id'] as String?) ?? playlist.id,
         sourceId: playlist.source?.id ?? '',
         playlistName: playlist.name,
@@ -935,6 +948,300 @@ class _PlaylistCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ======================== 移动端快捷入口 ========================
+
+/// 移动端首页顶部快捷入口卡片
+///
+/// 横向排列三个图标按钮：默认列表 / 我的收藏 / 我的歌单。
+class _MobileQuickCard extends HookConsumerWidget {
+  const _MobileQuickCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: _QuickItem(
+                  icon: PomeloIcons.list,
+                  label: '默认',
+                  colorScheme: colorScheme,
+                  onTap: () =>
+                      ref.read(homeNavProvider.notifier).showDefaultList(),
+                ),
+              ),
+              Expanded(
+                child: _QuickItem(
+                  icon: PomeloIcons.heart,
+                  label: '收藏',
+                  colorScheme: colorScheme,
+                  onTap: () =>
+                      ref.read(homeNavProvider.notifier).showFavorites(),
+                ),
+              ),
+              Expanded(
+                child: _QuickItem(
+                  icon: PomeloIcons.playlist,
+                  label: '歌单',
+                  colorScheme: colorScheme,
+                  onTap: () => _showUserPlaylistsSheet(context, ref),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 弹出底部 Sheet 展示用户歌单列表
+  void _showUserPlaylistsSheet(BuildContext context, WidgetRef ref) {
+    openSheet(
+      context: context,
+      position: OverlayPosition.bottom,
+      draggable: true,
+      builder: (context) => _UserPlaylistsSheet(
+        onSelected: (playlistRef) {
+          closeOverlay(context);
+          ref.read(homeNavProvider.notifier).showPlaylist(playlistRef);
+        },
+      ),
+    );
+  }
+}
+
+/// 快捷入口单项
+class _QuickItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  const _QuickItem({
+    required this.icon,
+    required this.label,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 24, color: colorScheme.primary),
+          const Gap(4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: colorScheme.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 用户歌单列表 Sheet（移动端）
+class _UserPlaylistsSheet extends HookConsumerWidget {
+  final void Function(PlaylistRef) onSelected;
+
+  const _UserPlaylistsSheet({required this.onSelected});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listsAsync = ref.watch(userListsProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          title: const Text('我的歌单'),
+          trailing: [
+            GhostButton(
+              density: ButtonDensity.icon,
+              onPressed: () => closeOverlay(context),
+              child: const Icon(Icons.close, size: 20),
+            ),
+          ],
+        ),
+      ],
+      child: listsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(
+          child: Text(
+            '加载失败: $err',
+            style: TextStyle(color: colorScheme.mutedForeground),
+          ),
+        ),
+        data: (data) {
+          final playlists = data.userPlaylists;
+          if (playlists.isEmpty) {
+            return Center(
+              child: Text(
+                '暂无歌单',
+                style: TextStyle(color: colorScheme.mutedForeground),
+              ),
+            );
+          }
+          return ListView.separated(
+            padding: const EdgeInsets.all(8),
+            itemCount: playlists.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (context, index) {
+              final p = playlists[index];
+              return Card(
+                child: ListTile(
+                  leading: CoverImage(
+                    coverArt: p.coverArt,
+                    colorScheme: colorScheme,
+                    size: 48,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  title: Text(p.name),
+                  subtitle: p.owner != null && p.owner!.isNotEmpty
+                      ? Text(p.owner ?? '')
+                      : null,
+                  onTap: () => onSelected(PlaylistRef(
+                    playlistId: (p.meta?['id'] as String?) ?? p.id,
+                    sourceId: p.source?.id ?? '',
+                    playlistName: p.name,
+                    coverUrl: p.coverArt,
+                    creator: p.owner ?? '',
+                  )),
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ======================== 默认列表视图 ========================
+
+/// 默认列表视图（内联渲染）
+///
+/// 展示 [userListsProvider] 的 defaultTracks。
+class _DefaultListView extends HookConsumerWidget {
+  final VoidCallback? onClose;
+
+  const _DefaultListView({this.onClose});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listsAsync = ref.watch(userListsProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+    final isMobile =
+        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+
+    return Scaffold(
+      headers: [
+        AppBar(
+          leading: [
+            GhostButton(
+              onPressed: onClose ??
+                  () => ref.read(homeNavProvider.notifier).showNormal(),
+              child: const Icon(Icons.arrow_back, size: 20),
+            ),
+          ],
+          title: const Text('默认列表'),
+        ),
+        const Divider(),
+      ],
+      child: listsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(
+          child: Text(
+            '加载失败: $err',
+            style: TextStyle(color: colorScheme.mutedForeground),
+          ),
+        ),
+        data: (data) {
+          final tracks = data.defaultTracks;
+          if (tracks.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    PomeloIcons.music,
+                    size: 48,
+                    color: colorScheme.mutedForeground,
+                  ),
+                  const Gap(12),
+                  Text(
+                    '暂无歌曲',
+                    style: TextStyle(color: colorScheme.mutedForeground),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      '共 ${tracks.length} 首',
+                      style: TextStyle(color: colorScheme.mutedForeground),
+                    ),
+                    const Gap(12),
+                    PlayAllButton(tracks: tracks),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: isMobile
+                    ? ListView(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        children: tracks.asMap().entries.map(
+                          (e) {
+                            return TrackTile(
+                              track: e.value,
+                              index: e.key + 1,
+                              trailing: PlayPauseButton(track: e.value),
+                            );
+                          },
+                        ).toList(),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        itemCount: tracks.length,
+                        itemBuilder: (context, index) {
+                          final track = tracks[index];
+                          return TrackTile(
+                            track: track,
+                            index: index + 1,
+                            trailing: PlayPauseButton(track: track),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
