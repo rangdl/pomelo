@@ -1,4 +1,285 @@
-﻿import 'package:pomelo/core/models/metadata/metadata.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
+
+/// Lx Server 歌手（搜索结果 / 收藏歌手）
+///
+/// 对应搜索 API type=singer 的返回项，或 /api/user/library/artists 的返回项。
+class LxServerArtist {
+  final String id;
+  final String? mid;
+  final String name;
+  final String? picUrl;
+  final int? albumSize;
+  final String source;
+
+  const LxServerArtist({
+    required this.id,
+    this.mid,
+    required this.name,
+    this.picUrl,
+    this.albumSize,
+    required this.source,
+  });
+
+  factory LxServerArtist.fromJson(Map<String, dynamic> json) {
+    return LxServerArtist(
+      id: json['id']?.toString() ?? json['mid']?.toString() ?? '',
+      mid: json['mid']?.toString(),
+      name: json['name'] as String? ?? '',
+      picUrl: json['picUrl'] as String?,
+      albumSize: (json['albumSize'] as num?)?.toInt(),
+      source: json['source'] as String? ?? '',
+    );
+  }
+
+  /// 转换为项目统一的 [Artist] 模型
+  Artist toArtist({
+    required String sourceId,
+    required String sourceName,
+    required String libraryId,
+    required String libraryName,
+  }) {
+    return Artist(
+      id: id,
+      name: name,
+      coverArt: picUrl,
+      artistImageUrl: picUrl,
+      albumCount: albumSize ?? 0,
+      source: (
+        id: sourceId,
+        name: sourceName,
+        libraryId: libraryId,
+        libraryName: libraryName,
+      ),
+      meta: {'id': id, 'mid': mid, 'source': source},
+    );
+  }
+}
+
+/// Lx Server 专辑（搜索结果 / 收藏专辑）
+///
+/// 对应搜索 API type=album 的返回项，或 /api/user/library/albums 的返回项。
+class LxServerAlbum {
+  final String id;
+  final String? mid;
+  final String name;
+  final String? picUrl;
+  final String? artistName;
+  final String? artistId;
+  final int? size;
+  final String? publishTime;
+  final String source;
+
+  const LxServerAlbum({
+    required this.id,
+    this.mid,
+    required this.name,
+    this.picUrl,
+    this.artistName,
+    this.artistId,
+    this.size,
+    this.publishTime,
+    required this.source,
+  });
+
+  factory LxServerAlbum.fromJson(Map<String, dynamic> json) {
+    final meta = (json['meta'] as Map<String, dynamic>?) ?? const {};
+    return LxServerAlbum(
+      id: json['id']?.toString() ?? json['mid']?.toString() ?? '',
+      mid: json['mid']?.toString(),
+      name: json['name'] as String? ?? '',
+      picUrl: json['picUrl'] as String? ?? meta['picUrl'] as String?,
+      artistName: json['artistName'] as String?,
+      artistId: json['artistId']?.toString(),
+      size: (json['size'] as num?)?.toInt(),
+      publishTime: json['publishTime'] as String?,
+      source: json['source'] as String? ?? '',
+    );
+  }
+
+  /// 转换为项目统一的 [Album] 模型
+  Album toAlbum({
+    required String sourceId,
+    required String sourceName,
+    required String libraryId,
+    required String libraryName,
+  }) {
+    return Album(
+      id: id,
+      name: name,
+      artist: artistName,
+      artistId: artistId,
+      coverArt: picUrl,
+      songCount: size ?? 0,
+      source: (
+        id: sourceId,
+        name: sourceName,
+        libraryId: libraryId,
+        libraryName: libraryName,
+      ),
+      meta: {'id': id, 'mid': mid, 'source': source},
+    );
+  }
+}
+
+/// Lx Server 歌单（搜索结果 type=playlist）
+///
+/// 搜索 API 返回的歌单项与 [LxServerPlaylist] 字段不同，需独立解析。
+class LxServerSearchPlaylist {
+  final String id;
+  final String name;
+  final String? picUrl;
+  final int? playCount;
+  final int? trackCount;
+  final String? creator;
+  final String source;
+
+  const LxServerSearchPlaylist({
+    required this.id,
+    required this.name,
+    this.picUrl,
+    this.playCount,
+    this.trackCount,
+    this.creator,
+    required this.source,
+  });
+
+  factory LxServerSearchPlaylist.fromJson(Map<String, dynamic> json) {
+    return LxServerSearchPlaylist(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] as String? ?? '',
+      picUrl: json['picUrl'] as String?,
+      playCount: (json['playCount'] as num?)?.toInt(),
+      trackCount: (json['trackCount'] as num?)?.toInt(),
+      creator: json['creator'] as String?,
+      source: json['source'] as String? ?? '',
+    );
+  }
+
+  /// 转换为项目统一的 [Playlist] 模型
+  Playlist toPlaylist({
+    required String sourceId,
+    required String sourceName,
+    required String libraryId,
+    required String libraryName,
+  }) {
+    return Playlist(
+      id: id,
+      name: name,
+      coverArt: picUrl,
+      owner: creator,
+      songCount: trackCount ?? 0,
+      source: (
+        id: sourceId,
+        name: sourceName,
+        libraryId: libraryId,
+        libraryName: libraryName,
+      ),
+      meta: {'id': id, 'source': source, 'playCount': playCount},
+    );
+  }
+}
+
+/// Lx Server 用户歌单（来自 /api/user/list 的 userList 项）
+///
+/// 包含歌单元信息及其内含的曲目列表。
+class LxServerUserPlaylist {
+  final String id;
+  final String name;
+  final String source;
+  final String? sourceListId;
+  final List<LxServerSong> list;
+
+  const LxServerUserPlaylist({
+    required this.id,
+    required this.name,
+    required this.source,
+    this.sourceListId,
+    this.list = const [],
+  });
+
+  factory LxServerUserPlaylist.fromJson(Map<String, dynamic> json) {
+    return LxServerUserPlaylist(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] as String? ?? '',
+      source: json['source'] as String? ?? '',
+      sourceListId: json['sourceListId']?.toString(),
+      list:
+          (json['list'] as List<dynamic>?)
+              ?.map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+    );
+  }
+
+  /// 转换为项目统一的 [Playlist] 模型（含曲目列表）
+  Playlist toPlaylist({
+    required String sourceId,
+    required String sourceName,
+    required String libraryId,
+    required String libraryName,
+  }) {
+    final tracks = list
+        .map(
+          (s) => s.toTrack(
+            sourceId: sourceId,
+            sourceName: sourceName,
+            libraryId: libraryId,
+            libraryName: libraryName,
+          ),
+        )
+        .toList();
+    return Playlist(
+      id: id,
+      name: name,
+      source: (
+        id: sourceId,
+        name: sourceName,
+        libraryId: libraryId,
+        libraryName: libraryName,
+      ),
+      tracks: tracks,
+      songCount: tracks.length,
+      meta: {'id': id, 'source': source, 'sourceListId': sourceListId},
+    );
+  }
+}
+
+/// Lx Server 用户列表响应（/api/user/list）
+///
+/// 包含三个列表：defaultList（默认列表）、loveList（收藏列表）、userList（用户歌单）。
+class LxServerUserListResponse {
+  final List<LxServerSong> defaultList;
+  final List<LxServerSong> loveList;
+  final List<LxServerUserPlaylist> userList;
+
+  const LxServerUserListResponse({
+    this.defaultList = const [],
+    this.loveList = const [],
+    this.userList = const [],
+  });
+
+  factory LxServerUserListResponse.fromJson(Map<String, dynamic> json) {
+    return LxServerUserListResponse(
+      defaultList:
+          (json['defaultList'] as List<dynamic>?)
+              ?.map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      loveList:
+          (json['loveList'] as List<dynamic>?)
+              ?.map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      userList:
+          (json['userList'] as List<dynamic>?)
+              ?.map(
+                (e) => LxServerUserPlaylist.fromJson(e as Map<String, dynamic>),
+              )
+              .toList() ??
+          const [],
+    );
+  }
+}
 
 /// Lx Server 歌曲质量类型
 class LxServerQuality {

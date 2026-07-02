@@ -1,21 +1,23 @@
 /// 音乐搜索结果页面
 ///
-/// 展示根据关键词搜索到的歌曲列表。
+/// 展示根据关键词搜索到的歌曲/歌手/专辑/歌单列表。
+/// 搜索框左侧提供搜索类型下拉菜单，类型来源于当前选中服务支持的搜索类型。
 library;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart';
-
+import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
+import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌曲搜索结果页面
 @RoutePage()
@@ -43,27 +45,102 @@ class MusicSearchPage extends HookConsumerWidget {
               child: const Icon(Icons.arrow_back, size: 20),
             ),
           ],
-          title: TextField(
+          title: _SearchInputBar(
             controller: searchController,
+            onSearch: doSearch,
+          ),
+        ),
+        const Divider(),
+      ],
+      child: keywordState.value.isEmpty
+          ? const Center(child: Text('输入关键词搜索'))
+          : _SearchResults(keyword: keywordState.value),
+    );
+  }
+}
+
+/// 搜索输入栏 — 包含搜索类型下拉按钮 + 输入框
+class _SearchInputBar extends HookConsumerWidget {
+  final TextEditingController controller;
+  final void Function(String) onSearch;
+
+  const _SearchInputBar({required this.controller, required this.onSearch});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final supportedTypesAsync = ref.watch(supportedSearchTypesProvider);
+    final selectedType = ref.watch(selectedSearchTypeProvider);
+
+    return Row(
+      children: [
+        // 搜索类型下拉按钮 — 仅当支持多种搜索类型时显示
+        supportedTypesAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
+          data: (types) {
+            if (types.length <= 1) return const SizedBox.shrink();
+            return GhostButton(
+              density: ButtonDensity.compact,
+              size: ButtonSize.small,
+              onPressed: () => _showSearchTypePicker(context, ref, types),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(selectedType.label),
+                  const Gap(4),
+                  const Icon(Icons.arrow_drop_down, size: 16),
+                ],
+              ),
+            );
+          },
+        ),
+        if (supportedTypesAsync.maybeWhen(
+          data: (types) => types.length > 1,
+          orElse: () => false,
+        ))
+          const Gap(8),
+        // 搜索输入框
+        Expanded(
+          child: TextField(
+            controller: controller,
             autofocus: false,
-            placeholder: const Text('搜索歌曲...'),
-            onSubmitted: doSearch,
+            placeholder: Text('搜索${selectedType.label}...'),
+            onSubmitted: onSearch,
             features: [
               InputFeature.trailing(
                 GhostButton(
                   density: ButtonDensity.icon,
-                  onPressed: () => doSearch(searchController.text),
+                  onPressed: () => onSearch(controller.text),
                   child: const Icon(Icons.search, size: 20),
                 ),
               ),
             ],
           ),
         ),
-        const Divider(),
       ],
-      child: keywordState.value.isEmpty
-          ? const Center(child: Text('输入关键词搜索歌曲'))
-          : _SearchResults(keyword: keywordState.value),
+    );
+  }
+
+  void _showSearchTypePicker(
+    BuildContext context,
+    WidgetRef ref,
+    List<SearchType> types,
+  ) {
+    final selected = ref.read(selectedSearchTypeProvider);
+    showSelectionPicker<SearchType>(
+      context: context,
+      title: '搜索类型',
+      options: types
+          .map(
+            (t) => SelectionOption<SearchType>(
+              value: t,
+              label: t.label,
+              selected: t == selected,
+            ),
+          )
+          .toList(),
+      onSelected: (value) =>
+          ref.read(selectedSearchTypeProvider.notifier).select(value),
     );
   }
 }
@@ -77,6 +154,7 @@ class _SearchResults extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tabSourceId = useState<String?>(null);
+    final selectedType = ref.watch(selectedSearchTypeProvider);
 
     // 初始 tab 默认选中持久化来源
     useEffect(() {
@@ -103,19 +181,19 @@ class _SearchResults extends HookConsumerWidget {
           tabSourceId: tabSourceId,
           selection: selection,
           colorScheme: colorScheme,
-          ref: ref,
         );
 
-        // 结果列表组件
+        // 结果列表组件 — 根据搜索类型选择
         final resultsList = Expanded(
-          child: _SearchResultsList(
-            key: ValueKey('${tabSourceId.value}_$keyword'),
+          child: _SearchResultsContainer(
+            key: ValueKey('${tabSourceId.value}_${selectedType}_$keyword'),
             keyword: keyword,
             sourceId: tabSourceId.value,
             libraryId: tabSourceId.value == selection.sourceId
                 ? selection.libraryId
                 : null,
             services: filtered,
+            searchType: selectedType,
           ),
         );
 
@@ -154,7 +232,7 @@ class _SearchResults extends HookConsumerWidget {
                 ),
               ),
               const VerticalDivider(width: 1),
-              Expanded(child: Column(children: [resultsList])),
+              Expanded(child: resultsList),
             ],
           ),
         );
@@ -165,14 +243,85 @@ class _SearchResults extends HookConsumerWidget {
   }
 }
 
+/// 搜索结果容器 — 根据搜索类型分发到对应的结果列表
+class _SearchResultsContainer extends ConsumerWidget {
+  final String keyword;
+  final String? sourceId;
+  final String? libraryId;
+  final List<MusicServer> services;
+  final SearchType searchType;
+
+  const _SearchResultsContainer({
+    super.key,
+    required this.keyword,
+    required this.sourceId,
+    required this.libraryId,
+    required this.services,
+    required this.searchType,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    // 非歌曲搜索需要指定具体来源
+    if (searchType != SearchType.song && sourceId == null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.source,
+              size: 48,
+              color: colorScheme.mutedForeground,
+            ),
+            const Gap(12),
+            Text(
+              '请先在上方选择具体的音乐来源',
+              style: TextStyle(color: colorScheme.mutedForeground),
+            ),
+          ],
+        ),
+      );
+    }
+
+    switch (searchType) {
+      case SearchType.song:
+        return _SongResultsList(
+          keyword: keyword,
+          sourceId: sourceId,
+          libraryId: libraryId,
+          services: services,
+        );
+      case SearchType.artist:
+        return _ArtistResultsList(
+          keyword: keyword,
+          sourceId: sourceId!,
+          libraryId: libraryId,
+        );
+      case SearchType.album:
+        return _AlbumResultsList(
+          keyword: keyword,
+          sourceId: sourceId!,
+          libraryId: libraryId,
+        );
+      case SearchType.playlist:
+        return _PlaylistResultsList(
+          keyword: keyword,
+          sourceId: sourceId!,
+          libraryId: libraryId,
+        );
+    }
+  }
+}
+
 /// 来源筛选 chips 组件
-class _SourceChips extends StatelessWidget {
+class _SourceChips extends ConsumerWidget {
   final List<MusicServer> services;
   final String? selectedSourceId;
   final ValueNotifier<String?> tabSourceId;
   final ({String? sourceId, String? libraryId}) selection;
   final ColorScheme colorScheme;
-  final WidgetRef ref;
 
   const _SourceChips({
     required this.services,
@@ -180,27 +329,30 @@ class _SourceChips extends StatelessWidget {
     required this.tabSourceId,
     required this.selection,
     required this.colorScheme,
-    required this.ref,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedType = ref.watch(selectedSearchTypeProvider);
+
     return ListView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       children: [
-        AppChip(
-          label: '全部',
-          isSelected: selectedSourceId == null,
-          onTap: () {
-            tabSourceId.value = null;
-            ref.read(selectedSourceProvider.notifier).selectAll();
-          },
-          fill: true,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          borderRadius: 8,
-          fontSize: 13,
-        ),
+        // 非歌曲搜索时不支持"全部来源"
+        if (selectedType == SearchType.song)
+          AppChip(
+            label: '全部',
+            isSelected: selectedSourceId == null,
+            onTap: () {
+              tabSourceId.value = null;
+              ref.read(selectedSourceProvider.notifier).selectAll();
+            },
+            fill: true,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            borderRadius: 8,
+            fontSize: 13,
+          ),
         // 扁平展示所有平台，不按类型分组；
         // 多库服务展开为每个库一个 chip
         ...services.expand((service) {
@@ -258,15 +410,14 @@ class _SourceChips extends StatelessWidget {
   }
 }
 
-/// 搜索结果列表
-class _SearchResultsList extends ConsumerWidget {
+/// 歌曲搜索结果列表
+class _SongResultsList extends ConsumerWidget {
   final String keyword;
   final String? sourceId;
   final String? libraryId;
   final List<MusicServer> services;
 
-  const _SearchResultsList({
-    super.key,
+  const _SongResultsList({
     required this.keyword,
     required this.sourceId,
     required this.libraryId,
@@ -351,6 +502,420 @@ class _SearchResultsList extends ConsumerWidget {
                   ],
                 ),
               ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// 歌手搜索结果列表
+class _ArtistResultsList extends ConsumerWidget {
+  final String keyword;
+  final String sourceId;
+  final String? libraryId;
+
+  const _ArtistResultsList({
+    required this.keyword,
+    required this.sourceId,
+    required this.libraryId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final artistsAsync = ref.watch(
+      searchArtistsProvider((
+        keyword: keyword,
+        sourceId: sourceId,
+        libraryId: libraryId,
+      )),
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return artistsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('搜索失败: $err')),
+      data: (artists) {
+        if (artists.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.person_search,
+                  size: 48,
+                  color: colorScheme.mutedForeground,
+                ),
+                const Gap(12),
+                Text(
+                  '未找到与"$keyword"相关的歌手',
+                  style: TextStyle(color: colorScheme.mutedForeground),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                '找到 ${artists.length} 位歌手',
+                style: TextStyle(color: colorScheme.mutedForeground),
+              ),
+            ),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  int crossAxisCount;
+                  if (width < ResponsiveBreakpoints.mobile) {
+                    crossAxisCount = 2;
+                  } else if (width < ResponsiveBreakpoints.tablet) {
+                    crossAxisCount = 3;
+                  } else if (width < ResponsiveBreakpoints.desktop) {
+                    crossAxisCount = 4;
+                  } else {
+                    crossAxisCount = 5;
+                  }
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.85,
+                    ),
+                    itemCount: artists.length,
+                    itemBuilder: (context, index) {
+                      final a = artists[index];
+                      return Card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: CoverImage(
+                                  coverArt:
+                                      a.coverArt ?? a.artistImageUrl,
+                                  colorScheme: colorScheme,
+                                  borderRadius:
+                                      const BorderRadius.vertical(
+                                    top: Radius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Text(
+                                a.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.foreground,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// 专辑搜索结果列表
+class _AlbumResultsList extends ConsumerWidget {
+  final String keyword;
+  final String sourceId;
+  final String? libraryId;
+
+  const _AlbumResultsList({
+    required this.keyword,
+    required this.sourceId,
+    required this.libraryId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final albumsAsync = ref.watch(
+      searchAlbumsProvider((
+        keyword: keyword,
+        sourceId: sourceId,
+        libraryId: libraryId,
+      )),
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return albumsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('搜索失败: $err')),
+      data: (albums) {
+        if (albums.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.album,
+                  size: 48,
+                  color: colorScheme.mutedForeground,
+                ),
+                const Gap(12),
+                Text(
+                  '未找到与"$keyword"相关的专辑',
+                  style: TextStyle(color: colorScheme.mutedForeground),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                '找到 ${albums.length} 张专辑',
+                style: TextStyle(color: colorScheme.mutedForeground),
+              ),
+            ),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  int crossAxisCount;
+                  if (width < ResponsiveBreakpoints.mobile) {
+                    crossAxisCount = 2;
+                  } else if (width < ResponsiveBreakpoints.tablet) {
+                    crossAxisCount = 3;
+                  } else if (width < ResponsiveBreakpoints.desktop) {
+                    crossAxisCount = 4;
+                  } else {
+                    crossAxisCount = 5;
+                  }
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.85,
+                    ),
+                    itemCount: albums.length,
+                    itemBuilder: (context, index) {
+                      final a = albums[index];
+                      return Card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: CoverImage(
+                                  coverArt: a.coverArt,
+                                  colorScheme: colorScheme,
+                                  borderRadius:
+                                      const BorderRadius.vertical(
+                                    top: Radius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(8, 8, 8, 2),
+                              child: Text(
+                                a.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.foreground,
+                                ),
+                              ),
+                            ),
+                            if ((a.artist ?? '').isNotEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                child: Text(
+                                  a.artist ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color:
+                                        colorScheme.mutedForeground,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// 歌单搜索结果列表
+class _PlaylistResultsList extends ConsumerWidget {
+  final String keyword;
+  final String sourceId;
+  final String? libraryId;
+
+  const _PlaylistResultsList({
+    required this.keyword,
+    required this.sourceId,
+    required this.libraryId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playlistsAsync = ref.watch(
+      searchPlaylistsProvider((
+        keyword: keyword,
+        sourceId: sourceId,
+        libraryId: libraryId,
+      )),
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return playlistsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('搜索失败: $err')),
+      data: (playlists) {
+        if (playlists.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.queue_music,
+                  size: 48,
+                  color: colorScheme.mutedForeground,
+                ),
+                const Gap(12),
+                Text(
+                  '未找到与"$keyword"相关的歌单',
+                  style: TextStyle(color: colorScheme.mutedForeground),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                '找到 ${playlists.length} 个歌单',
+                style: TextStyle(color: colorScheme.mutedForeground),
+              ),
+            ),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  int crossAxisCount;
+                  if (width < ResponsiveBreakpoints.mobile) {
+                    crossAxisCount = 2;
+                  } else if (width < ResponsiveBreakpoints.tablet) {
+                    crossAxisCount = 3;
+                  } else if (width < ResponsiveBreakpoints.desktop) {
+                    crossAxisCount = 4;
+                  } else {
+                    crossAxisCount = 5;
+                  }
+                  return GridView.builder(
+                    padding: const EdgeInsets.all(12),
+                    gridDelegate:
+                        SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.85,
+                    ),
+                    itemCount: playlists.length,
+                    itemBuilder: (context, index) {
+                      final p = playlists[index];
+                      return Card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: CoverImage(
+                                  coverArt: p.coverArt,
+                                  colorScheme: colorScheme,
+                                  borderRadius:
+                                      const BorderRadius.vertical(
+                                    top: Radius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(8, 8, 8, 2),
+                              child: Text(
+                                p.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: colorScheme.foreground,
+                                ),
+                              ),
+                            ),
+                            if ((p.owner ?? '').isNotEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                child: Text(
+                                  p.owner ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color:
+                                        colorScheme.mutedForeground,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
           ],
         );
       },

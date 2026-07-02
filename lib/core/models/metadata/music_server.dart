@@ -1,7 +1,9 @@
 import 'package:pomelo/core/core.dart';
 import 'music_source_type.dart';
+import 'search_type.dart';
 import 'track.dart';
 import 'album.dart';
+import 'artist.dart';
 import 'playlist.dart';
 import 'leaderboard.dart';
 
@@ -61,6 +63,12 @@ abstract class MusicServer {
 
   // ========== 搜索 ==========
 
+  /// 该服务支持的搜索类型
+  ///
+  /// 默认仅支持歌曲搜索。支持多类型搜索的服务（如 LxServer）覆写此属性。
+  /// 至少应包含 [SearchType.song]。
+  List<SearchType> get supportedSearchTypes => const [SearchType.song];
+
   /// 搜索曲目
   ///
   /// [libraryId] 可选，用于指定在哪个库中搜索。
@@ -72,21 +80,41 @@ abstract class MusicServer {
     String? libraryId,
   });
 
+  /// 搜索歌手
+  ///
+  /// 默认抛出 UnimplementedError，支持歌手搜索的服务覆写此方法。
+  Future<PaginationResponse<Artist>> searchArtists(
+    String keyword, {
+    int page = 1,
+    int limit = 20,
+    String? libraryId,
+  }) {
+    throw UnimplementedError('$sourceName(searchArtists) 尚未实现');
+  }
+
   /// 搜索专辑
+  ///
+  /// 默认抛出 UnimplementedError，支持专辑搜索的服务覆写此方法。
   Future<PaginationResponse<Album>> searchAlbums(
     String keyword, {
     int page = 1,
     int limit = 20,
     String? libraryId,
-  });
+  }) {
+    throw UnimplementedError('$sourceName(searchAlbums) 尚未实现');
+  }
 
   /// 搜索歌单
+  ///
+  /// 默认抛出 UnimplementedError，支持歌单搜索的服务覆写此方法。
   Future<PaginationResponse<Playlist>> searchPlaylists(
     String keyword, {
     int page = 1,
     int limit = 20,
     String? libraryId,
-  });
+  }) {
+    throw UnimplementedError('$sourceName(searchPlaylists) 尚未实现');
+  }
 
   // ========== 曲目 ==========
 
@@ -149,7 +177,10 @@ abstract class MusicServer {
   Future<List<Track>> getPlaylistTracks(String id) async => [];
 
   /// 获取歌单列表（推荐/默认）
-  Future<PaginationResponse<Playlist>> getPlaylists({int page = 1, int limit = 20});
+  Future<PaginationResponse<Playlist>> getPlaylists({
+    int page = 1,
+    int limit = 20,
+  });
 
   /// 获取曲目播放链接 用于音乐信息和播放链接分步获取
   ///
@@ -180,4 +211,46 @@ abstract class MusicServer {
   /// [leaderboardId] 来自 [Leaderboard.id]。
   /// 默认返回空列表，支持排行榜的服务应覆写此方法。
   Future<List<Track>> getLeaderboardTracks(String leaderboardId) async => [];
+
+  // ========== 用户收藏 ==========
+
+  /// 获取用户列表数据（默认列表 + 收藏列表 + 用户歌单）
+  ///
+  /// 返回三个列表：defaultList（默认列表曲目）、loveList（收藏曲目）、
+  /// userPlaylists（用户自建/收藏歌单）。
+  /// 默认返回空数据，支持用户数据的服务（如 LxServer）覆写此方法。
+  Future<UserListsData> getUserLists() async => const UserListsData();
+
+  /// 获取收藏的歌手列表
+  ///
+  /// 默认返回空列表，支持收藏功能的服务覆写此方法。
+  Future<List<Artist>> getFavoriteArtists() async => [];
+
+  /// 获取收藏的专辑列表
+  ///
+  /// 默认返回空列表，支持收藏功能的服务覆写此方法。
+  Future<List<Album>> getFavoriteAlbums() async => [];
+}
+
+/// 用户列表数据
+///
+/// 由 [MusicServer.getUserLists] 返回，包含三个列表：
+/// - [defaultTracks]：默认列表曲目
+/// - [loveTracks]：收藏曲目
+/// - [userPlaylists]：用户歌单
+class UserListsData {
+  /// 默认列表曲目
+  final List<Track> defaultTracks;
+
+  /// 收藏曲目
+  final List<Track> loveTracks;
+
+  /// 用户歌单
+  final List<Playlist> userPlaylists;
+
+  const UserListsData({
+    this.defaultTracks = const [],
+    this.loveTracks = const [],
+    this.userPlaylists = const [],
+  });
 }

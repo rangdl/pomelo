@@ -5,6 +5,14 @@ import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'lx_server_client.dart';
 import 'lx_server_models.dart';
 
+/// Lx Server 支持的搜索类型（全套）
+const _lxServerSearchTypes = [
+  SearchType.song,
+  SearchType.artist,
+  SearchType.album,
+  SearchType.playlist,
+];
+
 /// Lx Server 音乐服务
 ///
 /// 通过 [LxServerClient] 对接 lx-server HTTP API。
@@ -61,6 +69,9 @@ class LxServerMusicServer extends MusicServer {
 
   @override
   int get maxServiceCount => 1;
+
+  @override
+  List<SearchType> get supportedSearchTypes => _lxServerSearchTypes;
 
   @override
   List<({String id, String name})> get libraries =>
@@ -126,13 +137,69 @@ class LxServerMusicServer extends MusicServer {
   }
 
   @override
+  Future<PaginationResponse<Artist>> searchArtists(
+    String keyword, {
+    int page = 1,
+    int limit = 20,
+    String? libraryId,
+  }) async {
+    final source = libraryId ?? _currentSource;
+    final result = await client.searchArtists(
+      source: source,
+      name: keyword,
+      page: page,
+      limit: limit,
+    );
+    final items = result.list
+        .map(
+          (a) => a.toArtist(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: source,
+            libraryName: _libraryName(source),
+          ),
+        )
+        .toList();
+    return PaginationResponse<Artist>(
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      hasMore: result.page * result.limit < result.total,
+      items: items,
+    );
+  }
+
+  @override
   Future<PaginationResponse<Album>> searchAlbums(
     String keyword, {
     int page = 1,
     int limit = 20,
     String? libraryId,
-  }) {
-    throw UnimplementedError('$sourceName(searchAlbums) 尚未实现');
+  }) async {
+    final source = libraryId ?? _currentSource;
+    final result = await client.searchAlbums(
+      source: source,
+      name: keyword,
+      page: page,
+      limit: limit,
+    );
+    final items = result.list
+        .map(
+          (a) => a.toAlbum(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: source,
+            libraryName: _libraryName(source),
+          ),
+        )
+        .toList();
+    return PaginationResponse<Album>(
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      hasMore: result.page * result.limit < result.total,
+      items: items,
+    );
   }
 
   @override
@@ -141,8 +208,31 @@ class LxServerMusicServer extends MusicServer {
     int page = 1,
     int limit = 20,
     String? libraryId,
-  }) {
-    throw UnimplementedError('$sourceName(searchPlaylists) 尚未实现');
+  }) async {
+    final source = libraryId ?? _currentSource;
+    final result = await client.searchPlaylistsByType(
+      source: source,
+      name: keyword,
+      page: page,
+      limit: limit,
+    );
+    final items = result.list
+        .map(
+          (p) => p.toPlaylist(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: source,
+            libraryName: _libraryName(source),
+          ),
+        )
+        .toList();
+    return PaginationResponse<Playlist>(
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      hasMore: result.page * result.limit < result.total,
+      items: items,
+    );
   }
 
   // ========== 歌曲 ==========
@@ -336,7 +426,7 @@ class LxServerMusicServer extends MusicServer {
     final source = songInfo['source'] as String? ?? '';
     AppLogger.log.d(
       '[LxServer] getMusicUrl: 歌曲=${track.title} - ${track.artist}, '
-          'source=$source, 偏好=$quality, 选中质量=$selectedQuality, songInfo=$songInfo',
+      'source=$source, 偏好=$quality, 选中质量=$selectedQuality, songInfo=$songInfo',
     );
 
     // 构造代理播放时使用的文件名：歌名 - 歌手.mp3
@@ -353,7 +443,7 @@ class LxServerMusicServer extends MusicServer {
       if (allowSourceSwitching) {
         AppLogger.log.i(
           '[LxServer] 获取播放链接失败，尝试换源: ${track.title} - ${track.artist}, '
-              '原库=$source, quality=$selectedQuality, 错误=$e',
+          '原库=$source, quality=$selectedQuality, 错误=$e',
         );
         final switchedUrl = await _trySourceSwitching(track, selectedQuality);
         if (switchedUrl != null) return switchedUrl;
@@ -396,7 +486,7 @@ class LxServerMusicServer extends MusicServer {
 
         AppLogger.log.i(
           '[LxServer] 换源匹配成功: 库=${lib.id}(${lib.name}), '
-              '匹配歌曲=${matched.name} - ${matched.singer}',
+          '匹配歌曲=${matched.name} - ${matched.singer}',
         );
 
         // 用匹配歌曲的 songInfo 重新获取播放链接
@@ -416,9 +506,7 @@ class LxServerMusicServer extends MusicServer {
         );
         return url;
       } catch (e) {
-        AppLogger.log.w(
-          '[LxServer] 换源失败: 库=${lib.id}(${lib.name}): $e',
-        );
+        AppLogger.log.w('[LxServer] 换源失败: 库=${lib.id}(${lib.name}): $e');
       }
     }
 
@@ -547,8 +635,87 @@ class LxServerMusicServer extends MusicServer {
         .toList();
     AppLogger.log.d(
       '[LxServer] getLeaderboardSongs 完成: source=$_currentSource, bangid=$leaderboardId, '
-          '转换 ${tracks.length} 首歌曲',
+      '转换 ${tracks.length} 首歌曲',
     );
     return tracks;
+  }
+
+  // ========== 用户收藏 ==========
+
+  @override
+  Future<UserListsData> getUserLists() async {
+    AppLogger.log.d('[LxServer] getUserLists');
+    final response = await client.getUserLists();
+
+    final defaultTracks = response.defaultList
+        .map(
+          (s) => s.toTrack(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: s.source,
+            libraryName: _libraryName(s.source),
+          ),
+        )
+        .toList();
+
+    final loveTracks = response.loveList
+        .map(
+          (s) => s.toTrack(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: s.source,
+            libraryName: _libraryName(s.source),
+          ),
+        )
+        .toList();
+
+    final userPlaylists = response.userList
+        .map(
+          (p) => p.toPlaylist(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: p.source,
+            libraryName: _libraryName(p.source),
+          ),
+        )
+        .toList();
+
+    return UserListsData(
+      defaultTracks: defaultTracks,
+      loveTracks: loveTracks,
+      userPlaylists: userPlaylists,
+    );
+  }
+
+  @override
+  Future<List<Artist>> getFavoriteArtists() async {
+    AppLogger.log.d('[LxServer] getFavoriteArtists');
+    final artists = await client.getFavoriteArtists();
+    return artists
+        .map(
+          (a) => a.toArtist(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: a.source,
+            libraryName: _libraryName(a.source),
+          ),
+        )
+        .toList();
+  }
+
+  @override
+  Future<List<Album>> getFavoriteAlbums() async {
+    AppLogger.log.d('[LxServer] getFavoriteAlbums');
+    final albums = await client.getFavoriteAlbums();
+    return albums
+        .map(
+          (a) => a.toAlbum(
+            sourceId: _sourceId,
+            sourceName: _sourceName,
+            libraryId: a.source,
+            libraryName: _libraryName(a.source),
+          ),
+        )
+        .toList();
   }
 }
