@@ -1,5 +1,9 @@
-// 我重写了日志部分,你看看帮我迁移一下将现有的日志打印迁移到AppLogger.reportError方法
-// 1.musicServerByProvider 传递服务id, 使用id查询用户偏好中持久化存储的musicServerConfig,保证音乐服务变更自动重构
-// 2.musicServerProvider 监听用户偏好中选中的音乐服务然后通过musicServerByProvider(id)初始化
-// 3.如果选中的音乐服务为空,则设置为音乐服务列表中的第一个,如果音乐服务列表为空,则自动添加一条本地音乐服务
-// 4.彻底移除项目中关于M.A.R.S.的架构以及注释,同时移除项目规则中关于M.A.R.S.的内容, 重点移除Module,Service以及其各个实现类
+我重写了日志部分,你看看帮我迁移一下将现有的日志打印迁移到AppLogger.reportError方法
+1.musicServerByProvider 传递服务id, 使用id查询用户偏好中持久化存储的musicServerConfig,保证音乐服务变更自动重构
+2.musicServerProvider 监听用户偏好中选中的音乐服务然后通过musicServerByProvider(id)初始化
+3.如果选中的音乐服务为空,则设置为音乐服务列表中的第一个,如果音乐服务列表为空,则自动添加一条本地音乐服务
+4.彻底移除项目中关于M.A.R.S.的架构以及注释,同时移除项目规则中关于M.A.R.S.的内容, 重点移除Module,Service以及其各个实现类
+
+1.根据设计歌手和专辑页面
+2.搜索输入框根据搜索提示(/api/music/tipSearch)弹出列表
+3.在首页添加卡片,展示热搜词,热搜词点击则跳转到搜索结果4.启动白屏,控制台一直报错
