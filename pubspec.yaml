@@ -172,10 +172,13 @@ flutter:
 
 # dart run flutter_launcher_icons
 flutter_launcher_icons:
-  android: "launcher_icon"
-  ios: true
+  android: "launcher_icon" # can specify file name here e.g. "ic_launcher"
+  ios: true # can specify file name here e.g. "My-Launcher-Icon"
   image_path: "assets/pomelo_icon.png"
+  image_path_android: "assets/pomelo_icon.png"
+  image_path_ios: "assets/pomelo_icon_ios.png"
   remove_alpha_ios: true
+  background_color_ios: "#ffffff"
   min_sdk_android: 21
   windows:
     generate: true
