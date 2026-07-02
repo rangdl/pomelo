@@ -235,6 +235,16 @@ class LxServerMusicServer extends MusicServer {
     );
   }
 
+  @override
+  Future<List<String>> tipSearch(String keyword) {
+    return client.tipSearch(source: _currentSource, keyword: keyword);
+  }
+
+  @override
+  Future<List<String>> getHotSearch() {
+    return client.hotSearch(source: _currentSource);
+  }
+
   // ========== 歌曲 ==========
 
   @override

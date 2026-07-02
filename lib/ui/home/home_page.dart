@@ -8,6 +8,8 @@ import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/ui/home/home_providers.dart';
 import 'package:pomelo/ui/home/favorites_page.dart';
+import 'package:pomelo/ui/music/album_detail_page.dart';
+import 'package:pomelo/ui/music/artist_detail_page.dart';
 import 'package:pomelo/ui/music/music_section.dart';
 import 'package:pomelo/ui/music/playlist_detail_page.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
@@ -70,6 +72,45 @@ class HomePage extends HookConsumerWidget {
       );
     }
 
+    // 内联视图：歌手详情
+    if (homeNav is HomeNavArtist) {
+      final a = homeNav.ref;
+      return ArtistDetailPage(
+        artistId: a.artistId,
+        sourceId: a.sourceId,
+        artistName: a.artistName,
+        coverUrl: a.coverUrl,
+        albumCount: a.albumCount,
+        onClose: () => ref.read(homeNavProvider.notifier).showNormal(),
+        onOpenAlbum: (album) => ref.read(homeNavProvider.notifier).showAlbum(
+              AlbumRef(
+                albumId: album.id,
+                sourceId: a.sourceId,
+                albumName: album.name,
+                coverUrl: album.coverArt,
+                artist: album.artist,
+                year: album.year,
+                songCount: album.songCount,
+              ),
+            ),
+      );
+    }
+
+    // 内联视图：专辑详情
+    if (homeNav is HomeNavAlbum) {
+      final a = homeNav.ref;
+      return AlbumDetailPage(
+        albumId: a.albumId,
+        sourceId: a.sourceId,
+        albumName: a.albumName,
+        coverUrl: a.coverUrl,
+        artist: a.artist,
+        year: a.year,
+        songCount: a.songCount,
+        onClose: () => ref.read(homeNavProvider.notifier).showNormal(),
+      );
+    }
+
     // 内联视图：我的收藏
     if (homeNav is HomeNavFavorites) {
       return FavoritesPage(
@@ -108,6 +149,11 @@ class HomePage extends HookConsumerWidget {
         children: [
           // 移动端顶部快捷入口卡片
           if (isMobile) const _MobileQuickCard(),
+          // 热搜词卡片 — 点击跳转搜索结果
+          _HotSearchCard(
+            onSearch: (keyword) =>
+                context.pushRoute(MusicSearchRoute(keyword: keyword)),
+          ),
           // 顶部 Tab 切换栏
           _HomeTabBar(tabIndex: tabIndex),
           const Divider(height: 1),
@@ -1016,6 +1062,149 @@ class _MobileQuickCard extends HookConsumerWidget {
           closeOverlay(context);
           ref.read(homeNavProvider.notifier).showPlaylist(playlistRef);
         },
+      ),
+    );
+  }
+}
+
+// ======================== 热搜词卡片 ========================
+
+/// 热搜词卡片
+///
+/// 监听 [hotSearchProvider] 获取热搜词列表，横向滚动展示。
+/// 点击热搜词调用 [onSearch] 跳转到搜索结果页。
+class _HotSearchCard extends HookConsumerWidget {
+  final void Function(String keyword) onSearch;
+
+  const _HotSearchCard({required this.onSearch});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hotSearchAsync = ref.watch(hotSearchProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+    final isMobile =
+        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+
+    return hotSearchAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (hotWords) {
+        if (hotWords.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: EdgeInsets.fromLTRB(12, isMobile ? 4 : 12, 12, 4),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.local_fire_department,
+                        size: 16,
+                        color: colorScheme.primary,
+                      ),
+                      const Gap(6),
+                      Text(
+                        '热搜',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.foreground,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Gap(8),
+                  SizedBox(
+                    height: 32,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: hotWords.length,
+                      separatorBuilder: (_, _) => const Gap(6),
+                      itemBuilder: (context, index) {
+                        final word = hotWords[index];
+                        return _HotSearchChip(
+                          text: word,
+                          index: index + 1,
+                          colorScheme: colorScheme,
+                          onTap: () => onSearch(word),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 热搜词单项 — 显示序号 + 关键词，点击触发搜索
+class _HotSearchChip extends HookConsumerWidget {
+  final String text;
+  final int index;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  const _HotSearchChip({
+    required this.text,
+    required this.index,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isHovered = useState(false);
+    // 前 3 名标红，突出显示
+    final indexColor = index <= 3
+        ? colorScheme.primary
+        : colorScheme.mutedForeground;
+
+    return MouseRegion(
+      onEnter: (_) => isHovered.value = true,
+      onExit: (_) => isHovered.value = false,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isHovered.value
+                ? colorScheme.muted.withValues(alpha: 0.6)
+                : colorScheme.muted.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$index',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: indexColor,
+                ),
+              ),
+              const Gap(6),
+              Text(
+                text,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.foreground,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
