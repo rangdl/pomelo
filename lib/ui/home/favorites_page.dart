@@ -321,41 +321,50 @@ class _FavoriteArtistsTab extends HookConsumerWidget {
 }
 
 /// 歌手卡片
-class _ArtistCard extends StatelessWidget {
+class _ArtistCard extends ConsumerWidget {
   final Artist artist;
 
   const _ArtistCard({required this.artist});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: SizedBox(
-              width: double.infinity,
-              child: CoverImage(
-                coverArt: artist.coverArt ?? artist.artistImageUrl,
-                colorScheme: colorScheme,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(8),
+    return GestureDetector(
+      onTap: () => ref.read(homeNavProvider.notifier).showArtist(ArtistRef(
+            artistId: artist.id,
+            sourceId: artist.source?.id ?? '',
+            artistName: artist.name,
+            coverUrl: artist.coverArt ?? artist.artistImageUrl,
+            albumCount: artist.albumCount,
+          )),
+      child: Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SizedBox(
+                width: double.infinity,
+                child: CoverImage(
+                  coverArt: artist.coverArt ?? artist.artistImageUrl,
+                  colorScheme: colorScheme,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(8),
+                  ),
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-            child: Text(
-              artist.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, color: colorScheme.foreground),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+              child: Text(
+                artist.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: colorScheme.foreground),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -431,54 +440,65 @@ class _FavoriteAlbumsTab extends HookConsumerWidget {
 }
 
 /// 专辑卡片
-class _AlbumCard extends StatelessWidget {
+class _AlbumCard extends ConsumerWidget {
   final Album album;
 
   const _AlbumCard({required this.album});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: SizedBox(
-              width: double.infinity,
-              child: CoverImage(
-                coverArt: album.coverArt,
-                colorScheme: colorScheme,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(8),
+    return GestureDetector(
+      onTap: () => ref.read(homeNavProvider.notifier).showAlbum(AlbumRef(
+            albumId: album.id,
+            sourceId: album.source?.id ?? '',
+            albumName: album.name,
+            coverUrl: album.coverArt,
+            artist: album.artist,
+            year: album.year,
+            songCount: album.songCount,
+          )),
+      child: Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: SizedBox(
+                width: double.infinity,
+                child: CoverImage(
+                  coverArt: album.coverArt,
+                  colorScheme: colorScheme,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(8),
+                  ),
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
-            child: Text(
-              album.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 13, color: colorScheme.foreground),
-            ),
-          ),
-          if ((album.artist ?? '').isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
               child: Text(
-                album.artist ?? '',
-                maxLines: 1,
+                album.name,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colorScheme.mutedForeground,
-                ),
+                style: TextStyle(fontSize: 13, color: colorScheme.foreground),
               ),
             ),
-        ],
+            if ((album.artist ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                child: Text(
+                  album.artist ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.mutedForeground,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

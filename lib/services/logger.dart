@@ -27,7 +27,7 @@ final _loggingToLoggerLevel = {
 
 class AppLogger {
   static late final Logger log;
-  static late final File logFile;
+  static File? logFile;
 
   static initialize(bool verbose) {
     log = Logger(
@@ -118,8 +118,8 @@ class AppLogger {
   ]) async {
     log.e(message, error: error, stackTrace: stackTrace);
 
-    if (kReleaseMode) {
-      await logFile.writeAsString(
+    if (kReleaseMode && logFile != null) {
+      await logFile!.writeAsString(
         "[${DateTime.now()}]---------------------\n"
         "$error\n$stackTrace\n"
         "----------------------------------------\n",

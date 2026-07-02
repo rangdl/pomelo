@@ -190,6 +190,73 @@ class LxServerClient {
     }
   }
 
+  /// 搜索提示（联想词）
+  ///
+  /// GET /api/music/tipSearch?keyword=&source=
+  /// [source] 库标识（kg/kw/tx/mg/wy）
+  /// [keyword] 搜索关键词
+  /// 返回联想词列表。
+  Future<List<String>> tipSearch({
+    required String source,
+    required String keyword,
+  }) async {
+    await ensureLoggedIn();
+    try {
+      final response = await _dio.get(
+        '$serverUrl/api/music/tipSearch',
+        queryParameters: {
+          'source': source,
+          'keyword': keyword,
+        },
+        options: _authOptions,
+      );
+      final data = response.data;
+      // 兼容 {list: [...]} 或裸数组 [...]
+      final list = data is Map<String, dynamic>
+          ? data['list'] as List<dynamic>?
+          : data as List<dynamic>?;
+      return list?.map((e) => e.toString()).toList() ?? [];
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 搜索提示失败: source=$source, keyword=$keyword',
+      );
+      rethrow;
+    }
+  }
+
+  /// 热搜词列表
+  ///
+  /// GET /api/music/hotSearch?source=
+  /// [source] 库标识（kg/kw/tx/mg/wy）
+  /// 返回热搜词列表。
+  Future<List<String>> hotSearch({required String source}) async {
+    await ensureLoggedIn();
+    try {
+      final response = await _dio.get(
+        '$serverUrl/api/music/hotSearch',
+        queryParameters: {
+          'source': source,
+        },
+        options: _authOptions,
+      );
+      final data = response.data;
+      // 兼容 {list: [...]} 或裸数组 [...]
+      final list = data is Map<String, dynamic>
+          ? data['list'] as List<dynamic>?
+          : data as List<dynamic>?;
+      return list?.map((e) => e.toString()).toList() ?? [];
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 热搜词获取失败: source=$source',
+      );
+      rethrow;
+    }
+  }
+
   /// 通用搜索（支持 type 参数）
   ///
   /// GET /api/music/search?source=&name=&type=&page=&limit=

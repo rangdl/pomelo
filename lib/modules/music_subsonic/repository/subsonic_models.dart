@@ -1,4 +1,4 @@
-﻿import 'package:pomelo/core/models/metadata/metadata.dart';
+import 'package:pomelo/core/models/metadata/metadata.dart';
 
 /// Subsonic REST API 顶层响应包装
 ///
@@ -240,6 +240,30 @@ class SubsonicArtist {
       name: json['name'] as String? ?? '',
       albumCount: (json['albumCount'] as num?)?.toInt() ?? 0,
       coverArt: json['coverArt'] as String?,
+    );
+  }
+
+  /// 转换为项目统一的 [Artist] 模型
+  Artist toArtist({
+    required String sourceId,
+    required String sourceName,
+    required String serverUrl,
+  }) {
+    final coverUrl = coverArt != null
+        ? '$serverUrl/rest/getCoverArt?id=$coverArt&size=300&f=json'
+        : null;
+    return Artist(
+      id: id,
+      name: name,
+      coverArt: coverUrl,
+      artistImageUrl: coverUrl,
+      albumCount: albumCount,
+      source: (
+        id: sourceId,
+        name: sourceName,
+        libraryId: null,
+        libraryName: null,
+      ),
     );
   }
 }

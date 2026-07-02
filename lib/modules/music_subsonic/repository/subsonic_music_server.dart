@@ -1,4 +1,4 @@
-﻿import 'package:pomelo/core/core.dart';
+import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
 import 'subsonic_client.dart';
@@ -211,6 +211,38 @@ class SubsonicMusicServer extends MusicServer {
       return PaginationResponse.fromList(tracks, page: page, limit: limit);
     } on SubsonicException {
       return PaginationResponse.empty(page: page, limit: limit);
+    }
+  }
+
+  // ========== 歌手 ==========
+
+  @override
+  Future<Artist?> getArtist(String id) async {
+    try {
+      final result = await client.getArtist(id);
+      return result.artist.toArtist(
+        sourceId: sourceId,
+        sourceName: sourceName,
+        serverUrl: _serverUrl,
+      );
+    } on SubsonicException {
+      return null;
+    }
+  }
+
+  @override
+  Future<List<Album>> getArtistAlbums(String artistId) async {
+    try {
+      final result = await client.getArtist(artistId);
+      return result.albums
+          .map((a) => a.toAlbum(
+                sourceId: sourceId,
+                sourceName: sourceName,
+                serverUrl: _serverUrl,
+              ))
+          .toList();
+    } on SubsonicException {
+      return [];
     }
   }
 
