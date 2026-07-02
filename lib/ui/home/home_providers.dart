@@ -20,6 +20,46 @@ class PlaylistRef {
   });
 }
 
+/// 歌手引用 — 用于在 Home Tab 内联打开歌手详情
+@immutable
+class ArtistRef {
+  final String artistId;
+  final String sourceId;
+  final String artistName;
+  final String? coverUrl;
+  final int albumCount;
+
+  const ArtistRef({
+    required this.artistId,
+    required this.sourceId,
+    required this.artistName,
+    this.coverUrl,
+    this.albumCount = 0,
+  });
+}
+
+/// 专辑引用 — 用于在 Home Tab 内联打开专辑详情
+@immutable
+class AlbumRef {
+  final String albumId;
+  final String sourceId;
+  final String albumName;
+  final String? coverUrl;
+  final String? artist;
+  final int? year;
+  final int songCount;
+
+  const AlbumRef({
+    required this.albumId,
+    required this.sourceId,
+    required this.albumName,
+    this.coverUrl,
+    this.artist,
+    this.year,
+    this.songCount = 0,
+  });
+}
+
 /// Home Tab 内联导航状态
 ///
 /// 通过 [homeNavProvider] 统一管理 Home Tab 的视图切换，
@@ -49,6 +89,18 @@ class HomeNavPlaylist extends HomeNav {
   const HomeNavPlaylist(this.ref);
 }
 
+/// 歌手详情视图
+class HomeNavArtist extends HomeNav {
+  final ArtistRef ref;
+  const HomeNavArtist(this.ref);
+}
+
+/// 专辑详情视图
+class HomeNavAlbum extends HomeNav {
+  final AlbumRef ref;
+  const HomeNavAlbum(this.ref);
+}
+
 /// Home Tab 导航状态管理
 ///
 /// 切换音乐来源/库时自动重置为默认视图，避免 stale 状态导致 UI 错配。
@@ -68,4 +120,6 @@ class HomeNavNotifier extends Notifier<HomeNav> {
   void showDefaultList() => state = const HomeNavDefaultList();
   void showFavorites() => state = const HomeNavFavorites();
   void showPlaylist(PlaylistRef ref) => state = HomeNavPlaylist(ref);
+  void showArtist(ArtistRef ref) => state = HomeNavArtist(ref);
+  void showAlbum(AlbumRef ref) => state = HomeNavAlbum(ref);
 }

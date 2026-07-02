@@ -28,39 +28,74 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     MediaKit.ensureInitialized();
 
-    await _runPlatformSpecificCode();
+    ProviderContainer? container;
+    try {
+      await _runPlatformSpecificCode();
 
-    // ========== 存储层初始化 ==========
-    // 提前创建 drift 数据库（所有模块共享同一实例）
-    final database = AppDatabase();
-    // 从 drift 数据库加载 UserPreference（用于初始化 MusicCacheDir）
-    final persistedPref = await UserPreference.loadFromDatabase(database);
-    MusicCacheDir.setCustomDirectory(persistedPref.cacheDirectory);
-    MusicCacheDir.setSizeLimit(persistedPref.cacheSizeLimitGB);
-    // ================================
+      // ========== 存储层初始化 ==========
+      // 提前创建 drift 数据库（所有模块共享同一实例）
+      final database = AppDatabase();
+      // 从 drift 数据库加载 UserPreference（用于初始化 MusicCacheDir）
+      final persistedPref = await UserPreference.loadFromDatabase(database);
+      MusicCacheDir.setCustomDirectory(persistedPref.cacheDirectory);
+      MusicCacheDir.setSizeLimit(persistedPref.cacheSizeLimitGB);
+      // ================================
 
-    // ========== Riverpod ProviderContainer ==========
-    // 显式创建 ProviderContainer，便于在 runApp 前触发各模块初始化
-    final container = ProviderContainer(
-      overrides: [appDatabaseProvider.overrideWithValue(database)],
-      observers: [AppLoggerProviderObserver()],
-    );
+      // ========== Riverpod ProviderContainer ==========
+      // 显式创建 ProviderContainer，便于在 runApp 前触发各模块初始化
+      container = ProviderContainer(
+        overrides: [appDatabaseProvider.overrideWithValue(database)],
+        observers: [AppLoggerProviderObserver()],
+      );
 
-    // ========== 核心模块初始化 ==========
-    final audioPlayerModule = await container.read(
-      audioPlayerModuleProvider.future,
-    );
-    // 注入 ProviderContainer，供 ServerPlaybackRoutes 访问 sourcedTrackProvider
-    audioPlayerModule.container = container;
-    // ==================================================================
-    // 异步加载 UserPreference 到 Riverpod 状态
-    await container.read(userPreferenceProvider.notifier).initialize();
-    // ===============================================
+      // ========== 核心模块初始化 ==========
+      final audioPlayerModule = await container.read(
+        audioPlayerModuleProvider.future,
+      );
+      // 注入 ProviderContainer，供 ServerPlaybackRoutes 访问 sourcedTrackProvider
+      audioPlayerModule.container = container;
+      // ==================================================================
+      // 异步加载 UserPreference 到 Riverpod 状态
+      await container.read(userPreferenceProvider.notifier).initialize();
+      // ===============================================
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '启动初始化失败');
+    }
 
+    // 无论启动是否完全成功都调用 runApp，避免白屏
     runApp(
-      UncontrolledProviderScope(container: container, child: const Pomelo()),
+      container != null
+          ? UncontrolledProviderScope(container: container, child: const Pomelo())
+          : const _StartupFailedApp(),
     );
   });
+}
+
+/// 启动失败时的兜底页面
+class _StartupFailedApp extends StatelessWidget {
+  const _StartupFailedApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48),
+            const SizedBox(height: 16),
+            const Text('启动失败，请查看日志后重启'),
+            const SizedBox(height: 8),
+            const Text(
+              '日志路径见 <documents>/pomelo/logs/',
+              style: TextStyle(fontSize: 12, color: Color(0xFF888888)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// 应用壳 — 监听全局设置并响应式更新

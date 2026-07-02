@@ -116,6 +116,16 @@ abstract class MusicServer {
     throw UnimplementedError('$sourceName(searchPlaylists) 尚未实现');
   }
 
+  /// 搜索提示（联想词）
+  ///
+  /// 默认返回空列表，支持搜索提示的服务覆写此方法。
+  Future<List<String>> tipSearch(String keyword) async => [];
+
+  /// 热搜词列表
+  ///
+  /// 默认返回空列表，支持热搜词的服务覆写此方法。
+  Future<List<String>> getHotSearch() async => [];
+
   // ========== 曲目 ==========
 
   /// 获取曲目详情
@@ -135,6 +145,18 @@ abstract class MusicServer {
     int page = 1,
     int limit = 20,
   });
+
+  // ========== 歌手 ==========
+
+  /// 获取歌手详情
+  ///
+  /// 默认返回 null，支持歌手详情的服务覆写此方法。
+  Future<Artist?> getArtist(String id) async => null;
+
+  /// 获取歌手的专辑列表
+  ///
+  /// 默认返回空列表，支持歌手专辑的服务覆写此方法。
+  Future<List<Album>> getArtistAlbums(String artistId) async => [];
 
   // ========== 歌单 ==========
 

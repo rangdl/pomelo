@@ -17,6 +17,8 @@ import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
+import 'package:pomelo/ui/music/album_detail_page.dart';
+import 'package:pomelo/ui/music/artist_detail_page.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌曲搜索结果页面
@@ -30,11 +32,33 @@ class MusicSearchPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final searchController = useTextEditingController(text: keyword);
     final keywordState = useState(keyword);
+    // 输入框当前文本，用于触发搜索提示
+    final inputText = useState(keyword);
+    // 是否展示搜索提示浮层
+    final showSuggestions = useState(false);
+    final focusNode = useFocusNode();
 
     void doSearch(String kw) {
-      if (kw.trim().isEmpty) return;
-      keywordState.value = kw.trim();
+      final trimmed = kw.trim();
+      if (trimmed.isEmpty) return;
+      keywordState.value = trimmed;
+      showSuggestions.value = false;
+      focusNode.unfocus();
     }
+
+    useEffect(() {
+      void onFocusChanged() {
+        // 失焦时延迟关闭，等待点击事件处理
+        if (!focusNode.hasFocus) {
+          Future.delayed(const Duration(milliseconds: 150), () {
+            showSuggestions.value = false;
+          });
+        }
+      }
+
+      focusNode.addListener(onFocusChanged);
+      return () => focusNode.removeListener(onFocusChanged);
+    }, [focusNode]);
 
     return Scaffold(
       headers: [
@@ -47,14 +71,37 @@ class MusicSearchPage extends HookConsumerWidget {
           ],
           title: _SearchInputBar(
             controller: searchController,
+            focusNode: focusNode,
             onSearch: doSearch,
+            onChanged: (text) {
+              inputText.value = text;
+              // 输入非空且与当前搜索关键词不同时显示提示
+              showSuggestions.value =
+                  text.trim().isNotEmpty && text.trim() != keywordState.value;
+            },
           ),
         ),
         const Divider(),
       ],
-      child: keywordState.value.isEmpty
-          ? const Center(child: Text('输入关键词搜索'))
-          : _SearchResults(keyword: keywordState.value),
+      child: Stack(
+        children: [
+          keywordState.value.isEmpty
+              ? const Center(child: Text('输入关键词搜索'))
+              : _SearchResults(keyword: keywordState.value),
+          // 搜索提示浮层
+          if (showSuggestions.value && inputText.value.trim().isNotEmpty)
+            Positioned.fill(
+              top: 0,
+              child: _SearchSuggestions(
+                keyword: inputText.value.trim(),
+                onSelected: (suggestion) {
+                  searchController.text = suggestion;
+                  doSearch(suggestion);
+                },
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -62,9 +109,16 @@ class MusicSearchPage extends HookConsumerWidget {
 /// 搜索输入栏 — 包含搜索类型下拉按钮 + 输入框
 class _SearchInputBar extends HookConsumerWidget {
   final TextEditingController controller;
+  final FocusNode focusNode;
   final void Function(String) onSearch;
+  final void Function(String) onChanged;
 
-  const _SearchInputBar({required this.controller, required this.onSearch});
+  const _SearchInputBar({
+    required this.controller,
+    required this.focusNode,
+    required this.onSearch,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -103,9 +157,11 @@ class _SearchInputBar extends HookConsumerWidget {
         Expanded(
           child: TextField(
             controller: controller,
+            focusNode: focusNode,
             autofocus: false,
             placeholder: Text('搜索${selectedType.label}...'),
             onSubmitted: onSearch,
+            onChanged: onChanged,
             features: [
               InputFeature.trailing(
                 GhostButton(
@@ -141,6 +197,183 @@ class _SearchInputBar extends HookConsumerWidget {
           .toList(),
       onSelected: (value) =>
           ref.read(selectedSearchTypeProvider.notifier).select(value),
+    );
+  }
+}
+
+/// 单条搜索提示项 — 带悬停高亮效果
+class _SuggestionItem extends HookConsumerWidget {
+  final String text;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  const _SuggestionItem({
+    required this.text,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isHovered = useState(false);
+    return MouseRegion(
+      onEnter: (_) => isHovered.value = true,
+      onExit: (_) => isHovered.value = false,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isHovered.value
+                ? colorScheme.muted.withValues(alpha: 0.5)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.search,
+                size: 16,
+                color: colorScheme.mutedForeground,
+              ),
+              const Gap(10),
+              Expanded(
+                child: Text(
+                  text,
+                  style: const TextStyle(fontSize: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 搜索提示浮层组件
+///
+/// 监听 [searchTipProvider] 获取联想词列表，点击联想词触发搜索。
+/// 使用半透明背景遮罩 + 顶部对齐的提示卡片。
+class _SearchSuggestions extends HookConsumerWidget {
+  final String keyword;
+  final void Function(String suggestion) onSelected;
+
+  const _SearchSuggestions({
+    required this.keyword,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tipsAsync = ref.watch(searchTipProvider(keyword));
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return GestureDetector(
+      // 点击空白处关闭提示
+      onTap: () {},
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.3),
+        alignment: Alignment.topCenter,
+        child: GestureDetector(
+          onTap: () {},
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 640),
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: colorScheme.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: colorScheme.border,
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: tipsAsync.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(
+                  child: SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              error: (_, _) => Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  '获取提示失败',
+                  style: TextStyle(
+                    color: colorScheme.mutedForeground,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              data: (tips) {
+                if (tips.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      '暂无搜索提示',
+                      style: TextStyle(
+                        color: colorScheme.mutedForeground,
+                        fontSize: 13,
+                      ),
+                    ),
+                  );
+                }
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '搜索提示',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: colorScheme.mutedForeground,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        itemCount: tips.length,
+                        itemBuilder: (context, index) {
+                          final tip = tips[index];
+                          return _SuggestionItem(
+                            text: tip,
+                            colorScheme: colorScheme,
+                            onTap: () => onSelected(tip),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -592,37 +825,50 @@ class _ArtistResultsList extends ConsumerWidget {
                     itemCount: artists.length,
                     itemBuilder: (context, index) {
                       final a = artists[index];
-                      return Card(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: CoverImage(
-                                  coverArt:
-                                      a.coverArt ?? a.artistImageUrl,
-                                  colorScheme: colorScheme,
-                                  borderRadius:
-                                      const BorderRadius.vertical(
-                                    top: Radius.circular(8),
+                      return GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => ArtistDetailPage(
+                              artistId: a.id,
+                              sourceId: a.source?.id ?? sourceId,
+                              artistName: a.name,
+                              coverUrl: a.coverArt ?? a.artistImageUrl,
+                              albumCount: a.albumCount,
+                            ),
+                          ),
+                        ),
+                        child: Card(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: CoverImage(
+                                    coverArt:
+                                        a.coverArt ?? a.artistImageUrl,
+                                    colorScheme: colorScheme,
+                                    borderRadius:
+                                        const BorderRadius.vertical(
+                                      top: Radius.circular(8),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Text(
-                                a.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: colorScheme.foreground,
+                              Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(
+                                  a.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: colorScheme.foreground,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -720,52 +966,67 @@ class _AlbumResultsList extends ConsumerWidget {
                     itemCount: albums.length,
                     itemBuilder: (context, index) {
                       final a = albums[index];
-                      return Card(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: CoverImage(
-                                  coverArt: a.coverArt,
-                                  colorScheme: colorScheme,
-                                  borderRadius:
-                                      const BorderRadius.vertical(
-                                    top: Radius.circular(8),
+                      return GestureDetector(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => AlbumDetailPage(
+                              albumId: a.id,
+                              sourceId: a.source?.id ?? sourceId,
+                              albumName: a.name,
+                              coverUrl: a.coverArt,
+                              artist: a.artist,
+                              year: a.year,
+                              songCount: a.songCount,
+                            ),
+                          ),
+                        ),
+                        child: Card(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: CoverImage(
+                                    coverArt: a.coverArt,
+                                    colorScheme: colorScheme,
+                                    borderRadius:
+                                        const BorderRadius.vertical(
+                                      top: Radius.circular(8),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(8, 8, 8, 2),
-                              child: Text(
-                                a.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: colorScheme.foreground,
-                                ),
-                              ),
-                            ),
-                            if ((a.artist ?? '').isNotEmpty)
                               Padding(
                                 padding:
-                                    const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                    const EdgeInsets.fromLTRB(8, 8, 8, 2),
                                 child: Text(
-                                  a.artist ?? '',
-                                  maxLines: 1,
+                                  a.name,
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontSize: 11,
-                                    color:
-                                        colorScheme.mutedForeground,
+                                    fontSize: 13,
+                                    color: colorScheme.foreground,
                                   ),
                                 ),
                               ),
-                          ],
+                              if ((a.artist ?? '').isNotEmpty)
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                  child: Text(
+                                    a.artist ?? '',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color:
+                                          colorScheme.mutedForeground,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
                       );
                     },

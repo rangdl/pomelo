@@ -457,6 +457,42 @@ final favoriteArtistsProvider = FutureProvider<List<Artist>>((ref) async {
   return service.getFavoriteArtists();
 });
 
+// ========== 搜索提示与热搜词 ==========
+
+/// 搜索提示（联想词）
+///
+/// 根据输入关键词获取搜索提示列表。
+/// 内置 300ms 防抖，避免频繁请求。
+/// 切换来源/库时自动失效（依赖 [musicServerProvider]）。
+final searchTipProvider =
+    FutureProvider.family<List<String>, String>((ref, keyword) async {
+  final kw = keyword.trim();
+  if (kw.isEmpty) return [];
+  // 防抖 300ms
+  await Future.delayed(const Duration(milliseconds: 300));
+  final service = await ref.watch(musicServerProvider.future);
+  if (service == null) return [];
+  try {
+    return await service.tipSearch(kw);
+  } catch (_) {
+    return [];
+  }
+});
+
+/// 热搜词列表
+///
+/// 获取当前选中服务的热搜词。
+/// 切换来源/库时自动刷新（依赖 [musicServerProvider]）。
+final hotSearchProvider = FutureProvider<List<String>>((ref) async {
+  final service = await ref.watch(musicServerProvider.future);
+  if (service == null) return [];
+  try {
+    return await service.getHotSearch();
+  } catch (_) {
+    return [];
+  }
+});
+
 /// 收藏专辑列表
 final favoriteAlbumsProvider = FutureProvider<List<Album>>((ref) async {
   final service = await ref.watch(musicServerProvider.future);
