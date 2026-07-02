@@ -157,6 +157,9 @@ jobs:
           allowUpdates: true
           generateReleaseNotes: true
           artifacts: Release-Binaries/**/*,RELEASE.sha256sum,RELEASE.md5sum
+      
+      - name: Refresh CDN cache
+        run: curl https://purge.jsdelivr.net/gh/rangdl/pomelo@latest/pubspec.yaml
 
   cleanup:
     runs-on: ubuntu-latest
