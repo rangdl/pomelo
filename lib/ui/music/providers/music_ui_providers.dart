@@ -5,6 +5,9 @@ import 'package:pomelo/core/models/metadata/music_source_type.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
 import 'package:pomelo/core/models/metadata/playlist.dart';
 import 'package:pomelo/core/models/metadata/leaderboard.dart';
+import 'package:pomelo/core/models/metadata/search_type.dart';
+import 'package:pomelo/core/models/metadata/artist.dart';
+import 'package:pomelo/core/models/metadata/album.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/providers/music_server_config_provider.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
@@ -53,9 +56,9 @@ class SelectedSourceNotifier
         },
       );
       // 兜底：若服务在 build 前已就绪
-      final server = ref.read(
-        musicServerByProvider(initialState.sourceId!),
-      ).value;
+      final server = ref
+          .read(musicServerByProvider(initialState.sourceId!))
+          .value;
       if (server != null) {
         server.setDefaultLibrary(initialState.libraryId!);
       }
@@ -85,10 +88,11 @@ class SelectedSourceNotifier
 /// 当前选中的音乐来源
 ///
 /// 返回 `(sourceId, libraryId)` 记录，sourceId 为 null 表示"全部来源"。
-final selectedSourceProvider = NotifierProvider<
-  SelectedSourceNotifier,
-  ({String? sourceId, String? libraryId})
->(SelectedSourceNotifier.new);
+final selectedSourceProvider =
+    NotifierProvider<
+      SelectedSourceNotifier,
+      ({String? sourceId, String? libraryId})
+    >(SelectedSourceNotifier.new);
 
 /// 音乐列表数据：曲目列表 + 出错的服务
 class MusicListData {
@@ -107,7 +111,9 @@ final currentSourceTracksProvider = FutureProvider<MusicListData>((ref) async {
 
   Iterable<MusicServer> targets = services;
   if (selection.sourceId != null) {
-    final s = await ref.watch(musicServerByProvider(selection.sourceId!).future);
+    final s = await ref.watch(
+      musicServerByProvider(selection.sourceId!).future,
+    );
     targets = s != null ? [s] : [];
   }
 
@@ -154,7 +160,9 @@ final musicServerProvider = FutureProvider<MusicServer?>((ref) async {
     final configs = await ref.watch(musicServerConfigsProvider.future);
     if (configs.isEmpty) {
       final cacheDir = await MusicCacheDir.getOrCreate();
-      await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+      await ref
+          .read(musicServerConfigsNotifierProvider.notifier)
+          .upsert(
             LocalMusicConfig(
               id: 'local',
               name: '本地音乐',
@@ -166,10 +174,13 @@ final musicServerProvider = FutureProvider<MusicServer?>((ref) async {
   }
 
   // 选中的服务为空或无效时，自动选择第一个并持久化
-  final serverExists = selectedId != null &&
-      servers.any((s) =>
-          s.sourceId == selectedId ||
-          s.libraries.any((v) => v.id == selectedId));
+  final serverExists =
+      selectedId != null &&
+      servers.any(
+        (s) =>
+            s.sourceId == selectedId ||
+            s.libraries.any((v) => v.id == selectedId),
+      );
 
   final effectiveId = serverExists ? selectedId : servers.first.sourceId;
 
@@ -213,53 +224,51 @@ abstract class SourceBoundSelectionNotifier extends Notifier<String?> {
 /// 为 null 时显示第一个父分类。仅用于切换子分类列表，不触发歌单查询。
 class SelectedPlaylistParentNotifier extends SourceBoundSelectionNotifier {}
 
-final selectedPlaylistParentProvider = NotifierProvider<
-  SelectedPlaylistParentNotifier,
-  String?
->(SelectedPlaylistParentNotifier.new);
+final selectedPlaylistParentProvider =
+    NotifierProvider<SelectedPlaylistParentNotifier, String?>(
+      SelectedPlaylistParentNotifier.new,
+    );
 
 /// 当前选中的子分类 id
 ///
 /// 为 null 时不查询歌单列表。只有点击子分类才会设置此值并触发查询。
 class SelectedPlaylistCategoryNotifier extends SourceBoundSelectionNotifier {}
 
-final selectedPlaylistCategoryProvider = NotifierProvider<
-  SelectedPlaylistCategoryNotifier,
-  String?
->(SelectedPlaylistCategoryNotifier.new);
+final selectedPlaylistCategoryProvider =
+    NotifierProvider<SelectedPlaylistCategoryNotifier, String?>(
+      SelectedPlaylistCategoryNotifier.new,
+    );
 
 /// 当前选中的歌单排序方式 id
 ///
 /// 为 null 时使用默认排序。
 class SelectedPlaylistSortNotifier extends SourceBoundSelectionNotifier {}
 
-final selectedPlaylistSortProvider = NotifierProvider<
-  SelectedPlaylistSortNotifier,
-  String?
->(SelectedPlaylistSortNotifier.new);
+final selectedPlaylistSortProvider =
+    NotifierProvider<SelectedPlaylistSortNotifier, String?>(
+      SelectedPlaylistSortNotifier.new,
+    );
 
 /// 当前选中服务的歌单排序方式列表
-final playlistSortOrdersProvider = FutureProvider<List<({String id, String name})>>((
-  ref,
-) async {
-  final service = await ref.watch(musicServerProvider.future);
-  if (service == null) return [];
-  return service.getPlaylistSortOrders();
-});
+final playlistSortOrdersProvider =
+    FutureProvider<List<({String id, String name})>>((ref) async {
+      final service = await ref.watch(musicServerProvider.future);
+      if (service == null) return [];
+      return service.getPlaylistSortOrders();
+    });
 
 /// 当前选中分类下的歌单列表
-final playlistsByCategoryProvider = FutureProvider<PaginationResponse<Playlist>>((
-  ref,
-) async {
-  final categoryId = ref.watch(selectedPlaylistCategoryProvider);
-  final sortId = ref.watch(selectedPlaylistSortProvider);
-  if (categoryId == null) return PaginationResponse.empty();
+final playlistsByCategoryProvider =
+    FutureProvider<PaginationResponse<Playlist>>((ref) async {
+      final categoryId = ref.watch(selectedPlaylistCategoryProvider);
+      final sortId = ref.watch(selectedPlaylistSortProvider);
+      if (categoryId == null) return PaginationResponse.empty();
 
-  final service = await ref.watch(musicServerProvider.future);
-  if (service == null) return PaginationResponse.empty();
+      final service = await ref.watch(musicServerProvider.future);
+      if (service == null) return PaginationResponse.empty();
 
-  return service.getPlaylistsByCategory(categoryId, sortId: sortId);
-});
+      return service.getPlaylistsByCategory(categoryId, sortId: sortId);
+    });
 
 /// 当前选中服务的排行榜列表
 final leaderboardsProvider = FutureProvider<List<Leaderboard>>((ref) async {
@@ -273,10 +282,10 @@ final leaderboardsProvider = FutureProvider<List<Leaderboard>>((ref) async {
 /// 为 null 时默认选中第一个排行榜。
 class SelectedLeaderboardNotifier extends SourceBoundSelectionNotifier {}
 
-final selectedLeaderboardProvider = NotifierProvider<
-  SelectedLeaderboardNotifier,
-  String?
->(SelectedLeaderboardNotifier.new);
+final selectedLeaderboardProvider =
+    NotifierProvider<SelectedLeaderboardNotifier, String?>(
+      SelectedLeaderboardNotifier.new,
+    );
 
 /// 指定排行榜的曲目列表
 final leaderboardTracksProvider = FutureProvider.family<List<Track>, String>((
@@ -299,40 +308,158 @@ class SearchListData {
 /// 搜索结果 Provider（按关键词 + sourceId 过滤）
 ///
 /// sourceId 为 null 时搜索全部来源，否则仅搜索指定来源。
-final searchResultsProvider = FutureProvider.family<
-  SearchListData,
-  ({String keyword, String? sourceId, String? libraryId})
->((ref, params) async {
-  final services = await ref.watch(musicServersProvider.future);
+final searchResultsProvider =
+    FutureProvider.family<
+      SearchListData,
+      ({String keyword, String? sourceId, String? libraryId})
+    >((ref, params) async {
+      final services = await ref.watch(musicServersProvider.future);
 
-  Iterable<MusicServer> targets = services;
-  if (params.sourceId != null) {
-    final s = await ref.watch(musicServerByProvider(params.sourceId!).future);
-    targets = s != null ? [s] : [];
+      Iterable<MusicServer> targets = services;
+      if (params.sourceId != null) {
+        final s = await ref.watch(
+          musicServerByProvider(params.sourceId!).future,
+        );
+        targets = s != null ? [s] : [];
+      }
+
+      if (targets.isEmpty) return const SearchListData();
+
+      final results = await safeCallServices<PaginationResponse<Track>>(
+        targets.toList(),
+        (s) => (s as MusicServer).searchTracks(params.keyword),
+        getId: (s) => (s as MusicServer).sourceId,
+        getName: (s) => (s as MusicServer).sourceName,
+      );
+
+      final allTracks = <Track>[];
+      final errors = <({String sourceId, String sourceName, Object error})>[];
+      for (final r in results) {
+        if (r.isSuccess && r.data != null) {
+          allTracks.addAll(r.data!.items);
+        } else if (r.isError && r.error != null) {
+          errors.add((
+            sourceId: r.sourceId,
+            sourceName: r.sourceName,
+            error: r.error!,
+          ));
+        }
+      }
+
+      return SearchListData(tracks: mergeTracks(allTracks), errors: errors);
+    });
+
+// ========== 搜索类型 ==========
+
+/// 当前选中的搜索类型
+///
+/// 切换来源/库时自动重置为 [SearchType.song]。
+final selectedSearchTypeProvider =
+    NotifierProvider<SelectedSearchTypeNotifier, SearchType>(
+      SelectedSearchTypeNotifier.new,
+    );
+
+class SelectedSearchTypeNotifier extends Notifier<SearchType> {
+  @override
+  SearchType build() {
+    ref.watch(selectedSourceProvider);
+    return SearchType.song;
   }
 
-  if (targets.isEmpty) return const SearchListData();
+  void select(SearchType type) => state = type;
+}
 
-  final results = await safeCallServices<PaginationResponse<Track>>(
-    targets.toList(),
-    (s) => (s as MusicServer).searchTracks(params.keyword),
-    getId: (s) => (s as MusicServer).sourceId,
-    getName: (s) => (s as MusicServer).sourceName,
-  );
+/// 当前选中服务支持的搜索类型
+final supportedSearchTypesProvider = FutureProvider<List<SearchType>>((
+  ref,
+) async {
+  final service = await ref.watch(musicServerProvider.future);
+  if (service == null) return const [SearchType.song];
+  return service.supportedSearchTypes;
+});
 
-  final allTracks = <Track>[];
-  final errors = <({String sourceId, String sourceName, Object error})>[];
-  for (final r in results) {
-    if (r.isSuccess && r.data != null) {
-      allTracks.addAll(r.data!.items);
-    } else if (r.isError && r.error != null) {
-      errors.add((
-        sourceId: r.sourceId,
-        sourceName: r.sourceName,
-        error: r.error!,
-      ));
-    }
-  }
+/// 歌手搜索结果
+final searchArtistsProvider =
+    FutureProvider.family<
+      List<Artist>,
+      ({String keyword, String? sourceId, String? libraryId})
+    >((ref, params) async {
+      if (params.sourceId == null) return [];
+      final s = await ref.watch(musicServerByProvider(params.sourceId!).future);
+      if (s == null) return [];
+      try {
+        final result = await s.searchArtists(
+          params.keyword,
+          libraryId: params.libraryId,
+        );
+        return result.items;
+      } catch (_) {
+        return [];
+      }
+    });
 
-  return SearchListData(tracks: mergeTracks(allTracks), errors: errors);
+/// 专辑搜索结果
+final searchAlbumsProvider =
+    FutureProvider.family<
+      List<Album>,
+      ({String keyword, String? sourceId, String? libraryId})
+    >((ref, params) async {
+      if (params.sourceId == null) return [];
+      final s = await ref.watch(musicServerByProvider(params.sourceId!).future);
+      if (s == null) return [];
+      try {
+        final result = await s.searchAlbums(
+          params.keyword,
+          libraryId: params.libraryId,
+        );
+        return result.items;
+      } catch (_) {
+        return [];
+      }
+    });
+
+/// 歌单搜索结果
+final searchPlaylistsProvider =
+    FutureProvider.family<
+      List<Playlist>,
+      ({String keyword, String? sourceId, String? libraryId})
+    >((ref, params) async {
+      if (params.sourceId == null) return [];
+      final s = await ref.watch(musicServerByProvider(params.sourceId!).future);
+      if (s == null) return [];
+      try {
+        final result = await s.searchPlaylists(
+          params.keyword,
+          libraryId: params.libraryId,
+        );
+        return result.items;
+      } catch (_) {
+        return [];
+      }
+    });
+
+// ========== 用户收藏 ==========
+
+/// 用户列表数据（默认列表 + 收藏列表 + 用户歌单）
+///
+/// 数据来源于当前选中服务的 [MusicServer.getUserLists]。
+/// 仅 LxServer 等支持用户数据的服务返回有效数据。
+final userListsProvider = FutureProvider<UserListsData>((ref) async {
+  final service = await ref.watch(musicServerProvider.future);
+  if (service == null) return const UserListsData();
+  return service.getUserLists();
+});
+
+/// 收藏歌手列表
+final favoriteArtistsProvider = FutureProvider<List<Artist>>((ref) async {
+  final service = await ref.watch(musicServerProvider.future);
+  if (service == null) return [];
+  return service.getFavoriteArtists();
+});
+
+/// 收藏专辑列表
+final favoriteAlbumsProvider = FutureProvider<List<Album>>((ref) async {
+  final service = await ref.watch(musicServerProvider.future);
+  if (service == null) return [];
+  return service.getFavoriteAlbums();
 });

@@ -6,5 +6,6 @@ export 'album.dart';
 export 'artist.dart';
 export 'playlist.dart';
 export 'music_source_type.dart';
+export 'search_type.dart';
 export 'leaderboard.dart';
 export 'music_server.dart';

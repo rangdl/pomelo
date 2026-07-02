@@ -3,10 +3,14 @@ import 'dart:async';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/framework/pomelo_icons.dart';
 import 'package:pomelo/core/helper.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/ui/home/home_providers.dart';
 import 'package:pomelo/ui/music/music_section.dart';
+import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
+import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -128,15 +132,15 @@ class _PhoneLayout extends HookConsumerWidget {
 /// 布局结构：
 /// ```
 /// ┌──────────┬────────────────────┐
-/// │          │  TopTitleBar       │
-/// │  NavRail ├────────────────────┤
-/// │  (全高)  │  Content           │
-/// │          │  (tabRouter)       │
-/// │          ├────────────────────┤
+/// │  NavRail │  TopTitleBar       │
+/// │  (上部)  ├────────────────────┤
+/// │──────────│  Content           │
+/// │  我的库  │  (tabRouter)       │
+/// │  (下部)  ├────────────────────┤
 /// │          │  MiniPlayer        │
 /// └──────────┴────────────────────┘
 /// ```
-/// 左侧 NavigationRail 占满全高；顶部标题栏与 tabRouter 内容区对齐。
+/// 左侧侧边栏分为上下两部分：上部为主导航，下部为我的库快捷入口。
 class _NavigationRailLayout extends HookConsumerWidget {
   final TabsRouter tabsRouter;
   final List<Widget> children;
@@ -165,30 +169,18 @@ class _NavigationRailLayout extends HookConsumerWidget {
     return Scaffold(
       child: Row(
         children: [
-          // 左侧 NavigationRail — 占满全高
-          NavigationRail(
-            alignment: NavigationRailAlignment.start,
-            labelType: NavigationLabelType.none,
-            expanded: extended,
-            onSelected: (key) {
-              final index = _navDestinations.indexWhere(
-                (d) => d.key == key,
-              );
+          // 左侧侧边栏 — 上下分区
+          _Sidebar(
+            tabsRouter: tabsRouter,
+            extended: extended,
+            selectedKey: selectedKey.value,
+            onSelectKey: (key) {
+              final index = _navDestinations.indexWhere((d) => d.key == key);
               if (index >= 0 && index != tabsRouter.activeIndex) {
                 selectedKey.value = key;
                 tabsRouter.setActiveIndex(index);
               }
             },
-            selectedKey: selectedKey.value,
-            children: _navDestinations
-                .map(
-                  (d) => NavigationItem(
-                    key: d.key,
-                    label: Text(d.label),
-                    child: Icon(d.icon),
-                  ),
-                )
-                .toList(),
           ),
           const VerticalDivider(width: 1, thickness: 1),
           // 右侧：顶部标题栏 + 内容 + MiniPlayer
@@ -204,6 +196,324 @@ class _NavigationRailLayout extends HookConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 桌面端侧边栏 — 上下分区
+///
+/// 上半部分：主导航（首页/平台/统计/设置）
+/// 下半部分：我的库（默认列表/我的收藏/我的歌单）
+class _Sidebar extends HookConsumerWidget {
+  final TabsRouter tabsRouter;
+  final bool extended;
+  final Key? selectedKey;
+  final ValueChanged<Key?> onSelectKey;
+
+  const _Sidebar({
+    required this.tabsRouter,
+    required this.extended,
+    required this.selectedKey,
+    required this.onSelectKey,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Column(
+      children: [
+        // 上半部分：主导航
+        Expanded(
+          child: NavigationRail(
+            alignment: NavigationRailAlignment.start,
+            labelType: NavigationLabelType.none,
+            expanded: extended,
+            onSelected: onSelectKey,
+            selectedKey: selectedKey,
+            children: _navDestinations
+                .map(
+                  (d) => NavigationItem(
+                    key: d.key,
+                    label: Text(d.label),
+                    child: Icon(d.icon),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+        const Divider(height: 1),
+        // 下半部分：我的库
+        _LibrarySidebarSection(extended: extended),
+      ],
+    );
+  }
+}
+
+/// 侧边栏下半部分 — 我的库
+///
+/// 包含三个快捷入口：默认列表 / 我的收藏 / 我的歌单。
+/// 「我的歌单」为可折叠展开的二级菜单，歌单列表来自 [userListsProvider]。
+class _LibrarySidebarSection extends HookConsumerWidget {
+  final bool extended;
+
+  const _LibrarySidebarSection({required this.extended});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isExpanded = useState(false);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    void openInHome(VoidCallback action) {
+      // 切换到 Home Tab 并执行操作
+      final tabsRouter = AutoTabsRouter.of(context);
+      if (tabsRouter.activeIndex != 0) {
+        tabsRouter.setActiveIndex(0);
+      }
+      action();
+    }
+
+    return Container(
+      width: extended ? 256 : 72,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // 默认列表
+          _SidebarEntry(
+            icon: PomeloIcons.list,
+            label: '默认列表',
+            extended: extended,
+            colorScheme: colorScheme,
+            onTap: () => openInHome(
+              () => ref.read(homeNavProvider.notifier).showDefaultList(),
+            ),
+          ),
+          // 我的收藏
+          _SidebarEntry(
+            icon: PomeloIcons.heart,
+            label: '我的收藏',
+            extended: extended,
+            colorScheme: colorScheme,
+            onTap: () => openInHome(
+              () => ref.read(homeNavProvider.notifier).showFavorites(),
+            ),
+          ),
+          // 我的歌单（可折叠）
+          _SidebarEntry(
+            icon: PomeloIcons.playlist,
+            label: '我的歌单',
+            extended: extended,
+            colorScheme: colorScheme,
+            trailing: RotatedBox(
+              quarterTurns: isExpanded.value ? 1 : 3,
+              child: Icon(
+                PomeloIcons.angleDown,
+                size: 14,
+                color: colorScheme.mutedForeground,
+              ),
+            ),
+            onTap: () => isExpanded.value = !isExpanded.value,
+          ),
+          // 展开的歌单列表
+          if (isExpanded.value)
+            _UserPlaylistList(
+              extended: extended,
+              onOpen: (playlistRef) => openInHome(
+                () => ref
+                    .read(homeNavProvider.notifier)
+                    .showPlaylist(playlistRef),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 侧边栏条目
+class _SidebarEntry extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool extended;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+  final Widget? trailing;
+
+  const _SidebarEntry({
+    required this.icon,
+    required this.label,
+    required this.extended,
+    required this.colorScheme,
+    required this.onTap,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: extended
+            ? Row(
+                children: [
+                  Icon(icon, size: 20, color: colorScheme.foreground),
+                  const Gap(12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: colorScheme.foreground,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (trailing != null) trailing!,
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 22, color: colorScheme.foreground),
+                  const Gap(4),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: colorScheme.mutedForeground,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+}
+
+/// 用户歌单列表（侧边栏二级菜单）
+class _UserPlaylistList extends HookConsumerWidget {
+  final bool extended;
+  final void Function(PlaylistRef) onOpen;
+
+  const _UserPlaylistList({required this.extended, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final listsAsync = ref.watch(userListsProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return listsAsync.when(
+      loading: () => Padding(
+        padding: const EdgeInsets.all(12),
+        child: Center(
+          child: SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: colorScheme.mutedForeground,
+            ),
+          ),
+        ),
+      ),
+      error: (err, _) => Padding(
+        padding: const EdgeInsets.all(12),
+        child: Text(
+          '加载失败',
+          style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
+        ),
+      ),
+      data: (data) {
+        final playlists = data.userPlaylists;
+        if (playlists.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              '暂无歌单',
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.mutedForeground,
+              ),
+            ),
+          );
+        }
+
+        if (!extended) {
+          // 紧凑模式：仅显示封面图标
+          return Column(
+            children: playlists.map((p) {
+              return GestureDetector(
+                onTap: () => onOpen(
+                  PlaylistRef(
+                    playlistId: (p.meta?['id'] as String?) ?? p.id,
+                    sourceId: p.source?.id ?? '',
+                    playlistName: p.name,
+                    coverUrl: p.coverArt,
+                    creator: p.owner ?? '',
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: CoverImage(
+                    coverArt: p.coverArt,
+                    colorScheme: colorScheme,
+                    size: 36,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              );
+            }).toList(),
+          );
+        }
+
+        // 展开模式：显示封面 + 名称
+        return Column(
+          children: playlists.map((p) {
+            return GestureDetector(
+              onTap: () => onOpen(
+                PlaylistRef(
+                  playlistId: (p.meta?['id'] as String?) ?? p.id,
+                  sourceId: p.source?.id ?? '',
+                  playlistName: p.name,
+                  coverUrl: p.coverArt,
+                  creator: p.owner ?? '',
+                ),
+              ),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                child: Row(
+                  children: [
+                    CoverImage(
+                      coverArt: p.coverArt,
+                      colorScheme: colorScheme,
+                      size: 28,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    const Gap(8),
+                    Expanded(
+                      child: Text(
+                        p.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: colorScheme.foreground,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }
@@ -224,9 +534,7 @@ class _TopTitleBar extends HookConsumerWidget {
     return Container(
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: colorScheme.card,
-      ),
+      decoration: BoxDecoration(color: colorScheme.card),
       child: Row(
         children: [
           // 返回按钮 — 监听内联导航状态
