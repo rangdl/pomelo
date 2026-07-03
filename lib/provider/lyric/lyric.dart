@@ -12,10 +12,10 @@ final lyricProvider = FutureProvider.autoDispose.family<String?, Track>((
   song,
 ) async {
   if (song.src == null) return null;
-  // await ref.watch(musicServersProvider.future);
   final service = await ref.watch(
     musicServerByProvider(song.source?.id ?? '').future,
   );
+  if (!ref.mounted) return null;
   if (service == null) return null;
   try {
     return await service.getLyric(song);
@@ -30,6 +30,7 @@ final lyricProvider = FutureProvider.autoDispose.family<String?, Track>((
 final lyricLinesProvider = FutureProvider.autoDispose
     .family<List<LyricLine>, Track>((ref, song) async {
       final lyricText = await ref.watch(lyricProvider(song).future);
+      if (!ref.mounted) return [];
       if (lyricText == null || lyricText.isEmpty) {
         return [];
       }

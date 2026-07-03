@@ -179,8 +179,9 @@ class _NavigationRailLayout extends HookConsumerWidget {
                   extended: extended,
                   selectedKey: selectedKey.value,
                   onSelectKey: (key) {
-                    final index =
-                        _navDestinations.indexWhere((d) => d.key == key);
+                    final index = _navDestinations.indexWhere(
+                      (d) => d.key == key,
+                    );
                     if (index >= 0 && index != tabsRouter.activeIndex) {
                       selectedKey.value = key;
                       tabsRouter.setActiveIndex(index);
@@ -234,10 +235,14 @@ class _Sidebar extends HookConsumerWidget {
       width: extended ? 180 : 80,
       child: Column(
         children: [
+          // 应用图标和名称
+          _AppHeader(extended: extended, colorScheme: colorScheme),
+          const Divider(height: 1),
           // 上半部分：主导航按钮（自然高度，显示标签文本）
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: _navDestinations
                   .map(
                     (d) => _NavButton(
@@ -258,6 +263,43 @@ class _Sidebar extends HookConsumerWidget {
           Expanded(child: _LibrarySidebarSection(extended: extended)),
         ],
       ),
+    );
+  }
+}
+
+/// 侧边栏顶部 — 应用图标和名称
+class _AppHeader extends StatelessWidget {
+  final bool extended;
+  final ColorScheme colorScheme;
+
+  const _AppHeader({required this.extended, required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: extended
+          ? Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(PomeloIcons.music, size: 24, color: colorScheme.primary),
+                const Gap(8),
+                Text(
+                  '柚子音乐',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.foreground,
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(PomeloIcons.music, size: 28, color: colorScheme.primary),
+              ],
+            ),
     );
   }
 }
@@ -298,20 +340,23 @@ class _NavButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(8),
         ),
         child: extended
             ? Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(icon, size: 20, color: color),
                   const Gap(8),
-                  Text(
-                    label,
-                    style: TextStyle(fontSize: 13, color: color),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(fontSize: 13, color: color),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               )
@@ -323,6 +368,8 @@ class _NavButton extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(fontSize: 11, color: color),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -354,9 +401,8 @@ class _LibrarySidebarSection extends HookConsumerWidget {
       action();
     }
 
-    return Container(
-      width: extended ? 180 : 80,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -412,7 +458,7 @@ class _LibrarySidebarSection extends HookConsumerWidget {
   }
 }
 
-/// 侧边栏条目
+/// 侧边栏条目（与 [_NavButton] 样式统一）
 class _SidebarEntry extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -432,23 +478,27 @@ class _SidebarEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = colorScheme.mutedForeground;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: extended
             ? Row(
                 children: [
-                  Icon(icon, size: 20, color: colorScheme.foreground),
-                  const Gap(12),
+                  Icon(icon, size: 20, color: color),
+                  const Gap(8),
                   Expanded(
                     child: Text(
                       label,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: colorScheme.foreground,
-                      ),
+                      style: TextStyle(fontSize: 13, color: color),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -459,14 +509,13 @@ class _SidebarEntry extends StatelessWidget {
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 22, color: colorScheme.foreground),
+                  Icon(icon, size: 22, color: color),
                   const Gap(4),
                   Text(
                     label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: colorScheme.mutedForeground,
-                    ),
+                    style: TextStyle(fontSize: 11, color: color),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
