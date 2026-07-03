@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
-import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 
 import 'service/local_music_server.dart';
@@ -27,12 +27,10 @@ final localMusicServerProvider = FutureProvider<LocalMusicServer>((ref) async {
       final cacheDir = await MusicCacheDir.getOrCreate();
       dirs = [cacheDir];
       // 自动写入默认配置
-      await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
-            LocalMusicConfig(
-              id: _localConfigId,
-              name: name,
-              directories: dirs,
-            ),
+      await ref
+          .read(musicServerConfigsNotifierProvider.notifier)
+          .upsert(
+            LocalMusicConfig(id: _localConfigId, name: name, directories: dirs),
           );
       AppLogger.log.i('[LocalMusic] 已自动添加缓存目录作为默认目录: $cacheDir');
     } catch (e) {
@@ -106,7 +104,9 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
   Future<void> setName(String name) async {
     final configs = ref.read(musicServerConfigsProvider).value ?? const [];
     final localConfig = configs.whereType<LocalMusicConfig>().firstOrNull;
-    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+    await ref
+        .read(musicServerConfigsNotifierProvider.notifier)
+        .upsert(
           LocalMusicConfig(
             id: _localConfigId,
             name: name,
@@ -123,7 +123,9 @@ class LocalMusicDirsNotifier extends Notifier<List<String>> {
   Future<void> _save(List<String> dirs) async {
     final configs = ref.read(musicServerConfigsProvider).value ?? const [];
     final localConfig = configs.whereType<LocalMusicConfig>().firstOrNull;
-    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+    await ref
+        .read(musicServerConfigsNotifierProvider.notifier)
+        .upsert(
           LocalMusicConfig(
             id: _localConfigId,
             name: localConfig?.name ?? '本地音乐',

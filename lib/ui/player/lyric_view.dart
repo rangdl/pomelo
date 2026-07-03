@@ -1,28 +1,7 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/models/metadata/track.dart';
-import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'lyric_parser.dart';
-
-/// 歌词 Provider
-///
-/// 根据当前播放曲目获取 LRC 歌词文本。
-/// 非在线曲目或服务不支持歌词时返回 null。
-final lyricProvider =
-    FutureProvider.autoDispose.family<String?, Track>((ref, song) async {
-  if (song.src == null) return null;
-  await ref.watch(musicServersProvider.future);
-  final service = await ref.watch(musicServerByProvider(song.source?.id ?? '').future);
-  if (service == null) return null;
-  try {
-    return await service.getLyric(song);
-  } catch (_) {
-    return null;
-  }
-});
 
 /// 歌词滚动展示组件
 ///

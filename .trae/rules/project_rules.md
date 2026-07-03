@@ -23,13 +23,30 @@
 │  UI Layer (lib/ui/)                        │
 │  - 页面、组件、UI Provider                  │
 ├─────────────────────────────────────────────┤
+│  Provider Layer (lib/provider/)            │
+│  - Riverpod 状态管理（播放器、数据库、历史、  │
+│    服务器）                                 │
+├─────────────────────────────────────────────┤
+│  Service Layer (lib/services/)             │
+│  - 无状态服务（音频播放器、系统媒体控制、     │
+│    更新、日志）                             │
+├─────────────────────────────────────────────┤
 │  Module Layer (lib/modules/)               │
-│  - 业务模块、MusicServer、仓储、模块级 Provider │
+│  - 业务模块、MusicServer、仓储               │
 ├─────────────────────────────────────────────┤
 │  Core Layer (lib/core/)                    │
 │  - 框架工具、数据库、路由、UserPreference     │
 └─────────────────────────────────────────────┘
 ```
+
+### Service 层与 Provider 层的关系
+
+| 层级 | 位置 | 职责 | 示例 |
+|------|------|------|------|
+| Service | `lib/services/` | 无状态服务，封装核心业务逻辑，不依赖 Riverpod | `audioPlayer`（全局实例）、`AudioServices`、`AppLogger` |
+| Provider | `lib/provider/` | 对应 Service 的 Riverpod 状态管理，持有 `Ref` | `audioPlayerProvider`、`appDatabaseProvider`、`playHistoryProvider` |
+
+> **约定**：Service 层不持有 `Ref`，不直接读写 Provider；Provider 层通过 `Ref` 访问 Service 和其他 Provider。
 
 ### Provider 分层
 
@@ -37,6 +54,10 @@
 |------|------|------|
 | Core | `lib/core/preferences/` | 全局设置 Provider（`userPreferenceProvider`） |
 | Core | `lib/core/providers/` | 全局配置 Provider（`musicServerConfigsProvider`） |
+| Provider | `lib/provider/audio_player/` | 播放器状态（`audioPlayerProvider`）、流监听（`AudioPlayerStreamListeners`） |
+| Provider | `lib/provider/database/` | 数据库 Provider（`appDatabaseProvider`） |
+| Provider | `lib/provider/history/` | 播放历史 Provider（`playHistoryProvider`） |
+| Provider | `lib/provider/server/` | 播放服务器 Provider（`serverProvider`、`sourcedTrackProvider`） |
 | 模块级 | `lib/modules/*/providers/` | MusicServer 实例、业务状态 |
 | UI 级 | `lib/ui/*/providers/` | 页面选中态、派生数据、UI 状态 |
 
@@ -44,29 +65,42 @@
 
 ## 三、模块系统
 
-### 1. 核心模块（AudioPlayerModule）
+### 1. 核心服务初始化
 
-`AudioPlayerModule` 是普通类（非 `Module` 子类），通过 Riverpod `FutureProvider` 注册，模块创建 + `init()` 在 Provider 内部异步完成。
-
-| 模块 | Provider | 文件 |
-|------|----------|------|
-| `AudioPlayerModule` | `audioPlayerModuleProvider` | `lib/modules/audio_player/module_providers.dart` |
+应用启动时不再使用 `AudioPlayerModule`，直接在 `main.dart` 中初始化核心服务与 Provider。
 
 **初始化流程**（`main.dart`）：
 
 ```dart
 final database = AppDatabase();
+final persistedPref = await UserPreference.loadFromDatabase(database);
+MusicCacheDir.setCustomDirectory(persistedPref.cacheDirectory);
+MusicCacheDir.setSizeLimit(persistedPref.cacheSizeLimitGB);
+
 final container = ProviderContainer(
   overrides: [appDatabaseProvider.overrideWithValue(database)],
+  observers: [AppLoggerProviderObserver()],
 );
 
-// 在 runApp 前 await AudioPlayerModule Provider.future 触发初始化
-final audioPlayerModule = await container.read(audioPlayerModuleProvider.future);
-audioPlayerModule.container = container; // 供 ServerPlaybackRoutes 使用
 await container.read(userPreferenceProvider.notifier).initialize();
 
 runApp(UncontrolledProviderScope(container: container, child: const Pomelo()));
 ```
+
+**播放器流监听与服务器**在 `Pomelo` widget 中通过 `ref.listen` 启动：
+
+```dart
+ref.listen(audioPlayerStreamListenersProvider, (_, _) {});
+ref.listen(serverProvider, (_, _) {});
+```
+
+| 服务/Provider | 文件 | 说明 |
+|---------------|------|------|
+| `audioPlayer`（全局实例） | `lib/services/audio_player/audio_player.dart` | 无状态播放器服务 |
+| `audioPlayerProvider` | `lib/provider/audio_player/audio_player.dart` | 播放器状态管理 |
+| `audioPlayerStreamListenersProvider` | `lib/provider/audio_player/audio_player_streams.dart` | 流监听（SMTC、播放历史、歌词） |
+| `appDatabaseProvider` | `lib/provider/database/database_provider.dart` | 数据库 Provider |
+| `serverProvider` | `lib/provider/server/server.dart` | 播放服务器 |
 
 ### 2. 业务模块
 
@@ -336,7 +370,7 @@ import 'package:media_kit/media_kit.dart' hide Track;
 
 ### 6. freezed 使用范围
 
-- **仅** `AudioPlayerState`（`lib/modules/audio_player/model/state.dart`）使用 freezed + json_serializable
+- **仅** `AudioPlayerState`（`lib/services/audio_player/state.dart`）使用 freezed + json_serializable
 - 音乐模型（Track/Album/Artist/Playlist）**不使用** freezed
 - 修改 `state.dart` 或 drift 表后需运行 `dart run build_runner build --delete-conflicting-outputs`
 
@@ -811,6 +845,10 @@ Lx Server 播放链接**必须**通过 HEAD 请求验证后使用；若无效则
 
 播放记录 upsert 语义：重复播放时 `playCount` 递增 1。
 
+**记录时机**：在 `AudioPlayerStreamListeners.subscribeToScrobbleChanged()`（`lib/provider/audio_player/audio_player_streams.dart`）中，当满足 scrobble 条件（听完 4 分钟或 50% 时长，取较小值）后记录。不再在曲目索引切换时记录。
+
+**读取 Provider**：`playHistoryProvider`（`lib/provider/history/play_history_provider.dart`，`FutureProvider.autoDispose`），记录后通过 `ref.invalidate(playHistoryProvider)` 刷新。
+
 ### 6. SourcedTrack 持久化
 
 已解析音源曲目持久化优先级：
@@ -1021,7 +1059,14 @@ import 'package:pomelo/core/rx.dart';
 
 // 持久化（drift）
 import 'package:pomelo/core/models/database/app_database.dart';
-import 'package:pomelo/core/models/database/database_provider.dart';
+import 'package:pomelo/provider/database/database_provider.dart';
+
+// 播放器状态管理
+import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/provider/audio_player/audio_player_streams.dart';
+
+// 播放历史
+import 'package:pomelo/provider/history/play_history_provider.dart';
 
 // 用户偏好
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
@@ -1085,7 +1130,8 @@ import 'package:pomelo/core/toast.dart';
 
 ## 二十三、已删除/废弃代码
 
-- **M.A.R.S. 架构** — `Module`/`Service`/`Repository` 基类、`ModuleManager`、`ModuleWidget`、`modules.dart` barrel、`HomeModule`/`LogModule` 等模块类已删除。`AudioPlayerModule` 保留为普通类（无 `Module` 基类）
+- **M.A.R.S. 架构** — `Module`/`Service`/`Repository` 基类、`ModuleManager`、`ModuleWidget`、`modules.dart` barrel、`HomeModule`/`LogModule` 等模块类已删除
+- **`AudioPlayerModule`** — 已废弃，不再使用。播放器逻辑拆分到 `lib/services/audio_player/`（无状态服务）和 `lib/provider/audio_player/`（Riverpod 状态管理）
 - **`core/core.dart` 中的 M.A.R.S. 导出** — `module/module.dart`、`repository/repository.dart`、`service/service.dart` 已删除
 - **旧日志系统** — `lib/core/log.dart`、`lib/core/log/` 目录（`LogModule`/`LogService`/`LogRepository`/`log_providers.dart`）已删除，迁移到 `lib/services/logger.dart` 的 `AppLogger`
 - **`MusicService` 接口** — 已重命名为 `MusicServer`，4 个子类同步重命名

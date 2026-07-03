@@ -167,33 +167,42 @@ class _NavigationRailLayout extends HookConsumerWidget {
     }, [tabsRouter.activeIndex]);
 
     return Scaffold(
-      child: Row(
+      child: Column(
         children: [
-          // 左侧侧边栏 — 上下分区
-          _Sidebar(
-            tabsRouter: tabsRouter,
-            extended: extended,
-            selectedKey: selectedKey.value,
-            onSelectKey: (key) {
-              final index = _navDestinations.indexWhere((d) => d.key == key);
-              if (index >= 0 && index != tabsRouter.activeIndex) {
-                selectedKey.value = key;
-                tabsRouter.setActiveIndex(index);
-              }
-            },
-          ),
-          const VerticalDivider(width: 1, thickness: 1),
-          // 右侧：顶部标题栏 + 内容 + MiniPlayer
+          // 上部：侧边栏 + 标题栏 + 内容
           Expanded(
-            child: Column(
+            child: Row(
               children: [
-                const _TopTitleBar(),
-                const Divider(height: 1, thickness: 1),
-                Expanded(child: children[tabsRouter.activeIndex]),
-                const MiniPlayer(),
+                // 左侧侧边栏 — 上下分区
+                _Sidebar(
+                  tabsRouter: tabsRouter,
+                  extended: extended,
+                  selectedKey: selectedKey.value,
+                  onSelectKey: (key) {
+                    final index =
+                        _navDestinations.indexWhere((d) => d.key == key);
+                    if (index >= 0 && index != tabsRouter.activeIndex) {
+                      selectedKey.value = key;
+                      tabsRouter.setActiveIndex(index);
+                    }
+                  },
+                ),
+                const VerticalDivider(width: 1, thickness: 1),
+                // 右侧：顶部标题栏 + 内容
+                Expanded(
+                  child: Column(
+                    children: [
+                      const _TopTitleBar(),
+                      const Divider(height: 1, thickness: 1),
+                      Expanded(child: children[tabsRouter.activeIndex]),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
+          // 底部：迷你播放器（全宽，覆盖侧边栏）
+          const MiniPlayer(),
         ],
       ),
     );
@@ -219,31 +228,105 @@ class _Sidebar extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
-      children: [
-        // 上半部分：主导航
-        Expanded(
-          child: NavigationRail(
-            alignment: NavigationRailAlignment.start,
-            labelType: NavigationLabelType.none,
-            expanded: extended,
-            onSelected: onSelectKey,
-            selectedKey: selectedKey,
-            children: _navDestinations
-                .map(
-                  (d) => NavigationItem(
-                    key: d.key,
-                    label: Text(d.label),
-                    child: Icon(d.icon),
-                  ),
-                )
-                .toList(),
+    final colorScheme = Theme.of(context).colorScheme;
+    // 固定侧边栏宽度：desktop 180 / tablet 80
+    return SizedBox(
+      width: extended ? 180 : 80,
+      child: Column(
+        children: [
+          // 上半部分：主导航按钮（自然高度，显示标签文本）
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              children: _navDestinations
+                  .map(
+                    (d) => _NavButton(
+                      key: d.key,
+                      icon: d.icon,
+                      label: d.label,
+                      extended: extended,
+                      isSelected: selectedKey == d.key,
+                      colorScheme: colorScheme,
+                      onTap: () => onSelectKey(d.key),
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
+          const Divider(height: 1),
+          // 下半部分：我的库（占满剩余高度）
+          Expanded(child: _LibrarySidebarSection(extended: extended)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 侧边栏主导航按钮
+///
+/// 替代 shadcn_flutter NavigationRail，避免其内部 mainAxisSize:max
+/// 在非 Expanded 环境下导致的无限高度约束问题。
+class _NavButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool extended;
+  final bool isSelected;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  const _NavButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.extended,
+    required this.isSelected,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isSelected
+        ? colorScheme.primary
+        : colorScheme.mutedForeground;
+    final bgColor = isSelected
+        ? colorScheme.primary.withAlpha(20)
+        : Colors.transparent;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
         ),
-        const Divider(height: 1),
-        // 下半部分：我的库
-        _LibrarySidebarSection(extended: extended),
-      ],
+        child: extended
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, size: 20, color: color),
+                  const Gap(8),
+                  Text(
+                    label,
+                    style: TextStyle(fontSize: 13, color: color),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 22, color: color),
+                  const Gap(4),
+                  Text(
+                    label,
+                    style: TextStyle(fontSize: 11, color: color),
+                  ),
+                ],
+              ),
+      ),
     );
   }
 }
@@ -272,7 +355,7 @@ class _LibrarySidebarSection extends HookConsumerWidget {
     }
 
     return Container(
-      width: extended ? 256 : 72,
+      width: extended ? 180 : 80,
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

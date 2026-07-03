@@ -1,25 +1,19 @@
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
-import 'package:drift/drift.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/extensions/list.dart';
-import 'package:pomelo/core/models/database/app_database.dart';
-import 'package:pomelo/core/models/database/database_provider.dart';
-import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/audio_player/providers/play_history_provider.dart';
-import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
-import 'package:pomelo/services/logger.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
+import 'package:pomelo/services/audio_player/audio_player.dart';
+import 'package:pomelo/services/logger/logger.dart';
 
-import '../model/media.dart';
-import '../model/state.dart';
+import '../../services/audio_player/media.dart';
+import 'state.dart';
+import 'audio_player_repository.dart';
 
 class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   // BlackListNotifier get _blacklist => ref.read(blacklistProvider.notifier);
-  AudioPlayerService get audioPlayer => ref.read(audioPlayerServiceProvider);
 
   /// 批量操作标志：非零时跳过 [playlistStream] 的冗余状态同步。
   ///
@@ -38,8 +32,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
   Future<void> _syncSavedState() async {
     // final database = ref.read(databaseProvider);
-    final audioPlayerService = ref.read(audioPlayerServiceProvider);
-    var playerState = await audioPlayerService.repository.restore();
+    final repository = ref.read(audioPlayerRepositoryProvider);
+    var playerState = await repository.restore();
 
     if (playerState == null) {
       playerState = AudioPlayerState(
@@ -48,7 +42,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         shuffled: audioPlayer.isShuffled,
         collections: [],
       );
-      audioPlayerService.repository.persist(
+      repository.persist(
         AudioPlayerState(
           playing: audioPlayer.isPlaying,
           loopMode: audioPlayer.loopMode,
@@ -92,30 +86,7 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   }
 
   Future<void> _updatePlayerState(AudioPlayerState companion) async {
-    await ref.read(audioPlayerServiceProvider).repository.persist(companion);
-  }
-
-  /// 记录播放历史
-  void _recordPlayHistory(int index) {
-    try {
-      if (index < 0 || index >= state.tracks.length) return;
-      final track = state.tracks[index];
-      final db = ref.read(appDatabaseProvider);
-      db.addPlayHistory(PlayHistoryTableCompanion.insert(
-        trackId: track.id,
-        trackJson: jsonEncode(track.toJson()),
-        sourceId: track.source?.id ?? '',
-        sourceName: Value(track.source?.name ?? ''),
-        title: track.title,
-        artist: Value(track.artist),
-        coverArt: Value(track.coverArt),
-        duration: Value(track.duration),
-      ));
-      // 刷新播放记录 Provider
-      ref.invalidate(playHistoryProvider);
-    } catch (e, stack) {
-      AppLogger.reportError(e, stack, '[playHistory] ${e.toString()}');
-    }
+    await ref.read(audioPlayerRepositoryProvider).persist(companion);
   }
 
   @override
@@ -177,10 +148,6 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
         } catch (e, stack) {
           AppLogger.reportError(e, stack, '[audioPlayerState] ${e.toString()}');
         }
-      }),
-      // 监听当前曲目索引变化，记录播放历史
-      audioPlayer.currentIndexChangedStream.listen((index) {
-        _recordPlayHistory(index);
       }),
     ];
 
@@ -468,3 +435,9 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     // ref.read(discordProvider.notifier).clear();
   }
 }
+
+/// 音频播放器状态 state Provider
+final audioPlayerProvider =
+    NotifierProvider<AudioPlayerNotifier, AudioPlayerState>(
+      () => AudioPlayerNotifier(),
+    );

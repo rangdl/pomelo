@@ -1,4 +1,4 @@
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
@@ -129,14 +129,15 @@ class LxMetadataEngine {
         hasMore: (page * limit) < total,
         items: items
             .map(
-              (item) => PomeloTrackObjectMeta.fromJson(
-                Map<String, dynamic>.from(item),
-              ).toTrack(
-                libraryId: type,
-                sourceId: sourceId,
-                sourceName: sourceName,
-                libraryName: libraryName,
-              ),
+              (item) =>
+                  PomeloTrackObjectMeta.fromJson(
+                    Map<String, dynamic>.from(item),
+                  ).toTrack(
+                    libraryId: type,
+                    sourceId: sourceId,
+                    sourceName: sourceName,
+                    libraryName: libraryName,
+                  ),
             )
             .toList(),
       );
@@ -182,7 +183,12 @@ class LxMetadataEngine {
       final json = Map<String, dynamic>.from(raw);
       final total = json['total'] ?? 0;
       final list = (json['list'] ?? []) as List<dynamic>;
-      final source = (id: sourceId, name: sourceName, libraryId: type, libraryName: libraryName);
+      final source = (
+        id: sourceId,
+        name: sourceName,
+        libraryId: type,
+        libraryName: libraryName,
+      );
       final items = list.map((item) {
         final m = Map<String, dynamic>.from(item as Map);
         return Playlist(
@@ -345,7 +351,12 @@ class LxMetadataEngine {
 
       final json = Map<String, dynamic>.from(raw);
       final list = (json['list'] ?? []) as List<dynamic>;
-      final source = (id: sourceId, name: sourceName, libraryId: type, libraryName: libraryName);
+      final source = (
+        id: sourceId,
+        name: sourceName,
+        libraryId: type,
+        libraryName: libraryName,
+      );
       final items = list.map((item) {
         final m = Map<String, dynamic>.from(item as Map);
         return Playlist(
@@ -398,14 +409,15 @@ class LxMetadataEngine {
 
       return list
           .map(
-            (item) => PomeloTrackObjectMeta.fromJson(
-              Map<String, dynamic>.from(item),
-            ).toTrack(
-              libraryId: type,
-              sourceId: sourceId,
-              sourceName: sourceName,
-              libraryName: libraryName,
-            ),
+            (item) =>
+                PomeloTrackObjectMeta.fromJson(
+                  Map<String, dynamic>.from(item),
+                ).toTrack(
+                  libraryId: type,
+                  sourceId: sourceId,
+                  sourceName: sourceName,
+                  libraryName: libraryName,
+                ),
           )
           .toList();
     } catch (e) {
@@ -484,14 +496,15 @@ class LxMetadataEngine {
 
       return list
           .map(
-            (item) => PomeloTrackObjectMeta.fromJson(
-              Map<String, dynamic>.from(item),
-            ).toTrack(
-              libraryId: type,
-              sourceId: sourceId,
-              sourceName: sourceName,
-              libraryName: libraryName,
-            ),
+            (item) =>
+                PomeloTrackObjectMeta.fromJson(
+                  Map<String, dynamic>.from(item),
+                ).toTrack(
+                  libraryId: type,
+                  sourceId: sourceId,
+                  sourceName: sourceName,
+                  libraryName: libraryName,
+                ),
           )
           .toList();
     } catch (e) {
@@ -634,7 +647,12 @@ class PomeloTrackObjectMeta {
       coverArt: img,
       src: '', // 需要根据类型选择合适的链接
       duration: duration,
-      source: (id: sourceId, name: sourceName, libraryId: libraryId, libraryName: libraryName),
+      source: (
+        id: sourceId,
+        name: sourceName,
+        libraryId: libraryId,
+        libraryName: libraryName,
+      ),
       meta: toMap(),
     );
   }

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music_lx/model/preload.dart';
 import 'js_engine.dart';
@@ -61,7 +61,9 @@ class LxSourceEngine {
     // 加载Preloadjs
     final resultPreload = engine.jsRuntime.evaluate(preloadJS);
     if (resultPreload.isError) {
-      AppLogger.log.e('[LxSourceEngine] preloadJS加载失败: ${resultPreload.toString()}');
+      AppLogger.log.e(
+        '[LxSourceEngine] preloadJS加载失败: ${resultPreload.toString()}',
+      );
       engine.dispose();
       return [];
     }
@@ -189,7 +191,11 @@ class LxSourceEngine {
       final url = dynamicUrl.toString();
       return url;
     } catch (e) {
-      AppLogger.reportError(e, null, '[LxSourceEngine] 获取 $libraryId 播放链接异常: $e');
+      AppLogger.reportError(
+        e,
+        null,
+        '[LxSourceEngine] 获取 $libraryId 播放链接异常: $e',
+      );
       return '';
     }
   }

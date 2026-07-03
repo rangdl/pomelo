@@ -8,7 +8,7 @@ import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
-import 'package:pomelo/modules/my/service/update_service.dart';
+import 'package:pomelo/services/update/update_service.dart';
 import 'package:pomelo/ui/settings/playback_settings_page.dart';
 
 /// 设置页面 — 用户设置中心

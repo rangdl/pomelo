@@ -10,34 +10,30 @@ library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'package:pomelo/core/models/database/database_provider.dart';
+import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/core/models/log_level.dart';
 import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
 
+final userPreferencesProvider = Provider<UserPreference>((ref) {
+  // 同步返回默认值，实际数据由 overrideWithValue 注入
+  return const UserPreference();
+});
+
 /// 全局用户偏好设置 Provider
 final userPreferenceProvider =
     NotifierProvider<UserPreferenceNotifier, UserPreference>(
-  UserPreferenceNotifier.new,
-);
+      UserPreferenceNotifier.new,
+    );
 
 class UserPreferenceNotifier extends Notifier<UserPreference> {
   @override
   UserPreference build() {
-    // 同步返回默认值，实际数据由 initialize() 异步加载
-    // main.dart 会在 ProviderContainer 创建后立即调用 initialize()
-    return const UserPreference();
+    return ref.watch(userPreferencesProvider);
   }
 
   /// 获取数据库实例
-  dynamic get _db => ref.read(appDatabaseProvider);
-
-  /// 从 drift 数据库异步加载（由 main.dart 在 ProviderContainer 创建后调用）
-  Future<void> initialize() async {
-    final db = _db;
-    final pref = await UserPreference.loadFromDatabase(db);
-    state = pref;
-  }
+  dynamic get _db => ref.read(databaseProvider);
 
   /// 持久化到 drift 数据库
   Future<void> _persist() async {
@@ -67,10 +63,12 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
   // ==================== music UI 选中态 ====================
 
   Future<void> selectSource(String? sourceId, {String? libraryId}) => update(
-      (p) => p.copyWith(selectedSourceId: sourceId, selectedLibraryId: libraryId));
+    (p) => p.copyWith(selectedSourceId: sourceId, selectedLibraryId: libraryId),
+  );
 
   Future<void> clearSelectedSource() => update(
-      (p) => p.copyWith(selectedSourceId: null, selectedLibraryId: null));
+    (p) => p.copyWith(selectedSourceId: null, selectedLibraryId: null),
+  );
 
   // ==================== log 模块 ====================
 

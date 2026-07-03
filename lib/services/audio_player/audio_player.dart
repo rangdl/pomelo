@@ -9,23 +9,21 @@ import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:media_kit/media_kit.dart' hide Track;
 
-import 'package:pomelo/services/logger.dart';
-import 'package:pomelo/modules/audio_player/model/media.dart';
-import 'package:pomelo/modules/audio_player/model/custom_player.dart';
-import 'package:pomelo/modules/audio_player/model/playback_state.dart';
-import 'package:pomelo/modules/audio_player/repository/audio_player_repository.dart';
+import 'package:pomelo/services/logger/logger.dart';
+import 'package:pomelo/services/audio_player/media.dart';
+import 'package:pomelo/services/audio_player/custom_player.dart';
+import 'package:pomelo/services/audio_player/playback_state.dart';
 import 'package:pomelo/core/models/metadata/track.dart' show Track;
+
+/// 音频播放器服务实例
+final audioPlayer = PomeloAudioPlayer();
 
 /// 音频播放器服务
 ///
 /// 负责播放控制、队列管理等核心业务逻辑。
 /// 实际的媒体播放能力由 [AudioPlayerInterface] 提供。
-class AudioPlayerService extends AudioPlayerInterface
-    with AudioPlayerServiceStreams {
-  final AudioPlayerRepository repository;
-
-  AudioPlayerService(this.repository);
-
+class PomeloAudioPlayer extends AudioPlayerInterface
+    with PomeloAudioPlayerStreams {
   Future<void> pause() async {
     await _mkPlayer.pause();
   }
@@ -297,7 +295,7 @@ class AudioPlayerInterface {
   }
 }
 
-mixin AudioPlayerServiceStreams on AudioPlayerInterface {
+mixin PomeloAudioPlayerStreams on AudioPlayerInterface {
   // stream getters
   Stream<Duration> get durationStream {
     // if (mkSupportedPlatform) {
