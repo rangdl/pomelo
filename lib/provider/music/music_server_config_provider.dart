@@ -10,7 +10,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
-import 'package:pomelo/core/models/database/database_provider.dart';
+import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/core/models/metadata/music_source_type.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 
@@ -18,9 +18,10 @@ import 'package:pomelo/core/models/music_server_config.dart';
 ///
 /// 从 drift `music_server_configs` 表加载全部配置。
 /// 配置变更通过 [MusicServerConfigsNotifier] 的增删改方法触发刷新。
-final musicServerConfigsProvider =
-    FutureProvider<List<MusicServerConfig>>((ref) async {
-  final db = ref.watch(appDatabaseProvider);
+final musicServerConfigsProvider = FutureProvider<List<MusicServerConfig>>((
+  ref,
+) async {
+  final db = ref.watch(databaseProvider);
   final rows = await db.getAllMusicServerConfigs();
   return rows.map(_entityToConfig).toList();
 });
@@ -29,7 +30,7 @@ final musicServerConfigsProvider =
 ///
 /// 负责配置的增删改，所有写操作完成后刷新 [musicServerConfigsProvider]。
 class MusicServerConfigsNotifier extends Notifier<List<MusicServerConfig>> {
-  AppDatabase get _db => ref.read(appDatabaseProvider);
+  AppDatabase get _db => ref.read(databaseProvider);
 
   @override
   List<MusicServerConfig> build() {
@@ -73,8 +74,8 @@ class MusicServerConfigsNotifier extends Notifier<List<MusicServerConfig>> {
 /// 音乐服务配置管理
 final musicServerConfigsNotifierProvider =
     NotifierProvider<MusicServerConfigsNotifier, List<MusicServerConfig>>(
-  MusicServerConfigsNotifier.new,
-);
+      MusicServerConfigsNotifier.new,
+    );
 
 /// 将 drift 实体转换为 MusicServerConfig 子类实例
 MusicServerConfig _entityToConfig(MusicServerConfigEntity entity) {

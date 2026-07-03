@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
-import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 
 import '../repository/lx_server_client.dart';
 import '../repository/lx_server_music_server.dart';
@@ -15,47 +15,52 @@ String _cleanUrl(String url) => url.replaceAll(RegExp(r'/+$'), '');
 ///
 /// 从 [musicServerConfigsProvider] 读取 LxServerConfig，
 /// 配置变化时自动重建。配置为 null 或连接失败时返回 null。
-final lxServerMusicServerProvider =
-    FutureProvider<LxServerMusicServer?>((ref) async {
-      final configs = await ref.watch(musicServerConfigsProvider.future);
-      final config = configs.whereType<LxServerConfig>().firstOrNull;
-      if (config == null) return null;
+final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
+  ref,
+) async {
+  final configs = await ref.watch(musicServerConfigsProvider.future);
+  final config = configs.whereType<LxServerConfig>().firstOrNull;
+  if (config == null) return null;
 
-      final cleanUrl = _cleanUrl(config.serverUrl);
-      final client = LxServerClient(
-        serverUrl: cleanUrl,
-        username: config.username,
-        password: config.password,
-        token: config.token,
-        proxyPlayback: config.proxyPlayback,
-      );
+  final cleanUrl = _cleanUrl(config.serverUrl);
+  final client = LxServerClient(
+    serverUrl: cleanUrl,
+    username: config.username,
+    password: config.password,
+    token: config.token,
+    proxyPlayback: config.proxyPlayback,
+  );
 
-      try {
-        if (config.token != null && config.token!.isNotEmpty) {
-          final valid = await client.verifyToken();
-          if (!valid) {
-            await client.login();
-          }
-        } else {
-          await client.login();
-        }
-      } catch (e) {
-        AppLogger.reportError(e, null, '[LxServer] 连接 ${config.username}@$cleanUrl 失败: $e');
-        client.dispose();
-        return null;
+  try {
+    if (config.token != null && config.token!.isNotEmpty) {
+      final valid = await client.verifyToken();
+      if (!valid) {
+        await client.login();
       }
+    } else {
+      await client.login();
+    }
+  } catch (e) {
+    AppLogger.reportError(
+      e,
+      null,
+      '[LxServer] 连接 ${config.username}@$cleanUrl 失败: $e',
+    );
+    client.dispose();
+    return null;
+  }
 
-      final server = LxServerMusicServer(
-        client: client,
-        sourceId: config.id,
-        sourceName: config.name,
-        allowSourceSwitching: config.allowSourceSwitching,
-      );
+  final server = LxServerMusicServer(
+    client: client,
+    sourceId: config.id,
+    sourceName: config.name,
+    allowSourceSwitching: config.allowSourceSwitching,
+  );
 
-      ref.onDispose(() => client.dispose());
-      AppLogger.log.i('[LxServer] 已连接 ${config.username}@$cleanUrl');
-      return server;
-    });
+  ref.onDispose(() => client.dispose());
+  AppLogger.log.i('[LxServer] 已连接 ${config.username}@$cleanUrl');
+  return server;
+});
 
 /// Lx Server 连接配置（兼容旧 UI 调用，保留为 record 类型别名）
 typedef LxServerConnectionConfig = ({
@@ -98,7 +103,9 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
     client.dispose();
 
     final configId = 'lx-server-${cleanUrl.hashCode.abs()}';
-    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+    await ref
+        .read(musicServerConfigsNotifierProvider.notifier)
+        .upsert(
           LxServerConfig(
             id: configId,
             name: config.name,
@@ -125,7 +132,9 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
     final configs = ref.read(musicServerConfigsProvider).value ?? const [];
     final config = configs.whereType<LxServerConfig>().firstOrNull;
     if (config != null) {
-      await ref.read(musicServerConfigsNotifierProvider.notifier).remove(config.id);
+      await ref
+          .read(musicServerConfigsNotifierProvider.notifier)
+          .remove(config.id);
     }
   }
 }

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/toast.dart';
 
 import 'lx_server_models.dart';
@@ -204,10 +204,7 @@ class LxServerClient {
     try {
       final response = await _dio.get(
         '$serverUrl/api/music/tipSearch',
-        queryParameters: {
-          'source': source,
-          'keyword': keyword,
-        },
+        queryParameters: {'source': source, 'keyword': keyword},
         options: _authOptions,
       );
       final data = response.data;
@@ -236,9 +233,7 @@ class LxServerClient {
     try {
       final response = await _dio.get(
         '$serverUrl/api/music/hotSearch',
-        queryParameters: {
-          'source': source,
-        },
+        queryParameters: {'source': source},
         options: _authOptions,
       );
       final data = response.data;
@@ -248,11 +243,7 @@ class LxServerClient {
           : data as List<dynamic>?;
       return list?.map((e) => e.toString()).toList() ?? [];
     } catch (e, s) {
-      AppLogger.reportError(
-        e,
-        s,
-        '[LxServer] 热搜词获取失败: source=$source',
-      );
+      AppLogger.reportError(e, s, '[LxServer] 热搜词获取失败: source=$source');
       rethrow;
     }
   }

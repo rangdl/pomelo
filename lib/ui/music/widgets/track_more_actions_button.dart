@@ -1,9 +1,9 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/toast.dart';
-import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/core/models/metadata/track.dart';
+import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 曲目「更多操作」按钮
@@ -47,17 +47,12 @@ class TrackMoreActionsButton extends HookConsumerWidget {
       ),
       tablet: () => showDropdown(
         context: context,
-        builder: (_) => DropdownMenu(
-          children: _buildMenuItems(context, ref),
-        ),
+        builder: (_) => DropdownMenu(children: _buildMenuItems(context, ref)),
       ),
     );
   }
 
-  List<MenuItem> _buildMenuItems(
-    BuildContext context,
-    WidgetRef ref,
-  ) {
+  List<MenuItem> _buildMenuItems(BuildContext context, WidgetRef ref) {
     final notifier = ref.read(audioPlayerProvider.notifier);
     return [
       MenuButton(
@@ -85,9 +80,7 @@ class TrackMoreActionsButton extends HookConsumerWidget {
           ),
           child: Text(
             '从列表移除',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.destructive,
-            ),
+            style: TextStyle(color: Theme.of(context).colorScheme.destructive),
           ),
           onPressed: (_) {
             onRemoveFromQueue!.call();

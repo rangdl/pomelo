@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:pomelo/core/models/metadata/music_source_type.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
-import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
@@ -89,13 +89,8 @@ class ServicePage extends HookConsumerWidget {
       child: servicesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('加载失败: $e')),
-        data: (services) => _buildBody(
-          context,
-          ref,
-          services,
-          subsonicAccounts,
-          sourcePlugins,
-        ),
+        data: (services) =>
+            _buildBody(context, ref, services, subsonicAccounts, sourcePlugins),
       ),
     );
   }
@@ -119,7 +114,8 @@ class ServicePage extends HookConsumerWidget {
       MusicSourceType.emby,
     ];
 
-    final hasAny = byType.values.any((list) => list.isNotEmpty) ||
+    final hasAny =
+        byType.values.any((list) => list.isNotEmpty) ||
         sourcePlugins.isNotEmpty;
 
     if (!hasAny) {
@@ -127,9 +123,11 @@ class ServicePage extends HookConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.layers_outlined,
-                size: 64,
-                color: Theme.of(context).colorScheme.mutedForeground),
+            Icon(
+              Icons.layers_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.mutedForeground,
+            ),
             const Gap(16),
             Text(
               '暂无平台',
@@ -156,7 +154,13 @@ class ServicePage extends HookConsumerWidget {
     for (final type in typeOrder) {
       if (byType[type] != null && byType[type]!.isNotEmpty) {
         sections.add(
-          _buildTypeSection(context, ref, type, byType[type]!, subsonicAccounts),
+          _buildTypeSection(
+            context,
+            ref,
+            type,
+            byType[type]!,
+            subsonicAccounts,
+          ),
         );
       }
     }
@@ -171,20 +175,15 @@ class ServicePage extends HookConsumerWidget {
 
     return Rx.layout(
       context,
-      mobile: () => ListView(
-        padding: const EdgeInsets.all(16),
-        children: sections,
-      ),
+      mobile: () =>
+          ListView(padding: const EdgeInsets.all(16), children: sections),
       tablet: () => Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: leftSections,
-              ),
+              child: ListView(padding: EdgeInsets.zero, children: leftSections),
             ),
             const Gap(16),
             Expanded(
@@ -214,9 +213,11 @@ class ServicePage extends HookConsumerWidget {
           padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
           child: Row(
             children: [
-              Icon(_typeIcon(type),
-                  size: 18,
-                  color: Theme.of(context).colorScheme.mutedForeground),
+              Icon(
+                _typeIcon(type),
+                size: 18,
+                color: Theme.of(context).colorScheme.mutedForeground,
+              ),
               const Gap(8),
               Text(
                 type.displayName,
@@ -266,7 +267,11 @@ class ServicePage extends HookConsumerWidget {
           padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
           child: Row(
             children: [
-              Icon(Icons.audiotrack, size: 18, color: colorScheme.mutedForeground),
+              Icon(
+                Icons.audiotrack,
+                size: 18,
+                color: colorScheme.mutedForeground,
+              ),
               const Gap(8),
               Text(
                 '音源插件',
@@ -279,7 +284,10 @@ class ServicePage extends HookConsumerWidget {
               const Gap(8),
               Text(
                 '${plugins.length}',
-                style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: colorScheme.mutedForeground,
+                ),
               ),
             ],
           ),
@@ -290,7 +298,11 @@ class ServicePage extends HookConsumerWidget {
               for (int i = 0; i < plugins.length; i++) ...[
                 if (i > 0) const Divider(height: 1),
                 ListTile(
-                  leading: Icon(Icons.description, size: 20, color: colorScheme.primary),
+                  leading: Icon(
+                    Icons.description,
+                    size: 20,
+                    color: colorScheme.primary,
+                  ),
                   title: Text(
                     p.basename(plugins[i]),
                     maxLines: 1,
@@ -303,8 +315,9 @@ class ServicePage extends HookConsumerWidget {
                   ),
                   trailing: IconButton.text(
                     icon: const Icon(Icons.delete_outline, size: 18),
-                    onPressed: () =>
-                        ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(plugins[i]),
+                    onPressed: () => ref
+                        .read(lxSourcePluginPathsProvider.notifier)
+                        .removePlugin(plugins[i]),
                   ),
                 ),
               ],
@@ -324,12 +337,11 @@ class ServicePage extends HookConsumerWidget {
     List<SubsonicMusicServer> subsonicAccounts,
   ) {
     final libraryCount = service.libraries.length;
-    final subtitle = libraryCount > 0
-        ? '$libraryCount 个库'
-        : '已加载';
+    final subtitle = libraryCount > 0 ? '$libraryCount 个库' : '已加载';
 
     // 是否允许编辑（本地 + LxServer + Subsonic 可编辑，Lx 插件由文件管理）
-    final canEdit = service.sourceType == MusicSourceType.local ||
+    final canEdit =
+        service.sourceType == MusicSourceType.local ||
         service.sourceType == MusicSourceType.lxServer ||
         service.sourceType == MusicSourceType.subsonic ||
         service.sourceType == MusicSourceType.navidrome ||
@@ -350,7 +362,8 @@ class ServicePage extends HookConsumerWidget {
           if (_canRemove(service.sourceType))
             IconButton.text(
               icon: const Icon(Icons.delete_outline, size: 18),
-              onPressed: () => _removeService(context, ref, service, subsonicAccounts),
+              onPressed: () =>
+                  _removeService(context, ref, service, subsonicAccounts),
             ),
         ],
       ),
@@ -385,16 +398,14 @@ class ServicePage extends HookConsumerWidget {
           mobile: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) =>
-                    AddLxServerAccountPage(initialConfig: config),
+                builder: (_) => AddLxServerAccountPage(initialConfig: config),
               ),
             );
           },
           tablet: () {
             showDialog(
               context: context,
-              builder: (_) =>
-                  AddLxServerAccountDialog(initialConfig: config),
+              builder: (_) => AddLxServerAccountDialog(initialConfig: config),
             );
           },
         );
@@ -433,13 +444,13 @@ class ServicePage extends HookConsumerWidget {
 
   /// 类型对应的图标
   IconData _typeIcon(MusicSourceType type) => switch (type) {
-        MusicSourceType.local => Icons.folder,
-        MusicSourceType.lx => Icons.code,
-        MusicSourceType.lxServer => Icons.dns,
-        MusicSourceType.subsonic => Icons.cloud,
-        MusicSourceType.navidrome => Icons.navigation,
-        MusicSourceType.emby => Icons.play_circle,
-      };
+    MusicSourceType.local => Icons.folder,
+    MusicSourceType.lx => Icons.code,
+    MusicSourceType.lxServer => Icons.dns,
+    MusicSourceType.subsonic => Icons.cloud,
+    MusicSourceType.navidrome => Icons.navigation,
+    MusicSourceType.emby => Icons.play_circle,
+  };
 
   /// 是否允许删除（local 不可删除）
   bool _canRemove(MusicSourceType type) => type != MusicSourceType.local;
@@ -452,9 +463,7 @@ class ServicePage extends HookConsumerWidget {
           context,
           mobile: () {
             Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const LxPluginPage(),
-              ),
+              MaterialPageRoute<void>(builder: (_) => const LxPluginPage()),
             );
           },
           tablet: () {
@@ -511,11 +520,15 @@ class ServicePage extends HookConsumerWidget {
     try {
       switch (service.sourceType) {
         case MusicSourceType.lx:
-          await ref.read(lxMetadataPluginPathsProvider.notifier).removePlugin('');
+          await ref
+              .read(lxMetadataPluginPathsProvider.notifier)
+              .removePlugin('');
         case MusicSourceType.lxServer:
           await ref.read(lxServerConnectionProvider.notifier).disconnect();
         case MusicSourceType.subsonic:
-          await ref.read(subsonicAccountsProvider.notifier).removeAccount(service.sourceId);
+          await ref
+              .read(subsonicAccountsProvider.notifier)
+              .removeAccount(service.sourceId);
         default:
           break;
       }

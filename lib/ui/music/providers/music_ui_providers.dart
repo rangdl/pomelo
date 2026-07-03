@@ -9,7 +9,7 @@ import 'package:pomelo/core/models/metadata/search_type.dart';
 import 'package:pomelo/core/models/metadata/artist.dart';
 import 'package:pomelo/core/models/metadata/album.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
-import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/core/models/metadata/track.dart';

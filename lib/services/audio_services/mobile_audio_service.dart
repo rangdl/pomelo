@@ -6,16 +6,14 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
 
-import 'package:pomelo/modules/audio_player/model/playback_state.dart';
-import 'package:pomelo/modules/audio_player/model/state.dart';
-import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
-import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
+import 'package:pomelo/services/audio_player/playback_state.dart';
+import 'package:pomelo/provider/audio_player/state.dart';
+import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/services/audio_player/audio_player.dart';
 
 class MobileAudioService extends BaseAudioHandler {
   AudioSession? session;
   final AudioPlayerNotifier audioPlayerNotifier;
-
-  AudioPlayerService get audioPlayer => audioPlayerNotifier.audioPlayer;
 
   // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
   AudioPlayerState get playlist => audioPlayerNotifier.state;

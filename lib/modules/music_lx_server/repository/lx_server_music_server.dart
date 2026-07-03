@@ -1,5 +1,5 @@
 import 'package:pomelo/core/core.dart';
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
 import 'lx_server_client.dart';
