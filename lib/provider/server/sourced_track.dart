@@ -16,9 +16,9 @@ import 'dart:io';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
-import 'package:pomelo/core/models/database/database_provider.dart';
+import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
@@ -36,11 +36,7 @@ class SourcedTrackState {
   final String? url;
   final String? quality;
 
-  const SourcedTrackState({
-    required this.query,
-    this.url,
-    this.quality,
-  });
+  const SourcedTrackState({required this.query, this.url, this.quality});
 
   /// 状态唯一标识，等于 `query.id`
   String get id => query.id;
@@ -85,7 +81,10 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
       return state.url!;
     }
 
-    final preferredQuality = ref.read(userPreferenceProvider).lxServerQuality.id;
+    final preferredQuality = ref
+        .read(userPreferenceProvider)
+        .lxServerQuality
+        .id;
     final availableQualities = _collectAvailableQualities();
     final downgradeList = _buildDowngradeList(
       availableQualities,
@@ -94,7 +93,7 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
 
     AppLogger.log.i(
       '[SourcedTrack] 解析开始: track=${track.title}, 偏好=$preferredQuality, '
-          '可用=$availableQualities, 降级序列=$downgradeList',
+      '可用=$availableQualities, 降级序列=$downgradeList',
     );
 
     for (final quality in downgradeList) {
@@ -110,9 +109,7 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
         );
         return url;
       } catch (e) {
-        AppLogger.log.w(
-          '[SourcedTrack] 获取链接失败 quality=$quality: $e',
-        );
+        AppLogger.log.w('[SourcedTrack] 获取链接失败 quality=$quality: $e');
       }
     }
 
@@ -120,15 +117,11 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
     final fallback = track.src ?? track.path ?? '';
     if (fallback.isNotEmpty) {
       state = state.copyWith(url: fallback, quality: null);
-      AppLogger.log.i(
-        '[SourcedTrack] 回退成功: src/path, track=${track.title}',
-      );
+      AppLogger.log.i('[SourcedTrack] 回退成功: src/path, track=${track.title}');
       return fallback;
     }
 
-    AppLogger.log.e(
-      '[SourcedTrack] 所有音质均无法获取播放链接: ${track.title}',
-    );
+    AppLogger.log.e('[SourcedTrack] 所有音质均无法获取播放链接: ${track.title}');
     throw Exception('无法获取有效的播放链接');
   }
 
@@ -167,10 +160,7 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   }
 
   /// 调用对应 MusicServer 获取播放链接
-  Future<String> _getMusicUrl(
-    Track track, {
-    required String quality,
-  }) async {
+  Future<String> _getMusicUrl(Track track, {required String quality}) async {
     final sourceId = track.source?.id;
     if (sourceId == null) return track.src ?? track.path ?? '';
 
@@ -193,7 +183,10 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   ///
   /// 供调用方迭代 HEAD 校验使用。
   List<String> get downgradeList {
-    final preferredQuality = ref.read(userPreferenceProvider).lxServerQuality.id;
+    final preferredQuality = ref
+        .read(userPreferenceProvider)
+        .lxServerQuality
+        .id;
     final availableQualities = _collectAvailableQualities();
     return _buildDowngradeList(availableQualities, preferredQuality);
   }
@@ -229,7 +222,7 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   /// 从数据库加载持久化记录
   Future<SourcedTrackEntity?> _loadPersisted() async {
     try {
-      final db = ref.read(appDatabaseProvider);
+      final db = ref.read(databaseProvider);
       return db.getSourcedTrack(track.id);
     } catch (e) {
       AppLogger.log.w('[SourcedTrack] 加载持久化记录失败: $e');
@@ -282,22 +275,26 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   /// 持久化指定音质的播放链接
   Future<void> saveUrlToPersistence(String quality, String url) async {
     try {
-      final db = ref.read(appDatabaseProvider);
+      final db = ref.read(databaseProvider);
       final existing = await db.getSourcedTrack(track.id);
 
       final urlMap = _parseStringMap(existing?.urlMap);
       urlMap[quality] = url;
 
-      await db.upsertSourcedTrack(SourcedTrackTableCompanion(
-        trackId: Value(track.id),
-        sourceId: Value(track.source?.id ?? ''),
-        libraryId: Value(track.source?.libraryId),
-        qualities: Value(jsonEncode(_collectAvailableQualities())),
-        urlMap: Value(jsonEncode(urlMap)),
-        cachePathMap: Value(existing?.cachePathMap ?? '{}'),
-        updatedAt: Value(DateTime.now()),
-      ));
-      AppLogger.log.d('[SourcedTrack] 持久化URL: quality=$quality, track=${track.title}');
+      await db.upsertSourcedTrack(
+        SourcedTrackTableCompanion(
+          trackId: Value(track.id),
+          sourceId: Value(track.source?.id ?? ''),
+          libraryId: Value(track.source?.libraryId),
+          qualities: Value(jsonEncode(_collectAvailableQualities())),
+          urlMap: Value(jsonEncode(urlMap)),
+          cachePathMap: Value(existing?.cachePathMap ?? '{}'),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      AppLogger.log.d(
+        '[SourcedTrack] 持久化URL: quality=$quality, track=${track.title}',
+      );
     } catch (e) {
       AppLogger.log.w('[SourcedTrack] 持久化URL失败: $e');
     }
@@ -309,22 +306,28 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
     String cachePath,
   ) async {
     try {
-      final db = ref.read(appDatabaseProvider);
+      final db = ref.read(databaseProvider);
       final existing = await db.getSourcedTrack(track.id);
 
       final cachePathMap = _parseStringMap(existing?.cachePathMap);
       cachePathMap[quality] = cachePath;
 
-      await db.upsertSourcedTrack(SourcedTrackTableCompanion(
-        trackId: Value(track.id),
-        sourceId: Value(existing?.sourceId ?? track.source?.id ?? ''),
-        libraryId: Value(existing?.libraryId ?? track.source?.libraryId),
-        qualities: Value(existing?.qualities ?? jsonEncode(_collectAvailableQualities())),
-        urlMap: Value(existing?.urlMap ?? '{}'),
-        cachePathMap: Value(jsonEncode(cachePathMap)),
-        updatedAt: Value(DateTime.now()),
-      ));
-      AppLogger.log.d('[SourcedTrack] 持久化缓存路径: quality=$quality, track=${track.title}');
+      await db.upsertSourcedTrack(
+        SourcedTrackTableCompanion(
+          trackId: Value(track.id),
+          sourceId: Value(existing?.sourceId ?? track.source?.id ?? ''),
+          libraryId: Value(existing?.libraryId ?? track.source?.libraryId),
+          qualities: Value(
+            existing?.qualities ?? jsonEncode(_collectAvailableQualities()),
+          ),
+          urlMap: Value(existing?.urlMap ?? '{}'),
+          cachePathMap: Value(jsonEncode(cachePathMap)),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+      AppLogger.log.d(
+        '[SourcedTrack] 持久化缓存路径: quality=$quality, track=${track.title}',
+      );
     } catch (e) {
       AppLogger.log.w('[SourcedTrack] 持久化缓存路径失败: $e');
     }

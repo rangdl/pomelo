@@ -1,14 +1,15 @@
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/rx.dart';
-import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
+import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/provider/lyric/lyric.dart';
+import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_image.dart';
 import 'duration_format.dart';
 import 'lyric_parser.dart';
-import 'lyric_view.dart';
 import 'playback_page.dart';
 import 'widgets/bottom_sheet.dart';
 import 'widgets/play_queue_content.dart';
@@ -26,32 +27,38 @@ class MiniPlayer extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final audioPlayer = ref.watch(audioPlayerServiceProvider);
     final state = ref.watch(audioPlayerProvider);
     final track = state.activeTrack;
 
     // Hooks 必须无条件调用
-    final position = useStream(
-      audioPlayer.positionStream,
-      initialData: audioPlayer.position,
-    ).data ?? Duration.zero;
-    final duration = useStream(
-      audioPlayer.durationStream,
-      initialData: audioPlayer.duration,
-    ).data ?? Duration.zero;
+    final position =
+        useStream(
+          audioPlayer.positionStream,
+          initialData: audioPlayer.position,
+        ).data ??
+        Duration.zero;
+    final duration =
+        useStream(
+          audioPlayer.durationStream,
+          initialData: audioPlayer.duration,
+        ).data ??
+        Duration.zero;
 
     // 歌词获取与解析（track 为空时传入空 Track 占位避免条件 hook）
-    final lyricAsync = track == null
-        ? const AsyncValue<String?>.data(null)
-        : ref.watch(lyricProvider(track));
-    final lyricText = lyricAsync.value;
+    final lyricLinesAsync = track == null
+        ? const AsyncValue<List<LyricLine>>.data([])
+        : ref.watch(lyricLinesProvider(track));
     final lyricLines = useMemoized(
-      () => lyricText != null ? LyricParser.parse(lyricText) : <LyricLine>[],
-      [lyricText],
+      () => lyricLinesAsync.value ?? <LyricLine>[],
+      [lyricLinesAsync],
     );
-    final currentLyricIndex = LyricParser.findCurrentIndex(lyricLines, position);
-    final currentLyric =
-        currentLyricIndex >= 0 ? lyricLines[currentLyricIndex].text : null;
+    final currentLyricIndex = LyricParser.findCurrentIndex(
+      lyricLines,
+      position,
+    );
+    final currentLyric = currentLyricIndex >= 0
+        ? lyricLines[currentLyricIndex].text
+        : null;
 
     if (track == null) return const SizedBox.shrink();
 
@@ -59,7 +66,8 @@ class MiniPlayer extends HookConsumerWidget {
         ? position.inMilliseconds / duration.inMilliseconds
         : 0.0;
 
-    final isDesktop = MediaQuery.of(context).size.width >= ResponsiveBreakpoints.mobile;
+    final isDesktop =
+        MediaQuery.of(context).size.width >= ResponsiveBreakpoints.mobile;
 
     return GestureDetector(
       onTap: () => _navigateToPlayback(context),
@@ -269,10 +277,7 @@ class MiniPlayer extends HookConsumerWidget {
       tablet: () => openSheet(
         context: context,
         position: OverlayPosition.right,
-        builder: (_) => const SizedBox(
-          width: 360,
-          child: PlayQueueContent(),
-        ),
+        builder: (_) => const SizedBox(width: 360, child: PlayQueueContent()),
       ),
     );
   }

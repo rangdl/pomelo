@@ -1,12 +1,15 @@
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import 'playback.dart';
 
-/// 构建服务器路由
-Router buildServerRouter(ServerPlaybackRoutes playbackRoutes) {
+final serverRouterProvider = Provider((ref) {
+  final playbackRoutes = ref.watch(serverPlaybackRoutesProvider);
+  // final connectRoutes = ref.watch(serverConnectRoutesProvider);
+
   final router = Router();
 
-  router.get("/ping", (request) => Response.ok("pong"));
+  router.get("/ping", (Request request) => Response.ok("pong"));
 
   router.head("/stream/<trackId>", playbackRoutes.headStreamTrackId);
   router.get("/stream/<trackId>", playbackRoutes.getStreamTrackId);
@@ -18,4 +21,4 @@ Router buildServerRouter(ServerPlaybackRoutes playbackRoutes) {
   // router.all("/ws", connectRoutes.websocket);
 
   return router;
-}
+});

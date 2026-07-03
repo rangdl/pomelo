@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:smtc_windows/smtc_windows.dart';
 
-import 'package:pomelo/modules/audio_player/model/playback_state.dart';
-import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
-import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
+import 'package:pomelo/services/audio_player/playback_state.dart';
+import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/core/models/metadata/track.dart' show Track;
 
 class WindowsAudioService {
@@ -13,9 +13,11 @@ class WindowsAudioService {
   final Ref ref;
   final AudioPlayerNotifier audioPlayerNotifier;
 
-  AudioPlayerService get audioPlayer => audioPlayerNotifier.audioPlayer;
-
   final subscriptions = <StreamSubscription>[];
+
+  /// 标记 SMTC 是否已释放，避免 dispose 后调用 smtc 方法抛出
+  /// DroppableDisposedException
+  bool _disposed = false;
 
   WindowsAudioService(this.ref, this.audioPlayerNotifier)
     : smtc = SMTCWindows(enabled: false) {
@@ -80,19 +82,24 @@ class WindowsAudioService {
   }
 
   Future<void> addTrack(Track track) async {
-    if (!smtc.enabled) {
-      await smtc.enableSmtc();
-    }
+    if (_disposed) return;
     _currentTrack = track;
-    await smtc.updateMetadata(
-      MusicMetadata(
-        title: track.title,
-        albumArtist: track.artist,
-        artist: track.artist,
-        album: track.album ?? 'Unknown',
-        thumbnail: track.coverArt,
-      ),
-    );
+    try {
+      if (!smtc.enabled) {
+        await smtc.enableSmtc();
+      }
+      await smtc.updateMetadata(
+        MusicMetadata(
+          title: track.title,
+          albumArtist: track.artist,
+          artist: track.artist,
+          album: track.album ?? 'Unknown',
+          thumbnail: track.coverArt,
+        ),
+      );
+    } catch (_) {
+      // smtc 可能已释放或 flutter_rust_bridge 未初始化，忽略
+    }
   }
 
   /// 当前曲目的元数据缓存（用于 updateArtist 时重建完整元数据）
@@ -100,24 +107,34 @@ class WindowsAudioService {
 
   /// 更新 artist 字段（用于歌词展示）
   Future<void> updateArtist(String? artist) async {
+    if (_disposed) return;
     final track = _currentTrack;
     if (track == null) return;
-    await smtc.updateMetadata(
-      MusicMetadata(
-        title: track.title,
-        albumArtist: track.artist,
-        artist: artist,
-        album: track.album ?? 'Unknown',
-        thumbnail: track.coverArt,
-      ),
-    );
+    try {
+      await smtc.updateMetadata(
+        MusicMetadata(
+          title: track.title,
+          albumArtist: track.artist,
+          artist: artist,
+          album: track.album ?? 'Unknown',
+          thumbnail: track.coverArt,
+        ),
+      );
+    } catch (_) {
+      // smtc 可能已释放或 flutter_rust_bridge 未初始化，忽略
+    }
   }
 
   void dispose() {
-    smtc.disableSmtc();
-    smtc.dispose();
+    _disposed = true;
     for (var element in subscriptions) {
       element.cancel();
+    }
+    try {
+      smtc.disableSmtc();
+      smtc.dispose();
+    } catch (_) {
+      // smtc 可能未正确初始化，忽略
     }
   }
 }

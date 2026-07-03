@@ -1,24 +1,28 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' show MediaKit;
+import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
-import 'package:pomelo/core/models/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/routers/app_router.dart';
-import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/core/theme/app_theme.dart';
 import 'package:pomelo/core/toast.dart';
-import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/audio_player/providers/current_lyric_provider.dart';
+import 'package:pomelo/provider/audio_player/audio_player_streams.dart';
+import 'package:pomelo/provider/database/database_provider.dart';
+import 'package:pomelo/provider/server/server.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
+import 'package:smtc_windows/smtc_windows.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'core/helper.dart';
 import 'core/hooks/use_has_touch.dart';
-import 'services/logger.dart';
+import 'services/audio_player/audio_player.dart' show audioPlayer;
+import 'services/logger/logger.dart';
 
 final appRouter = AppRouter(navigatorKey: appNavigatorKey);
 
@@ -27,80 +31,38 @@ void main() async {
   AppLogger.runZoned(() async {
     WidgetsFlutterBinding.ensureInitialized();
     MediaKit.ensureInitialized();
-
-    ProviderContainer? container;
-    try {
-      await _runPlatformSpecificCode();
-
-      // ========== 存储层初始化 ==========
-      // 提前创建 drift 数据库（所有模块共享同一实例）
-      final database = AppDatabase();
-      // 从 drift 数据库加载 UserPreference（用于初始化 MusicCacheDir）
-      final persistedPref = await UserPreference.loadFromDatabase(database);
-      MusicCacheDir.setCustomDirectory(persistedPref.cacheDirectory);
-      MusicCacheDir.setSizeLimit(persistedPref.cacheSizeLimitGB);
-      // ================================
-
-      // ========== Riverpod ProviderContainer ==========
-      // 显式创建 ProviderContainer，便于在 runApp 前触发各模块初始化
-      container = ProviderContainer(
-        overrides: [appDatabaseProvider.overrideWithValue(database)],
-        observers: [AppLoggerProviderObserver()],
-      );
-
-      // ========== 核心模块初始化 ==========
-      final audioPlayerModule = await container.read(
-        audioPlayerModuleProvider.future,
-      );
-      // 注入 ProviderContainer，供 ServerPlaybackRoutes 访问 sourcedTrackProvider
-      audioPlayerModule.container = container;
-      // ==================================================================
-      // 异步加载 UserPreference 到 Riverpod 状态
-      await container.read(userPreferenceProvider.notifier).initialize();
-      // ===============================================
-    } catch (e, s) {
-      AppLogger.reportError(e, s, '启动初始化失败');
+    if (kIsWindows) {
+      await SMTCWindows.initialize();
     }
+
+    await _runPlatformSpecificCode();
+
+    // ========== 存储层初始化 ==========
+    // 提前创建 drift 数据库（所有模块共享同一实例）
+    final database = AppDatabase();
+    // 从 drift 数据库加载 UserPreference（用于初始化 MusicCacheDir）
+    final userPreference = await UserPreference.loadFromDatabase(database);
+    MusicCacheDir.setCustomDirectory(userPreference.cacheDirectory);
+    MusicCacheDir.setSizeLimit(userPreference.cacheSizeLimitGB);
+    // ================================
 
     // 无论启动是否完全成功都调用 runApp，避免白屏
     runApp(
-      container != null
-          ? UncontrolledProviderScope(container: container, child: const Pomelo())
-          : const _StartupFailedApp(),
+      ProviderScope(
+        observers: [AppLoggerProviderObserver()],
+        overrides: [
+          databaseProvider.overrideWithValue(database),
+          userPreferencesProvider.overrideWithValue(userPreference),
+        ],
+        child: const Pomelo(),
+      ),
     );
   });
 }
 
-/// 启动失败时的兜底页面
-class _StartupFailedApp extends StatelessWidget {
-  const _StartupFailedApp();
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48),
-            const SizedBox(height: 16),
-            const Text('启动失败，请查看日志后重启'),
-            const SizedBox(height: 8),
-            const Text(
-              '日志路径见 <documents>/pomelo/logs/',
-              style: TextStyle(fontSize: 12, color: Color(0xFF888888)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// 应用壳 — 监听全局设置并响应式更新
 class Pomelo extends HookConsumerWidget {
-  const Pomelo();
+  const Pomelo({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -110,27 +72,6 @@ class Pomelo extends HookConsumerWidget {
     );
     final themeMode = _parseThemeMode(themeModeStr);
     final hasTouchSupport = useHasTouch();
-
-    // 触发平台媒体控制服务初始化（Windows SMTC / 移动端通知栏）
-    ref.watch(audioServicesProvider);
-
-    // 监听当前曲目变化，同步元数据到系统媒体控制
-    ref.listen(audioPlayerProvider.select((s) => s.activeTrack), (
-      previous,
-      next,
-    ) {
-      if (next == null) return;
-      final audioServices = ref.read(audioServicesProvider).value;
-      if (audioServices == null) return;
-      audioServices.addTrack(next);
-    });
-
-    // 监听当前歌词行，同步到系统媒体控制的 artist 展示位置
-    ref.listen(currentLyricLineProvider, (previous, next) {
-      final audioServices = ref.read(audioServicesProvider).value;
-      if (audioServices == null) return;
-      audioServices.updateLyric(next.value);
-    });
 
     // 监听缓存目录设置变化，同步到 MusicCacheDir
     // 初始值已在 main() 中从持久化存储加载并应用，此处仅处理运行时变更
@@ -149,6 +90,18 @@ class Pomelo extends HookConsumerWidget {
       MusicCacheDir.setSizeLimit(next);
     });
 
+    // 监听音频流监听器变化
+    ref.listen(audioPlayerStreamListenersProvider, (_, _) {});
+    // 监听本地服务器状态变化
+    ref.listen(serverProvider, (_, _) {});
+
+    useEffect(() {
+      return () {
+        /// For enabling hot reload for audio player
+        if (!kDebugMode) return;
+        audioPlayer.dispose();
+      };
+    }, []);
     return ShadcnApp.router(
       themeMode: themeMode,
       theme: AppTheme.light,

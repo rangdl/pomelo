@@ -5,7 +5,7 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_broadcasts/flutter_broadcasts.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 // import '../logger/logger.dart';

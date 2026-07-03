@@ -4,7 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
-import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
@@ -24,9 +24,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
     final nameController = useTextEditingController(
       text: localConfig?.name ?? '本地音乐',
     );
-    final dirs = useState<List<String>>(
-      localConfig?.directories ?? const [],
-    );
+    final dirs = useState<List<String>>(localConfig?.directories ?? const []);
     final cacheDir = useState<String?>(null);
     final trackCount = ref.watch(localMusicSongCountProvider);
 
@@ -88,10 +86,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // 服务名称
-        TextField(
-          controller: nameController,
-          placeholder: const Text('本地音乐'),
-        ),
+        TextField(controller: nameController, placeholder: const Text('本地音乐')),
         const Gap(4),
         Text(
           '服务名称',
@@ -150,9 +145,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
           Container(
             constraints: const BoxConstraints(maxHeight: 240),
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).colorScheme.border,
-              ),
+              border: Border.all(color: Theme.of(context).colorScheme.border),
               borderRadius: BorderRadius.circular(8),
             ),
             child: ListView.separated(
@@ -168,9 +161,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
                     isCacheDir ? Icons.cached : Icons.folder,
                     size: 20,
                   ),
-                  title: Text(
-                    isCacheDir ? '缓存目录' : p.basename(dir),
-                  ),
+                  title: Text(isCacheDir ? '缓存目录' : p.basename(dir)),
                   subtitle: Text(
                     dir,
                     maxLines: 1,
@@ -183,9 +174,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
                   trailing: IconButton.text(
                     icon: const Icon(Icons.close, size: 18),
                     onPressed: () {
-                      dirs.value = dirs.value
-                          .where((d) => d != dir)
-                          .toList();
+                      dirs.value = dirs.value.where((d) => d != dir).toList();
                     },
                   ),
                 );
@@ -217,10 +206,7 @@ class _EditLocalMusicContent extends HookConsumerWidget {
               child: const Text('取消'),
             ),
             const Gap(8),
-            PrimaryButton(
-              onPressed: submit,
-              child: const Text('保存'),
-            ),
+            PrimaryButton(onPressed: submit, child: const Text('保存')),
           ],
         ),
       ],
@@ -236,10 +222,7 @@ class EditLocalMusicDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('编辑本地音乐'),
-      content: SizedBox(
-        width: 480,
-        child: const _EditLocalMusicContent(),
-      ),
+      content: SizedBox(width: 480, child: const _EditLocalMusicContent()),
     );
   }
 }
@@ -265,9 +248,7 @@ class EditLocalMusicPage extends StatelessWidget {
       child: const Padding(
         padding: EdgeInsets.all(16),
         child: Center(
-          child: SingleChildScrollView(
-            child: _EditLocalMusicContent(),
-          ),
+          child: SingleChildScrollView(child: _EditLocalMusicContent()),
         ),
       ),
     );

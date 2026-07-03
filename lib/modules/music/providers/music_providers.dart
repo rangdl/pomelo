@@ -1,7 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
-import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
 import 'package:pomelo/modules/music_lx/providers/lx_providers.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';

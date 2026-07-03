@@ -1,7 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/core/toast.dart';
-import 'package:pomelo/modules/audio_player/module_providers.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
+import 'package:pomelo/core/toast.dart';
+import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 「播放全部」按钮

@@ -2,34 +2,22 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:dio/dio.dart' hide Response;
 import 'package:dio/dio.dart' as dio_lib;
+import 'package:dio/dio.dart' hide Response;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:pomelo/services/logger.dart';
-import 'package:pomelo/core/storage/music_cache_dir.dart';
-import 'package:pomelo/modules/audio_player/providers/sourced_track.dart';
-import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
+import 'package:pomelo/core/storage/music_cache_dir.dart';
+import 'package:pomelo/provider/server/sourced_track.dart';
+import 'package:pomelo/services/audio_player/audio_player.dart';
+import 'package:pomelo/services/audio_player/media.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:shelf/shelf.dart';
 
 class ServerPlaybackRoutes {
-  final AudioPlayerService audioPlayer;
+  final Ref ref;
   final Dio dio;
 
-  /// 获取当前活跃曲目（由外部注入，避免对 Riverpod Ref 的依赖）
-  final Track? Function() getActiveTrack;
-
-  /// 获取 Riverpod ProviderContainer（由外部注入）
-  ///
-  /// 用于访问 [sourcedTrackProvider]，将 URL 解析责任委托给 provider。
-  /// HEAD 校验与音质降级重试由本类负责。
-  final ProviderContainer? Function() getContainer;
-
-  ServerPlaybackRoutes({
-    required this.audioPlayer,
-    required this.getActiveTrack,
-    required this.getContainer,
-  }) : dio = Dio();
+  ServerPlaybackRoutes(this.ref) : dio = Dio();
 
   /// Hop-by-hop 头部集合
   ///
@@ -72,16 +60,16 @@ class ServerPlaybackRoutes {
   /// 返回值可能是 HTTP(S) URL，也可能是本地文件绝对路径，调用方需通过
   /// [_isLocalPath] 判断后再决定使用 [dio] 请求或 [File] 读取。
   Future<String> _resolveValidUrl(Track track) async {
-    final container = getContainer();
-    if (container == null) return track.src ?? track.path ?? '';
-    final notifier = container.read(sourcedTrackProvider(track).notifier);
+    final notifier = ref.read(sourcedTrackProvider(track).notifier);
 
     // 1. 命中内存缓存直接返回
-    final cached = container.read(sourcedTrackProvider(track)).url;
+    final cached = ref.read(sourcedTrackProvider(track)).url;
     if (cached != null && cached.isNotEmpty) return cached;
 
     final downgradeList = notifier.downgradeList;
-    AppLogger.log.i('[Playback] 解析开始: track=${track.title}, 降级序列=$downgradeList');
+    AppLogger.log.i(
+      '[Playback] 解析开始: track=${track.title}, 降级序列=$downgradeList',
+    );
 
     // 2. 优先使用持久化的本地缓存文件
     try {
@@ -129,7 +117,9 @@ class ServerPlaybackRoutes {
           notifier.cacheUrl(url, quality);
           // 持久化 URL，便于下次直接命中
           await notifier.saveUrlToPersistence(quality, url);
-          AppLogger.log.i('[Playback] 解析成功: quality=$quality, track=${track.title}');
+          AppLogger.log.i(
+            '[Playback] 解析成功: quality=$quality, track=${track.title}',
+          );
           return url;
         }
         AppLogger.log.w('[Playback] HEAD 失败 quality=$quality, url=$url');
@@ -175,6 +165,15 @@ class ServerPlaybackRoutes {
       AppLogger.log.w('[Playback] HEAD 异常 url=$url: $e');
       return false;
     }
+  }
+
+  Future<Track?> _getSourcedTrack() async {
+    // 从底层播放器获取当前曲目信息
+    final playlist = audioPlayer.playlist;
+    if (playlist.index < 0 || playlist.medias.isEmpty) return null;
+    final media = playlist.medias.elementAtOrNull(playlist.index);
+    if (media == null) return null;
+    return PomeloMedia.media(media).track;
   }
 
   Future<dio_lib.Response> streamTrackInformation(
@@ -224,7 +223,7 @@ class ServerPlaybackRoutes {
 
     AppLogger.log.d(
       '[Playback] Response for track: ${track.title}, '
-          'Status: ${res.statusCode}, Headers: ${res.headers.map}',
+      'Status: ${res.statusCode}, Headers: ${res.headers.map}',
     );
 
     return res;
@@ -233,7 +232,7 @@ class ServerPlaybackRoutes {
   /// @head('/stream/<trackId>')
   Future<Response> headStreamTrackId(Request request, String trackId) async {
     try {
-      final activeTrack = getActiveTrack();
+      final activeTrack = await _getSourcedTrack();
       if (activeTrack == null || activeTrack.src == null) {
         return Response.notFound('No active track or track is not streamable');
       }
@@ -276,7 +275,7 @@ class ServerPlaybackRoutes {
   /// @get('/stream/<trackId>')
   Future<Response> getStreamTrackId(Request request, String trackId) async {
     try {
-      final activeTrack = getActiveTrack();
+      final activeTrack = await _getSourcedTrack();
       if (activeTrack == null || activeTrack.src == null) {
         return Response.notFound('No active track or track is not streamable');
       }
@@ -308,10 +307,7 @@ class ServerPlaybackRoutes {
         final sanitizedHeaders = _sanitizeHeaders(res.headers.map);
 
         // 读取当前解析命中的音质（用于持久化缓存路径）
-        final container = getContainer();
-        final quality = container
-            ?.read(sourcedTrackProvider(activeTrack))
-            .quality;
+        final quality = ref.read(sourcedTrackProvider(activeTrack)).quality;
 
         // 缓存音频流到文件（异步，不阻塞响应）
         final cachedStream = await _teeStreamToCache(
@@ -394,11 +390,8 @@ class ServerPlaybackRoutes {
 
       // 持久化缓存文件路径（需有音质信息）
       if (quality != null) {
-        final container = getContainer();
-        if (container != null) {
-          final notifier = container.read(sourcedTrackProvider(track).notifier);
-          await notifier.saveCachePathToPersistence(quality, file.path);
-        }
+        final notifier = ref.read(sourcedTrackProvider(track).notifier);
+        await notifier.saveCachePathToPersistence(quality, file.path);
       }
 
       // 写入完成后按缓存上限清理旧文件
@@ -430,3 +423,7 @@ class ServerPlaybackRoutes {
     return Response.ok('Next track');
   }
 }
+
+final serverPlaybackRoutesProvider = Provider(
+  (ref) => ServerPlaybackRoutes(ref),
+);

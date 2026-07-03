@@ -7,9 +7,9 @@ library;
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
-import 'package:pomelo/core/providers/music_server_config_provider.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 import 'package:pomelo/modules/music_lx/model/lx_music_server.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
@@ -46,36 +46,37 @@ typedef LxMetadataEngineResult = ({
 ///
 /// 从 [musicServerConfigsProvider] 读取 LxPluginConfig.metadataPluginPath。
 /// 路径为空或文件不存在或加载失败时返回 null。
-final lxMetadataEngineProvider =
-    FutureProvider<LxMetadataEngineResult?>((ref) async {
-      final configs = await ref.watch(musicServerConfigsProvider.future);
-      final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
-      final pluginPath = lxConfig?.metadataPluginPath;
-      if (pluginPath == null || pluginPath.isEmpty) return null;
+final lxMetadataEngineProvider = FutureProvider<LxMetadataEngineResult?>((
+  ref,
+) async {
+  final configs = await ref.watch(musicServerConfigsProvider.future);
+  final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
+  final pluginPath = lxConfig?.metadataPluginPath;
+  if (pluginPath == null || pluginPath.isEmpty) return null;
 
-      final engine = LxMetadataEngine();
-      await engine.init();
+  final engine = LxMetadataEngine();
+  await engine.init();
 
-      if (!await _pluginExists(pluginPath, '元数据插件')) {
-        engine.dispose();
-        return null;
-      }
-      final content = await File(pluginPath).readAsString();
-      final libraries = await engine.loadPluginWithLibraries(content);
-      if (libraries.isEmpty) {
-        AppLogger.log.w('[LxMusic] 元数据插件 $pluginPath 未注册任何库，跳过');
-        engine.dispose();
-        return null;
-      }
+  if (!await _pluginExists(pluginPath, '元数据插件')) {
+    engine.dispose();
+    return null;
+  }
+  final content = await File(pluginPath).readAsString();
+  final libraries = await engine.loadPluginWithLibraries(content);
+  if (libraries.isEmpty) {
+    AppLogger.log.w('[LxMusic] 元数据插件 $pluginPath 未注册任何库，跳过');
+    engine.dispose();
+    return null;
+  }
 
-      final pluginId = _derivePluginId(pluginPath);
-      ref.onDispose(() => engine.dispose());
-      AppLogger.log.i(
-        '[LxMusic] 插件加载成功，注册了 ${libraries.length} 个库: '
-        '${libraries.map((l) => l.id).join(", ")}',
-      );
-      return (engine: engine, libraries: libraries, pluginId: pluginId);
-    });
+  final pluginId = _derivePluginId(pluginPath);
+  ref.onDispose(() => engine.dispose());
+  AppLogger.log.i(
+    '[LxMusic] 插件加载成功，注册了 ${libraries.length} 个库: '
+    '${libraries.map((l) => l.id).join(", ")}',
+  );
+  return (engine: engine, libraries: libraries, pluginId: pluginId);
+});
 
 /// LxSourceEngine Provider
 ///
@@ -150,7 +151,9 @@ class LxMetadataPluginPathsNotifier extends Notifier<List<String>> {
   Future<void> _save({required String metadataPath}) async {
     final configs = ref.read(musicServerConfigsProvider).value ?? const [];
     final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
-    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+    await ref
+        .read(musicServerConfigsNotifierProvider.notifier)
+        .upsert(
           LxPluginConfig(
             id: _lxConfigId,
             name: lxConfig?.name ?? 'Lx 音乐',
@@ -211,7 +214,9 @@ class LxSourcePluginPathsNotifier extends Notifier<List<String>> {
   Future<void> _save({required List<String> sourcePaths}) async {
     final configs = ref.read(musicServerConfigsProvider).value ?? const [];
     final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
-    await ref.read(musicServerConfigsNotifierProvider.notifier).upsert(
+    await ref
+        .read(musicServerConfigsNotifierProvider.notifier)
+        .upsert(
           LxPluginConfig(
             id: _lxConfigId,
             name: lxConfig?.name ?? 'Lx 音乐',

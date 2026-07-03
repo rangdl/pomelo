@@ -1,8 +1,8 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/toast.dart';
-import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/audio_player/providers/audio_player.dart';
+import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/track_more_actions_button.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
@@ -21,7 +21,6 @@ class PlayQueueContent extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(audioPlayerProvider);
     final notifier = ref.read(audioPlayerProvider.notifier);
-    final audioPlayer = ref.watch(audioPlayerServiceProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final tracks = state.tracks;
     final activeTrack = state.activeTrack;
@@ -31,7 +30,11 @@ class PlayQueueContent extends HookConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.queue_music, size: 48, color: colorScheme.mutedForeground),
+            Icon(
+              Icons.queue_music,
+              size: 48,
+              color: colorScheme.mutedForeground,
+            ),
             const Gap(12),
             Text(
               '播放队列为空',
@@ -150,9 +153,7 @@ class _QueueHeader extends StatelessWidget {
                   ? Icons.repeat_one
                   : Icons.repeat,
               size: 18,
-              color: loopMode != PlaylistMode.none
-                  ? colorScheme.primary
-                  : null,
+              color: loopMode != PlaylistMode.none ? colorScheme.primary : null,
             ),
             onPressed: onCycleLoop,
           ),

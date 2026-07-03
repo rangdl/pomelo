@@ -91,6 +91,7 @@ dependencies:
       url: https://github.com/KRTirtho/flutter_broadcasts.git
       ref: 63931dfe06733d4fb7452e9981e1f0b23414d97a
   smtc_windows: ^1.1.0
+  flutter_rust_bridge: ^2.11.1
   freezed_annotation: ^2.4.1
   json_annotation: ^4.9.0
   file_picker: ^10.1.9

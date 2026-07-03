@@ -5,8 +5,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:shadcn_flutter/shadcn_flutter_extension.dart';
 import 'package:pomelo/core/framework/inter_scrollbar.dart';
-import 'package:pomelo/core/providers/logs_provider.dart';
-import 'package:pomelo/services/logger.dart';
+import 'package:pomelo/provider/logs/logs_provider.dart';
+import 'package:pomelo/services/logger/logger.dart';
 import 'package:auto_route/auto_route.dart';
 
 import '../../core/core.dart';

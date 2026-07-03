@@ -2,10 +2,11 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
-import 'package:pomelo/core/rx.dart';
-import 'package:pomelo/modules/audio_player/module_providers.dart';
-import 'package:pomelo/modules/audio_player/service/audio_player_service.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
+import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/provider/lyric/lyric.dart';
+import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_image.dart';
@@ -27,7 +28,6 @@ class PlaybackPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final audioPlayer = ref.watch(audioPlayerServiceProvider);
     final state = ref.watch(audioPlayerProvider);
     final track = state.activeTrack;
 
@@ -46,13 +46,12 @@ class PlaybackPage extends HookConsumerWidget {
         Duration.zero;
 
     // 歌词获取与解析
-    final lyricAsync = track == null
-        ? const AsyncValue<String?>.data(null)
-        : ref.watch(lyricProvider(track));
-    final lyricText = lyricAsync.value;
+    final lyricLinesAsync = track == null
+        ? const AsyncValue<List<LyricLine>>.data([])
+        : ref.watch(lyricLinesProvider(track));
     final lyricLines = useMemoized(
-      () => lyricText != null ? LyricParser.parse(lyricText) : <LyricLine>[],
-      [lyricText],
+      () => lyricLinesAsync.value ?? <LyricLine>[],
+      [lyricLinesAsync],
     );
     void onSeek(Duration d) => audioPlayer.seek(d);
 
@@ -85,7 +84,6 @@ class PlaybackPage extends HookConsumerWidget {
                 shuffled: state.shuffled,
                 position: position,
                 duration: duration,
-                audioPlayer: audioPlayer,
                 lyricLines: lyricLines,
                 onSeek: onSeek,
                 style: _mobileStyle,
@@ -99,7 +97,6 @@ class PlaybackPage extends HookConsumerWidget {
                 shuffled: state.shuffled,
                 position: position,
                 duration: duration,
-                audioPlayer: audioPlayer,
                 lyricLines: lyricLines,
                 onSeek: onSeek,
                 style: _desktopStyle,
@@ -123,10 +120,7 @@ class PlaybackPage extends HookConsumerWidget {
       tablet: () => openSheet(
         context: context,
         position: OverlayPosition.right,
-        builder: (_) => const SizedBox(
-          width: 360,
-          child: PlayQueueContent(),
-        ),
+        builder: (_) => const SizedBox(width: 360, child: PlayQueueContent()),
       ),
     );
   }
@@ -192,7 +186,6 @@ class _PlaybackBody extends StatelessWidget {
   final bool shuffled;
   final Duration position;
   final Duration duration;
-  final AudioPlayerService audioPlayer;
   final List<LyricLine> lyricLines;
   final void Function(Duration)? onSeek;
   final _PlaybackStyle style;
@@ -205,7 +198,6 @@ class _PlaybackBody extends StatelessWidget {
     required this.shuffled,
     required this.position,
     required this.duration,
-    required this.audioPlayer,
     required this.lyricLines,
     required this.onSeek,
     required this.style,
@@ -219,15 +211,27 @@ class _PlaybackBody extends StatelessWidget {
 
     return SafeArea(
       child: switch (layout) {
-        _PlaybackLayout.vertical => _buildVertical(context, coverUrl, albumName),
-        _PlaybackLayout.horizontal => _buildHorizontal(context, coverUrl, albumName),
+        _PlaybackLayout.vertical => _buildVertical(
+          context,
+          coverUrl,
+          albumName,
+        ),
+        _PlaybackLayout.horizontal => _buildHorizontal(
+          context,
+          coverUrl,
+          albumName,
+        ),
       },
     );
   }
 
   // ===== 布局组装 =====
 
-  Widget _buildVertical(BuildContext context, String? coverUrl, String? albumName) {
+  Widget _buildVertical(
+    BuildContext context,
+    String? coverUrl,
+    String? albumName,
+  ) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: style.horizontalPadding),
       child: Column(
@@ -268,7 +272,11 @@ class _PlaybackBody extends StatelessWidget {
     );
   }
 
-  Widget _buildHorizontal(BuildContext context, String? coverUrl, String? albumName) {
+  Widget _buildHorizontal(
+    BuildContext context,
+    String? coverUrl,
+    String? albumName,
+  ) {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 800),
@@ -454,9 +462,7 @@ class _PlaybackBody extends StatelessWidget {
                 ? Icons.repeat_one
                 : Icons.repeat,
             size: 20,
-            color: loopMode != PlaylistMode.none
-                ? colorScheme.primary
-                : null,
+            color: loopMode != PlaylistMode.none ? colorScheme.primary : null,
           ),
           onPressed: () {
             final next = switch (loopMode) {
