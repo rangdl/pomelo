@@ -73,7 +73,7 @@ class LeaderboardSection extends HookConsumerWidget {
         );
       },
       loading: () => const Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(16),
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (_, _) => const SizedBox.shrink(),
@@ -96,7 +96,7 @@ class _LeaderboardSongs extends ConsumerWidget {
       data: (tracks) {
         if (tracks.isEmpty) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Center(
               child: Text(
                 '暂无歌曲',
@@ -123,7 +123,7 @@ class _LeaderboardSongs extends ConsumerWidget {
         );
       },
       loading: () => const Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(16),
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (err, _) => Padding(

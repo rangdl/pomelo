@@ -1,14 +1,18 @@
 /// 歌手详情页面
 ///
-/// 展示歌手信息（封面、名称、专辑数量）及其专辑列表。
+/// 展示歌手信息（封面、名称、专辑数量）及其歌曲列表与专辑列表。
 library;
 
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
+import 'package:pomelo/ui/music/track_list.dart';
+import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
+import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌手专辑列表 Provider
@@ -23,6 +27,29 @@ final artistAlbumsProvider =
     if (service == null) return [];
     try {
       return await service.getArtistAlbums(params.artistId);
+    } catch (_) {
+      return [];
+    }
+  },
+);
+
+/// 歌手歌曲列表 Provider
+///
+/// 根据 (sourceId, artistId, order) 获取歌手的歌曲列表。
+/// [order] 排序方式：'hot'（热度）或 'time'（时间）。
+final artistSongsProvider = FutureProvider.family<
+    List<Track>, ({String sourceId, String artistId, String order})>(
+  (ref, params) async {
+    await ref.watch(musicServersProvider.future);
+    final service =
+        await ref.watch(musicServerByProvider(params.sourceId).future);
+    if (service == null) return [];
+    try {
+      final result = await service.getArtistSongs(
+        params.artistId,
+        order: params.order,
+      );
+      return result.items;
     } catch (_) {
       return [];
     }
@@ -62,8 +89,20 @@ class ArtistDetailPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Tab 切换：0 = 歌曲，1 = 专辑
+    final tabIndex = useState(0);
+    // 歌曲排序方式：'hot' 或 'time'
+    final songOrder = useState('hot');
+
     final albumsAsync = ref.watch(
       artistAlbumsProvider((sourceId: sourceId, artistId: artistId)),
+    );
+    final songsAsync = ref.watch(
+      artistSongsProvider((
+        sourceId: sourceId,
+        artistId: artistId,
+        order: songOrder.value,
+      )),
     );
     final colorScheme = Theme.of(context).colorScheme;
 
@@ -93,46 +132,75 @@ class ArtistDetailPage extends HookConsumerWidget {
             albumCount: albums.isNotEmpty ? albums.length : albumCount,
           );
 
-          // 专辑列表内容
-          final albumsContent = albums.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 48),
-                  child: Center(
-                    child: Text(
-                      '暂无专辑',
-                      style: TextStyle(color: colorScheme.mutedForeground),
+          // Tab 切换行 + 排序切换
+          final tabRow = _TabBar(
+            tabIndex: tabIndex.value,
+            onTabChanged: (i) => tabIndex.value = i,
+            showSort: tabIndex.value == 0,
+            songOrder: songOrder.value,
+            onSortChanged: (o) => songOrder.value = o,
+            colorScheme: colorScheme,
+          );
+
+          // 内容区
+          final content = tabIndex.value == 0
+              ? songsAsync.when(
+                  data: (tracks) => _SongsContent(tracks: tracks),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => _ErrorView(
+                    message: '加载失败: $e',
+                    onRetry: () => ref.invalidate(
+                      artistSongsProvider((
+                        sourceId: sourceId,
+                        artistId: artistId,
+                        order: songOrder.value,
+                      )),
                     ),
+                    colorScheme: colorScheme,
                   ),
                 )
-              : _ArtistAlbumsGrid(
+              : _AlbumsContent(
                   albums: albums,
                   onOpenAlbum: onOpenAlbum,
+                  colorScheme: colorScheme,
                 );
 
           return Rx.layout(
             context,
-            // 移动端：纵向布局（歌手信息在上，专辑网格在下）
-            mobile: () => ListView(
-              padding: const EdgeInsets.all(16),
+            // 移动端：纵向布局（歌手信息在上，Tab + 内容在下）
+            mobile: () => Column(
               children: [
-                header,
-                const Gap(16),
-                albumsContent,
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: header,
+                ),
+                tabRow,
+                const Divider(height: 1),
+                Expanded(child: content),
               ],
             ),
-            // 桌面端（tablet 及以上）：左侧歌手信息，右侧专辑网格
+            // 桌面端（tablet 及以上）：左侧歌手信息，右侧 Tab + 内容
             tablet: () => Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  width: 300,
+                  width: 280,
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     children: [header],
                   ),
                 ),
                 const VerticalDivider(width: 1),
-                Expanded(child: albumsContent),
+                Expanded(
+                  child: Column(
+                    children: [
+                      tabRow,
+                      const Divider(height: 1),
+                      Expanded(child: content),
+                    ],
+                  ),
+                ),
               ],
             ),
           );
@@ -164,6 +232,171 @@ class ArtistDetailPage extends HookConsumerWidget {
   }
 }
 
+/// Tab 切换栏（歌曲 / 专辑）+ 排序切换
+class _TabBar extends StatelessWidget {
+  final int tabIndex;
+  final ValueChanged<int> onTabChanged;
+  final bool showSort;
+  final String songOrder;
+  final ValueChanged<String> onSortChanged;
+  final ColorScheme colorScheme;
+
+  const _TabBar({
+    required this.tabIndex,
+    required this.onTabChanged,
+    required this.showSort,
+    required this.songOrder,
+    required this.onSortChanged,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          AppChip(
+            label: '歌曲',
+            isSelected: tabIndex == 0,
+            onTap: () => onTabChanged(0),
+            fill: true,
+            borderRadius: 8,
+            fontSize: 13,
+          ),
+          const Gap(8),
+          AppChip(
+            label: '专辑',
+            isSelected: tabIndex == 1,
+            onTap: () => onTabChanged(1),
+            fill: true,
+            borderRadius: 8,
+            fontSize: 13,
+          ),
+          const Spacer(),
+          if (showSort)
+            Row(
+              children: [
+                AppChip(
+                  label: '热度',
+                  isSelected: songOrder == 'hot',
+                  onTap: () => onSortChanged('hot'),
+                  fill: false,
+                  borderRadius: 14,
+                  fontSize: 12,
+                ),
+                const Gap(6),
+                AppChip(
+                  label: '时间',
+                  isSelected: songOrder == 'time',
+                  onTap: () => onSortChanged('time'),
+                  fill: false,
+                  borderRadius: 14,
+                  fontSize: 12,
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 歌曲列表内容
+class _SongsContent extends StatelessWidget {
+  final List<Track> tracks;
+
+  const _SongsContent({required this.tracks});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    if (tracks.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: Text(
+            '暂无歌曲',
+            style: TextStyle(color: colorScheme.mutedForeground),
+          ),
+        ),
+      );
+    }
+    return ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        if (tracks.isNotEmpty) PlayAllButton(tracks: tracks),
+        const Gap(10),
+        TrackList(tracks: tracks, showMoreActions: true),
+      ],
+    );
+  }
+}
+
+/// 专辑列表内容
+class _AlbumsContent extends StatelessWidget {
+  final List<Album> albums;
+  final void Function(Album album)? onOpenAlbum;
+  final ColorScheme colorScheme;
+
+  const _AlbumsContent({
+    required this.albums,
+    this.onOpenAlbum,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (albums.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Center(
+          child: Text(
+            '暂无专辑',
+            style: TextStyle(color: colorScheme.mutedForeground),
+          ),
+        ),
+      );
+    }
+    return _ArtistAlbumsGrid(
+      albums: albums,
+      onOpenAlbum: onOpenAlbum,
+    );
+  }
+}
+
+/// 错误视图
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  final ColorScheme colorScheme;
+
+  const _ErrorView({
+    required this.message,
+    required this.onRetry,
+    required this.colorScheme,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, size: 48, color: colorScheme.destructive),
+          const Gap(12),
+          Text(message),
+          const Gap(12),
+          GhostButton(
+            onPressed: onRetry,
+            child: const Text('重试'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 歌手头部信息组件
 class _ArtistHeader extends StatelessWidget {
   final String name;
@@ -182,7 +415,7 @@ class _ArtistHeader extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -190,10 +423,10 @@ class _ArtistHeader extends StatelessWidget {
             CoverImage(
               coverArt: coverUrl,
               colorScheme: colorScheme,
-              size: 100,
-              borderRadius: BorderRadius.circular(50),
+              size: 80,
+              borderRadius: BorderRadius.circular(40),
             ),
-            const Gap(16),
+            const Gap(12),
             // 歌手信息
             Expanded(
               child: Column(
@@ -209,7 +442,7 @@ class _ArtistHeader extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const Gap(8),
+                  const Gap(6),
                   Text(
                     '$albumCount 张专辑',
                     style: TextStyle(

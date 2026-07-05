@@ -102,10 +102,10 @@ class PlaylistDetailPage extends HookConsumerWidget {
             context,
             // 移动端：纵向布局（封面信息在上，歌曲列表在下）
             mobile: () => ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               children: [
                 header,
-                const Gap(16),
+                const Gap(12),
                 songListContent,
               ],
             ),
@@ -114,9 +114,9 @@ class PlaylistDetailPage extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  width: 300,
+                  width: 280,
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     children: [header],
                   ),
                 ),
@@ -175,7 +175,7 @@ class _PlaylistHeader extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -183,10 +183,10 @@ class _PlaylistHeader extends StatelessWidget {
             CoverImage(
               coverArt: coverUrl,
               colorScheme: colorScheme,
-              size: 100,
+              size: 80,
               borderRadius: BorderRadius.circular(8),
             ),
-            const Gap(16),
+            const Gap(12),
             // 歌单信息
             Expanded(
               child: Column(
@@ -202,7 +202,7 @@ class _PlaylistHeader extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const Gap(8),
+                  const Gap(6),
                   if (creator.isNotEmpty)
                     Text(
                       creator,
@@ -219,7 +219,7 @@ class _PlaylistHeader extends StatelessWidget {
                       color: colorScheme.mutedForeground,
                     ),
                   ),
-                  const Gap(12),
+                  const Gap(10),
                   PlayAllButton(tracks: tracks),
                 ],
               ),

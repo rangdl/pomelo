@@ -464,15 +464,18 @@ final favoriteArtistsProvider = FutureProvider<List<Artist>>((ref) async {
 /// 根据输入关键词获取搜索提示列表。
 /// 内置 300ms 防抖，避免频繁请求。
 /// 切换来源/库时自动失效（依赖 [musicServerProvider]）。
+///
+/// 整体 try-catch 包裹：即使 [musicServerProvider] 或上游 [musicServersProvider]
+/// 抛出异常，也降级为空列表，避免在搜索提示浮层中显示"获取提示失败"。
 final searchTipProvider =
     FutureProvider.family<List<String>, String>((ref, keyword) async {
   final kw = keyword.trim();
   if (kw.isEmpty) return [];
   // 防抖 300ms
   await Future.delayed(const Duration(milliseconds: 300));
-  final service = await ref.watch(musicServerProvider.future);
-  if (service == null) return [];
   try {
+    final service = await ref.watch(musicServerProvider.future);
+    if (service == null) return [];
     return await service.tipSearch(kw);
   } catch (_) {
     return [];
@@ -483,10 +486,12 @@ final searchTipProvider =
 ///
 /// 获取当前选中服务的热搜词。
 /// 切换来源/库时自动刷新（依赖 [musicServerProvider]）。
+///
+/// 整体 try-catch 包裹：即使 [musicServerProvider] 抛出异常，也降级为空列表。
 final hotSearchProvider = FutureProvider<List<String>>((ref) async {
-  final service = await ref.watch(musicServerProvider.future);
-  if (service == null) return [];
   try {
+    final service = await ref.watch(musicServerProvider.future);
+    if (service == null) return [];
     return await service.getHotSearch();
   } catch (_) {
     return [];

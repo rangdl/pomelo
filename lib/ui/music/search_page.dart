@@ -300,7 +300,7 @@ class _SearchSuggestions extends HookConsumerWidget {
             ),
             child: tipsAsync.when(
               loading: () => const Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(12),
                 child: Center(
                   child: SizedBox(
                     width: 18,
@@ -310,7 +310,7 @@ class _SearchSuggestions extends HookConsumerWidget {
                 ),
               ),
               error: (_, _) => Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(12),
                 child: Text(
                   '获取提示失败',
                   style: TextStyle(
@@ -322,7 +322,7 @@ class _SearchSuggestions extends HookConsumerWidget {
               data: (tips) {
                 if (tips.isEmpty) {
                   return Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     child: Text(
                       '暂无搜索提示',
                       style: TextStyle(
@@ -336,7 +336,7 @@ class _SearchSuggestions extends HookConsumerWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
