@@ -397,6 +397,178 @@ class LxServerClient {
     );
   }
 
+  // ========== 歌手与专辑详情 ==========
+
+  /// 获取歌手详情
+  ///
+  /// GET /api/music/artistDetail?source=&id=
+  /// 返回歌手信息（含 desc/avatar/musicSize/albumSize）。
+  Future<LxServerArtist> getArtistDetail({
+    required String source,
+    required String id,
+  }) async {
+    await ensureLoggedIn();
+    AppLogger.log.i('[LxServer] 获取歌手详情: source=$source, id=$id');
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$serverUrl/api/music/artistDetail',
+        queryParameters: {'source': source, 'id': id},
+        options: _authOptions,
+      );
+      final data = response.data!;
+      AppLogger.log.i(
+        '[LxServer] 歌手详情获取成功: source=$source, id=$id, name=${data['name']}',
+      );
+      return LxServerArtist.fromJson(data);
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 获取歌手详情失败: source=$source, id=$id',
+      );
+      rethrow;
+    }
+  }
+
+  /// 获取歌手专辑列表
+  ///
+  /// GET /api/music/artistAlbums?source=&id=&page=
+  /// 返回分页专辑列表。
+  Future<({List<LxServerAlbum> list, int total, int limit, int page})>
+  getArtistAlbums({
+    required String source,
+    required String id,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    await ensureLoggedIn();
+    AppLogger.log.i(
+      '[LxServer] 获取歌手专辑: source=$source, id=$id, page=$page',
+    );
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$serverUrl/api/music/artistAlbums',
+        queryParameters: {'source': source, 'id': id, 'page': page},
+        options: _authOptions,
+      );
+      final data = response.data!;
+      final list = (data['list'] as List<dynamic>?)
+              ?.map((e) => LxServerAlbum.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      final total = (data['total'] as num?)?.toInt() ?? 0;
+      AppLogger.log.i(
+        '[LxServer] 歌手专辑获取成功: source=$source, id=$id, '
+        '返回 ${list.length} 张, 总计 $total 张',
+      );
+      return (list: list, total: total, limit: limit, page: page);
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 获取歌手专辑失败: source=$source, id=$id, page=$page',
+      );
+      rethrow;
+    }
+  }
+
+  /// 获取歌手歌曲
+  ///
+  /// GET /api/music/artistSongs?source=&id=&order=
+  /// [order] 排序方式：'hot'（热度）或 'time'（时间）。
+  /// 返回裸数组的歌曲列表（API 直接返回 List，非 {list: [...]} 包装）。
+  Future<List<LxServerSong>> getArtistSongs({
+    required String source,
+    required String id,
+    String order = 'hot',
+  }) async {
+    await ensureLoggedIn();
+    AppLogger.log.i(
+      '[LxServer] 获取歌手歌曲: source=$source, id=$id, order=$order',
+    );
+    try {
+      final response = await _dio.get(
+        '$serverUrl/api/music/artistSongs',
+        queryParameters: {'source': source, 'id': id, 'order': order},
+        options: _authOptions,
+      );
+      final dynamic rawData = response.data;
+      // 兼容裸数组与 {list: [...]} 包装两种格式
+      List<dynamic> rawList;
+      if (rawData is List) {
+        rawList = rawData;
+      } else if (rawData is Map<String, dynamic>) {
+        rawList = rawData['list'] as List<dynamic>? ?? const [];
+      } else {
+        rawList = const [];
+      }
+      final list = rawList
+          .map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
+          .toList();
+      AppLogger.log.i(
+        '[LxServer] 歌手歌曲获取成功: source=$source, id=$id, order=$order, '
+        '返回 ${list.length} 首',
+      );
+      return list;
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 获取歌手歌曲失败: source=$source, id=$id, order=$order',
+      );
+      rethrow;
+    }
+  }
+
+  /// 获取专辑歌曲
+  ///
+  /// GET /api/music/albumSongs?source=&id=
+  /// 返回专辑元信息（name/publishTime/source）及其曲目列表。
+  Future<({
+    List<LxServerSong> list,
+    int total,
+    String? name,
+    String? publishTime,
+    String source,
+  })> getAlbumSongs({
+    required String source,
+    required String id,
+  }) async {
+    await ensureLoggedIn();
+    AppLogger.log.i('[LxServer] 获取专辑歌曲: source=$source, id=$id');
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$serverUrl/api/music/albumSongs',
+        queryParameters: {'source': source, 'id': id},
+        options: _authOptions,
+      );
+      final data = response.data!;
+      final list = (data['list'] as List<dynamic>?)
+              ?.map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [];
+      final total = (data['total'] as num?)?.toInt() ?? list.length;
+      AppLogger.log.i(
+        '[LxServer] 专辑歌曲获取成功: source=$source, id=$id, '
+        '返回 ${list.length} 首, 总计 $total 首',
+      );
+      return (
+        list: list,
+        total: total,
+        name: data['name'] as String?,
+        publishTime: data['publishTime'] as String?,
+        source: data['source'] as String? ?? source,
+      );
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] 获取专辑歌曲失败: source=$source, id=$id',
+      );
+      rethrow;
+    }
+  }
+
   // ========== 用户收藏 ==========
 
   /// 获取用户列表数据（默认列表 + 收藏列表 + 用户歌单）

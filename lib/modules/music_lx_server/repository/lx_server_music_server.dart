@@ -257,11 +257,118 @@ class LxServerMusicServer extends MusicServer {
     throw UnimplementedError('$sourceName(getTracks) 尚未实现');
   }
 
+  // ========== 歌手 ==========
+
+  @override
+  Future<Artist?> getArtist(String id) async {
+    try {
+      final artist = await client.getArtistDetail(
+        source: _currentSource,
+        id: id,
+      );
+      return artist.toArtist(
+        sourceId: _sourceId,
+        sourceName: _sourceName,
+        libraryId: _currentSource,
+        libraryName: _libraryName(_currentSource),
+      );
+    } catch (e) {
+      AppLogger.log.w('[LxServer] 获取歌手详情失败: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<List<Album>> getArtistAlbums(String artistId) async {
+    try {
+      final result = await client.getArtistAlbums(
+        source: _currentSource,
+        id: artistId,
+      );
+      return result.list
+          .map(
+            (a) => a.toAlbum(
+              sourceId: _sourceId,
+              sourceName: _sourceName,
+              libraryId: _currentSource,
+              libraryName: _libraryName(_currentSource),
+            ),
+          )
+          .toList();
+    } catch (e) {
+      AppLogger.log.w('[LxServer] 获取歌手专辑失败: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<PaginationResponse<Track>> getArtistSongs(
+    String artistId, {
+    String? order,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final songs = await client.getArtistSongs(
+        source: _currentSource,
+        id: artistId,
+        order: order ?? 'hot',
+      );
+      final tracks = songs
+          .map(
+            (s) => s.toTrack(
+              sourceId: _sourceId,
+              sourceName: _sourceName,
+              libraryId: _currentSource,
+              libraryName: _libraryName(_currentSource),
+            ),
+          )
+          .toList();
+      // Lx Server 的 artistSongs 不分页，一次返回全部
+      return PaginationResponse<Track>(
+        page: 1,
+        limit: tracks.length,
+        total: tracks.length,
+        hasMore: false,
+        items: tracks,
+      );
+    } catch (e) {
+      AppLogger.log.w('[LxServer] 获取歌手歌曲失败: $e');
+      return PaginationResponse.empty(page: page, limit: limit);
+    }
+  }
+
   // ========== 专辑 ==========
 
   @override
-  Future<Album?> getAlbum(String id) {
-    throw UnimplementedError('$sourceName(getAlbum) 尚未实现');
+  Future<Album?> getAlbum(String id) async {
+    try {
+      final result = await client.getAlbumSongs(
+        source: _currentSource,
+        id: id,
+      );
+      return Album(
+        id: id,
+        name: result.name ?? '',
+        artist: '',
+        coverArt: null,
+        songCount: result.total,
+        source: (
+          id: _sourceId,
+          name: _sourceName,
+          libraryId: _currentSource,
+          libraryName: _libraryName(_currentSource),
+        ),
+        meta: {
+          'id': id,
+          'source': result.source,
+          if (result.publishTime != null) 'publishTime': result.publishTime,
+        },
+      );
+    } catch (e) {
+      AppLogger.log.w('[LxServer] 获取专辑详情失败: $e');
+      return null;
+    }
   }
 
   @override
@@ -269,8 +376,34 @@ class LxServerMusicServer extends MusicServer {
     String albumId, {
     int page = 1,
     int limit = 20,
-  }) {
-    throw UnimplementedError('$sourceName(getAlbumTracks) 尚未实现');
+  }) async {
+    try {
+      final result = await client.getAlbumSongs(
+        source: _currentSource,
+        id: albumId,
+      );
+      final tracks = result.list
+          .map(
+            (s) => s.toTrack(
+              sourceId: _sourceId,
+              sourceName: _sourceName,
+              libraryId: _currentSource,
+              libraryName: _libraryName(_currentSource),
+            ),
+          )
+          .toList();
+      // Lx Server 的 albumSongs 不分页，一次返回全部
+      return PaginationResponse<Track>(
+        page: 1,
+        limit: tracks.length,
+        total: tracks.length,
+        hasMore: false,
+        items: tracks,
+      );
+    } catch (e) {
+      AppLogger.log.w('[LxServer] 获取专辑歌曲失败: $e');
+      return PaginationResponse.empty(page: page, limit: limit);
+    }
   }
 
   // ========== 歌单 ==========

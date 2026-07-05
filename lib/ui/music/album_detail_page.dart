@@ -113,10 +113,10 @@ class AlbumDetailPage extends HookConsumerWidget {
             context,
             // 移动端：纵向布局（封面信息在上，曲目列表在下）
             mobile: () => ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               children: [
                 header,
-                const Gap(16),
+                const Gap(12),
                 trackListContent,
               ],
             ),
@@ -125,9 +125,9 @@ class AlbumDetailPage extends HookConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SizedBox(
-                  width: 300,
+                  width: 280,
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     children: [header],
                   ),
                 ),
@@ -188,7 +188,7 @@ class _AlbumHeader extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -196,10 +196,10 @@ class _AlbumHeader extends StatelessWidget {
             CoverImage(
               coverArt: coverUrl,
               colorScheme: colorScheme,
-              size: 100,
+              size: 80,
               borderRadius: BorderRadius.circular(8),
             ),
-            const Gap(16),
+            const Gap(12),
             // 专辑信息
             Expanded(
               child: Column(
@@ -215,7 +215,7 @@ class _AlbumHeader extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const Gap(8),
+                  const Gap(6),
                   if (artist != null && artist!.isNotEmpty)
                     Text(
                       artist!,
@@ -235,7 +235,7 @@ class _AlbumHeader extends StatelessWidget {
                       color: colorScheme.mutedForeground,
                     ),
                   ),
-                  const Gap(12),
+                  const Gap(10),
                   if (tracks.isNotEmpty) PlayAllButton(tracks: tracks),
                 ],
               ),

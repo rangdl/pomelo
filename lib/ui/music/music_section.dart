@@ -1,4 +1,4 @@
-﻿import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
@@ -190,7 +190,7 @@ class MusicSection extends HookConsumerWidget {
                 ProviderErrorBanner(errors: data.errors),
                 if (data.tracks.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Center(
                       child: Text(
                         '暂无歌曲',
@@ -207,12 +207,12 @@ class MusicSection extends HookConsumerWidget {
           },
           loading: () => const Center(
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: EdgeInsets.all(16),
               child: CircularProgressIndicator(),
             ),
           ),
           error: (err, _) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
+            padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
               child: Text(
                 '加载失败: $err',

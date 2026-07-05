@@ -158,6 +158,18 @@ abstract class MusicServer {
   /// 默认返回空列表，支持歌手专辑的服务覆写此方法。
   Future<List<Album>> getArtistAlbums(String artistId) async => [];
 
+  /// 获取歌手的歌曲列表
+  ///
+  /// 默认返回空分页，支持歌手歌曲的服务覆写此方法。
+  /// [order] 排序方式，由具体服务定义（如 'hot'/'time'）。
+  Future<PaginationResponse<Track>> getArtistSongs(
+    String artistId, {
+    String? order,
+    int page = 1,
+    int limit = 20,
+  }) async =>
+      PaginationResponse.empty(page: page, limit: limit);
+
   // ========== 歌单 ==========
 
   /// 获取歌单分类列表
