@@ -1,14 +1,17 @@
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
-/// Lx Server 歌手（搜索结果 / 收藏歌手）
+/// Lx Server 歌手（搜索结果 / 收藏歌手 / 歌手详情）
 ///
-/// 对应搜索 API type=singer 的返回项，或 /api/user/library/artists 的返回项。
+/// 对应搜索 API type=singer 的返回项、/api/user/library/artists 的返回项，
+/// 或 /api/music/artistDetail 的返回。
 class LxServerArtist {
   final String id;
   final String? mid;
   final String name;
   final String? picUrl;
   final int? albumSize;
+  final int? musicSize;
+  final String? desc;
   final String source;
 
   const LxServerArtist({
@@ -17,6 +20,8 @@ class LxServerArtist {
     required this.name,
     this.picUrl,
     this.albumSize,
+    this.musicSize,
+    this.desc,
     required this.source,
   });
 
@@ -25,8 +30,11 @@ class LxServerArtist {
       id: json['id']?.toString() ?? json['mid']?.toString() ?? '',
       mid: json['mid']?.toString(),
       name: json['name'] as String? ?? '',
-      picUrl: json['picUrl'] as String?,
+      // 兼容 artistDetail 返回的 avatar 字段
+      picUrl: json['picUrl'] as String? ?? json['avatar'] as String?,
       albumSize: (json['albumSize'] as num?)?.toInt(),
+      musicSize: (json['musicSize'] as num?)?.toInt(),
+      desc: json['desc'] as String?,
       source: json['source'] as String? ?? '',
     );
   }
@@ -50,14 +58,21 @@ class LxServerArtist {
         libraryId: libraryId,
         libraryName: libraryName,
       ),
-      meta: {'id': id, 'mid': mid, 'source': source},
+      meta: {
+        'id': id,
+        'mid': mid,
+        'source': source,
+        if (desc != null) 'desc': desc,
+        if (musicSize != null) 'musicSize': musicSize,
+      },
     );
   }
 }
 
-/// Lx Server 专辑（搜索结果 / 收藏专辑）
+/// Lx Server 专辑（搜索结果 / 收藏专辑 / 歌手专辑列表）
 ///
-/// 对应搜索 API type=album 的返回项，或 /api/user/library/albums 的返回项。
+/// 对应搜索 API type=album 的返回项、/api/user/library/albums 的返回项，
+/// 或 /api/music/artistAlbums 的返回项。
 class LxServerAlbum {
   final String id;
   final String? mid;
@@ -87,8 +102,11 @@ class LxServerAlbum {
       id: json['id']?.toString() ?? json['mid']?.toString() ?? '',
       mid: json['mid']?.toString(),
       name: json['name'] as String? ?? '',
-      picUrl: json['picUrl'] as String? ?? meta['picUrl'] as String?,
-      artistName: json['artistName'] as String?,
+      // 兼容 artistAlbums 返回的 img 字段
+      picUrl:
+          json['picUrl'] as String? ?? meta['picUrl'] as String? ?? json['img'] as String?,
+      // 兼容 artistAlbums 返回的 singer 字段
+      artistName: json['artistName'] as String? ?? json['singer'] as String?,
       artistId: json['artistId']?.toString(),
       size: (json['size'] as num?)?.toInt(),
       publishTime: json['publishTime'] as String?,
