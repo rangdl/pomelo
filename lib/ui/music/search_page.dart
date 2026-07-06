@@ -14,9 +14,8 @@ import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
-import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
+import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
-import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:pomelo/ui/music/album_detail_page.dart';
 import 'package:pomelo/ui/music/artist_detail_page.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -716,18 +715,15 @@ class _SongResultsList extends ConsumerWidget {
                         itemCount: tracks.length,
                         itemBuilder: (context, index) {
                           final merged = tracks[index];
-                          return TrackTile(
+                          return PlayableTrackTile(
                             track: merged.primary,
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  merged.displaySources,
-                                  style: const TextStyle(fontSize: 12),
-                                ).muted,
-                                PlayPauseButton(track: merged.primary),
-                              ],
-                            ),
+                            playlist:
+                                tracks.map((m) => m.primary).toList(),
+                            playlistIndex: index,
+                            trailingExtra: Text(
+                              merged.displaySources,
+                              style: const TextStyle(fontSize: 12),
+                            ).muted,
                           );
                         },
                       ),

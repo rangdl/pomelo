@@ -15,8 +15,7 @@ import 'package:pomelo/ui/home/home_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
-import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
-import 'package:pomelo/ui/music/widgets/track_tile.dart';
+import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 我的收藏页面（内联渲染）
@@ -204,10 +203,11 @@ class _FavoriteSongsTab extends HookConsumerWidget {
                 ),
               ),
               ...tracks.asMap().entries.map(
-                (e) => TrackTile(
+                (e) => PlayableTrackTile(
                   track: e.value,
                   index: e.key + 1,
-                  trailing: PlayPauseButton(track: e.value),
+                  playlist: tracks,
+                  playlistIndex: e.key,
                 ),
               ),
             ],
@@ -234,10 +234,11 @@ class _FavoriteSongsTab extends HookConsumerWidget {
                   itemCount: tracks.length,
                   itemBuilder: (context, index) {
                     final track = tracks[index];
-                    return TrackTile(
+                    return PlayableTrackTile(
                       track: track,
                       index: index + 1,
-                      trailing: PlayPauseButton(track: track),
+                      playlist: tracks,
+                      playlistIndex: index,
                     );
                   },
                 ),

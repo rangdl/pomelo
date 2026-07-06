@@ -420,7 +420,10 @@ class LxServerSong {
     final albumName =
         json['albumName'] as String? ?? meta['albumName'] as String?;
     final albumId = json['albumId']?.toString() ?? meta['albumId']?.toString();
-    final img = json['img'] as String? ?? meta['picUrl'] as String?;
+    final imgRaw = json['img'] as String? ?? meta['picUrl'] as String?;
+    // 网易云(wy)封面 URL 通常带 ?param=NNxyNNy 缩略图参数，导致显示低分辨率，
+    // 这里去掉查询参数获取原图。
+    final img = _normalizeCoverUrl(imgRaw, source);
     final interval = json['interval'] as String? ?? meta['interval'] as String?;
     final lrc = json['lrc'] as String?;
     final hash = json['hash'] as String? ?? meta['hash'] as String?;
@@ -574,6 +577,23 @@ class LxServerSong {
       src: '',
     );
   }
+}
+
+/// 规范化封面 URL
+///
+/// 网易云音乐(wy)封面 URL 通常带 `?param=NNxyNNy` 缩略图参数（如
+/// `https://p1.music.126.net/xxx.jpg?param=177y177`），会导致显示低分辨率。
+/// 去掉查询参数获取原图，提升封面显示质量。
+///
+/// 其他平台（kg/kw/tx/mg）的封面 URL 无此问题，原样返回。
+String? _normalizeCoverUrl(String? url, String source) {
+  if (url == null || url.isEmpty) return url;
+  if (source != 'wy') return url;
+  // 仅对 music.126.net 域名的 URL 处理
+  if (!url.contains('music.126.net')) return url;
+  final queryIndex = url.indexOf('?');
+  if (queryIndex < 0) return url;
+  return url.substring(0, queryIndex);
 }
 
 /// Lx Server 歌单（列表项）

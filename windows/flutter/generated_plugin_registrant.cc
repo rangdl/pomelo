@@ -6,6 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
+#include <audiotags/audiotags_plugin_c_api.h>
 #include <bonsoir_windows/bonsoir_windows_plugin_c_api.h>
 #include <flutter_js/flutter_js_plugin.h>
 #include <media_kit_libs_windows_audio/media_kit_libs_windows_audio_plugin_c_api.h>
@@ -15,6 +16,8 @@
 #include <window_manager/window_manager_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
+  AudiotagsPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("AudiotagsPluginCApi"));
   BonsoirWindowsPluginCApiRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("BonsoirWindowsPluginCApi"));
   FlutterJsPluginRegisterWithRegistrar(

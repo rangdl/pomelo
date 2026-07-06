@@ -182,9 +182,15 @@ class _NavigationRailLayout extends HookConsumerWidget {
                     final index = _navDestinations.indexWhere(
                       (d) => d.key == key,
                     );
-                    if (index >= 0 && index != tabsRouter.activeIndex) {
+                    if (index < 0) return;
+                    if (index != tabsRouter.activeIndex) {
                       selectedKey.value = key;
                       tabsRouter.setActiveIndex(index);
+                    } else if (index == 0) {
+                      // 已在 Home Tab：点击「首页」按钮重置内联视图
+                      ref
+                          .read(homeNavProvider.notifier)
+                          .showNormal();
                     }
                   },
                 ),
@@ -230,6 +236,12 @@ class _Sidebar extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    // 当 Home Tab 处于「我的库」内联视图时（非 HomeNavNormal），
+    // 上方主导航取消选中，下方对应入口高亮
+    final homeNav = ref.watch(homeNavProvider);
+    final libraryViewActive =
+        tabsRouter.activeIndex == 0 && homeNav is! HomeNavNormal;
+
     // 固定侧边栏宽度：desktop 180 / tablet 80
     return SizedBox(
       width: extended ? 180 : 80,
@@ -239,6 +251,7 @@ class _Sidebar extends HookConsumerWidget {
           _AppHeader(extended: extended, colorScheme: colorScheme),
           const Divider(height: 1),
           // 上半部分：主导航按钮（自然高度，显示标签文本）
+          // 当下方「我的库」入口被选中时，上方主导航取消高亮
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
@@ -250,7 +263,8 @@ class _Sidebar extends HookConsumerWidget {
                       icon: d.icon,
                       label: d.label,
                       extended: extended,
-                      isSelected: selectedKey == d.key,
+                      isSelected:
+                          !libraryViewActive && selectedKey == d.key,
                       colorScheme: colorScheme,
                       onTap: () => onSelectKey(d.key),
                     ),
@@ -260,7 +274,13 @@ class _Sidebar extends HookConsumerWidget {
           ),
           const Divider(height: 1),
           // 下半部分：我的库（占满剩余高度）
-          Expanded(child: _LibrarySidebarSection(extended: extended)),
+          Expanded(
+            child: _LibrarySidebarSection(
+              extended: extended,
+              libraryViewActive: libraryViewActive,
+              homeNav: homeNav,
+            ),
+          ),
         ],
       ),
     );
@@ -382,15 +402,39 @@ class _NavButton extends StatelessWidget {
 ///
 /// 包含三个快捷入口：默认列表 / 我的收藏 / 我的歌单。
 /// 「我的歌单」为可折叠展开的二级菜单，歌单列表来自 [userListsProvider]。
+///
+/// 当 [libraryViewActive] 为 true 时，根据 [homeNav] 判断哪个入口被选中。
 class _LibrarySidebarSection extends HookConsumerWidget {
   final bool extended;
+  final bool libraryViewActive;
+  final HomeNav homeNav;
 
-  const _LibrarySidebarSection({required this.extended});
+  const _LibrarySidebarSection({
+    required this.extended,
+    required this.libraryViewActive,
+    required this.homeNav,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isExpanded = useState(false);
     final colorScheme = Theme.of(context).colorScheme;
+
+    // 当 Home Tab 处于「我的库」视图时，根据 homeNav 类型判断选中项
+    final isDefaultListSelected =
+        libraryViewActive && homeNav is HomeNavDefaultList;
+    final isFavoritesSelected =
+        libraryViewActive && homeNav is HomeNavFavorites;
+    final isPlaylistSelected =
+        libraryViewActive && homeNav is HomeNavPlaylist;
+
+    // 当处于某个具体歌单视图时，自动展开「我的歌单」子列表
+    useEffect(() {
+      if (isPlaylistSelected && !isExpanded.value) {
+        isExpanded.value = true;
+      }
+      return null;
+    }, [isPlaylistSelected]);
 
     void openInHome(VoidCallback action) {
       // 切换到 Home Tab 并执行操作
@@ -411,6 +455,7 @@ class _LibrarySidebarSection extends HookConsumerWidget {
             icon: PomeloIcons.list,
             label: '默认列表',
             extended: extended,
+            isSelected: isDefaultListSelected,
             colorScheme: colorScheme,
             onTap: () => openInHome(
               () => ref.read(homeNavProvider.notifier).showDefaultList(),
@@ -421,6 +466,7 @@ class _LibrarySidebarSection extends HookConsumerWidget {
             icon: PomeloIcons.heart,
             label: '我的收藏',
             extended: extended,
+            isSelected: isFavoritesSelected,
             colorScheme: colorScheme,
             onTap: () => openInHome(
               () => ref.read(homeNavProvider.notifier).showFavorites(),
@@ -431,6 +477,7 @@ class _LibrarySidebarSection extends HookConsumerWidget {
             icon: PomeloIcons.playlist,
             label: '我的歌单',
             extended: extended,
+            isSelected: isPlaylistSelected,
             colorScheme: colorScheme,
             trailing: RotatedBox(
               quarterTurns: isExpanded.value ? 1 : 3,
@@ -446,6 +493,8 @@ class _LibrarySidebarSection extends HookConsumerWidget {
           if (isExpanded.value)
             _UserPlaylistList(
               extended: extended,
+              homeNav: homeNav,
+              libraryViewActive: libraryViewActive,
               onOpen: (playlistRef) => openInHome(
                 () => ref
                     .read(homeNavProvider.notifier)
@@ -458,11 +507,12 @@ class _LibrarySidebarSection extends HookConsumerWidget {
   }
 }
 
-/// 侧边栏条目（与 [_NavButton] 样式统一）
+/// 侧边栏条目（与[_NavButton] 样式统一）
 class _SidebarEntry extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool extended;
+  final bool isSelected;
   final ColorScheme colorScheme;
   final VoidCallback onTap;
   final Widget? trailing;
@@ -473,12 +523,18 @@ class _SidebarEntry extends StatelessWidget {
     required this.extended,
     required this.colorScheme,
     required this.onTap,
+    this.isSelected = false,
     this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = colorScheme.mutedForeground;
+    final color = isSelected
+        ? colorScheme.primary
+        : colorScheme.mutedForeground;
+    final bgColor = isSelected
+        ? colorScheme.primary.withAlpha(20)
+        : Colors.transparent;
 
     return GestureDetector(
       onTap: onTap,
@@ -487,7 +543,7 @@ class _SidebarEntry extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.transparent,
+          color: bgColor,
           borderRadius: BorderRadius.circular(8),
         ),
         child: extended
@@ -527,14 +583,26 @@ class _SidebarEntry extends StatelessWidget {
 /// 用户歌单列表（侧边栏二级菜单）
 class _UserPlaylistList extends HookConsumerWidget {
   final bool extended;
+  final HomeNav homeNav;
+  final bool libraryViewActive;
   final void Function(PlaylistRef) onOpen;
 
-  const _UserPlaylistList({required this.extended, required this.onOpen});
+  const _UserPlaylistList({
+    required this.extended,
+    required this.homeNav,
+    required this.libraryViewActive,
+    required this.onOpen,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final listsAsync = ref.watch(userListsProvider);
     final colorScheme = Theme.of(context).colorScheme;
+
+    // 当前选中的歌单 ID（若处于歌单视图）
+    final String? activePlaylistId = (libraryViewActive && homeNav is HomeNavPlaylist)
+        ? (homeNav as HomeNavPlaylist).ref.playlistId
+        : null;
 
     return listsAsync.when(
       loading: () => Padding(
@@ -576,18 +644,27 @@ class _UserPlaylistList extends HookConsumerWidget {
           // 紧凑模式：仅显示封面图标
           return Column(
             children: playlists.map((p) {
+              final playlistId = (p.meta?['id'] as String?) ?? p.id;
+              final isSelected = activePlaylistId == playlistId;
               return GestureDetector(
                 onTap: () => onOpen(
                   PlaylistRef(
-                    playlistId: (p.meta?['id'] as String?) ?? p.id,
+                    playlistId: playlistId,
                     sourceId: p.source?.id ?? '',
                     playlistName: p.name,
                     coverUrl: p.coverArt,
                     creator: p.owner ?? '',
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? colorScheme.primary.withAlpha(20)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: CoverImage(
                     coverArt: p.coverArt,
                     colorScheme: colorScheme,
@@ -603,10 +680,18 @@ class _UserPlaylistList extends HookConsumerWidget {
         // 展开模式：显示封面 + 名称
         return Column(
           children: playlists.map((p) {
+            final playlistId = (p.meta?['id'] as String?) ?? p.id;
+            final isSelected = activePlaylistId == playlistId;
+            final color = isSelected
+                ? colorScheme.primary
+                : colorScheme.foreground;
+            final bgColor = isSelected
+                ? colorScheme.primary.withAlpha(20)
+                : Colors.transparent;
             return GestureDetector(
               onTap: () => onOpen(
                 PlaylistRef(
-                  playlistId: (p.meta?['id'] as String?) ?? p.id,
+                  playlistId: playlistId,
                   sourceId: p.source?.id ?? '',
                   playlistName: p.name,
                   coverUrl: p.coverArt,
@@ -614,10 +699,15 @@ class _UserPlaylistList extends HookConsumerWidget {
                 ),
               ),
               behavior: HitTestBehavior.opaque,
-              child: Padding(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
+                  horizontal: 8,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
@@ -633,7 +723,10 @@ class _UserPlaylistList extends HookConsumerWidget {
                         p.name,
                         style: TextStyle(
                           fontSize: 13,
-                          color: colorScheme.foreground,
+                          color: color,
+                          fontWeight: isSelected
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

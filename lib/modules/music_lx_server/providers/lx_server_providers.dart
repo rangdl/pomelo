@@ -3,6 +3,7 @@ import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
 
 import '../repository/lx_server_client.dart';
@@ -15,12 +16,21 @@ String _cleanUrl(String url) => url.replaceAll(RegExp(r'/+$'), '');
 ///
 /// 从 [musicServerConfigsProvider] 读取 LxServerConfig，
 /// 配置变化时自动重建。配置为 null 或连接失败时返回 null。
+///
+/// 同时监听全局 [UserPreference.localAudioSourceEnabled] 开关，
+/// 当全局开关与 LxServerConfig.useLocalAudioSource 均开启时，
+/// 启用本地音源优先策略（详见 [LxServerMusicServer.getMusicUrl]）。
 final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
   ref,
 ) async {
   final configs = await ref.watch(musicServerConfigsProvider.future);
   final config = configs.whereType<LxServerConfig>().firstOrNull;
   if (config == null) return null;
+
+  // 监听全局本地音源开关，变化时自动重建服务
+  final globalLocalAudioEnabled = ref.watch(
+    userPreferenceProvider.select((p) => p.localAudioSourceEnabled),
+  );
 
   final cleanUrl = _cleanUrl(config.serverUrl);
   final client = LxServerClient(
@@ -55,6 +65,9 @@ final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
     sourceId: config.id,
     sourceName: config.name,
     allowSourceSwitching: config.allowSourceSwitching,
+    useLocalAudioSource:
+        globalLocalAudioEnabled && config.useLocalAudioSource,
+    database: ref.read(databaseProvider),
   );
 
   ref.onDispose(() => client.dispose());
@@ -70,6 +83,7 @@ typedef LxServerConnectionConfig = ({
   String name,
   bool proxyPlayback,
   bool allowSourceSwitching,
+  bool useLocalAudioSource,
 });
 
 /// Lx Server 连接状态 Notifier
@@ -115,6 +129,7 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
             token: token,
             proxyPlayback: config.proxyPlayback,
             allowSourceSwitching: config.allowSourceSwitching,
+            useLocalAudioSource: config.useLocalAudioSource,
           ),
         );
 

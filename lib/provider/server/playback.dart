@@ -1,12 +1,19 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:audiotags/audiotags.dart';
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:dio/dio.dart' hide Response;
+import 'package:drift/drift.dart' show Value;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
+import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/provider/server/sourced_track.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/services/audio_player/media.dart';
@@ -149,7 +156,18 @@ class ServerPlaybackRoutes {
   /// HEAD 校验
   ///
   /// 返回 true 表示链接有效（2xx/3xx），false 表示无效或异常。
+  ///
+  /// 对于本地文件路径（非 http(s)），改为校验文件是否存在。
   Future<bool> _headValidate(String url) async {
+    // 本地文件路径：校验文件存在性
+    if (_isLocalPath(url)) {
+      try {
+        return File(url).existsSync();
+      } catch (e) {
+        AppLogger.log.w('[Playback] 本地文件校验异常 path=$url: $e');
+        return false;
+      }
+    }
     try {
       final options = Options(
         headers: {
@@ -394,10 +412,107 @@ class ServerPlaybackRoutes {
         await notifier.saveCachePathToPersistence(quality, file.path);
       }
 
+      // 把曲目信息存入本地音乐库 LocalTrackTable（供离线查询）
+      // 优先读取缓存文件的标签信息，弥补在线元数据缺失
+      await _saveToLocalLibrary(track, file.path);
+
       // 写入完成后按缓存上限清理旧文件
       await MusicCacheDir.enforceLimit();
     } catch (e) {
       AppLogger.log.w('[Playback] 缓存文件写入失败: $e');
+    }
+  }
+
+  /// 把缓存的在线曲目信息写入本地音乐库
+  ///
+  /// sourceId 使用曲目的来源 id（如 'lx-server-xxx'、'subsonic-xxx'），
+  /// isLocal=false（在线缓存），path 为缓存文件路径，src 为原始播放地址。
+  ///
+  /// 优先从缓存文件读取标签信息（title/artist/album/封面等），
+  /// 弥补在线 API 返回的元数据缺失；读取失败则回退到原始 Track 信息。
+  Future<void> _saveToLocalLibrary(Track track, String cachePath) async {
+    try {
+      final database = ref.read(databaseProvider);
+      final sourceId = track.source?.id ?? 'unknown';
+
+      // 尝试从缓存文件读取标签信息
+      Track enriched = track;
+      try {
+        final tag = await AudioTags.read(cachePath);
+        if (tag != null) {
+          String? coverArt = track.coverArt;
+          // 提取封面到本地 covers 目录
+          final pictures = tag.pictures;
+          if (pictures.isNotEmpty) {
+            final savedCover = await _saveCoverToCache(
+              track.id,
+              pictures.first.bytes,
+            );
+            if (savedCover != null) coverArt = savedCover;
+          }
+          enriched = track.copyWith(
+            title: (tag.title != null && tag.title!.isNotEmpty)
+                ? tag.title!
+                : track.title,
+            artist: (tag.trackArtist != null && tag.trackArtist!.isNotEmpty)
+                ? tag.trackArtist
+                : track.artist,
+            album: (tag.album != null && tag.album!.isNotEmpty)
+                ? tag.album
+                : track.album,
+            coverArt: coverArt,
+            duration: (tag.duration != null && tag.duration! > 0)
+                ? tag.duration!
+                : track.duration,
+            year: tag.year ?? track.year,
+            genre: tag.genre ?? track.genre,
+            track: tag.trackNumber ?? track.track,
+            discNumber: tag.discNumber ?? track.discNumber,
+            path: cachePath,
+          );
+        }
+      } catch (e) {
+        AppLogger.log.w('[Playback] 读取缓存文件标签失败: $e');
+      }
+
+      final companion = LocalTrackTableCompanion.insert(
+        id: enriched.id,
+        title: enriched.title,
+        artist: Value(enriched.artist),
+        album: Value(enriched.album),
+        albumId: Value(enriched.albumId),
+        artistId: Value(enriched.artistId),
+        coverArt: Value(enriched.coverArt),
+        duration: Value(enriched.duration),
+        path: Value(cachePath),
+        src: Value(enriched.src),
+        sourceId: sourceId,
+        libraryId: Value(enriched.source?.libraryId),
+        isLocal: const Value(false),
+        trackJson: jsonEncode(enriched.toJson()),
+      );
+      await database.upsertLocalTrack(companion);
+    } catch (e) {
+      AppLogger.log.w('[Playback] 写入本地音乐库失败: $e');
+    }
+  }
+
+  /// 把封面图片字节保存到 `<appSupport>/pomelo/local_covers/<id>.jpg`
+  Future<String?> _saveCoverToCache(String trackId, Uint8List bytes) async {
+    try {
+      final appSupport = await getApplicationSupportDirectory();
+      final dir = Directory(p.join(appSupport.path, 'pomelo', 'local_covers'));
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final file = File(p.join(dir.path, '$trackId.jpg'));
+      if (!await file.exists()) {
+        await file.writeAsBytes(bytes, flush: true);
+      }
+      return file.path;
+    } catch (e) {
+      AppLogger.log.w('[Playback] 保存封面失败: $e');
+      return null;
     }
   }
 

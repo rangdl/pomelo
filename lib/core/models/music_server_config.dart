@@ -144,6 +144,13 @@ class LxServerConfig extends MusicServerConfig {
   /// 是否允许换源
   final bool allowSourceSwitching;
 
+  /// 是否使用本地音源
+  ///
+  /// 开启后，配合全局 [UserPreference.localAudioSourceEnabled] 开关，
+  /// 在获取播放链接时优先从本地音乐库匹配（按 title + artist），
+  /// 匹配失败再回退到在线解析。
+  final bool useLocalAudioSource;
+
   const LxServerConfig({
     required super.id,
     required super.name,
@@ -153,6 +160,7 @@ class LxServerConfig extends MusicServerConfig {
     this.token,
     this.proxyPlayback = false,
     this.allowSourceSwitching = false,
+    this.useLocalAudioSource = false,
   }) : super(type: MusicSourceType.lxServer);
 
   @override
@@ -163,6 +171,7 @@ class LxServerConfig extends MusicServerConfig {
         'token': token,
         'proxyPlayback': proxyPlayback,
         'allowSourceSwitching': allowSourceSwitching,
+        'useLocalAudioSource': useLocalAudioSource,
       };
 
   static LxServerConfig fromJson({
@@ -179,6 +188,8 @@ class LxServerConfig extends MusicServerConfig {
       token: extra['token'] as String?,
       proxyPlayback: extra['proxyPlayback'] as bool? ?? false,
       allowSourceSwitching: extra['allowSourceSwitching'] as bool? ?? false,
+      useLocalAudioSource:
+          extra['useLocalAudioSource'] as bool? ?? false,
     );
   }
 
@@ -191,6 +202,7 @@ class LxServerConfig extends MusicServerConfig {
     String? token,
     bool? proxyPlayback,
     bool? allowSourceSwitching,
+    bool? useLocalAudioSource,
   }) {
     return LxServerConfig(
       id: id ?? this.id,
@@ -201,6 +213,8 @@ class LxServerConfig extends MusicServerConfig {
       token: token ?? this.token,
       proxyPlayback: proxyPlayback ?? this.proxyPlayback,
       allowSourceSwitching: allowSourceSwitching ?? this.allowSourceSwitching,
+      useLocalAudioSource:
+          useLocalAudioSource ?? this.useLocalAudioSource,
     );
   }
 }

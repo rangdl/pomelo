@@ -10,6 +10,7 @@ import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/services/update/update_service.dart';
 import 'package:pomelo/ui/settings/playback_settings_page.dart';
+import 'package:pomelo/ui/settings/audio_source_settings_page.dart';
 
 /// 设置页面 — 用户设置中心
 ///
@@ -130,6 +131,13 @@ class SettingsPage extends HookConsumerWidget {
               title: const Text('播放设置'),
               trailing: const Icon(Icons.chevron_right, size: 20),
               onTap: () => openPlaybackSettings(context),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.graphic_eq, size: 20),
+              title: const Text('音源设置'),
+              trailing: const Icon(Icons.chevron_right, size: 20),
+              onTap: () => openAudioSourceSettings(context),
             ),
             const Divider(height: 1),
             ListTile(

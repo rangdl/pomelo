@@ -2430,6 +2430,2557 @@ class MusicServerConfigTableCompanion
   }
 }
 
+class $LocalTrackTableTable extends LocalTrackTable
+    with TableInfo<$LocalTrackTableTable, LocalTrackEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalTrackTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _artistMeta = const VerificationMeta('artist');
+  @override
+  late final GeneratedColumn<String> artist = GeneratedColumn<String>(
+    'artist',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _albumMeta = const VerificationMeta('album');
+  @override
+  late final GeneratedColumn<String> album = GeneratedColumn<String>(
+    'album',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _albumIdMeta = const VerificationMeta(
+    'albumId',
+  );
+  @override
+  late final GeneratedColumn<String> albumId = GeneratedColumn<String>(
+    'album_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _artistIdMeta = const VerificationMeta(
+    'artistId',
+  );
+  @override
+  late final GeneratedColumn<String> artistId = GeneratedColumn<String>(
+    'artist_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coverArtMeta = const VerificationMeta(
+    'coverArt',
+  );
+  @override
+  late final GeneratedColumn<String> coverArt = GeneratedColumn<String>(
+    'cover_art',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _durationMeta = const VerificationMeta(
+    'duration',
+  );
+  @override
+  late final GeneratedColumn<int> duration = GeneratedColumn<int>(
+    'duration',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _pathMeta = const VerificationMeta('path');
+  @override
+  late final GeneratedColumn<String> path = GeneratedColumn<String>(
+    'path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _srcMeta = const VerificationMeta('src');
+  @override
+  late final GeneratedColumn<String> src = GeneratedColumn<String>(
+    'src',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _libraryIdMeta = const VerificationMeta(
+    'libraryId',
+  );
+  @override
+  late final GeneratedColumn<String> libraryId = GeneratedColumn<String>(
+    'library_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isLocalMeta = const VerificationMeta(
+    'isLocal',
+  );
+  @override
+  late final GeneratedColumn<bool> isLocal = GeneratedColumn<bool>(
+    'is_local',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_local" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _trackJsonMeta = const VerificationMeta(
+    'trackJson',
+  );
+  @override
+  late final GeneratedColumn<String> trackJson = GeneratedColumn<String>(
+    'track_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    artist,
+    album,
+    albumId,
+    artistId,
+    coverArt,
+    duration,
+    path,
+    src,
+    sourceId,
+    libraryId,
+    isLocal,
+    trackJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_track_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalTrackEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('artist')) {
+      context.handle(
+        _artistMeta,
+        artist.isAcceptableOrUnknown(data['artist']!, _artistMeta),
+      );
+    }
+    if (data.containsKey('album')) {
+      context.handle(
+        _albumMeta,
+        album.isAcceptableOrUnknown(data['album']!, _albumMeta),
+      );
+    }
+    if (data.containsKey('album_id')) {
+      context.handle(
+        _albumIdMeta,
+        albumId.isAcceptableOrUnknown(data['album_id']!, _albumIdMeta),
+      );
+    }
+    if (data.containsKey('artist_id')) {
+      context.handle(
+        _artistIdMeta,
+        artistId.isAcceptableOrUnknown(data['artist_id']!, _artistIdMeta),
+      );
+    }
+    if (data.containsKey('cover_art')) {
+      context.handle(
+        _coverArtMeta,
+        coverArt.isAcceptableOrUnknown(data['cover_art']!, _coverArtMeta),
+      );
+    }
+    if (data.containsKey('duration')) {
+      context.handle(
+        _durationMeta,
+        duration.isAcceptableOrUnknown(data['duration']!, _durationMeta),
+      );
+    }
+    if (data.containsKey('path')) {
+      context.handle(
+        _pathMeta,
+        path.isAcceptableOrUnknown(data['path']!, _pathMeta),
+      );
+    }
+    if (data.containsKey('src')) {
+      context.handle(
+        _srcMeta,
+        src.isAcceptableOrUnknown(data['src']!, _srcMeta),
+      );
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('library_id')) {
+      context.handle(
+        _libraryIdMeta,
+        libraryId.isAcceptableOrUnknown(data['library_id']!, _libraryIdMeta),
+      );
+    }
+    if (data.containsKey('is_local')) {
+      context.handle(
+        _isLocalMeta,
+        isLocal.isAcceptableOrUnknown(data['is_local']!, _isLocalMeta),
+      );
+    }
+    if (data.containsKey('track_json')) {
+      context.handle(
+        _trackJsonMeta,
+        trackJson.isAcceptableOrUnknown(data['track_json']!, _trackJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_trackJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalTrackEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalTrackEntity(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      artist: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artist'],
+      ),
+      album: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}album'],
+      ),
+      albumId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}album_id'],
+      ),
+      artistId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artist_id'],
+      ),
+      coverArt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_art'],
+      ),
+      duration: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration'],
+      )!,
+      path: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}path'],
+      ),
+      src: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}src'],
+      ),
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      )!,
+      libraryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}library_id'],
+      ),
+      isLocal: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_local'],
+      )!,
+      trackJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}track_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalTrackTableTable createAlias(String alias) {
+    return $LocalTrackTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalTrackEntity extends DataClass
+    implements Insertable<LocalTrackEntity> {
+  /// 曲目 ID（主键，与 Track.id 一致）
+  final String id;
+
+  /// 标题
+  final String title;
+
+  /// 艺术家（可空）
+  final String? artist;
+
+  /// 专辑名（可空）
+  final String? album;
+
+  /// 专辑 ID（可空）
+  final String? albumId;
+
+  /// 艺术家 ID（可空）
+  final String? artistId;
+
+  /// 封面地址（URL 或本地文件路径，可空）
+  final String? coverArt;
+
+  /// 时长（秒）
+  final int duration;
+
+  /// 本地文件路径（本地扫描曲目必填，在线缓存曲目可为空）
+  final String? path;
+
+  /// 在线播放地址（可空）
+  final String? src;
+
+  /// 来源 ID（如 'local'、'lx-server-xxx'、'subsonic-xxx'）
+  final String sourceId;
+
+  /// 库 ID（可空）
+  final String? libraryId;
+
+  /// 是否为本地曲目（path != null）
+  final bool isLocal;
+
+  /// 完整 Track JSON（用于零丢失恢复）
+  final String trackJson;
+
+  /// 最后更新时间
+  final DateTime updatedAt;
+  const LocalTrackEntity({
+    required this.id,
+    required this.title,
+    this.artist,
+    this.album,
+    this.albumId,
+    this.artistId,
+    this.coverArt,
+    required this.duration,
+    this.path,
+    this.src,
+    required this.sourceId,
+    this.libraryId,
+    required this.isLocal,
+    required this.trackJson,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    if (!nullToAbsent || artist != null) {
+      map['artist'] = Variable<String>(artist);
+    }
+    if (!nullToAbsent || album != null) {
+      map['album'] = Variable<String>(album);
+    }
+    if (!nullToAbsent || albumId != null) {
+      map['album_id'] = Variable<String>(albumId);
+    }
+    if (!nullToAbsent || artistId != null) {
+      map['artist_id'] = Variable<String>(artistId);
+    }
+    if (!nullToAbsent || coverArt != null) {
+      map['cover_art'] = Variable<String>(coverArt);
+    }
+    map['duration'] = Variable<int>(duration);
+    if (!nullToAbsent || path != null) {
+      map['path'] = Variable<String>(path);
+    }
+    if (!nullToAbsent || src != null) {
+      map['src'] = Variable<String>(src);
+    }
+    map['source_id'] = Variable<String>(sourceId);
+    if (!nullToAbsent || libraryId != null) {
+      map['library_id'] = Variable<String>(libraryId);
+    }
+    map['is_local'] = Variable<bool>(isLocal);
+    map['track_json'] = Variable<String>(trackJson);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LocalTrackTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalTrackTableCompanion(
+      id: Value(id),
+      title: Value(title),
+      artist: artist == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artist),
+      album: album == null && nullToAbsent
+          ? const Value.absent()
+          : Value(album),
+      albumId: albumId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(albumId),
+      artistId: artistId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artistId),
+      coverArt: coverArt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverArt),
+      duration: Value(duration),
+      path: path == null && nullToAbsent ? const Value.absent() : Value(path),
+      src: src == null && nullToAbsent ? const Value.absent() : Value(src),
+      sourceId: Value(sourceId),
+      libraryId: libraryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(libraryId),
+      isLocal: Value(isLocal),
+      trackJson: Value(trackJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalTrackEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalTrackEntity(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      artist: serializer.fromJson<String?>(json['artist']),
+      album: serializer.fromJson<String?>(json['album']),
+      albumId: serializer.fromJson<String?>(json['albumId']),
+      artistId: serializer.fromJson<String?>(json['artistId']),
+      coverArt: serializer.fromJson<String?>(json['coverArt']),
+      duration: serializer.fromJson<int>(json['duration']),
+      path: serializer.fromJson<String?>(json['path']),
+      src: serializer.fromJson<String?>(json['src']),
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      libraryId: serializer.fromJson<String?>(json['libraryId']),
+      isLocal: serializer.fromJson<bool>(json['isLocal']),
+      trackJson: serializer.fromJson<String>(json['trackJson']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'artist': serializer.toJson<String?>(artist),
+      'album': serializer.toJson<String?>(album),
+      'albumId': serializer.toJson<String?>(albumId),
+      'artistId': serializer.toJson<String?>(artistId),
+      'coverArt': serializer.toJson<String?>(coverArt),
+      'duration': serializer.toJson<int>(duration),
+      'path': serializer.toJson<String?>(path),
+      'src': serializer.toJson<String?>(src),
+      'sourceId': serializer.toJson<String>(sourceId),
+      'libraryId': serializer.toJson<String?>(libraryId),
+      'isLocal': serializer.toJson<bool>(isLocal),
+      'trackJson': serializer.toJson<String>(trackJson),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalTrackEntity copyWith({
+    String? id,
+    String? title,
+    Value<String?> artist = const Value.absent(),
+    Value<String?> album = const Value.absent(),
+    Value<String?> albumId = const Value.absent(),
+    Value<String?> artistId = const Value.absent(),
+    Value<String?> coverArt = const Value.absent(),
+    int? duration,
+    Value<String?> path = const Value.absent(),
+    Value<String?> src = const Value.absent(),
+    String? sourceId,
+    Value<String?> libraryId = const Value.absent(),
+    bool? isLocal,
+    String? trackJson,
+    DateTime? updatedAt,
+  }) => LocalTrackEntity(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    artist: artist.present ? artist.value : this.artist,
+    album: album.present ? album.value : this.album,
+    albumId: albumId.present ? albumId.value : this.albumId,
+    artistId: artistId.present ? artistId.value : this.artistId,
+    coverArt: coverArt.present ? coverArt.value : this.coverArt,
+    duration: duration ?? this.duration,
+    path: path.present ? path.value : this.path,
+    src: src.present ? src.value : this.src,
+    sourceId: sourceId ?? this.sourceId,
+    libraryId: libraryId.present ? libraryId.value : this.libraryId,
+    isLocal: isLocal ?? this.isLocal,
+    trackJson: trackJson ?? this.trackJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalTrackEntity copyWithCompanion(LocalTrackTableCompanion data) {
+    return LocalTrackEntity(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      artist: data.artist.present ? data.artist.value : this.artist,
+      album: data.album.present ? data.album.value : this.album,
+      albumId: data.albumId.present ? data.albumId.value : this.albumId,
+      artistId: data.artistId.present ? data.artistId.value : this.artistId,
+      coverArt: data.coverArt.present ? data.coverArt.value : this.coverArt,
+      duration: data.duration.present ? data.duration.value : this.duration,
+      path: data.path.present ? data.path.value : this.path,
+      src: data.src.present ? data.src.value : this.src,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      libraryId: data.libraryId.present ? data.libraryId.value : this.libraryId,
+      isLocal: data.isLocal.present ? data.isLocal.value : this.isLocal,
+      trackJson: data.trackJson.present ? data.trackJson.value : this.trackJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalTrackEntity(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('artist: $artist, ')
+          ..write('album: $album, ')
+          ..write('albumId: $albumId, ')
+          ..write('artistId: $artistId, ')
+          ..write('coverArt: $coverArt, ')
+          ..write('duration: $duration, ')
+          ..write('path: $path, ')
+          ..write('src: $src, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('libraryId: $libraryId, ')
+          ..write('isLocal: $isLocal, ')
+          ..write('trackJson: $trackJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    artist,
+    album,
+    albumId,
+    artistId,
+    coverArt,
+    duration,
+    path,
+    src,
+    sourceId,
+    libraryId,
+    isLocal,
+    trackJson,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalTrackEntity &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.artist == this.artist &&
+          other.album == this.album &&
+          other.albumId == this.albumId &&
+          other.artistId == this.artistId &&
+          other.coverArt == this.coverArt &&
+          other.duration == this.duration &&
+          other.path == this.path &&
+          other.src == this.src &&
+          other.sourceId == this.sourceId &&
+          other.libraryId == this.libraryId &&
+          other.isLocal == this.isLocal &&
+          other.trackJson == this.trackJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalTrackTableCompanion extends UpdateCompanion<LocalTrackEntity> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String?> artist;
+  final Value<String?> album;
+  final Value<String?> albumId;
+  final Value<String?> artistId;
+  final Value<String?> coverArt;
+  final Value<int> duration;
+  final Value<String?> path;
+  final Value<String?> src;
+  final Value<String> sourceId;
+  final Value<String?> libraryId;
+  final Value<bool> isLocal;
+  final Value<String> trackJson;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const LocalTrackTableCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.artist = const Value.absent(),
+    this.album = const Value.absent(),
+    this.albumId = const Value.absent(),
+    this.artistId = const Value.absent(),
+    this.coverArt = const Value.absent(),
+    this.duration = const Value.absent(),
+    this.path = const Value.absent(),
+    this.src = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.libraryId = const Value.absent(),
+    this.isLocal = const Value.absent(),
+    this.trackJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalTrackTableCompanion.insert({
+    required String id,
+    required String title,
+    this.artist = const Value.absent(),
+    this.album = const Value.absent(),
+    this.albumId = const Value.absent(),
+    this.artistId = const Value.absent(),
+    this.coverArt = const Value.absent(),
+    this.duration = const Value.absent(),
+    this.path = const Value.absent(),
+    this.src = const Value.absent(),
+    required String sourceId,
+    this.libraryId = const Value.absent(),
+    this.isLocal = const Value.absent(),
+    required String trackJson,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       title = Value(title),
+       sourceId = Value(sourceId),
+       trackJson = Value(trackJson);
+  static Insertable<LocalTrackEntity> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? artist,
+    Expression<String>? album,
+    Expression<String>? albumId,
+    Expression<String>? artistId,
+    Expression<String>? coverArt,
+    Expression<int>? duration,
+    Expression<String>? path,
+    Expression<String>? src,
+    Expression<String>? sourceId,
+    Expression<String>? libraryId,
+    Expression<bool>? isLocal,
+    Expression<String>? trackJson,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (artist != null) 'artist': artist,
+      if (album != null) 'album': album,
+      if (albumId != null) 'album_id': albumId,
+      if (artistId != null) 'artist_id': artistId,
+      if (coverArt != null) 'cover_art': coverArt,
+      if (duration != null) 'duration': duration,
+      if (path != null) 'path': path,
+      if (src != null) 'src': src,
+      if (sourceId != null) 'source_id': sourceId,
+      if (libraryId != null) 'library_id': libraryId,
+      if (isLocal != null) 'is_local': isLocal,
+      if (trackJson != null) 'track_json': trackJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalTrackTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? title,
+    Value<String?>? artist,
+    Value<String?>? album,
+    Value<String?>? albumId,
+    Value<String?>? artistId,
+    Value<String?>? coverArt,
+    Value<int>? duration,
+    Value<String?>? path,
+    Value<String?>? src,
+    Value<String>? sourceId,
+    Value<String?>? libraryId,
+    Value<bool>? isLocal,
+    Value<String>? trackJson,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalTrackTableCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      artist: artist ?? this.artist,
+      album: album ?? this.album,
+      albumId: albumId ?? this.albumId,
+      artistId: artistId ?? this.artistId,
+      coverArt: coverArt ?? this.coverArt,
+      duration: duration ?? this.duration,
+      path: path ?? this.path,
+      src: src ?? this.src,
+      sourceId: sourceId ?? this.sourceId,
+      libraryId: libraryId ?? this.libraryId,
+      isLocal: isLocal ?? this.isLocal,
+      trackJson: trackJson ?? this.trackJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (artist.present) {
+      map['artist'] = Variable<String>(artist.value);
+    }
+    if (album.present) {
+      map['album'] = Variable<String>(album.value);
+    }
+    if (albumId.present) {
+      map['album_id'] = Variable<String>(albumId.value);
+    }
+    if (artistId.present) {
+      map['artist_id'] = Variable<String>(artistId.value);
+    }
+    if (coverArt.present) {
+      map['cover_art'] = Variable<String>(coverArt.value);
+    }
+    if (duration.present) {
+      map['duration'] = Variable<int>(duration.value);
+    }
+    if (path.present) {
+      map['path'] = Variable<String>(path.value);
+    }
+    if (src.present) {
+      map['src'] = Variable<String>(src.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (libraryId.present) {
+      map['library_id'] = Variable<String>(libraryId.value);
+    }
+    if (isLocal.present) {
+      map['is_local'] = Variable<bool>(isLocal.value);
+    }
+    if (trackJson.present) {
+      map['track_json'] = Variable<String>(trackJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalTrackTableCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('artist: $artist, ')
+          ..write('album: $album, ')
+          ..write('albumId: $albumId, ')
+          ..write('artistId: $artistId, ')
+          ..write('coverArt: $coverArt, ')
+          ..write('duration: $duration, ')
+          ..write('path: $path, ')
+          ..write('src: $src, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('libraryId: $libraryId, ')
+          ..write('isLocal: $isLocal, ')
+          ..write('trackJson: $trackJson, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalAlbumTableTable extends LocalAlbumTable
+    with TableInfo<$LocalAlbumTableTable, LocalAlbumEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalAlbumTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _artistMeta = const VerificationMeta('artist');
+  @override
+  late final GeneratedColumn<String> artist = GeneratedColumn<String>(
+    'artist',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _artistIdMeta = const VerificationMeta(
+    'artistId',
+  );
+  @override
+  late final GeneratedColumn<String> artistId = GeneratedColumn<String>(
+    'artist_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coverArtMeta = const VerificationMeta(
+    'coverArt',
+  );
+  @override
+  late final GeneratedColumn<String> coverArt = GeneratedColumn<String>(
+    'cover_art',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _songCountMeta = const VerificationMeta(
+    'songCount',
+  );
+  @override
+  late final GeneratedColumn<int> songCount = GeneratedColumn<int>(
+    'song_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _albumJsonMeta = const VerificationMeta(
+    'albumJson',
+  );
+  @override
+  late final GeneratedColumn<String> albumJson = GeneratedColumn<String>(
+    'album_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    artist,
+    artistId,
+    coverArt,
+    year,
+    songCount,
+    sourceId,
+    albumJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_album_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalAlbumEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('artist')) {
+      context.handle(
+        _artistMeta,
+        artist.isAcceptableOrUnknown(data['artist']!, _artistMeta),
+      );
+    }
+    if (data.containsKey('artist_id')) {
+      context.handle(
+        _artistIdMeta,
+        artistId.isAcceptableOrUnknown(data['artist_id']!, _artistIdMeta),
+      );
+    }
+    if (data.containsKey('cover_art')) {
+      context.handle(
+        _coverArtMeta,
+        coverArt.isAcceptableOrUnknown(data['cover_art']!, _coverArtMeta),
+      );
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    }
+    if (data.containsKey('song_count')) {
+      context.handle(
+        _songCountMeta,
+        songCount.isAcceptableOrUnknown(data['song_count']!, _songCountMeta),
+      );
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('album_json')) {
+      context.handle(
+        _albumJsonMeta,
+        albumJson.isAcceptableOrUnknown(data['album_json']!, _albumJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_albumJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalAlbumEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalAlbumEntity(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      artist: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artist'],
+      ),
+      artistId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artist_id'],
+      ),
+      coverArt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_art'],
+      ),
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      ),
+      songCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}song_count'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      )!,
+      albumJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}album_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalAlbumTableTable createAlias(String alias) {
+    return $LocalAlbumTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalAlbumEntity extends DataClass
+    implements Insertable<LocalAlbumEntity> {
+  /// 专辑 ID（主键）
+  final String id;
+
+  /// 专辑名称
+  final String name;
+
+  /// 艺术家（可空）
+  final String? artist;
+
+  /// 艺术家 ID（可空）
+  final String? artistId;
+
+  /// 封面地址（可空）
+  final String? coverArt;
+
+  /// 发行年份（可空）
+  final int? year;
+
+  /// 歌曲数量
+  final int songCount;
+
+  /// 来源 ID
+  final String sourceId;
+
+  /// 完整 Album JSON
+  final String albumJson;
+
+  /// 最后更新时间
+  final DateTime updatedAt;
+  const LocalAlbumEntity({
+    required this.id,
+    required this.name,
+    this.artist,
+    this.artistId,
+    this.coverArt,
+    this.year,
+    required this.songCount,
+    required this.sourceId,
+    required this.albumJson,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || artist != null) {
+      map['artist'] = Variable<String>(artist);
+    }
+    if (!nullToAbsent || artistId != null) {
+      map['artist_id'] = Variable<String>(artistId);
+    }
+    if (!nullToAbsent || coverArt != null) {
+      map['cover_art'] = Variable<String>(coverArt);
+    }
+    if (!nullToAbsent || year != null) {
+      map['year'] = Variable<int>(year);
+    }
+    map['song_count'] = Variable<int>(songCount);
+    map['source_id'] = Variable<String>(sourceId);
+    map['album_json'] = Variable<String>(albumJson);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LocalAlbumTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalAlbumTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      artist: artist == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artist),
+      artistId: artistId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artistId),
+      coverArt: coverArt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverArt),
+      year: year == null && nullToAbsent ? const Value.absent() : Value(year),
+      songCount: Value(songCount),
+      sourceId: Value(sourceId),
+      albumJson: Value(albumJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalAlbumEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalAlbumEntity(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      artist: serializer.fromJson<String?>(json['artist']),
+      artistId: serializer.fromJson<String?>(json['artistId']),
+      coverArt: serializer.fromJson<String?>(json['coverArt']),
+      year: serializer.fromJson<int?>(json['year']),
+      songCount: serializer.fromJson<int>(json['songCount']),
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      albumJson: serializer.fromJson<String>(json['albumJson']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'artist': serializer.toJson<String?>(artist),
+      'artistId': serializer.toJson<String?>(artistId),
+      'coverArt': serializer.toJson<String?>(coverArt),
+      'year': serializer.toJson<int?>(year),
+      'songCount': serializer.toJson<int>(songCount),
+      'sourceId': serializer.toJson<String>(sourceId),
+      'albumJson': serializer.toJson<String>(albumJson),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalAlbumEntity copyWith({
+    String? id,
+    String? name,
+    Value<String?> artist = const Value.absent(),
+    Value<String?> artistId = const Value.absent(),
+    Value<String?> coverArt = const Value.absent(),
+    Value<int?> year = const Value.absent(),
+    int? songCount,
+    String? sourceId,
+    String? albumJson,
+    DateTime? updatedAt,
+  }) => LocalAlbumEntity(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    artist: artist.present ? artist.value : this.artist,
+    artistId: artistId.present ? artistId.value : this.artistId,
+    coverArt: coverArt.present ? coverArt.value : this.coverArt,
+    year: year.present ? year.value : this.year,
+    songCount: songCount ?? this.songCount,
+    sourceId: sourceId ?? this.sourceId,
+    albumJson: albumJson ?? this.albumJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalAlbumEntity copyWithCompanion(LocalAlbumTableCompanion data) {
+    return LocalAlbumEntity(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      artist: data.artist.present ? data.artist.value : this.artist,
+      artistId: data.artistId.present ? data.artistId.value : this.artistId,
+      coverArt: data.coverArt.present ? data.coverArt.value : this.coverArt,
+      year: data.year.present ? data.year.value : this.year,
+      songCount: data.songCount.present ? data.songCount.value : this.songCount,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      albumJson: data.albumJson.present ? data.albumJson.value : this.albumJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalAlbumEntity(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('artist: $artist, ')
+          ..write('artistId: $artistId, ')
+          ..write('coverArt: $coverArt, ')
+          ..write('year: $year, ')
+          ..write('songCount: $songCount, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('albumJson: $albumJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    artist,
+    artistId,
+    coverArt,
+    year,
+    songCount,
+    sourceId,
+    albumJson,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalAlbumEntity &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.artist == this.artist &&
+          other.artistId == this.artistId &&
+          other.coverArt == this.coverArt &&
+          other.year == this.year &&
+          other.songCount == this.songCount &&
+          other.sourceId == this.sourceId &&
+          other.albumJson == this.albumJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalAlbumTableCompanion extends UpdateCompanion<LocalAlbumEntity> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> artist;
+  final Value<String?> artistId;
+  final Value<String?> coverArt;
+  final Value<int?> year;
+  final Value<int> songCount;
+  final Value<String> sourceId;
+  final Value<String> albumJson;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const LocalAlbumTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.artist = const Value.absent(),
+    this.artistId = const Value.absent(),
+    this.coverArt = const Value.absent(),
+    this.year = const Value.absent(),
+    this.songCount = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.albumJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalAlbumTableCompanion.insert({
+    required String id,
+    required String name,
+    this.artist = const Value.absent(),
+    this.artistId = const Value.absent(),
+    this.coverArt = const Value.absent(),
+    this.year = const Value.absent(),
+    this.songCount = const Value.absent(),
+    required String sourceId,
+    required String albumJson,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       sourceId = Value(sourceId),
+       albumJson = Value(albumJson);
+  static Insertable<LocalAlbumEntity> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? artist,
+    Expression<String>? artistId,
+    Expression<String>? coverArt,
+    Expression<int>? year,
+    Expression<int>? songCount,
+    Expression<String>? sourceId,
+    Expression<String>? albumJson,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (artist != null) 'artist': artist,
+      if (artistId != null) 'artist_id': artistId,
+      if (coverArt != null) 'cover_art': coverArt,
+      if (year != null) 'year': year,
+      if (songCount != null) 'song_count': songCount,
+      if (sourceId != null) 'source_id': sourceId,
+      if (albumJson != null) 'album_json': albumJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalAlbumTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? artist,
+    Value<String?>? artistId,
+    Value<String?>? coverArt,
+    Value<int?>? year,
+    Value<int>? songCount,
+    Value<String>? sourceId,
+    Value<String>? albumJson,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalAlbumTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      artist: artist ?? this.artist,
+      artistId: artistId ?? this.artistId,
+      coverArt: coverArt ?? this.coverArt,
+      year: year ?? this.year,
+      songCount: songCount ?? this.songCount,
+      sourceId: sourceId ?? this.sourceId,
+      albumJson: albumJson ?? this.albumJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (artist.present) {
+      map['artist'] = Variable<String>(artist.value);
+    }
+    if (artistId.present) {
+      map['artist_id'] = Variable<String>(artistId.value);
+    }
+    if (coverArt.present) {
+      map['cover_art'] = Variable<String>(coverArt.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (songCount.present) {
+      map['song_count'] = Variable<int>(songCount.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (albumJson.present) {
+      map['album_json'] = Variable<String>(albumJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalAlbumTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('artist: $artist, ')
+          ..write('artistId: $artistId, ')
+          ..write('coverArt: $coverArt, ')
+          ..write('year: $year, ')
+          ..write('songCount: $songCount, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('albumJson: $albumJson, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalArtistTableTable extends LocalArtistTable
+    with TableInfo<$LocalArtistTableTable, LocalArtistEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalArtistTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _coverArtMeta = const VerificationMeta(
+    'coverArt',
+  );
+  @override
+  late final GeneratedColumn<String> coverArt = GeneratedColumn<String>(
+    'cover_art',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _artistImageUrlMeta = const VerificationMeta(
+    'artistImageUrl',
+  );
+  @override
+  late final GeneratedColumn<String> artistImageUrl = GeneratedColumn<String>(
+    'artist_image_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _albumCountMeta = const VerificationMeta(
+    'albumCount',
+  );
+  @override
+  late final GeneratedColumn<int> albumCount = GeneratedColumn<int>(
+    'album_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _artistJsonMeta = const VerificationMeta(
+    'artistJson',
+  );
+  @override
+  late final GeneratedColumn<String> artistJson = GeneratedColumn<String>(
+    'artist_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    coverArt,
+    artistImageUrl,
+    albumCount,
+    sourceId,
+    artistJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_artist_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalArtistEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('cover_art')) {
+      context.handle(
+        _coverArtMeta,
+        coverArt.isAcceptableOrUnknown(data['cover_art']!, _coverArtMeta),
+      );
+    }
+    if (data.containsKey('artist_image_url')) {
+      context.handle(
+        _artistImageUrlMeta,
+        artistImageUrl.isAcceptableOrUnknown(
+          data['artist_image_url']!,
+          _artistImageUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('album_count')) {
+      context.handle(
+        _albumCountMeta,
+        albumCount.isAcceptableOrUnknown(data['album_count']!, _albumCountMeta),
+      );
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('artist_json')) {
+      context.handle(
+        _artistJsonMeta,
+        artistJson.isAcceptableOrUnknown(data['artist_json']!, _artistJsonMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_artistJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalArtistEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalArtistEntity(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      coverArt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_art'],
+      ),
+      artistImageUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artist_image_url'],
+      ),
+      albumCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}album_count'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      )!,
+      artistJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artist_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalArtistTableTable createAlias(String alias) {
+    return $LocalArtistTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalArtistEntity extends DataClass
+    implements Insertable<LocalArtistEntity> {
+  /// 艺术家 ID（主键）
+  final String id;
+
+  /// 艺术家名称
+  final String name;
+
+  /// 封面地址（可空）
+  final String? coverArt;
+
+  /// 艺术家图片 URL（可空）
+  final String? artistImageUrl;
+
+  /// 专辑数量
+  final int albumCount;
+
+  /// 来源 ID
+  final String sourceId;
+
+  /// 完整 Artist JSON
+  final String artistJson;
+
+  /// 最后更新时间
+  final DateTime updatedAt;
+  const LocalArtistEntity({
+    required this.id,
+    required this.name,
+    this.coverArt,
+    this.artistImageUrl,
+    required this.albumCount,
+    required this.sourceId,
+    required this.artistJson,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || coverArt != null) {
+      map['cover_art'] = Variable<String>(coverArt);
+    }
+    if (!nullToAbsent || artistImageUrl != null) {
+      map['artist_image_url'] = Variable<String>(artistImageUrl);
+    }
+    map['album_count'] = Variable<int>(albumCount);
+    map['source_id'] = Variable<String>(sourceId);
+    map['artist_json'] = Variable<String>(artistJson);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LocalArtistTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalArtistTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      coverArt: coverArt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverArt),
+      artistImageUrl: artistImageUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(artistImageUrl),
+      albumCount: Value(albumCount),
+      sourceId: Value(sourceId),
+      artistJson: Value(artistJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalArtistEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalArtistEntity(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      coverArt: serializer.fromJson<String?>(json['coverArt']),
+      artistImageUrl: serializer.fromJson<String?>(json['artistImageUrl']),
+      albumCount: serializer.fromJson<int>(json['albumCount']),
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      artistJson: serializer.fromJson<String>(json['artistJson']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'coverArt': serializer.toJson<String?>(coverArt),
+      'artistImageUrl': serializer.toJson<String?>(artistImageUrl),
+      'albumCount': serializer.toJson<int>(albumCount),
+      'sourceId': serializer.toJson<String>(sourceId),
+      'artistJson': serializer.toJson<String>(artistJson),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalArtistEntity copyWith({
+    String? id,
+    String? name,
+    Value<String?> coverArt = const Value.absent(),
+    Value<String?> artistImageUrl = const Value.absent(),
+    int? albumCount,
+    String? sourceId,
+    String? artistJson,
+    DateTime? updatedAt,
+  }) => LocalArtistEntity(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    coverArt: coverArt.present ? coverArt.value : this.coverArt,
+    artistImageUrl: artistImageUrl.present
+        ? artistImageUrl.value
+        : this.artistImageUrl,
+    albumCount: albumCount ?? this.albumCount,
+    sourceId: sourceId ?? this.sourceId,
+    artistJson: artistJson ?? this.artistJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalArtistEntity copyWithCompanion(LocalArtistTableCompanion data) {
+    return LocalArtistEntity(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      coverArt: data.coverArt.present ? data.coverArt.value : this.coverArt,
+      artistImageUrl: data.artistImageUrl.present
+          ? data.artistImageUrl.value
+          : this.artistImageUrl,
+      albumCount: data.albumCount.present
+          ? data.albumCount.value
+          : this.albumCount,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      artistJson: data.artistJson.present
+          ? data.artistJson.value
+          : this.artistJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalArtistEntity(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('coverArt: $coverArt, ')
+          ..write('artistImageUrl: $artistImageUrl, ')
+          ..write('albumCount: $albumCount, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('artistJson: $artistJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    coverArt,
+    artistImageUrl,
+    albumCount,
+    sourceId,
+    artistJson,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalArtistEntity &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.coverArt == this.coverArt &&
+          other.artistImageUrl == this.artistImageUrl &&
+          other.albumCount == this.albumCount &&
+          other.sourceId == this.sourceId &&
+          other.artistJson == this.artistJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalArtistTableCompanion extends UpdateCompanion<LocalArtistEntity> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> coverArt;
+  final Value<String?> artistImageUrl;
+  final Value<int> albumCount;
+  final Value<String> sourceId;
+  final Value<String> artistJson;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const LocalArtistTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.coverArt = const Value.absent(),
+    this.artistImageUrl = const Value.absent(),
+    this.albumCount = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.artistJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalArtistTableCompanion.insert({
+    required String id,
+    required String name,
+    this.coverArt = const Value.absent(),
+    this.artistImageUrl = const Value.absent(),
+    this.albumCount = const Value.absent(),
+    required String sourceId,
+    required String artistJson,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       sourceId = Value(sourceId),
+       artistJson = Value(artistJson);
+  static Insertable<LocalArtistEntity> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? coverArt,
+    Expression<String>? artistImageUrl,
+    Expression<int>? albumCount,
+    Expression<String>? sourceId,
+    Expression<String>? artistJson,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (coverArt != null) 'cover_art': coverArt,
+      if (artistImageUrl != null) 'artist_image_url': artistImageUrl,
+      if (albumCount != null) 'album_count': albumCount,
+      if (sourceId != null) 'source_id': sourceId,
+      if (artistJson != null) 'artist_json': artistJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalArtistTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? coverArt,
+    Value<String?>? artistImageUrl,
+    Value<int>? albumCount,
+    Value<String>? sourceId,
+    Value<String>? artistJson,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalArtistTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      coverArt: coverArt ?? this.coverArt,
+      artistImageUrl: artistImageUrl ?? this.artistImageUrl,
+      albumCount: albumCount ?? this.albumCount,
+      sourceId: sourceId ?? this.sourceId,
+      artistJson: artistJson ?? this.artistJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (coverArt.present) {
+      map['cover_art'] = Variable<String>(coverArt.value);
+    }
+    if (artistImageUrl.present) {
+      map['artist_image_url'] = Variable<String>(artistImageUrl.value);
+    }
+    if (albumCount.present) {
+      map['album_count'] = Variable<int>(albumCount.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (artistJson.present) {
+      map['artist_json'] = Variable<String>(artistJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalArtistTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('coverArt: $coverArt, ')
+          ..write('artistImageUrl: $artistImageUrl, ')
+          ..write('albumCount: $albumCount, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('artistJson: $artistJson, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LocalPlaylistTableTable extends LocalPlaylistTable
+    with TableInfo<$LocalPlaylistTableTable, LocalPlaylistEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LocalPlaylistTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _ownerMeta = const VerificationMeta('owner');
+  @override
+  late final GeneratedColumn<String> owner = GeneratedColumn<String>(
+    'owner',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coverArtMeta = const VerificationMeta(
+    'coverArt',
+  );
+  @override
+  late final GeneratedColumn<String> coverArt = GeneratedColumn<String>(
+    'cover_art',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _songCountMeta = const VerificationMeta(
+    'songCount',
+  );
+  @override
+  late final GeneratedColumn<int> songCount = GeneratedColumn<int>(
+    'song_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _playlistJsonMeta = const VerificationMeta(
+    'playlistJson',
+  );
+  @override
+  late final GeneratedColumn<String> playlistJson = GeneratedColumn<String>(
+    'playlist_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    owner,
+    coverArt,
+    songCount,
+    sourceId,
+    playlistJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'local_playlist_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LocalPlaylistEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('owner')) {
+      context.handle(
+        _ownerMeta,
+        owner.isAcceptableOrUnknown(data['owner']!, _ownerMeta),
+      );
+    }
+    if (data.containsKey('cover_art')) {
+      context.handle(
+        _coverArtMeta,
+        coverArt.isAcceptableOrUnknown(data['cover_art']!, _coverArtMeta),
+      );
+    }
+    if (data.containsKey('song_count')) {
+      context.handle(
+        _songCountMeta,
+        songCount.isAcceptableOrUnknown(data['song_count']!, _songCountMeta),
+      );
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceIdMeta);
+    }
+    if (data.containsKey('playlist_json')) {
+      context.handle(
+        _playlistJsonMeta,
+        playlistJson.isAcceptableOrUnknown(
+          data['playlist_json']!,
+          _playlistJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_playlistJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LocalPlaylistEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LocalPlaylistEntity(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      owner: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}owner'],
+      ),
+      coverArt: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_art'],
+      ),
+      songCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}song_count'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      )!,
+      playlistJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}playlist_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $LocalPlaylistTableTable createAlias(String alias) {
+    return $LocalPlaylistTableTable(attachedDatabase, alias);
+  }
+}
+
+class LocalPlaylistEntity extends DataClass
+    implements Insertable<LocalPlaylistEntity> {
+  /// 歌单 ID（主键）
+  final String id;
+
+  /// 歌单名称
+  final String name;
+
+  /// 创建者/拥有者（可空）
+  final String? owner;
+
+  /// 封面地址（可空）
+  final String? coverArt;
+
+  /// 歌曲数量
+  final int songCount;
+
+  /// 来源 ID
+  final String sourceId;
+
+  /// 完整 Playlist JSON
+  final String playlistJson;
+
+  /// 最后更新时间
+  final DateTime updatedAt;
+  const LocalPlaylistEntity({
+    required this.id,
+    required this.name,
+    this.owner,
+    this.coverArt,
+    required this.songCount,
+    required this.sourceId,
+    required this.playlistJson,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || owner != null) {
+      map['owner'] = Variable<String>(owner);
+    }
+    if (!nullToAbsent || coverArt != null) {
+      map['cover_art'] = Variable<String>(coverArt);
+    }
+    map['song_count'] = Variable<int>(songCount);
+    map['source_id'] = Variable<String>(sourceId);
+    map['playlist_json'] = Variable<String>(playlistJson);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  LocalPlaylistTableCompanion toCompanion(bool nullToAbsent) {
+    return LocalPlaylistTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      owner: owner == null && nullToAbsent
+          ? const Value.absent()
+          : Value(owner),
+      coverArt: coverArt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverArt),
+      songCount: Value(songCount),
+      sourceId: Value(sourceId),
+      playlistJson: Value(playlistJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory LocalPlaylistEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LocalPlaylistEntity(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      owner: serializer.fromJson<String?>(json['owner']),
+      coverArt: serializer.fromJson<String?>(json['coverArt']),
+      songCount: serializer.fromJson<int>(json['songCount']),
+      sourceId: serializer.fromJson<String>(json['sourceId']),
+      playlistJson: serializer.fromJson<String>(json['playlistJson']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'owner': serializer.toJson<String?>(owner),
+      'coverArt': serializer.toJson<String?>(coverArt),
+      'songCount': serializer.toJson<int>(songCount),
+      'sourceId': serializer.toJson<String>(sourceId),
+      'playlistJson': serializer.toJson<String>(playlistJson),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  LocalPlaylistEntity copyWith({
+    String? id,
+    String? name,
+    Value<String?> owner = const Value.absent(),
+    Value<String?> coverArt = const Value.absent(),
+    int? songCount,
+    String? sourceId,
+    String? playlistJson,
+    DateTime? updatedAt,
+  }) => LocalPlaylistEntity(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    owner: owner.present ? owner.value : this.owner,
+    coverArt: coverArt.present ? coverArt.value : this.coverArt,
+    songCount: songCount ?? this.songCount,
+    sourceId: sourceId ?? this.sourceId,
+    playlistJson: playlistJson ?? this.playlistJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  LocalPlaylistEntity copyWithCompanion(LocalPlaylistTableCompanion data) {
+    return LocalPlaylistEntity(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      owner: data.owner.present ? data.owner.value : this.owner,
+      coverArt: data.coverArt.present ? data.coverArt.value : this.coverArt,
+      songCount: data.songCount.present ? data.songCount.value : this.songCount,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      playlistJson: data.playlistJson.present
+          ? data.playlistJson.value
+          : this.playlistJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalPlaylistEntity(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('owner: $owner, ')
+          ..write('coverArt: $coverArt, ')
+          ..write('songCount: $songCount, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('playlistJson: $playlistJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    owner,
+    coverArt,
+    songCount,
+    sourceId,
+    playlistJson,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LocalPlaylistEntity &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.owner == this.owner &&
+          other.coverArt == this.coverArt &&
+          other.songCount == this.songCount &&
+          other.sourceId == this.sourceId &&
+          other.playlistJson == this.playlistJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class LocalPlaylistTableCompanion extends UpdateCompanion<LocalPlaylistEntity> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> owner;
+  final Value<String?> coverArt;
+  final Value<int> songCount;
+  final Value<String> sourceId;
+  final Value<String> playlistJson;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const LocalPlaylistTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.owner = const Value.absent(),
+    this.coverArt = const Value.absent(),
+    this.songCount = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.playlistJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LocalPlaylistTableCompanion.insert({
+    required String id,
+    required String name,
+    this.owner = const Value.absent(),
+    this.coverArt = const Value.absent(),
+    this.songCount = const Value.absent(),
+    required String sourceId,
+    required String playlistJson,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       sourceId = Value(sourceId),
+       playlistJson = Value(playlistJson);
+  static Insertable<LocalPlaylistEntity> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? owner,
+    Expression<String>? coverArt,
+    Expression<int>? songCount,
+    Expression<String>? sourceId,
+    Expression<String>? playlistJson,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (owner != null) 'owner': owner,
+      if (coverArt != null) 'cover_art': coverArt,
+      if (songCount != null) 'song_count': songCount,
+      if (sourceId != null) 'source_id': sourceId,
+      if (playlistJson != null) 'playlist_json': playlistJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LocalPlaylistTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? owner,
+    Value<String?>? coverArt,
+    Value<int>? songCount,
+    Value<String>? sourceId,
+    Value<String>? playlistJson,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return LocalPlaylistTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      owner: owner ?? this.owner,
+      coverArt: coverArt ?? this.coverArt,
+      songCount: songCount ?? this.songCount,
+      sourceId: sourceId ?? this.sourceId,
+      playlistJson: playlistJson ?? this.playlistJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (owner.present) {
+      map['owner'] = Variable<String>(owner.value);
+    }
+    if (coverArt.present) {
+      map['cover_art'] = Variable<String>(coverArt.value);
+    }
+    if (songCount.present) {
+      map['song_count'] = Variable<int>(songCount.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (playlistJson.present) {
+      map['playlist_json'] = Variable<String>(playlistJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LocalPlaylistTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('owner: $owner, ')
+          ..write('coverArt: $coverArt, ')
+          ..write('songCount: $songCount, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('playlistJson: $playlistJson, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2449,6 +5000,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $MusicServerConfigTableTable musicServerConfigTable =
       $MusicServerConfigTableTable(this);
+  late final $LocalTrackTableTable localTrackTable = $LocalTrackTableTable(
+    this,
+  );
+  late final $LocalAlbumTableTable localAlbumTable = $LocalAlbumTableTable(
+    this,
+  );
+  late final $LocalArtistTableTable localArtistTable = $LocalArtistTableTable(
+    this,
+  );
+  late final $LocalPlaylistTableTable localPlaylistTable =
+      $LocalPlaylistTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2460,6 +5022,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sourcedTrackTable,
     preferenceTable,
     musicServerConfigTable,
+    localTrackTable,
+    localAlbumTable,
+    localArtistTable,
+    localPlaylistTable,
   ];
 }
 
@@ -3800,6 +6366,1248 @@ typedef $$MusicServerConfigTableTableProcessedTableManager =
       MusicServerConfigEntity,
       PrefetchHooks Function()
     >;
+typedef $$LocalTrackTableTableCreateCompanionBuilder =
+    LocalTrackTableCompanion Function({
+      required String id,
+      required String title,
+      Value<String?> artist,
+      Value<String?> album,
+      Value<String?> albumId,
+      Value<String?> artistId,
+      Value<String?> coverArt,
+      Value<int> duration,
+      Value<String?> path,
+      Value<String?> src,
+      required String sourceId,
+      Value<String?> libraryId,
+      Value<bool> isLocal,
+      required String trackJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$LocalTrackTableTableUpdateCompanionBuilder =
+    LocalTrackTableCompanion Function({
+      Value<String> id,
+      Value<String> title,
+      Value<String?> artist,
+      Value<String?> album,
+      Value<String?> albumId,
+      Value<String?> artistId,
+      Value<String?> coverArt,
+      Value<int> duration,
+      Value<String?> path,
+      Value<String?> src,
+      Value<String> sourceId,
+      Value<String?> libraryId,
+      Value<bool> isLocal,
+      Value<String> trackJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$LocalTrackTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalTrackTableTable> {
+  $$LocalTrackTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artist => $composableBuilder(
+    column: $table.artist,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get album => $composableBuilder(
+    column: $table.album,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get albumId => $composableBuilder(
+    column: $table.albumId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artistId => $composableBuilder(
+    column: $table.artistId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverArt => $composableBuilder(
+    column: $table.coverArt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get src => $composableBuilder(
+    column: $table.src,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get libraryId => $composableBuilder(
+    column: $table.libraryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isLocal => $composableBuilder(
+    column: $table.isLocal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get trackJson => $composableBuilder(
+    column: $table.trackJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalTrackTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalTrackTableTable> {
+  $$LocalTrackTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artist => $composableBuilder(
+    column: $table.artist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get album => $composableBuilder(
+    column: $table.album,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get albumId => $composableBuilder(
+    column: $table.albumId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artistId => $composableBuilder(
+    column: $table.artistId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverArt => $composableBuilder(
+    column: $table.coverArt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get duration => $composableBuilder(
+    column: $table.duration,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get path => $composableBuilder(
+    column: $table.path,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get src => $composableBuilder(
+    column: $table.src,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get libraryId => $composableBuilder(
+    column: $table.libraryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isLocal => $composableBuilder(
+    column: $table.isLocal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get trackJson => $composableBuilder(
+    column: $table.trackJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalTrackTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalTrackTableTable> {
+  $$LocalTrackTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get artist =>
+      $composableBuilder(column: $table.artist, builder: (column) => column);
+
+  GeneratedColumn<String> get album =>
+      $composableBuilder(column: $table.album, builder: (column) => column);
+
+  GeneratedColumn<String> get albumId =>
+      $composableBuilder(column: $table.albumId, builder: (column) => column);
+
+  GeneratedColumn<String> get artistId =>
+      $composableBuilder(column: $table.artistId, builder: (column) => column);
+
+  GeneratedColumn<String> get coverArt =>
+      $composableBuilder(column: $table.coverArt, builder: (column) => column);
+
+  GeneratedColumn<int> get duration =>
+      $composableBuilder(column: $table.duration, builder: (column) => column);
+
+  GeneratedColumn<String> get path =>
+      $composableBuilder(column: $table.path, builder: (column) => column);
+
+  GeneratedColumn<String> get src =>
+      $composableBuilder(column: $table.src, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get libraryId =>
+      $composableBuilder(column: $table.libraryId, builder: (column) => column);
+
+  GeneratedColumn<bool> get isLocal =>
+      $composableBuilder(column: $table.isLocal, builder: (column) => column);
+
+  GeneratedColumn<String> get trackJson =>
+      $composableBuilder(column: $table.trackJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LocalTrackTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalTrackTableTable,
+          LocalTrackEntity,
+          $$LocalTrackTableTableFilterComposer,
+          $$LocalTrackTableTableOrderingComposer,
+          $$LocalTrackTableTableAnnotationComposer,
+          $$LocalTrackTableTableCreateCompanionBuilder,
+          $$LocalTrackTableTableUpdateCompanionBuilder,
+          (
+            LocalTrackEntity,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalTrackTableTable,
+              LocalTrackEntity
+            >,
+          ),
+          LocalTrackEntity,
+          PrefetchHooks Function()
+        > {
+  $$LocalTrackTableTableTableManager(
+    _$AppDatabase db,
+    $LocalTrackTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalTrackTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalTrackTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalTrackTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String?> artist = const Value.absent(),
+                Value<String?> album = const Value.absent(),
+                Value<String?> albumId = const Value.absent(),
+                Value<String?> artistId = const Value.absent(),
+                Value<String?> coverArt = const Value.absent(),
+                Value<int> duration = const Value.absent(),
+                Value<String?> path = const Value.absent(),
+                Value<String?> src = const Value.absent(),
+                Value<String> sourceId = const Value.absent(),
+                Value<String?> libraryId = const Value.absent(),
+                Value<bool> isLocal = const Value.absent(),
+                Value<String> trackJson = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalTrackTableCompanion(
+                id: id,
+                title: title,
+                artist: artist,
+                album: album,
+                albumId: albumId,
+                artistId: artistId,
+                coverArt: coverArt,
+                duration: duration,
+                path: path,
+                src: src,
+                sourceId: sourceId,
+                libraryId: libraryId,
+                isLocal: isLocal,
+                trackJson: trackJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String title,
+                Value<String?> artist = const Value.absent(),
+                Value<String?> album = const Value.absent(),
+                Value<String?> albumId = const Value.absent(),
+                Value<String?> artistId = const Value.absent(),
+                Value<String?> coverArt = const Value.absent(),
+                Value<int> duration = const Value.absent(),
+                Value<String?> path = const Value.absent(),
+                Value<String?> src = const Value.absent(),
+                required String sourceId,
+                Value<String?> libraryId = const Value.absent(),
+                Value<bool> isLocal = const Value.absent(),
+                required String trackJson,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalTrackTableCompanion.insert(
+                id: id,
+                title: title,
+                artist: artist,
+                album: album,
+                albumId: albumId,
+                artistId: artistId,
+                coverArt: coverArt,
+                duration: duration,
+                path: path,
+                src: src,
+                sourceId: sourceId,
+                libraryId: libraryId,
+                isLocal: isLocal,
+                trackJson: trackJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalTrackTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalTrackTableTable,
+      LocalTrackEntity,
+      $$LocalTrackTableTableFilterComposer,
+      $$LocalTrackTableTableOrderingComposer,
+      $$LocalTrackTableTableAnnotationComposer,
+      $$LocalTrackTableTableCreateCompanionBuilder,
+      $$LocalTrackTableTableUpdateCompanionBuilder,
+      (
+        LocalTrackEntity,
+        BaseReferences<_$AppDatabase, $LocalTrackTableTable, LocalTrackEntity>,
+      ),
+      LocalTrackEntity,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalAlbumTableTableCreateCompanionBuilder =
+    LocalAlbumTableCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> artist,
+      Value<String?> artistId,
+      Value<String?> coverArt,
+      Value<int?> year,
+      Value<int> songCount,
+      required String sourceId,
+      required String albumJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$LocalAlbumTableTableUpdateCompanionBuilder =
+    LocalAlbumTableCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> artist,
+      Value<String?> artistId,
+      Value<String?> coverArt,
+      Value<int?> year,
+      Value<int> songCount,
+      Value<String> sourceId,
+      Value<String> albumJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$LocalAlbumTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalAlbumTableTable> {
+  $$LocalAlbumTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artist => $composableBuilder(
+    column: $table.artist,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artistId => $composableBuilder(
+    column: $table.artistId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverArt => $composableBuilder(
+    column: $table.coverArt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get songCount => $composableBuilder(
+    column: $table.songCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get albumJson => $composableBuilder(
+    column: $table.albumJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalAlbumTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalAlbumTableTable> {
+  $$LocalAlbumTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artist => $composableBuilder(
+    column: $table.artist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artistId => $composableBuilder(
+    column: $table.artistId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverArt => $composableBuilder(
+    column: $table.coverArt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get songCount => $composableBuilder(
+    column: $table.songCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get albumJson => $composableBuilder(
+    column: $table.albumJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalAlbumTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalAlbumTableTable> {
+  $$LocalAlbumTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get artist =>
+      $composableBuilder(column: $table.artist, builder: (column) => column);
+
+  GeneratedColumn<String> get artistId =>
+      $composableBuilder(column: $table.artistId, builder: (column) => column);
+
+  GeneratedColumn<String> get coverArt =>
+      $composableBuilder(column: $table.coverArt, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<int> get songCount =>
+      $composableBuilder(column: $table.songCount, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get albumJson =>
+      $composableBuilder(column: $table.albumJson, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LocalAlbumTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalAlbumTableTable,
+          LocalAlbumEntity,
+          $$LocalAlbumTableTableFilterComposer,
+          $$LocalAlbumTableTableOrderingComposer,
+          $$LocalAlbumTableTableAnnotationComposer,
+          $$LocalAlbumTableTableCreateCompanionBuilder,
+          $$LocalAlbumTableTableUpdateCompanionBuilder,
+          (
+            LocalAlbumEntity,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalAlbumTableTable,
+              LocalAlbumEntity
+            >,
+          ),
+          LocalAlbumEntity,
+          PrefetchHooks Function()
+        > {
+  $$LocalAlbumTableTableTableManager(
+    _$AppDatabase db,
+    $LocalAlbumTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalAlbumTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalAlbumTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalAlbumTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> artist = const Value.absent(),
+                Value<String?> artistId = const Value.absent(),
+                Value<String?> coverArt = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<int> songCount = const Value.absent(),
+                Value<String> sourceId = const Value.absent(),
+                Value<String> albumJson = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalAlbumTableCompanion(
+                id: id,
+                name: name,
+                artist: artist,
+                artistId: artistId,
+                coverArt: coverArt,
+                year: year,
+                songCount: songCount,
+                sourceId: sourceId,
+                albumJson: albumJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> artist = const Value.absent(),
+                Value<String?> artistId = const Value.absent(),
+                Value<String?> coverArt = const Value.absent(),
+                Value<int?> year = const Value.absent(),
+                Value<int> songCount = const Value.absent(),
+                required String sourceId,
+                required String albumJson,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalAlbumTableCompanion.insert(
+                id: id,
+                name: name,
+                artist: artist,
+                artistId: artistId,
+                coverArt: coverArt,
+                year: year,
+                songCount: songCount,
+                sourceId: sourceId,
+                albumJson: albumJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalAlbumTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalAlbumTableTable,
+      LocalAlbumEntity,
+      $$LocalAlbumTableTableFilterComposer,
+      $$LocalAlbumTableTableOrderingComposer,
+      $$LocalAlbumTableTableAnnotationComposer,
+      $$LocalAlbumTableTableCreateCompanionBuilder,
+      $$LocalAlbumTableTableUpdateCompanionBuilder,
+      (
+        LocalAlbumEntity,
+        BaseReferences<_$AppDatabase, $LocalAlbumTableTable, LocalAlbumEntity>,
+      ),
+      LocalAlbumEntity,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalArtistTableTableCreateCompanionBuilder =
+    LocalArtistTableCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> coverArt,
+      Value<String?> artistImageUrl,
+      Value<int> albumCount,
+      required String sourceId,
+      required String artistJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$LocalArtistTableTableUpdateCompanionBuilder =
+    LocalArtistTableCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> coverArt,
+      Value<String?> artistImageUrl,
+      Value<int> albumCount,
+      Value<String> sourceId,
+      Value<String> artistJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$LocalArtistTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalArtistTableTable> {
+  $$LocalArtistTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverArt => $composableBuilder(
+    column: $table.coverArt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artistImageUrl => $composableBuilder(
+    column: $table.artistImageUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get albumCount => $composableBuilder(
+    column: $table.albumCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artistJson => $composableBuilder(
+    column: $table.artistJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalArtistTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalArtistTableTable> {
+  $$LocalArtistTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverArt => $composableBuilder(
+    column: $table.coverArt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artistImageUrl => $composableBuilder(
+    column: $table.artistImageUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get albumCount => $composableBuilder(
+    column: $table.albumCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artistJson => $composableBuilder(
+    column: $table.artistJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalArtistTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalArtistTableTable> {
+  $$LocalArtistTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get coverArt =>
+      $composableBuilder(column: $table.coverArt, builder: (column) => column);
+
+  GeneratedColumn<String> get artistImageUrl => $composableBuilder(
+    column: $table.artistImageUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get albumCount => $composableBuilder(
+    column: $table.albumCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get artistJson => $composableBuilder(
+    column: $table.artistJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LocalArtistTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalArtistTableTable,
+          LocalArtistEntity,
+          $$LocalArtistTableTableFilterComposer,
+          $$LocalArtistTableTableOrderingComposer,
+          $$LocalArtistTableTableAnnotationComposer,
+          $$LocalArtistTableTableCreateCompanionBuilder,
+          $$LocalArtistTableTableUpdateCompanionBuilder,
+          (
+            LocalArtistEntity,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalArtistTableTable,
+              LocalArtistEntity
+            >,
+          ),
+          LocalArtistEntity,
+          PrefetchHooks Function()
+        > {
+  $$LocalArtistTableTableTableManager(
+    _$AppDatabase db,
+    $LocalArtistTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalArtistTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalArtistTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalArtistTableTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> coverArt = const Value.absent(),
+                Value<String?> artistImageUrl = const Value.absent(),
+                Value<int> albumCount = const Value.absent(),
+                Value<String> sourceId = const Value.absent(),
+                Value<String> artistJson = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalArtistTableCompanion(
+                id: id,
+                name: name,
+                coverArt: coverArt,
+                artistImageUrl: artistImageUrl,
+                albumCount: albumCount,
+                sourceId: sourceId,
+                artistJson: artistJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> coverArt = const Value.absent(),
+                Value<String?> artistImageUrl = const Value.absent(),
+                Value<int> albumCount = const Value.absent(),
+                required String sourceId,
+                required String artistJson,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalArtistTableCompanion.insert(
+                id: id,
+                name: name,
+                coverArt: coverArt,
+                artistImageUrl: artistImageUrl,
+                albumCount: albumCount,
+                sourceId: sourceId,
+                artistJson: artistJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalArtistTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalArtistTableTable,
+      LocalArtistEntity,
+      $$LocalArtistTableTableFilterComposer,
+      $$LocalArtistTableTableOrderingComposer,
+      $$LocalArtistTableTableAnnotationComposer,
+      $$LocalArtistTableTableCreateCompanionBuilder,
+      $$LocalArtistTableTableUpdateCompanionBuilder,
+      (
+        LocalArtistEntity,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalArtistTableTable,
+          LocalArtistEntity
+        >,
+      ),
+      LocalArtistEntity,
+      PrefetchHooks Function()
+    >;
+typedef $$LocalPlaylistTableTableCreateCompanionBuilder =
+    LocalPlaylistTableCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> owner,
+      Value<String?> coverArt,
+      Value<int> songCount,
+      required String sourceId,
+      required String playlistJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$LocalPlaylistTableTableUpdateCompanionBuilder =
+    LocalPlaylistTableCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> owner,
+      Value<String?> coverArt,
+      Value<int> songCount,
+      Value<String> sourceId,
+      Value<String> playlistJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$LocalPlaylistTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LocalPlaylistTableTable> {
+  $$LocalPlaylistTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get owner => $composableBuilder(
+    column: $table.owner,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverArt => $composableBuilder(
+    column: $table.coverArt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get songCount => $composableBuilder(
+    column: $table.songCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playlistJson => $composableBuilder(
+    column: $table.playlistJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LocalPlaylistTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LocalPlaylistTableTable> {
+  $$LocalPlaylistTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get owner => $composableBuilder(
+    column: $table.owner,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverArt => $composableBuilder(
+    column: $table.coverArt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get songCount => $composableBuilder(
+    column: $table.songCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get playlistJson => $composableBuilder(
+    column: $table.playlistJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LocalPlaylistTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LocalPlaylistTableTable> {
+  $$LocalPlaylistTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get owner =>
+      $composableBuilder(column: $table.owner, builder: (column) => column);
+
+  GeneratedColumn<String> get coverArt =>
+      $composableBuilder(column: $table.coverArt, builder: (column) => column);
+
+  GeneratedColumn<int> get songCount =>
+      $composableBuilder(column: $table.songCount, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get playlistJson => $composableBuilder(
+    column: $table.playlistJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$LocalPlaylistTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LocalPlaylistTableTable,
+          LocalPlaylistEntity,
+          $$LocalPlaylistTableTableFilterComposer,
+          $$LocalPlaylistTableTableOrderingComposer,
+          $$LocalPlaylistTableTableAnnotationComposer,
+          $$LocalPlaylistTableTableCreateCompanionBuilder,
+          $$LocalPlaylistTableTableUpdateCompanionBuilder,
+          (
+            LocalPlaylistEntity,
+            BaseReferences<
+              _$AppDatabase,
+              $LocalPlaylistTableTable,
+              LocalPlaylistEntity
+            >,
+          ),
+          LocalPlaylistEntity,
+          PrefetchHooks Function()
+        > {
+  $$LocalPlaylistTableTableTableManager(
+    _$AppDatabase db,
+    $LocalPlaylistTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LocalPlaylistTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LocalPlaylistTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LocalPlaylistTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> owner = const Value.absent(),
+                Value<String?> coverArt = const Value.absent(),
+                Value<int> songCount = const Value.absent(),
+                Value<String> sourceId = const Value.absent(),
+                Value<String> playlistJson = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalPlaylistTableCompanion(
+                id: id,
+                name: name,
+                owner: owner,
+                coverArt: coverArt,
+                songCount: songCount,
+                sourceId: sourceId,
+                playlistJson: playlistJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> owner = const Value.absent(),
+                Value<String?> coverArt = const Value.absent(),
+                Value<int> songCount = const Value.absent(),
+                required String sourceId,
+                required String playlistJson,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LocalPlaylistTableCompanion.insert(
+                id: id,
+                name: name,
+                owner: owner,
+                coverArt: coverArt,
+                songCount: songCount,
+                sourceId: sourceId,
+                playlistJson: playlistJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LocalPlaylistTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LocalPlaylistTableTable,
+      LocalPlaylistEntity,
+      $$LocalPlaylistTableTableFilterComposer,
+      $$LocalPlaylistTableTableOrderingComposer,
+      $$LocalPlaylistTableTableAnnotationComposer,
+      $$LocalPlaylistTableTableCreateCompanionBuilder,
+      $$LocalPlaylistTableTableUpdateCompanionBuilder,
+      (
+        LocalPlaylistEntity,
+        BaseReferences<
+          _$AppDatabase,
+          $LocalPlaylistTableTable,
+          LocalPlaylistEntity
+        >,
+      ),
+      LocalPlaylistEntity,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3819,4 +7627,12 @@ class $AppDatabaseManager {
         _db,
         _db.musicServerConfigTable,
       );
+  $$LocalTrackTableTableTableManager get localTrackTable =>
+      $$LocalTrackTableTableTableManager(_db, _db.localTrackTable);
+  $$LocalAlbumTableTableTableManager get localAlbumTable =>
+      $$LocalAlbumTableTableTableManager(_db, _db.localAlbumTable);
+  $$LocalArtistTableTableTableManager get localArtistTable =>
+      $$LocalArtistTableTableTableManager(_db, _db.localArtistTable);
+  $$LocalPlaylistTableTableTableManager get localPlaylistTable =>
+      $$LocalPlaylistTableTableTableManager(_db, _db.localPlaylistTable);
 }

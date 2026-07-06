@@ -7,6 +7,7 @@ import Foundation
 
 import audio_service
 import audio_session
+import audiotags
 import bonsoir_darwin
 import file_picker
 import flutter_js
@@ -22,6 +23,7 @@ import window_manager
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   AudioServicePlugin.register(with: registry.registrar(forPlugin: "AudioServicePlugin"))
   AudioSessionPlugin.register(with: registry.registrar(forPlugin: "AudioSessionPlugin"))
+  AudiotagsPlugin.register(with: registry.registrar(forPlugin: "AudiotagsPlugin"))
   SwiftBonsoirPlugin.register(with: registry.registrar(forPlugin: "SwiftBonsoirPlugin"))
   FilePickerPlugin.register(with: registry.registrar(forPlugin: "FilePickerPlugin"))
   FlutterJsPlugin.register(with: registry.registrar(forPlugin: "FlutterJsPlugin"))

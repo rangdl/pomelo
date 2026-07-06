@@ -16,8 +16,7 @@ import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
-import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
-import 'package:pomelo/ui/music/widgets/track_tile.dart';
+import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
 import 'package:pomelo/ui/root/root_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -473,10 +472,11 @@ class _LeaderboardSongs extends ConsumerWidget {
           itemCount: tracks.length,
           itemBuilder: (context, index) {
             final track = tracks[index];
-            return TrackTile(
+            return PlayableTrackTile(
               track: track,
               index: index + 1,
-              trailing: PlayPauseButton(track: track),
+              playlist: tracks,
+              playlistIndex: index,
             );
           },
         );
@@ -1407,10 +1407,11 @@ class _DefaultListView extends HookConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         children: tracks.asMap().entries.map(
                           (e) {
-                            return TrackTile(
+                            return PlayableTrackTile(
                               track: e.value,
                               index: e.key + 1,
-                              trailing: PlayPauseButton(track: e.value),
+                              playlist: tracks,
+                              playlistIndex: e.key,
                             );
                           },
                         ).toList(),
@@ -1420,10 +1421,11 @@ class _DefaultListView extends HookConsumerWidget {
                         itemCount: tracks.length,
                         itemBuilder: (context, index) {
                           final track = tracks[index];
-                          return TrackTile(
+                          return PlayableTrackTile(
                             track: track,
                             index: index + 1,
-                            trailing: PlayPauseButton(track: track),
+                            playlist: tracks,
+                            playlistIndex: index,
                           );
                         },
                       ),
