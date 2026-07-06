@@ -8,6 +8,7 @@ import 'package:pomelo/core/helper.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
+import 'local_library_table.dart';
 import 'music_server_config_table.dart';
 import 'player_state_table.dart';
 
@@ -21,6 +22,7 @@ part 'app_database.g.dart';
 /// - 播放记录（含播放次数）
 /// - 已解析音源曲目持久化（播放链接与缓存路径）
 /// - 音乐服务配置（统一管理所有音乐源配置）
+/// - 本地音乐库（完整 Track/Album/Artist/Playlist 映射，作为本地音乐数据源）
 @DriftDatabase(tables: [
   PlayerStateTable,
   PlayerTrackTable,
@@ -28,6 +30,10 @@ part 'app_database.g.dart';
   SourcedTrackTable,
   PreferenceTable,
   MusicServerConfigTable,
+  LocalTrackTable,
+  LocalAlbumTable,
+  LocalArtistTable,
+  LocalPlaylistTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
@@ -36,7 +42,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -54,6 +60,13 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             // v4: 新增 MusicServerConfigTable（统一音乐源配置存储）
             await m.createTable(musicServerConfigTable);
+          }
+          if (from < 5) {
+            // v5: 新增本地音乐库 4 张表（Track/Album/Artist/Playlist 完整映射）
+            await m.createTable(localTrackTable);
+            await m.createTable(localAlbumTable);
+            await m.createTable(localArtistTable);
+            await m.createTable(localPlaylistTable);
           }
         },
       );
@@ -223,6 +236,190 @@ class AppDatabase extends _$AppDatabase {
     return (delete(musicServerConfigTable)
           ..where((t) => t.id.equals(id)))
         .go();
+  }
+
+  // ========== 本地音乐库 - 曲目 ==========
+
+  /// 插入或更新本地曲目（upsert）
+  Future<void> upsertLocalTrack(LocalTrackTableCompanion companion) async {
+    await into(localTrackTable).insertOnConflictUpdate(companion);
+  }
+
+  /// 批量插入本地曲目（upsert）
+  Future<void> upsertLocalTracks(
+      List<LocalTrackTableCompanion> companions) async {
+    await batch((batch) {
+      for (final c in companions) {
+        batch.insert(localTrackTable, c,
+            mode: InsertMode.insertOrReplace);
+      }
+    });
+  }
+
+  /// 获取指定 id 的本地曲目
+  Future<LocalTrackEntity?> getLocalTrack(String id) {
+    return (select(localTrackTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// 获取所有本地曲目
+  Future<List<LocalTrackEntity>> getAllLocalTracks() {
+    return (select(localTrackTable)
+          ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+        .get();
+  }
+
+  /// 按来源获取本地曲目
+  Future<List<LocalTrackEntity>> getLocalTracksBySource(String sourceId) {
+    return (select(localTrackTable)
+          ..where((t) => t.sourceId.equals(sourceId))
+          ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+        .get();
+  }
+
+  /// 按库 ID 获取本地曲目
+  Future<List<LocalTrackEntity>> getLocalTracksByLibrary(String libraryId) {
+    return (select(localTrackTable)
+          ..where((t) => t.libraryId.equals(libraryId))
+          ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+        .get();
+  }
+
+  /// 按专辑 ID 获取本地曲目
+  Future<List<LocalTrackEntity>> getLocalTracksByAlbum(String albumId) {
+    return (select(localTrackTable)
+          ..where((t) => t.albumId.equals(albumId))
+          ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+        .get();
+  }
+
+  /// 按艺术家 ID 获取本地曲目
+  Future<List<LocalTrackEntity>> getLocalTracksByArtist(String artistId) {
+    return (select(localTrackTable)
+          ..where((t) => t.artistId.equals(artistId))
+          ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+        .get();
+  }
+
+  /// 删除指定 id 的本地曲目
+  Future<void> deleteLocalTrack(String id) {
+    return (delete(localTrackTable)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// 删除指定来源的所有本地曲目
+  Future<void> deleteLocalTracksBySource(String sourceId) {
+    return (delete(localTrackTable)
+          ..where((t) => t.sourceId.equals(sourceId)))
+        .go();
+  }
+
+  // ========== 本地音乐库 - 专辑 ==========
+
+  /// 插入或更新本地专辑（upsert）
+  Future<void> upsertLocalAlbum(LocalAlbumTableCompanion companion) async {
+    await into(localAlbumTable).insertOnConflictUpdate(companion);
+  }
+
+  /// 获取指定 id 的本地专辑
+  Future<LocalAlbumEntity?> getLocalAlbum(String id) {
+    return (select(localAlbumTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// 获取所有本地专辑
+  Future<List<LocalAlbumEntity>> getAllLocalAlbums() {
+    return (select(localAlbumTable)
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  /// 按来源获取本地专辑
+  Future<List<LocalAlbumEntity>> getLocalAlbumsBySource(String sourceId) {
+    return (select(localAlbumTable)
+          ..where((t) => t.sourceId.equals(sourceId))
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  /// 按艺术家获取本地专辑
+  Future<List<LocalAlbumEntity>> getLocalAlbumsByArtist(String artistId) {
+    return (select(localAlbumTable)
+          ..where((t) => t.artistId.equals(artistId))
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  /// 删除指定 id 的本地专辑
+  Future<void> deleteLocalAlbum(String id) {
+    return (delete(localAlbumTable)..where((t) => t.id.equals(id))).go();
+  }
+
+  // ========== 本地音乐库 - 艺术家 ==========
+
+  /// 插入或更新本地艺术家（upsert）
+  Future<void> upsertLocalArtist(LocalArtistTableCompanion companion) async {
+    await into(localArtistTable).insertOnConflictUpdate(companion);
+  }
+
+  /// 获取指定 id 的本地艺术家
+  Future<LocalArtistEntity?> getLocalArtist(String id) {
+    return (select(localArtistTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// 获取所有本地艺术家
+  Future<List<LocalArtistEntity>> getAllLocalArtists() {
+    return (select(localArtistTable)
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  /// 按来源获取本地艺术家
+  Future<List<LocalArtistEntity>> getLocalArtistsBySource(String sourceId) {
+    return (select(localArtistTable)
+          ..where((t) => t.sourceId.equals(sourceId))
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  /// 删除指定 id 的本地艺术家
+  Future<void> deleteLocalArtist(String id) {
+    return (delete(localArtistTable)..where((t) => t.id.equals(id))).go();
+  }
+
+  // ========== 本地音乐库 - 歌单 ==========
+
+  /// 插入或更新本地歌单（upsert）
+  Future<void> upsertLocalPlaylist(
+      LocalPlaylistTableCompanion companion) async {
+    await into(localPlaylistTable).insertOnConflictUpdate(companion);
+  }
+
+  /// 获取指定 id 的本地歌单
+  Future<LocalPlaylistEntity?> getLocalPlaylist(String id) {
+    return (select(localPlaylistTable)..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+  }
+
+  /// 获取所有本地歌单
+  Future<List<LocalPlaylistEntity>> getAllLocalPlaylists() {
+    return (select(localPlaylistTable)
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  /// 按来源获取本地歌单
+  Future<List<LocalPlaylistEntity>> getLocalPlaylistsBySource(
+      String sourceId) {
+    return (select(localPlaylistTable)
+          ..where((t) => t.sourceId.equals(sourceId))
+          ..orderBy([(t) => OrderingTerm.asc(t.name)]))
+        .get();
+  }
+
+  /// 删除指定 id 的本地歌单
+  Future<void> deleteLocalPlaylist(String id) {
+    return (delete(localPlaylistTable)..where((t) => t.id.equals(id))).go();
   }
 }
 

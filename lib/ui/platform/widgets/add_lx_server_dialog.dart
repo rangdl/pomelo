@@ -37,6 +37,9 @@ class _LxServerAccountContent extends HookConsumerWidget {
     final allowSourceSwitching = useState(
       initialConfig?.allowSourceSwitching ?? false,
     );
+    final useLocalAudioSource = useState(
+      initialConfig?.useLocalAudioSource ?? false,
+    );
 
     Future<void> submit() async {
       final serverUrl = serverUrlController.text.trim();
@@ -60,6 +63,7 @@ class _LxServerAccountContent extends HookConsumerWidget {
           name: displayName.isEmpty ? 'Lx Server' : displayName,
           proxyPlayback: proxyPlayback.value,
           allowSourceSwitching: allowSourceSwitching.value,
+          useLocalAudioSource: useLocalAudioSource.value,
         ));
         if (context.mounted) {
           Navigator.of(context).pop(true);
@@ -157,6 +161,20 @@ class _LxServerAccountContent extends HookConsumerWidget {
         const Gap(4),
         Text(
           '允许换源：开启后当所有音质的播放链接获取失败时，自动搜索其他库并切换到匹配的新源重新获取',
+          style: TextStyle(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.mutedForeground,
+          ),
+        ),
+        const Gap(12),
+        Switch(
+          value: useLocalAudioSource.value,
+          onChanged: (v) => useLocalAudioSource.value = v,
+        ),
+        const Gap(4),
+        Text(
+          '使用本地音源：开启后获取播放链接时优先从本地音乐库匹配，'
+          '匹配失败再回退到在线解析（需同时在「音源设置」中开启本地音源）',
           style: TextStyle(
             fontSize: 12,
             color: Theme.of(context).colorScheme.mutedForeground,

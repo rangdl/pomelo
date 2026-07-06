@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:pomelo/core/core.dart';
 import 'package:pomelo/services/logger/logger.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
 import 'lx_server_client.dart';
@@ -36,6 +39,21 @@ class LxServerMusicServer extends MusicServer {
   /// 自动搜索其他库并切换到匹配的新源重新获取播放链接。
   final bool allowSourceSwitching;
 
+  /// 是否使用本地音源
+  ///
+  /// 开启后，获取播放链接时优先从本地音乐库匹配（按 title + artist），
+  /// 匹配失败再回退到在线解析。
+  ///
+  /// 此标志为全局开关（[UserPreference.localAudioSourceEnabled]）与
+  /// 当前服务配置开关（[LxServerConfig.useLocalAudioSource]）的「与」结果，
+  /// 由 [lxServerMusicServerProvider] 计算后传入。
+  final bool useLocalAudioSource;
+
+  /// 数据库实例（用于本地音源查询）
+  ///
+  /// 当 [useLocalAudioSource] 为 true 时用于查询本地音乐库。
+  final AppDatabase? database;
+
   /// 所有可用库
   ///
   /// lx-server 支持 5 个来源：kg(酷狗)、kw(酷我)、tx(QQ)、mg(咪咕)、wy(网易云)
@@ -55,6 +73,8 @@ class LxServerMusicServer extends MusicServer {
     required String sourceId,
     required String sourceName,
     this.allowSourceSwitching = false,
+    this.useLocalAudioSource = false,
+    this.database,
   }) : _sourceId = sourceId,
        _sourceName = sourceName;
 
@@ -343,10 +363,7 @@ class LxServerMusicServer extends MusicServer {
   @override
   Future<Album?> getAlbum(String id) async {
     try {
-      final result = await client.getAlbumSongs(
-        source: _currentSource,
-        id: id,
-      );
+      final result = await client.getAlbumSongs(source: _currentSource, id: id);
       return Album(
         id: id,
         name: result.name ?? '',
@@ -558,6 +575,19 @@ class LxServerMusicServer extends MusicServer {
 
   @override
   Future<String> getMusicUrl(Track track, {String? quality}) async {
+    // 本地音源优先：当全局开关与本服务开关均开启时，先尝试从本地音乐库匹配
+    if (useLocalAudioSource && database != null) {
+      final localPath = await _tryLocalAudioSource(track);
+      if (localPath != null) {
+        AppLogger.log.i(
+          '[LxServer] 命中本地音源: track=${track.title} - ${track.artist}, '
+          'path=$localPath',
+        );
+        return localPath;
+      }
+      AppLogger.log.d('[LxServer] 本地音源未命中，回退在线解析: track=${track.title}');
+    }
+
     // track.meta 即完整的 songInfo（由 LxServerSong.toSongInfo() 构造）
     final songInfo = Map<String, dynamic>.from(track.meta ?? {});
     // 确保必要字段存在
@@ -592,6 +622,53 @@ class LxServerMusicServer extends MusicServer {
         if (switchedUrl != null) return switchedUrl;
       }
       rethrow;
+    }
+  }
+
+  /// 尝试从本地音乐库匹配曲目
+  ///
+  /// 匹配规则：
+  /// - title 大小写不敏感精确匹配
+  /// - artist 包含匹配（任一方的 artist 字段包含对方）
+  ///
+  /// 匹配成功且本地文件存在时返回文件路径，否则返回 null。
+  Future<String?> _tryLocalAudioSource(Track track) async {
+    try {
+      final db = database;
+      if (db == null) return null;
+
+      final title = track.title.trim().toLowerCase();
+      final artist = (track.artist ?? '').trim().toLowerCase();
+      if (title.isEmpty) return null;
+
+      final allLocalTracks = await db.getAllLocalTracks();
+      for (final entity in allLocalTracks) {
+        // 仅匹配本地文件型曲目（path 非空）
+        final path = entity.path;
+        if (path == null || path.isEmpty) continue;
+
+        // title 大小写不敏感精确匹配
+        final localTitle = (entity.title).trim().toLowerCase();
+        if (localTitle != title) continue;
+
+        // artist 包含匹配（任一方包含对方即可）
+        final localArtist = (entity.artist ?? '').trim().toLowerCase();
+        if (artist.isNotEmpty && localArtist.isNotEmpty) {
+          if (!localArtist.contains(artist) && !artist.contains(localArtist)) {
+            continue;
+          }
+        }
+
+        // 校验本地文件是否存在
+        final file = File(path);
+        if (await file.exists()) {
+          return path;
+        }
+      }
+      return null;
+    } catch (e) {
+      AppLogger.log.w('[LxServer] 本地音源查询失败: $e');
+      return null;
     }
   }
 

@@ -35,6 +35,84 @@ String formatBytes(int bytes) {
       : '${size.toStringAsFixed(2)} ${units[unitIndex]}';
 }
 
+/// 播放行为设置区块（页面和对话框共享）
+class PlaybackBehaviorSection extends ConsumerWidget {
+  const PlaybackBehaviorSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overwrite = ref.watch(
+      userPreferenceProvider.select((p) => p.overwritePlaylistOnPlay),
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '播放行为',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.mutedForeground,
+          ),
+        ),
+        const Gap(8),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.playlist_play, size: 20),
+                title: const Text('点击播放时覆盖播放列表'),
+                subtitle: Text(
+                  overwrite ? '当前：覆盖播放列表' : '当前：添加到播放列表末尾',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.mutedForeground,
+                  ),
+                ),
+                trailing: Switch(
+                  value: overwrite,
+                  onChanged: (v) => ref
+                      .read(userPreferenceProvider.notifier)
+                      .setOverwritePlaylistOnPlay(v),
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: colorScheme.mutedForeground,
+                    ),
+                    const Gap(6),
+                    Expanded(
+                      child: Text(
+                        '关闭时点击歌曲卡片会将歌曲添加到当前播放列表；'
+                        '开启时点击歌曲卡片会覆盖当前播放列表',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.mutedForeground,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// 缓存设置区块（页面和对话框共享）
 class CacheSettingsSection extends HookConsumerWidget {
   const CacheSettingsSection({super.key});
@@ -343,6 +421,8 @@ class PlaybackSettingsPage extends ConsumerWidget {
             ),
           ),
           const Gap(24),
+          const PlaybackBehaviorSection(),
+          const Gap(24),
           const CacheSettingsSection(),
         ],
       ),
@@ -461,6 +541,8 @@ class _PlaybackSettingsDialog extends ConsumerWidget {
                   ],
                 ),
               ),
+              const Gap(20),
+              const PlaybackBehaviorSection(),
               const Gap(20),
               const CacheSettingsSection(),
             ],
