@@ -1,9 +1,10 @@
+import 'dart:io';
+
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
-import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
 import 'package:pomelo/ui/music/widgets/track_more_actions_button.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -82,17 +83,30 @@ class PlayQueueContent extends HookConsumerWidget {
                   color: colorScheme.primary,
                   size: 20,
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PlayPauseButton(track: track),
-                    TrackMoreActionsButton(
-                      track: track,
-                      onRemoveFromQueue: () => notifier.removeTrack(track.id),
-                    ),
-                  ],
+                trailing: TrackMoreActionsButton(
+                  track: track,
+                  onRemoveFromQueue: () => notifier.removeTrack(track.id),
                 ),
-                onTap: () => notifier.jumpToTrack(track),
+                onTap: () async {
+                  if (isActive) {
+                    // 活跃曲目：切换暂停/恢复
+                    state.playing
+                        ? audioPlayer.pause()
+                        : audioPlayer.resume();
+                    return;
+                  }
+                  // 本地曲目：校验文件存在
+                  if (track.isLocal && track.path != null) {
+                    if (!await File(track.path!).exists()) {
+                      if (!context.mounted) return;
+                      context.toast.error('文件不存在：${track.path}');
+                      return;
+                    }
+                  }
+                  // 非活跃曲目：跳转并播放
+                  notifier.jumpToTrack(track);
+                  if (!audioPlayer.isPlaying) audioPlayer.resume();
+                },
                 padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
               );
             },

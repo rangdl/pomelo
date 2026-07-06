@@ -47,6 +47,20 @@ class UserPreference {
   // === 音质偏好（全局） ===
   final LxServerQuality lxServerQuality;
 
+  // === 播放行为 ===
+  /// 点击播放时是否覆盖当前播放列表。
+  ///
+  /// - false（默认）：添加到当前播放列表，不覆盖
+  /// - true：覆盖当前播放列表
+  final bool overwritePlaylistOnPlay;
+
+  // === 音源设置 ===
+  /// 是否开启本地音源（全局总开关）。
+  ///
+  /// 开启后，配合各 lx_server 配置中的 `useLocalAudioSource` 开关，
+  /// 在获取播放链接时优先从本地音乐库匹配，失败再回退到在线解析。
+  final bool localAudioSourceEnabled;
+
   const UserPreference({
     this.themeMode = 'system',
     this.lyricFontSize = 14,
@@ -58,6 +72,8 @@ class UserPreference {
     this.cacheDirectory,
     this.cacheSizeLimitGB = 1,
     this.lxServerQuality = LxServerQuality.flac,
+    this.overwritePlaylistOnPlay = false,
+    this.localAudioSourceEnabled = false,
   });
 
   /// 从 JSON 构造（缺字段容忍）
@@ -79,6 +95,9 @@ class UserPreference {
       lxServerQuality: LxServerQuality.fromIdOrDefault(
         json['lxServerQuality'] as String?,
       ),
+      overwritePlaylistOnPlay: json['overwritePlaylistOnPlay'] as bool? ?? false,
+      localAudioSourceEnabled:
+          json['localAudioSourceEnabled'] as bool? ?? false,
     );
   }
 
@@ -93,6 +112,8 @@ class UserPreference {
         'cacheDirectory': cacheDirectory,
         'cacheSizeLimitGB': cacheSizeLimitGB,
         'lxServerQuality': lxServerQuality.id,
+        'overwritePlaylistOnPlay': overwritePlaylistOnPlay,
+        'localAudioSourceEnabled': localAudioSourceEnabled,
       };
 
   /// 从 JSON 字符串构造
@@ -125,6 +146,8 @@ class UserPreference {
     Object? cacheDirectory = _unset,
     int? cacheSizeLimitGB,
     LxServerQuality? lxServerQuality,
+    bool? overwritePlaylistOnPlay,
+    bool? localAudioSourceEnabled,
   }) {
     return UserPreference(
       themeMode: themeMode ?? this.themeMode,
@@ -144,6 +167,10 @@ class UserPreference {
           : cacheDirectory as String?,
       cacheSizeLimitGB: (cacheSizeLimitGB ?? this.cacheSizeLimitGB).clamp(1, 5),
       lxServerQuality: lxServerQuality ?? this.lxServerQuality,
+      overwritePlaylistOnPlay:
+          overwritePlaylistOnPlay ?? this.overwritePlaylistOnPlay,
+      localAudioSourceEnabled:
+          localAudioSourceEnabled ?? this.localAudioSourceEnabled,
     );
   }
 

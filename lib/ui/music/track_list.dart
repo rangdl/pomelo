@@ -1,12 +1,13 @@
-﻿import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
-import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
-import 'package:pomelo/ui/music/widgets/track_more_actions_button.dart';
-import 'package:pomelo/ui/music/widgets/track_tile.dart';
+import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
 
 /// 曲目列表组件
-class TrackList extends HookConsumerWidget {
+///
+/// 基于 [PlayableTrackTile] 构建，整张卡片可点击播放，
+/// 右侧不再显示单独的播放按钮（仅保留来源名和「更多操作」按钮）。
+class TrackList extends ConsumerWidget {
   final List<Track> tracks;
 
   /// 是否在每行末尾显示「更多操作」按钮（下一首播放、添加到播放列表等）
@@ -31,22 +32,12 @@ class TrackList extends HookConsumerWidget {
       itemCount: tracks.length,
       itemBuilder: (context, index) {
         final track = tracks[index];
-        return TrackTile(
+        return PlayableTrackTile(
           track: track,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(track.source?.name ?? '').muted,
-              PlayPauseButton(track: track),
-              if (showMoreActions)
-                TrackMoreActionsButton(
-                  track: track,
-                  onRemoveFromQueue: onRemoveFromQueue == null
-                      ? null
-                      : () => onRemoveFromQueue!(track),
-                ),
-            ],
-          ),
+          showMoreActions: showMoreActions,
+          onRemoveFromQueue: onRemoveFromQueue,
+          playlist: tracks,
+          playlistIndex: index,
         );
       },
     );

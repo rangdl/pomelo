@@ -87,4 +87,14 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
 
   Future<void> setLxServerQuality(LxServerQuality quality) =>
       update((p) => p.copyWith(lxServerQuality: quality));
+
+  // ==================== 播放行为 ====================
+
+  Future<void> setOverwritePlaylistOnPlay(bool value) =>
+      update((p) => p.copyWith(overwritePlaylistOnPlay: value));
+
+  // ==================== 音源设置 ====================
+
+  Future<void> setLocalAudioSourceEnabled(bool value) =>
+      update((p) => p.copyWith(localAudioSourceEnabled: value));
 }

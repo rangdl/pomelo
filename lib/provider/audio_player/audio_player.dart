@@ -399,6 +399,41 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     await audioPlayer.jumpTo(index);
   }
 
+  /// 播放单曲：添加到当前播放列表末尾（不覆盖）并跳转播放。
+  ///
+  /// 若曲目已在队列中，直接跳转并播放。用于「点击卡片即播放」场景
+  /// （`overwritePlaylistOnPlay=false` 时的默认行为）。
+  Future<void> playTrack(Track track) async {
+    var index = state.tracks.indexWhere((t) => t.id == track.id);
+    if (index == -1) {
+      // 不在队列：添加到末尾
+      await addTrack(track);
+      index = state.tracks.indexWhere((t) => t.id == track.id);
+    }
+    if (index == -1) return;
+    await audioPlayer.jumpTo(index);
+    if (!audioPlayer.isPlaying) await audioPlayer.resume();
+  }
+
+  /// 播放曲目列表：批量添加到当前播放列表末尾（不覆盖）并跳转到 [initialIndex] 播放。
+  ///
+  /// 已在队列中的曲目会跳过添加。用于「播放全部」场景
+  /// （`overwritePlaylistOnPlay=false` 时的默认行为）。
+  Future<void> playTracks(List<Track> tracks, {int initialIndex = 0}) async {
+    if (tracks.isEmpty) return;
+    final target = tracks[initialIndex.clamp(0, tracks.length - 1)];
+    final existingIds = state.tracks.map((t) => t.id).toSet();
+    final newTracks =
+        tracks.where((t) => !existingIds.contains(t.id)).toList();
+    if (newTracks.isNotEmpty) {
+      await addTracks(newTracks);
+    }
+    var targetIndex = state.tracks.indexWhere((t) => t.id == target.id);
+    if (targetIndex == -1) return;
+    await audioPlayer.jumpTo(targetIndex);
+    if (!audioPlayer.isPlaying) await audioPlayer.resume();
+  }
+
   Future<void> moveTrack(int oldIndex, int newIndex) async {
     if (oldIndex == newIndex ||
         newIndex < 0 ||

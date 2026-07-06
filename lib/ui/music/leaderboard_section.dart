@@ -1,8 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
-import 'package:pomelo/ui/music/widgets/play_pause_button.dart';
-import 'package:pomelo/ui/music/widgets/track_tile.dart';
+import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 排行榜版块组件
@@ -114,10 +113,11 @@ class _LeaderboardSongs extends ConsumerWidget {
           itemCount: displayTracks.length,
           itemBuilder: (context, index) {
             final track = displayTracks[index];
-            return TrackTile(
+            return PlayableTrackTile(
               track: track,
               index: index + 1,
-              trailing: PlayPauseButton(track: track),
+              playlist: displayTracks,
+              playlistIndex: index,
             );
           },
         );

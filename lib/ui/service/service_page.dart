@@ -1,27 +1,25 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:path/path.dart' as p;
-import 'package:pomelo/core/models/metadata/music_source_type.dart';
+import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
+import 'package:pomelo/core/models/metadata/music_source_type.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
-import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
-import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_server.dart';
-import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
+import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
+import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_server.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/platform/providers/lx_metadata_plugin_paths_provider.dart';
 import 'package:pomelo/ui/platform/providers/lx_source_plugin_paths_provider.dart';
-import 'package:shadcn_flutter/shadcn_flutter.dart';
-
-import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/ui/platform/widgets/add_lx_script_dialog.dart';
-import 'package:pomelo/ui/platform/widgets/add_subsonic_account_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/add_lx_server_dialog.dart';
+import 'package:pomelo/ui/platform/widgets/add_subsonic_account_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/edit_local_music_dialog.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 支持添加的平台类型
 enum _PlatformType {
@@ -114,9 +112,7 @@ class ServicePage extends HookConsumerWidget {
       MusicSourceType.emby,
     ];
 
-    final hasAny =
-        byType.values.any((list) => list.isNotEmpty) ||
-        sourcePlugins.isNotEmpty;
+    final hasAny = byType.values.any((list) => list.isNotEmpty);
 
     if (!hasAny) {
       return Center(
@@ -163,9 +159,6 @@ class ServicePage extends HookConsumerWidget {
           ),
         );
       }
-    }
-    if (sourcePlugins.isNotEmpty) {
-      sections.add(_buildSourcePluginsSection(context, ref, sourcePlugins));
     }
 
     // 桌面端双栏：将分区均分到左右两列
@@ -244,82 +237,6 @@ class ServicePage extends HookConsumerWidget {
               for (int i = 0; i < services.length; i++) ...[
                 if (i > 0) const Divider(height: 1),
                 _buildServiceTile(context, ref, services[i], subsonicAccounts),
-              ],
-            ],
-          ),
-        ),
-        const Gap(16),
-      ],
-    );
-  }
-
-  /// 构建音源插件区域
-  Widget _buildSourcePluginsSection(
-    BuildContext context,
-    WidgetRef ref,
-    List<String> plugins,
-  ) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
-          child: Row(
-            children: [
-              Icon(
-                Icons.audiotrack,
-                size: 18,
-                color: colorScheme.mutedForeground,
-              ),
-              const Gap(8),
-              Text(
-                '音源插件',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: colorScheme.mutedForeground,
-                ),
-              ),
-              const Gap(8),
-              Text(
-                '${plugins.length}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colorScheme.mutedForeground,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Card(
-          child: Column(
-            children: [
-              for (int i = 0; i < plugins.length; i++) ...[
-                if (i > 0) const Divider(height: 1),
-                ListTile(
-                  leading: Icon(
-                    Icons.description,
-                    size: 20,
-                    color: colorScheme.primary,
-                  ),
-                  title: Text(
-                    p.basename(plugins[i]),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    plugins[i],
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: IconButton.text(
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    onPressed: () => ref
-                        .read(lxSourcePluginPathsProvider.notifier)
-                        .removePlugin(plugins[i]),
-                  ),
-                ),
               ],
             ],
           ),

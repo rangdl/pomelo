@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
+import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 
 import 'service/local_music_server.dart';
@@ -17,6 +18,7 @@ const _localConfigId = 'local';
 final localMusicServerProvider = FutureProvider<LocalMusicServer>((ref) async {
   final configs = await ref.watch(musicServerConfigsProvider.future);
   final localConfig = configs.whereType<LocalMusicConfig>().firstOrNull;
+  final database = ref.watch(databaseProvider);
 
   var name = localConfig?.name ?? '本地音乐';
   var dirs = localConfig?.directories ?? const <String>[];
@@ -38,9 +40,12 @@ final localMusicServerProvider = FutureProvider<LocalMusicServer>((ref) async {
     }
   }
 
-  final server = LocalMusicServer(name: name);
+  final server = LocalMusicServer(name: name, database: database);
+  // 启动时仅从 drift 加载历史数据（含本地扫描与在线缓存），不触发目录扫描。
+  // 用户需主动点击「重新扫描」或「添加目录」才会扫描文件系统。
+  await server.loadFromDatabase();
   for (final dir in dirs) {
-    await server.addDirectory(dir);
+    await server.addDirectoryOnly(dir);
   }
   ref.onDispose(() => server.clear());
   return server;
