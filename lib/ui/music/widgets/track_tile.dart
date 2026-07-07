@@ -1,17 +1,17 @@
-import 'package:shadcn_flutter/shadcn_flutter.dart' hide Stack, Positioned;
 import 'package:flutter/widgets.dart' show Stack, Positioned;
 import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' hide Stack, Positioned;
 
 /// 统一的曲目列表项组件
 ///
 /// 在所有展示曲目列表的场景复用，保证样式一致：封面图、标题、副标题（艺术家·时长）、
 /// 可选序号 badge、可选 trailing 操作区、可选 onTap。
 ///
-/// 移动端采用更紧凑的 padding（12/6）和较小的封面（40px），
-/// 桌面端 padding 16/10、封面 48px。
+/// 封面统一 40px，
+/// padding使用 theme.density.baseContentPadding * theme.scaling
+/// 用于根据主题密度动态调整 padding，保持在不同设备上的显示效果一致。
 class TrackTile extends StatelessWidget {
   final Track track;
 
@@ -49,21 +49,16 @@ class TrackTile extends StatelessWidget {
     this.showCover = true,
   });
 
-  bool _isMobile(BuildContext context) =>
-      MediaQuery.sizeOf(context).width < ResponsiveBreakpoints.mobile;
-
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final isMobile = _isMobile(context);
-    final coverSize = isMobile ? 40.0 : 48.0;
-    final tilePadding = isMobile
-        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
-        : const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
-
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final coverSize = 40.0;
+    final tilePadding = theme.density.baseContentPadding * theme.scaling;
     return Padding(
       padding: padding,
       child: Card(
+        padding: EdgeInsets.zero,
         child: ListTile(
           leading: _buildLeading(context, colorScheme, coverSize),
           title: Text(
@@ -82,7 +77,7 @@ class TrackTile extends StatelessWidget {
           ),
           trailing: trailing,
           onTap: onTap,
-          padding: tilePadding,
+          padding: EdgeInsets.all(tilePadding),
         ),
       ),
     );
@@ -128,10 +123,7 @@ class TrackTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
               decoration: BoxDecoration(
                 color: colorScheme.background,
-                border: Border.all(
-                  color: colorScheme.muted,
-                  width: 0.5,
-                ),
+                border: Border.all(color: colorScheme.muted, width: 0.5),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
@@ -154,11 +146,7 @@ class TrackTile extends StatelessWidget {
       return SizedBox(
         width: coverSize,
         height: coverSize,
-        child: Icon(
-          Icons.music_note,
-          color: colorScheme.primary,
-          size: 24,
-        ),
+        child: Icon(Icons.music_note, color: colorScheme.primary, size: 24),
       );
     }
     return Container(
