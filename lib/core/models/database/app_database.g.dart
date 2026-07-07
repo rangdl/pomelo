@@ -4981,6 +4981,640 @@ class LocalPlaylistTableCompanion extends UpdateCompanion<LocalPlaylistEntity> {
   }
 }
 
+class $LxSourceScriptTableTable extends LxSourceScriptTable
+    with TableInfo<$LxSourceScriptTableTable, LxSourceScriptEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LxSourceScriptTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _authorMeta = const VerificationMeta('author');
+  @override
+  late final GeneratedColumn<String> author = GeneratedColumn<String>(
+    'author',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _homepageMeta = const VerificationMeta(
+    'homepage',
+  );
+  @override
+  late final GeneratedColumn<String> homepage = GeneratedColumn<String>(
+    'homepage',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<String> version = GeneratedColumn<String>(
+    'version',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _scriptMeta = const VerificationMeta('script');
+  @override
+  late final GeneratedColumn<String> script = GeneratedColumn<String>(
+    'script',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _librariesJsonMeta = const VerificationMeta(
+    'librariesJson',
+  );
+  @override
+  late final GeneratedColumn<String> librariesJson = GeneratedColumn<String>(
+    'libraries_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    description,
+    author,
+    homepage,
+    version,
+    script,
+    librariesJson,
+    createdAt,
+    enabled,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'lx_source_script_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LxSourceScriptEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('author')) {
+      context.handle(
+        _authorMeta,
+        author.isAcceptableOrUnknown(data['author']!, _authorMeta),
+      );
+    }
+    if (data.containsKey('homepage')) {
+      context.handle(
+        _homepageMeta,
+        homepage.isAcceptableOrUnknown(data['homepage']!, _homepageMeta),
+      );
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    }
+    if (data.containsKey('script')) {
+      context.handle(
+        _scriptMeta,
+        script.isAcceptableOrUnknown(data['script']!, _scriptMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scriptMeta);
+    }
+    if (data.containsKey('libraries_json')) {
+      context.handle(
+        _librariesJsonMeta,
+        librariesJson.isAcceptableOrUnknown(
+          data['libraries_json']!,
+          _librariesJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LxSourceScriptEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LxSourceScriptEntity(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      author: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author'],
+      ),
+      homepage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}homepage'],
+      ),
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}version'],
+      ),
+      script: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}script'],
+      )!,
+      librariesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}libraries_json'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+    );
+  }
+
+  @override
+  $LxSourceScriptTableTable createAlias(String alias) {
+    return $LxSourceScriptTableTable(attachedDatabase, alias);
+  }
+}
+
+class LxSourceScriptEntity extends DataClass
+    implements Insertable<LxSourceScriptEntity> {
+  /// 脚本唯一标识（基于脚本内容 hash 生成）
+  final String id;
+
+  /// 脚本名称（解析自 @name）
+  final String name;
+
+  /// 描述（解析自 @description，可空）
+  final String? description;
+
+  /// 作者（解析自 @author，可空）
+  final String? author;
+
+  /// 主页（解析自 @homepage，可空）
+  final String? homepage;
+
+  /// 版本（解析自 @version，可空）
+  final String? version;
+
+  /// 完整脚本内容
+  final String script;
+
+  /// 注册的库与音质列表 JSON 字符串
+  final String librariesJson;
+
+  /// 添加时间
+  final DateTime createdAt;
+
+  /// 是否启用
+  final bool enabled;
+  const LxSourceScriptEntity({
+    required this.id,
+    required this.name,
+    this.description,
+    this.author,
+    this.homepage,
+    this.version,
+    required this.script,
+    required this.librariesJson,
+    required this.createdAt,
+    required this.enabled,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || author != null) {
+      map['author'] = Variable<String>(author);
+    }
+    if (!nullToAbsent || homepage != null) {
+      map['homepage'] = Variable<String>(homepage);
+    }
+    if (!nullToAbsent || version != null) {
+      map['version'] = Variable<String>(version);
+    }
+    map['script'] = Variable<String>(script);
+    map['libraries_json'] = Variable<String>(librariesJson);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['enabled'] = Variable<bool>(enabled);
+    return map;
+  }
+
+  LxSourceScriptTableCompanion toCompanion(bool nullToAbsent) {
+    return LxSourceScriptTableCompanion(
+      id: Value(id),
+      name: Value(name),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      author: author == null && nullToAbsent
+          ? const Value.absent()
+          : Value(author),
+      homepage: homepage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(homepage),
+      version: version == null && nullToAbsent
+          ? const Value.absent()
+          : Value(version),
+      script: Value(script),
+      librariesJson: Value(librariesJson),
+      createdAt: Value(createdAt),
+      enabled: Value(enabled),
+    );
+  }
+
+  factory LxSourceScriptEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LxSourceScriptEntity(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      description: serializer.fromJson<String?>(json['description']),
+      author: serializer.fromJson<String?>(json['author']),
+      homepage: serializer.fromJson<String?>(json['homepage']),
+      version: serializer.fromJson<String?>(json['version']),
+      script: serializer.fromJson<String>(json['script']),
+      librariesJson: serializer.fromJson<String>(json['librariesJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'description': serializer.toJson<String?>(description),
+      'author': serializer.toJson<String?>(author),
+      'homepage': serializer.toJson<String?>(homepage),
+      'version': serializer.toJson<String?>(version),
+      'script': serializer.toJson<String>(script),
+      'librariesJson': serializer.toJson<String>(librariesJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'enabled': serializer.toJson<bool>(enabled),
+    };
+  }
+
+  LxSourceScriptEntity copyWith({
+    String? id,
+    String? name,
+    Value<String?> description = const Value.absent(),
+    Value<String?> author = const Value.absent(),
+    Value<String?> homepage = const Value.absent(),
+    Value<String?> version = const Value.absent(),
+    String? script,
+    String? librariesJson,
+    DateTime? createdAt,
+    bool? enabled,
+  }) => LxSourceScriptEntity(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    description: description.present ? description.value : this.description,
+    author: author.present ? author.value : this.author,
+    homepage: homepage.present ? homepage.value : this.homepage,
+    version: version.present ? version.value : this.version,
+    script: script ?? this.script,
+    librariesJson: librariesJson ?? this.librariesJson,
+    createdAt: createdAt ?? this.createdAt,
+    enabled: enabled ?? this.enabled,
+  );
+  LxSourceScriptEntity copyWithCompanion(LxSourceScriptTableCompanion data) {
+    return LxSourceScriptEntity(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      author: data.author.present ? data.author.value : this.author,
+      homepage: data.homepage.present ? data.homepage.value : this.homepage,
+      version: data.version.present ? data.version.value : this.version,
+      script: data.script.present ? data.script.value : this.script,
+      librariesJson: data.librariesJson.present
+          ? data.librariesJson.value
+          : this.librariesJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LxSourceScriptEntity(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('author: $author, ')
+          ..write('homepage: $homepage, ')
+          ..write('version: $version, ')
+          ..write('script: $script, ')
+          ..write('librariesJson: $librariesJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('enabled: $enabled')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    name,
+    description,
+    author,
+    homepage,
+    version,
+    script,
+    librariesJson,
+    createdAt,
+    enabled,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LxSourceScriptEntity &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.description == this.description &&
+          other.author == this.author &&
+          other.homepage == this.homepage &&
+          other.version == this.version &&
+          other.script == this.script &&
+          other.librariesJson == this.librariesJson &&
+          other.createdAt == this.createdAt &&
+          other.enabled == this.enabled);
+}
+
+class LxSourceScriptTableCompanion
+    extends UpdateCompanion<LxSourceScriptEntity> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> description;
+  final Value<String?> author;
+  final Value<String?> homepage;
+  final Value<String?> version;
+  final Value<String> script;
+  final Value<String> librariesJson;
+  final Value<DateTime> createdAt;
+  final Value<bool> enabled;
+  final Value<int> rowid;
+  const LxSourceScriptTableCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.description = const Value.absent(),
+    this.author = const Value.absent(),
+    this.homepage = const Value.absent(),
+    this.version = const Value.absent(),
+    this.script = const Value.absent(),
+    this.librariesJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LxSourceScriptTableCompanion.insert({
+    required String id,
+    required String name,
+    this.description = const Value.absent(),
+    this.author = const Value.absent(),
+    this.homepage = const Value.absent(),
+    this.version = const Value.absent(),
+    required String script,
+    this.librariesJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       script = Value(script);
+  static Insertable<LxSourceScriptEntity> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? description,
+    Expression<String>? author,
+    Expression<String>? homepage,
+    Expression<String>? version,
+    Expression<String>? script,
+    Expression<String>? librariesJson,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? enabled,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (description != null) 'description': description,
+      if (author != null) 'author': author,
+      if (homepage != null) 'homepage': homepage,
+      if (version != null) 'version': version,
+      if (script != null) 'script': script,
+      if (librariesJson != null) 'libraries_json': librariesJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (enabled != null) 'enabled': enabled,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LxSourceScriptTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? description,
+    Value<String?>? author,
+    Value<String?>? homepage,
+    Value<String?>? version,
+    Value<String>? script,
+    Value<String>? librariesJson,
+    Value<DateTime>? createdAt,
+    Value<bool>? enabled,
+    Value<int>? rowid,
+  }) {
+    return LxSourceScriptTableCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      author: author ?? this.author,
+      homepage: homepage ?? this.homepage,
+      version: version ?? this.version,
+      script: script ?? this.script,
+      librariesJson: librariesJson ?? this.librariesJson,
+      createdAt: createdAt ?? this.createdAt,
+      enabled: enabled ?? this.enabled,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (author.present) {
+      map['author'] = Variable<String>(author.value);
+    }
+    if (homepage.present) {
+      map['homepage'] = Variable<String>(homepage.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<String>(version.value);
+    }
+    if (script.present) {
+      map['script'] = Variable<String>(script.value);
+    }
+    if (librariesJson.present) {
+      map['libraries_json'] = Variable<String>(librariesJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LxSourceScriptTableCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('description: $description, ')
+          ..write('author: $author, ')
+          ..write('homepage: $homepage, ')
+          ..write('version: $version, ')
+          ..write('script: $script, ')
+          ..write('librariesJson: $librariesJson, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('enabled: $enabled, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5011,6 +5645,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $LocalPlaylistTableTable localPlaylistTable =
       $LocalPlaylistTableTable(this);
+  late final $LxSourceScriptTableTable lxSourceScriptTable =
+      $LxSourceScriptTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5026,6 +5662,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localAlbumTable,
     localArtistTable,
     localPlaylistTable,
+    lxSourceScriptTable,
   ];
 }
 
@@ -7608,6 +8245,321 @@ typedef $$LocalPlaylistTableTableProcessedTableManager =
       LocalPlaylistEntity,
       PrefetchHooks Function()
     >;
+typedef $$LxSourceScriptTableTableCreateCompanionBuilder =
+    LxSourceScriptTableCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> description,
+      Value<String?> author,
+      Value<String?> homepage,
+      Value<String?> version,
+      required String script,
+      Value<String> librariesJson,
+      Value<DateTime> createdAt,
+      Value<bool> enabled,
+      Value<int> rowid,
+    });
+typedef $$LxSourceScriptTableTableUpdateCompanionBuilder =
+    LxSourceScriptTableCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> description,
+      Value<String?> author,
+      Value<String?> homepage,
+      Value<String?> version,
+      Value<String> script,
+      Value<String> librariesJson,
+      Value<DateTime> createdAt,
+      Value<bool> enabled,
+      Value<int> rowid,
+    });
+
+class $$LxSourceScriptTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LxSourceScriptTableTable> {
+  $$LxSourceScriptTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get homepage => $composableBuilder(
+    column: $table.homepage,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get script => $composableBuilder(
+    column: $table.script,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get librariesJson => $composableBuilder(
+    column: $table.librariesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LxSourceScriptTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LxSourceScriptTableTable> {
+  $$LxSourceScriptTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get homepage => $composableBuilder(
+    column: $table.homepage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get script => $composableBuilder(
+    column: $table.script,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get librariesJson => $composableBuilder(
+    column: $table.librariesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LxSourceScriptTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LxSourceScriptTableTable> {
+  $$LxSourceScriptTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get author =>
+      $composableBuilder(column: $table.author, builder: (column) => column);
+
+  GeneratedColumn<String> get homepage =>
+      $composableBuilder(column: $table.homepage, builder: (column) => column);
+
+  GeneratedColumn<String> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<String> get script =>
+      $composableBuilder(column: $table.script, builder: (column) => column);
+
+  GeneratedColumn<String> get librariesJson => $composableBuilder(
+    column: $table.librariesJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+}
+
+class $$LxSourceScriptTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LxSourceScriptTableTable,
+          LxSourceScriptEntity,
+          $$LxSourceScriptTableTableFilterComposer,
+          $$LxSourceScriptTableTableOrderingComposer,
+          $$LxSourceScriptTableTableAnnotationComposer,
+          $$LxSourceScriptTableTableCreateCompanionBuilder,
+          $$LxSourceScriptTableTableUpdateCompanionBuilder,
+          (
+            LxSourceScriptEntity,
+            BaseReferences<
+              _$AppDatabase,
+              $LxSourceScriptTableTable,
+              LxSourceScriptEntity
+            >,
+          ),
+          LxSourceScriptEntity,
+          PrefetchHooks Function()
+        > {
+  $$LxSourceScriptTableTableTableManager(
+    _$AppDatabase db,
+    $LxSourceScriptTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LxSourceScriptTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LxSourceScriptTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$LxSourceScriptTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String?> author = const Value.absent(),
+                Value<String?> homepage = const Value.absent(),
+                Value<String?> version = const Value.absent(),
+                Value<String> script = const Value.absent(),
+                Value<String> librariesJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LxSourceScriptTableCompanion(
+                id: id,
+                name: name,
+                description: description,
+                author: author,
+                homepage: homepage,
+                version: version,
+                script: script,
+                librariesJson: librariesJson,
+                createdAt: createdAt,
+                enabled: enabled,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> description = const Value.absent(),
+                Value<String?> author = const Value.absent(),
+                Value<String?> homepage = const Value.absent(),
+                Value<String?> version = const Value.absent(),
+                required String script,
+                Value<String> librariesJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LxSourceScriptTableCompanion.insert(
+                id: id,
+                name: name,
+                description: description,
+                author: author,
+                homepage: homepage,
+                version: version,
+                script: script,
+                librariesJson: librariesJson,
+                createdAt: createdAt,
+                enabled: enabled,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LxSourceScriptTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LxSourceScriptTableTable,
+      LxSourceScriptEntity,
+      $$LxSourceScriptTableTableFilterComposer,
+      $$LxSourceScriptTableTableOrderingComposer,
+      $$LxSourceScriptTableTableAnnotationComposer,
+      $$LxSourceScriptTableTableCreateCompanionBuilder,
+      $$LxSourceScriptTableTableUpdateCompanionBuilder,
+      (
+        LxSourceScriptEntity,
+        BaseReferences<
+          _$AppDatabase,
+          $LxSourceScriptTableTable,
+          LxSourceScriptEntity
+        >,
+      ),
+      LxSourceScriptEntity,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7635,4 +8587,6 @@ class $AppDatabaseManager {
       $$LocalArtistTableTableTableManager(_db, _db.localArtistTable);
   $$LocalPlaylistTableTableTableManager get localPlaylistTable =>
       $$LocalPlaylistTableTableTableManager(_db, _db.localPlaylistTable);
+  $$LxSourceScriptTableTableTableManager get lxSourceScriptTable =>
+      $$LxSourceScriptTableTableTableManager(_db, _db.lxSourceScriptTable);
 }

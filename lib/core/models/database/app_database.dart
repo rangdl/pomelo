@@ -9,6 +9,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
 import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 import 'local_library_table.dart';
+import 'lx_source_script_table.dart';
 import 'music_server_config_table.dart';
 import 'player_state_table.dart';
 
@@ -34,6 +35,7 @@ part 'app_database.g.dart';
   LocalAlbumTable,
   LocalArtistTable,
   LocalPlaylistTable,
+  LxSourceScriptTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
@@ -42,7 +44,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -67,6 +69,10 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(localAlbumTable);
             await m.createTable(localArtistTable);
             await m.createTable(localPlaylistTable);
+          }
+          if (from < 6) {
+            // v6: 新增 LxSourceScriptTable（音源脚本内容存储，替代文件存储）
+            await m.createTable(lxSourceScriptTable);
           }
         },
       );
@@ -234,6 +240,28 @@ class AppDatabase extends _$AppDatabase {
   /// 删除指定 id 的音乐服务配置
   Future<void> deleteMusicServerConfig(String id) {
     return (delete(musicServerConfigTable)
+          ..where((t) => t.id.equals(id)))
+        .go();
+  }
+
+  // ========== Lx 音源脚本 ==========
+
+  /// 获取所有 Lx 音源脚本（按添加时间正序）
+  Future<List<LxSourceScriptEntity>> getAllLxSourceScripts() {
+    return (select(lxSourceScriptTable)
+          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+        .get();
+  }
+
+  /// 插入或更新 Lx 音源脚本（upsert）
+  Future<void> upsertLxSourceScript(
+      LxSourceScriptTableCompanion companion) async {
+    await into(lxSourceScriptTable).insertOnConflictUpdate(companion);
+  }
+
+  /// 删除指定 id 的 Lx 音源脚本
+  Future<void> deleteLxSourceScript(String id) {
+    return (delete(lxSourceScriptTable)
           ..where((t) => t.id.equals(id)))
         .go();
   }

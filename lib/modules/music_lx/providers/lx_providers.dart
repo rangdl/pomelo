@@ -1,7 +1,8 @@
 /// Lx 音乐模块 - Riverpod Providers
 ///
 /// 管理 Lx 插件配置的响应式状态，并通过 Provider 直接创建 [LxMusicServer] 实例。
-/// 配置从 [musicServerConfigsProvider] 读取 LxPluginConfig。
+/// 元数据插件从 [musicServerConfigsProvider] 读取 LxPluginConfig.metadataPluginPath，
+/// 音源脚本从 [lxSourceScriptsProvider] 读取（持久化到 drift 表，不依赖文件）。
 library;
 
 import 'dart:io';
@@ -13,6 +14,7 @@ import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/modules/music_lx/model/lx_metadata_engine.dart';
 import 'package:pomelo/modules/music_lx/model/lx_music_server.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
+import 'package:pomelo/modules/music_lx/providers/lx_source_scripts_provider.dart';
 
 /// Lx 插件配置 ID（固定）
 const _lxConfigId = 'lx';
@@ -80,16 +82,22 @@ final lxMetadataEngineProvider = FutureProvider<LxMetadataEngineResult?>((
 
 /// LxSourceEngine Provider
 ///
-/// 从 [musicServerConfigsProvider] 读取 LxPluginConfig.sourcePluginPaths。
+/// 从 [lxSourceScriptsProvider] 读取所有持久化的音源脚本，
+/// 逐个加载到 [LxSourceEngine]。脚本内容直接存于 drift 表，不依赖文件系统。
+/// 脚本列表变化（添加/删除）时自动重建。
 final lxSourceEngineProvider = FutureProvider<LxSourceEngine>((ref) async {
-  final configs = await ref.watch(musicServerConfigsProvider.future);
-  final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
-  final paths = lxConfig?.sourcePluginPaths ?? const <String>[];
+  final scripts = await ref.watch(lxSourceScriptsProvider.future);
   final engine = LxSourceEngine();
-  for (final path in paths) {
-    if (!await _pluginExists(path, '音源插件')) continue;
-    final content = await File(path).readAsString();
-    await engine.loadPlugin(content);
+  for (final script in scripts) {
+    if (!script.enabled) continue;
+    try {
+      final libs = await engine.loadPlugin(script.script);
+      AppLogger.log.i(
+        '[LxSourceEngine] 脚本 ${script.name} 加载成功，库: ${libs.map((l) => l.id).join(", ")}',
+      );
+    } catch (e) {
+      AppLogger.log.e('[LxSourceEngine] 脚本 ${script.name} 加载失败: $e');
+    }
   }
   ref.onDispose(() => engine.dispose());
   return engine;
@@ -158,7 +166,8 @@ class LxMetadataPluginPathsNotifier extends Notifier<List<String>> {
             id: _lxConfigId,
             name: lxConfig?.name ?? 'Lx 音乐',
             metadataPluginPath: metadataPath,
-            sourcePluginPaths: lxConfig?.sourcePluginPaths ?? const [],
+            // sourcePluginPaths 已废弃，音源脚本改用 LxSourceScriptTable 存储
+            sourcePluginPaths: const [],
           ),
         );
   }
@@ -168,67 +177,4 @@ class LxMetadataPluginPathsNotifier extends Notifier<List<String>> {
 final lxMetadataPluginPathsProvider =
     NotifierProvider<LxMetadataPluginPathsNotifier, List<String>>(
       LxMetadataPluginPathsNotifier.new,
-    );
-
-/// Lx 音源插件路径列表 Notifier
-///
-/// 管理 Lx 音源插件（source plugin）的添加、替换与移除，
-/// 读写 LxPluginConfig.sourcePluginPaths（通过 [musicServerConfigsNotifierProvider]）。
-class LxSourcePluginPathsNotifier extends Notifier<List<String>> {
-  @override
-  List<String> build() {
-    final configs = ref.watch(musicServerConfigsProvider).value ?? const [];
-    final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
-    return lxConfig?.sourcePluginPaths ?? const [];
-  }
-
-  /// 添加音源插件
-  Future<List<LxSourceLibrary>> addPlugin(String path) async {
-    if (state.contains(path)) return [];
-    final newPaths = [...state, path];
-    await _save(sourcePaths: newPaths);
-    state = newPaths;
-    return [];
-  }
-
-  /// 替换音源插件
-  Future<List<LxSourceLibrary>> replacePlugin(
-    String oldPath,
-    String newPath,
-  ) async {
-    if (!state.contains(oldPath)) return [];
-    final newPaths = state.map((p) => p == oldPath ? newPath : p).toList();
-    await _save(sourcePaths: newPaths);
-    state = newPaths;
-    return [];
-  }
-
-  /// 移除音源插件
-  Future<void> removePlugin(String path) async {
-    if (!state.contains(path)) return;
-    final newPaths = state.where((p) => p != path).toList();
-    await _save(sourcePaths: newPaths);
-    state = newPaths;
-  }
-
-  Future<void> _save({required List<String> sourcePaths}) async {
-    final configs = ref.read(musicServerConfigsProvider).value ?? const [];
-    final lxConfig = configs.whereType<LxPluginConfig>().firstOrNull;
-    await ref
-        .read(musicServerConfigsNotifierProvider.notifier)
-        .upsert(
-          LxPluginConfig(
-            id: _lxConfigId,
-            name: lxConfig?.name ?? 'Lx 音乐',
-            metadataPluginPath: lxConfig?.metadataPluginPath ?? '',
-            sourcePluginPaths: sourcePaths,
-          ),
-        );
-  }
-}
-
-/// Lx 音源插件路径列表
-final lxSourcePluginPathsProvider =
-    NotifierProvider<LxSourcePluginPathsNotifier, List<String>>(
-      LxSourcePluginPathsNotifier.new,
     );
