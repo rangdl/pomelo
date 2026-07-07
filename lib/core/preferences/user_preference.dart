@@ -107,6 +107,7 @@ class UserPreference {
       overwritePlaylistOnPlay: json['overwritePlaylistOnPlay'] as bool? ?? false,
       localAudioSourceEnabled:
           json['localAudioSourceEnabled'] as bool? ?? false,
+      castLocalProxy: json['castLocalProxy'] as bool? ?? true,
     );
   }
 
@@ -123,6 +124,7 @@ class UserPreference {
         'lxServerQuality': lxServerQuality.id,
         'overwritePlaylistOnPlay': overwritePlaylistOnPlay,
         'localAudioSourceEnabled': localAudioSourceEnabled,
+        'castLocalProxy': castLocalProxy,
       };
 
   /// 从 JSON 字符串构造
@@ -157,6 +159,7 @@ class UserPreference {
     LxServerQuality? lxServerQuality,
     bool? overwritePlaylistOnPlay,
     bool? localAudioSourceEnabled,
+    bool? castLocalProxy,
   }) {
     return UserPreference(
       themeMode: themeMode ?? this.themeMode,
@@ -180,6 +183,7 @@ class UserPreference {
           overwritePlaylistOnPlay ?? this.overwritePlaylistOnPlay,
       localAudioSourceEnabled:
           localAudioSourceEnabled ?? this.localAudioSourceEnabled,
+      castLocalProxy: castLocalProxy ?? this.castLocalProxy,
     );
   }
 
