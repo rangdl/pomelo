@@ -15,12 +15,14 @@ class AppTheme {
   static ThemeData get light => ThemeData(
     colorScheme: ColorSchemes.lightSlate,
     typography: _typography,
+    density: Density.compactDensity,
   );
 
   /// 深色主题
   static ThemeData get dark => ThemeData(
     colorScheme: ColorSchemes.darkSlate,
     typography: _typography,
+    density: Density.compactDensity,
   );
 
   /// 全局字体 — 覆盖 shadcn_flutter 默认的 GeistSans

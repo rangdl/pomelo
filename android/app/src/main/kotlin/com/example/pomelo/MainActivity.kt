@@ -1,4 +1,4 @@
-package com.example.pomelo
+package com.rang.pomelo
 
 import io.flutter.embedding.android.FlutterActivity
 
