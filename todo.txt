@@ -14,3 +14,7 @@
 3.移除音源设置页面添加新的音源插件重构所有平台的监听
 4.左侧切换到下边的收藏按钮后,再次点击首页,页面切换到首页,但是选中的导航按钮没有正确选中
 5.在windows上收藏等页面移除顶部的返回按钮,因为自定义标题栏已经有返回按钮了
+
+
+1.drift添加音源存储表,存储设置页面添加的音源脚本使用parseLxMusicScriptInfo解析之后的数据,然后音源文件作为script字段存储,不再存储文件,添加音源之后自动加载,初始化成功之后回调的参数格式是{"kw":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]},"kg":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]},"tx":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]},"wy":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]},"mg":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]}},同时记录音源注册的库(kw,kg等)和库对应的音质列表
+2.drift添加音源解析记录表,记录本地音源插件解析记录,记录库,音质,成功与否,以便后续统计音源解析成功率
