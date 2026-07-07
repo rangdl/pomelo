@@ -2,28 +2,26 @@
 ///
 /// 集中管理音源相关设置：
 /// - 本地音源全局开关（配合各 lx_server 的 `useLocalAudioSource` 开关使用）
-/// - Lx 音源插件管理（从 Lx 插件管理对话框迁移而来）
+/// - Lx 音源脚本管理（脚本内容持久化到 drift 表，不依赖文件系统）
 /// - 各 Lx Server 配置的「使用本地音源」开关
 ///
 /// 移动端作为全屏页面打开，桌面端作为对话框打开。
 library;
 
-import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/models/lx_source_script.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/toast.dart';
+import 'package:pomelo/modules/music_lx/providers/lx_source_scripts_provider.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../platform/providers/lx_source_plugin_paths_provider.dart';
+import 'dart:io';
 
 /// 本地音源全局开关区块
 class LocalAudioSourceSection extends ConsumerWidget {
@@ -103,7 +101,10 @@ class LocalAudioSourceSection extends ConsumerWidget {
   }
 }
 
-/// Lx 音源插件管理区块
+/// Lx 音源脚本管理区块
+///
+/// 脚本内容直接持久化到 drift 表（[LxSourceScriptTable]），
+/// 添加时解析脚本头部元信息并加载验证以获取注册的库与音质列表。
 class LxSourcePluginSection extends HookConsumerWidget {
   const LxSourcePluginSection({super.key});
 
@@ -111,59 +112,48 @@ class LxSourcePluginSection extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isLoading = useState(false);
     final colorScheme = Theme.of(context).colorScheme;
-    final plugins = ref.watch(lxSourcePluginPathsProvider);
+    final scriptsAsync = ref.watch(lxSourceScriptsProvider);
 
-    Future<List<String>> pickFiles({bool allowMultiple = false}) async {
+    Future<void> addScript() async {
       final result = await FilePicker.platform.pickFiles(
-        dialogTitle: '选择 JS 插件文件',
+        dialogTitle: '选择 JS 音源脚本文件',
         type: FileType.custom,
         allowedExtensions: ['js'],
-        allowMultiple: allowMultiple,
+        allowMultiple: false,
       );
+      if (result == null || result.files.isEmpty) return;
+      final pickedFile = result.files.first;
+      if (pickedFile.path == null) return;
 
-      if (result == null || result.files.isEmpty) return [];
-
-      final appDir = await getApplicationSupportDirectory();
-      final pluginsDir = Directory(p.join(appDir.path, 'lx_scripts'));
-      if (!await pluginsDir.exists()) {
-        await pluginsDir.create(recursive: true);
-      }
-
-      final paths = <String>[];
-      for (final pickedFile in result.files) {
-        if (pickedFile.path == null) continue;
-        final destPath = p.join(pluginsDir.path, p.basename(pickedFile.path!));
-        if (!await File(destPath).exists()) {
-          await File(pickedFile.path!).copy(destPath);
-        }
-        paths.add(destPath);
-      }
-      return paths;
-    }
-
-    Future<void> replaceSourcePlugin(String oldPath) async {
       isLoading.value = true;
       try {
-        final paths = await pickFiles();
-        if (paths.isNotEmpty) {
-          await ref
-              .read(lxSourcePluginPathsProvider.notifier)
-              .replacePlugin(oldPath, paths.first);
-          if (context.mounted) AppToast().success('音源插件已替换');
+        final content = await File(pickedFile.path!).readAsString();
+        final libs = await ref
+            .read(lxSourceScriptsNotifierProvider.notifier)
+            .addScript(content);
+        if (!context.mounted) return;
+        if (libs == null) {
+          AppToast().error('脚本加载失败，未注册任何库');
+        } else if (libs.isEmpty) {
+          AppToast().warning('脚本已保存，但未注册任何库');
+        } else {
+          AppToast().success(
+            '音源脚本已添加，注册库: ${libs.map((l) => l.id).join(", ")}',
+          );
         }
       } catch (e) {
-        AppToast().error('替换失败: $e');
+        if (context.mounted) AppToast().error('添加失败: $e');
       } finally {
         isLoading.value = false;
       }
     }
 
-    Future<void> removeSourcePlugin(String path) async {
+    Future<void> removeScript(String id) async {
       try {
-        await ref.read(lxSourcePluginPathsProvider.notifier).removePlugin(path);
-        if (context.mounted) AppToast().success('音源插件已移除');
+        await ref.read(lxSourceScriptsNotifierProvider.notifier).removeScript(id);
+        if (context.mounted) AppToast().success('音源脚本已移除');
       } catch (e) {
-        AppToast().error('移除失败: $e');
+        if (context.mounted) AppToast().error('移除失败: $e');
       }
     }
 
@@ -180,11 +170,11 @@ class LxSourcePluginSection extends HookConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '音源插件',
+                    '音源脚本',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                   Text(
-                    'Lx 音源插件，提供音乐播放链接查询，支持多份上传',
+                    'Lx 音源插件脚本，提供音乐播放链接查询，支持多份添加',
                     style: TextStyle(
                       fontSize: 11,
                       color: colorScheme.mutedForeground,
@@ -193,85 +183,177 @@ class LxSourcePluginSection extends HookConsumerWidget {
                 ],
               ),
             ),
+            PrimaryButton(
+              size: ButtonSize.small,
+              enabled: !isLoading.value,
+              onPressed: addScript,
+              child: isLoading.value
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 16),
+                        Gap(4),
+                        Text('添加'),
+                      ],
+                    ),
+            ),
           ],
         ),
         const Gap(8),
 
-        // 插件列表或空状态
-        if (plugins.isNotEmpty) ...[
-          Text(
-            '已添加 (${plugins.length})',
-            style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
-          ),
-          const Gap(4),
-          Card(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (int i = 0; i < plugins.length; i++) ...[
-                  ListTile(
-                    leading: Icon(
-                      Icons.description,
-                      size: 20,
-                      color: colorScheme.primary,
-                    ),
-                    title: Text(
-                      p.basename(plugins[i]),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      plugins[i],
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton.text(
-                          icon: const Icon(Icons.edit_outlined, size: 18),
-                          onPressed: isLoading.value
-                              ? null
-                              : () => replaceSourcePlugin(plugins[i]),
-                        ),
-                        IconButton.text(
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: () => removeSourcePlugin(plugins[i]),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (i < plugins.length - 1) const Divider(height: 1),
-                ],
-              ],
+        // 脚本列表或空状态
+        scriptsAsync.when(
+          loading: () => const Card(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
             ),
           ),
-        ] else
-          Card(
+          error: (e, _) => Card(
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.add_circle_outline,
-                      size: 28,
-                      color: colorScheme.mutedForeground,
-                    ),
-                    const Gap(6),
-                    Text(
-                      '尚未添加音源插件',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: colorScheme.mutedForeground,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  '加载失败: $e',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: colorScheme.mutedForeground,
+                  ),
                 ),
               ),
             ),
           ),
+          data: (scripts) {
+            if (scripts.isEmpty) {
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.add_circle_outline,
+                          size: 28,
+                          color: colorScheme.mutedForeground,
+                        ),
+                        const Gap(6),
+                        Text(
+                          '尚未添加音源脚本',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colorScheme.mutedForeground,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '已添加 (${scripts.length})',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.mutedForeground,
+                  ),
+                ),
+                const Gap(4),
+                Card(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int i = 0; i < scripts.length; i++) ...[
+                        _LxScriptTile(
+                          script: scripts[i],
+                          colorScheme: colorScheme,
+                          onRemove: () => removeScript(scripts[i].id),
+                        ),
+                        if (i < scripts.length - 1) const Divider(height: 1),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ],
+    );
+  }
+}
+
+/// 单条 Lx 音源脚本列表项
+class _LxScriptTile extends StatelessWidget {
+  final LxSourceScript script;
+  final ColorScheme colorScheme;
+  final VoidCallback onRemove;
+
+  const _LxScriptTile({
+    required this.script,
+    required this.colorScheme,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // 库与音质列表摘要
+    final libsSummary = script.libraries.isEmpty
+        ? '未注册库'
+        : script.libraries.map((l) => '${l.id}(${l.qualitys.length})').join(' · ');
+
+    return ListTile(
+      leading: Icon(
+        Icons.description,
+        size: 20,
+        color: colorScheme.primary,
+      ),
+      title: Text(
+        script.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            [
+              if (script.author != null && script.author!.isNotEmpty)
+                script.author,
+              if (script.version != null && script.version!.isNotEmpty)
+                'v${script.version}',
+            ].join(' · '),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: colorScheme.mutedForeground,
+            ),
+          ),
+          const Gap(2),
+          Text(
+            libsSummary,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              color: colorScheme.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+      trailing: IconButton.text(
+        icon: const Icon(Icons.close, size: 18),
+        onPressed: onRemove,
+      ),
     );
   }
 }
