@@ -14,6 +14,7 @@ import 'duration_format.dart';
 import 'lyric_parser.dart';
 import 'lyric_view.dart';
 import 'widgets/bottom_sheet.dart';
+import 'widgets/cast_button.dart';
 import 'widgets/play_queue_content.dart';
 import 'widgets/play_queue_sheet.dart';
 
@@ -66,6 +67,7 @@ class PlaybackPage extends HookConsumerWidget {
           ],
           title: const Text('正在播放'),
           trailing: [
+            const CastButton(),
             IconButton.text(
               icon: const Icon(Icons.queue_music, size: 22),
               onPressed: () => _openPlayQueue(context),

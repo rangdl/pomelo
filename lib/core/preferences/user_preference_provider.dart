@@ -97,4 +97,9 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
 
   Future<void> setLocalAudioSourceEnabled(bool value) =>
       update((p) => p.copyWith(localAudioSourceEnabled: value));
+
+  // ==================== 投屏设置 ====================
+
+  Future<void> setCastLocalProxy(bool value) =>
+      update((p) => p.copyWith(castLocalProxy: value));
 }
