@@ -27,7 +27,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/services/audio_player/audio_player.dart' as svc;
 import 'package:pomelo/services/audio_player/media.dart';
+import 'package:pomelo/services/cast/didl_metadata.dart';
 import 'package:pomelo/services/cast/dlna_cast_service.dart';
 import 'package:pomelo/services/cast/dlna_device.dart';
 import 'package:pomelo/services/logger/logger.dart';
@@ -130,6 +132,21 @@ class CastNotifier extends Notifier<CastState> {
   /// 进度轮询间隔
   static const _pollInterval = Duration(seconds: 1);
 
+  /// 连续健康检查失败次数（每次 ping 成功重置为 0）
+  int _consecutiveFailures = 0;
+
+  /// 触发重连的失败阈值
+  static const _failureThreshold = 5;
+
+  /// 最大重连尝试次数（超过则放弃并断开）
+  static const _maxReconnectAttempts = 3;
+
+  /// 当前重连尝试次数
+  int _reconnectAttempts = 0;
+
+  /// 是否正在执行重连（防止并发重连）
+  bool _reconnecting = false;
+
   @override
   CastState build() {
     // 监听当前曲目 ID 变化，自动重投新曲目
@@ -214,6 +231,17 @@ class CastNotifier extends Notifier<CastState> {
       await _castCurrentTrack();
       if (!ref.mounted) return;
 
+      // 投屏成功后暂停本地播放器，避免双重音频
+      try {
+        await svc.audioPlayer.pause();
+      } catch (e) {
+        AppLogger.log.w('[Cast] 暂停本地播放器失败: $e');
+      }
+
+      // 重置重连计数
+      _consecutiveFailures = 0;
+      _reconnectAttempts = 0;
+
       state = state.copyWith(
         connectionState: CastConnectionState.connected,
         currentDevice: device,
@@ -253,7 +281,9 @@ class CastNotifier extends Notifier<CastState> {
     }
 
     AppLogger.log.i('[Cast] 投送曲目: ${track.title} -> $url');
-    await _service.castTrack(url);
+    // 构造 DIDL-Lite 元数据，让设备显示标题/艺术家/专辑/封面
+    final metadata = buildDidlLiteMetadata(track, url);
+    await _service.castTrack(url, metadata: metadata);
   }
 
   /// 解析投屏 URL
@@ -302,14 +332,35 @@ class CastNotifier extends Notifier<CastState> {
   }
 
   /// 启动进度轮询
+  ///
+  /// 每次轮询：
+  /// 1. 通过 `ping()` 做健康检查（GetTransportInfo 调用）
+  /// 2. 连续 [_failureThreshold] 次失败后触发自动重连
+  /// 3. 重连成功则继续轮询；超过 [_maxReconnectAttempts] 次仍失败则断开
   void _startPositionPolling() {
     _positionTimer?.cancel();
     _positionTimer = Timer.periodic(_pollInterval, (_) async {
-      if (!ref.mounted) {
-        _positionTimer?.cancel();
-        return;
-      }
+      if (!ref.mounted || _reconnecting) return;
       try {
+        // 健康检查：通过 GetTransportInfo 一次调用同时获取传输状态
+        final alive = await _service.ping();
+        if (!alive) {
+          _consecutiveFailures++;
+          if (ref.mounted) {
+            state = state.copyWith(
+              errorMessage: '与设备通信失败 ($_consecutiveFailures/$_failureThreshold)',
+            );
+          }
+          if (_consecutiveFailures >= _failureThreshold) {
+            await _tryReconnect();
+          }
+          return;
+        }
+
+        // 重置失败计数（设备响应正常）
+        _consecutiveFailures = 0;
+
+        // 拉取进度与音量
         final info = await _service.getPositionInfo();
         final transport = await _service.getTransportState();
         if (!ref.mounted) return;
@@ -317,9 +368,8 @@ class CastNotifier extends Notifier<CastState> {
           position: info.position,
           duration: info.duration,
           transportState: transport.isEmpty ? null : transport,
+          clearError: true,
         );
-        // 每隔几次轮询更新一次音量（减少设备负担）
-        // 这里采用简单的「无音量时拉取一次」策略，避免持续打设备
         if (state.volume == null) {
           final vol = await _service.getVolume();
           if (!ref.mounted) return;
@@ -327,8 +377,78 @@ class CastNotifier extends Notifier<CastState> {
         }
       } catch (e, stack) {
         AppLogger.reportError(e, stack, '[Cast] 轮询进度失败');
+        _consecutiveFailures++;
+        if (_consecutiveFailures >= _failureThreshold) {
+          await _tryReconnect();
+        }
       }
     });
+  }
+
+  /// 尝试自动重连
+  ///
+  /// 流程：
+  /// 1. 设置 `_reconnecting` 标志防止并发重连
+  /// 2. 最多重试 [_maxReconnectAttempts] 次：
+  ///    - 重新创建 DlnaControl 实例
+  ///    - 重新投送当前曲目
+  ///    - 验证 ping 成功
+  /// 3. 重连成功重置失败计数、恢复轮询
+  /// 4. 超过最大尝试次数则放弃，断开连接
+  Future<void> _tryReconnect() async {
+    if (_reconnecting || !state.isCasting) return;
+    _reconnecting = true;
+    _positionTimer?.cancel();
+
+    AppLogger.log.w(
+      '[Cast] 检测到设备失联，开始自动重连 (attempt=${_reconnectAttempts + 1}/$_maxReconnectAttempts)',
+    );
+    if (ref.mounted) {
+      state = state.copyWith(errorMessage: '正在尝试重连...');
+    }
+
+    final device = state.currentDevice;
+    if (device == null) {
+      _reconnecting = false;
+      return;
+    }
+
+    try {
+      // 清理旧连接
+      await _service.disconnect();
+      // 指数退避：500ms / 1s / 2s
+      final backoffMs = 500 * (1 << _reconnectAttempts);
+      await Future.delayed(Duration(milliseconds: backoffMs));
+
+      _service.connect(device);
+      final ok = await _service.ping();
+      if (ok) {
+        await _castCurrentTrack();
+        if (!ref.mounted) {
+          _reconnecting = false;
+          return;
+        }
+        _consecutiveFailures = 0;
+        _reconnectAttempts = 0;
+        state = state.copyWith(clearError: true);
+        AppLogger.log.i('[Cast] 重连成功');
+        _startPositionPolling();
+      } else {
+        throw Exception('ping 失败');
+      }
+    } catch (e, stack) {
+      AppLogger.reportError(e, stack, '[Cast] 重连失败');
+      _reconnectAttempts++;
+      if (_reconnectAttempts >= _maxReconnectAttempts) {
+        AppLogger.log.e('[Cast] 重连次数已达上限，断开连接');
+        await disconnect();
+      } else {
+        // 递归重试
+        await _tryReconnect();
+      }
+    } finally {
+      _reconnecting = false;
+    }
   }
 
   /// 暂停投屏播放
@@ -383,9 +503,15 @@ class CastNotifier extends Notifier<CastState> {
   }
 
   /// 断开投屏
+  ///
+  /// 重置所有重连状态，并停止投屏设备的播放。
+  /// 不自动恢复本地播放器（避免用户已离开原播放位置时突然出声）。
   Future<void> disconnect() async {
     _positionTimer?.cancel();
     _positionTimer = null;
+    _consecutiveFailures = 0;
+    _reconnectAttempts = 0;
+    _reconnecting = false;
     await _service.disconnect();
     if (ref.mounted) {
       state = CastState(

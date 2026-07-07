@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/provider/cast/cast_provider.dart';
 import 'package:pomelo/provider/lyric/lyric.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -181,7 +182,10 @@ const _desktopStyle = _PlaybackStyle(
 enum _PlaybackLayout { vertical, horizontal }
 
 /// 播放页主体（移动端竖向 / 桌面端横向共用同一组件，通过 [style] 与 [layout] 差异化）
-class _PlaybackBody extends StatelessWidget {
+///
+/// 当 DLNA 投屏中（castState.isCasting）时，播放/暂停/上一首/下一首/seek
+/// 自动转发到投屏设备，本地播放器保持暂停状态。
+class _PlaybackBody extends HookConsumerWidget {
   final Track track;
   final bool isPlaying;
   final PlaylistMode loopMode;
@@ -207,7 +211,7 @@ class _PlaybackBody extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final coverUrl = track.coverArt;
     final albumName = track.album;
 
@@ -215,11 +219,13 @@ class _PlaybackBody extends StatelessWidget {
       child: switch (layout) {
         _PlaybackLayout.vertical => _buildVertical(
           context,
+          ref,
           coverUrl,
           albumName,
         ),
         _PlaybackLayout.horizontal => _buildHorizontal(
           context,
+          ref,
           coverUrl,
           albumName,
         ),
@@ -231,6 +237,7 @@ class _PlaybackBody extends StatelessWidget {
 
   Widget _buildVertical(
     BuildContext context,
+    WidgetRef ref,
     String? coverUrl,
     String? albumName,
   ) {
@@ -263,9 +270,9 @@ class _PlaybackBody extends StatelessWidget {
             ),
           ),
           const Gap(8),
-          _buildSeekBar(context),
+          _buildSeekBar(context, ref),
           const Gap(16),
-          _buildMainControls(context),
+          _buildMainControls(context, ref),
           const Gap(20),
           _buildSecondaryControls(context),
           const Gap(24),
@@ -276,6 +283,7 @@ class _PlaybackBody extends StatelessWidget {
 
   Widget _buildHorizontal(
     BuildContext context,
+    WidgetRef ref,
     String? coverUrl,
     String? albumName,
   ) {
@@ -316,9 +324,9 @@ class _PlaybackBody extends StatelessWidget {
                       ),
                     ),
                     const Gap(16),
-                    _buildSeekBar(context),
+                    _buildSeekBar(context, ref),
                     const Gap(24),
-                    _buildMainControls(context),
+                    _buildMainControls(context, ref),
                     const Gap(20),
                     _buildSecondaryControls(context),
                   ],
@@ -373,9 +381,13 @@ class _PlaybackBody extends StatelessWidget {
     );
   }
 
-  Widget _buildSeekBar(BuildContext context) {
-    final totalMs = duration.inMilliseconds.toDouble();
-    final posMs = position.inMilliseconds.toDouble().clamp(0.0, totalMs);
+  Widget _buildSeekBar(BuildContext context, WidgetRef ref) {
+    final castState = ref.watch(castProvider);
+    // 投屏中：使用投屏设备返回的进度；否则使用本地播放器进度
+    final pos = castState.isCasting ? castState.position : position;
+    final dur = castState.isCasting ? castState.duration : duration;
+    final totalMs = dur.inMilliseconds.toDouble();
+    final posMs = pos.inMilliseconds.toDouble().clamp(0.0, totalMs);
     final muted = Theme.of(context).colorScheme.mutedForeground;
 
     return Column(
@@ -383,9 +395,16 @@ class _PlaybackBody extends StatelessWidget {
         Slider(
           value: SliderValue.single(totalMs > 0 ? posMs / totalMs : 0),
           onChanged: totalMs > 0
-              ? (v) => audioPlayer.seek(
-                  Duration(milliseconds: (v.value * totalMs).toInt()),
-                )
+              ? (v) {
+                  final target = Duration(
+                    milliseconds: (v.value * totalMs).toInt(),
+                  );
+                  if (castState.isCasting) {
+                    ref.read(castProvider.notifier).seek(target);
+                  } else {
+                    audioPlayer.seek(target);
+                  }
+                }
               : null,
         ),
         Padding(
@@ -394,11 +413,11 @@ class _PlaybackBody extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                formatDuration(position),
+                formatDuration(pos),
                 style: TextStyle(fontSize: 12, color: muted),
               ),
               Text(
-                formatDuration(duration),
+                formatDuration(dur),
                 style: TextStyle(fontSize: 12, color: muted),
               ),
             ],
@@ -408,8 +427,15 @@ class _PlaybackBody extends StatelessWidget {
     );
   }
 
-  Widget _buildMainControls(BuildContext context) {
+  Widget _buildMainControls(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    final castState = ref.watch(castProvider);
+
+    // 投屏中：根据投屏设备的 transportState 决定图标；
+    // 否则使用本地播放器的 isPlaying
+    final castPlaying = castState.transportState == 'PLAYING';
+    final showPlaying = castState.isCasting ? castPlaying : isPlaying;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -425,12 +451,20 @@ class _PlaybackBody extends StatelessWidget {
           ),
           child: IconButton.text(
             icon: Icon(
-              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              showPlaying
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
               size: 36,
               color: colorScheme.primaryForeground,
             ),
             onPressed: () {
-              isPlaying ? audioPlayer.pause() : audioPlayer.resume();
+              if (castState.isCasting) {
+                showPlaying
+                    ? ref.read(castProvider.notifier).pause()
+                    : ref.read(castProvider.notifier).resume();
+              } else {
+                isPlaying ? audioPlayer.pause() : audioPlayer.resume();
+              }
             },
           ),
         ),
