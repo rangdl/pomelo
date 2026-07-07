@@ -61,6 +61,14 @@ class UserPreference {
   /// 在获取播放链接时优先从本地音乐库匹配，失败再回退到在线解析。
   final bool localAudioSourceEnabled;
 
+  // === 投屏设置 ===
+  /// 投屏时是否启用本地代理。
+  ///
+  /// - true（默认）：所有曲目（包括在线音源）均通过本地 HTTP 服务器
+  ///   `/stream/<trackId>` 端点投送，便于统一缓存与控制。
+  /// - false：在线音源直接投送其原始 URL；本地文件仍需通过本地服务器代理。
+  final bool castLocalProxy;
+
   const UserPreference({
     this.themeMode = 'system',
     this.lyricFontSize = 14,
@@ -74,6 +82,7 @@ class UserPreference {
     this.lxServerQuality = LxServerQuality.flac,
     this.overwritePlaylistOnPlay = false,
     this.localAudioSourceEnabled = false,
+    this.castLocalProxy = true,
   });
 
   /// 从 JSON 构造（缺字段容忍）
