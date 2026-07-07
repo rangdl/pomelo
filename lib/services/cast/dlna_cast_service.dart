@@ -124,6 +124,21 @@ class DlnaCastService {
     }
   }
 
+  /// 设备健康检查
+  ///
+  /// 调用一个轻量 SOAP action（GetTransportInfo）判断设备是否可达。
+  /// 调用方据此判断连接是否中断，触发重连逻辑。
+  /// 未连接时返回 false。
+  Future<bool> ping() async {
+    if (_control == null) return false;
+    try {
+      await _control!.getTransportState();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 设置音量（0-100）
   Future<void> setVolume(int volume) async {
     try {
