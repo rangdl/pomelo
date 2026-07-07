@@ -113,6 +113,85 @@ class PlaybackBehaviorSection extends ConsumerWidget {
   }
 }
 
+/// 投屏设置区块（页面和对话框共享）
+class CastSettingsSection extends ConsumerWidget {
+  const CastSettingsSection({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final castLocalProxy = ref.watch(
+      userPreferenceProvider.select((p) => p.castLocalProxy),
+    );
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '投屏',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: colorScheme.mutedForeground,
+          ),
+        ),
+        const Gap(8),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.cast_connected, size: 20),
+                title: const Text('启用本地代理'),
+                subtitle: Text(
+                  castLocalProxy ? '当前：所有曲目经本地服务投送' : '当前：在线音源直投原始 URL',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.mutedForeground,
+                  ),
+                ),
+                trailing: Switch(
+                  value: castLocalProxy,
+                  onChanged: (v) => ref
+                      .read(userPreferenceProvider.notifier)
+                      .setCastLocalProxy(v),
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: colorScheme.mutedForeground,
+                    ),
+                    const Gap(6),
+                    Expanded(
+                      child: Text(
+                        '开启时所有曲目（含在线音源）通过本地 HTTP 服务器投送，'
+                        '便于统一缓存与控制；关闭时在线音源直接投送原始 URL，'
+                        '本地文件仍需通过本地服务器代理',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.mutedForeground,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// 缓存设置区块（页面和对话框共享）
 class CacheSettingsSection extends HookConsumerWidget {
   const CacheSettingsSection({super.key});
@@ -423,6 +502,8 @@ class PlaybackSettingsPage extends ConsumerWidget {
           const Gap(24),
           const PlaybackBehaviorSection(),
           const Gap(24),
+          const CastSettingsSection(),
+          const Gap(24),
           const CacheSettingsSection(),
         ],
       ),
@@ -543,6 +624,8 @@ class _PlaybackSettingsDialog extends ConsumerWidget {
               ),
               const Gap(20),
               const PlaybackBehaviorSection(),
+              const Gap(20),
+              const CastSettingsSection(),
               const Gap(20),
               const CacheSettingsSection(),
             ],
