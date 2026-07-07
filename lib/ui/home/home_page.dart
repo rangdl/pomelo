@@ -1345,11 +1345,12 @@ class _DefaultListView extends HookConsumerWidget {
       headers: [
         AppBar(
           leading: [
-            GhostButton(
-              onPressed: onClose ??
-                  () => ref.read(homeNavProvider.notifier).showNormal(),
-              child: const Icon(Icons.arrow_back, size: 20),
-            ),
+            if (isMobile)
+              GhostButton(
+                onPressed: onClose ??
+                    () => ref.read(homeNavProvider.notifier).showNormal(),
+                child: const Icon(Icons.arrow_back, size: 20),
+              ),
           ],
           title: const Text('默认列表'),
         ),

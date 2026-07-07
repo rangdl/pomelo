@@ -31,17 +31,21 @@ class FavoritesPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tabIndex = useState(0);
     final colorScheme = Theme.of(context).colorScheme;
+    // 桌面端由 Root 标题栏承载返回按钮，内联页面不再显示
+    final isMobile =
+        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
 
     return Scaffold(
       headers: [
         AppBar(
           leading: [
-            GhostButton(
-              onPressed:
-                  onClose ??
-                  () => ref.read(homeNavProvider.notifier).showNormal(),
-              child: const Icon(Icons.arrow_back, size: 20),
-            ),
+            if (isMobile)
+              GhostButton(
+                onPressed:
+                    onClose ??
+                    () => ref.read(homeNavProvider.notifier).showNormal(),
+                child: const Icon(Icons.arrow_back, size: 20),
+              ),
           ],
           title: const Text('我的收藏'),
         ),

@@ -14,7 +14,6 @@ import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_server.d
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/platform/providers/lx_metadata_plugin_paths_provider.dart';
-import 'package:pomelo/ui/platform/providers/lx_source_plugin_paths_provider.dart';
 import 'package:pomelo/ui/platform/widgets/add_lx_script_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/add_lx_server_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/add_subsonic_account_dialog.dart';
@@ -45,7 +44,6 @@ class ServicePage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final servicesAsync = ref.watch(musicServersProvider);
     final subsonicAccounts = ref.watch(subsonicAccountsProvider);
-    final sourcePlugins = ref.watch(lxSourcePluginPathsProvider);
 
     return Scaffold(
       headers: [
@@ -88,7 +86,7 @@ class ServicePage extends HookConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('加载失败: $e')),
         data: (services) =>
-            _buildBody(context, ref, services, subsonicAccounts, sourcePlugins),
+            _buildBody(context, ref, services, subsonicAccounts),
       ),
     );
   }
@@ -98,7 +96,6 @@ class ServicePage extends HookConsumerWidget {
     WidgetRef ref,
     List<MusicServer> services,
     List<SubsonicMusicServer> subsonicAccounts,
-    List<String> sourcePlugins,
   ) {
     final byType = groupServicesByType(services);
 

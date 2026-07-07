@@ -67,15 +67,19 @@ class AlbumDetailPage extends HookConsumerWidget {
       albumTracksProvider((sourceId: sourceId, albumId: albumId)),
     );
     final colorScheme = Theme.of(context).colorScheme;
+    // 桌面端由 Root 标题栏承载返回按钮，内联页面不再显示
+    final isMobile =
+        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
 
     return Scaffold(
       headers: [
         AppBar(
           leading: [
-            GhostButton(
-              onPressed: onClose ?? () => context.router.maybePop(),
-              child: const Icon(Icons.arrow_back, size: 20),
-            ),
+            if (isMobile)
+              GhostButton(
+                onPressed: onClose ?? () => context.router.maybePop(),
+                child: const Icon(Icons.arrow_back, size: 20),
+              ),
           ],
           title: Text(
             albumName,

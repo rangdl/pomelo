@@ -53,7 +53,7 @@ class LocalAudioSourceSection extends ConsumerWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.graphic_eq, size: 20),
-                title: const Text('启用本地音源'),
+                title: const Text('优先使用本地音源'),
                 subtitle: Text(
                   enabled ? '当前：已启用' : '当前：已关闭',
                   style: TextStyle(
@@ -139,23 +139,6 @@ class LxSourcePluginSection extends HookConsumerWidget {
         paths.add(destPath);
       }
       return paths;
-    }
-
-    Future<void> addSourcePlugins() async {
-      isLoading.value = true;
-      try {
-        final paths = await pickFiles(allowMultiple: true);
-        for (final path in paths) {
-          await ref.read(lxSourcePluginPathsProvider.notifier).addPlugin(path);
-        }
-        if (paths.isNotEmpty) {
-          if (context.mounted) AppToast().success('已添加 ${paths.length} 个音源插件');
-        }
-      } catch (e) {
-        AppToast().error('添加失败: $e');
-      } finally {
-        isLoading.value = false;
-      }
     }
 
     Future<void> replaceSourcePlugin(String oldPath) async {
@@ -288,19 +271,6 @@ class LxSourcePluginSection extends HookConsumerWidget {
               ),
             ),
           ),
-        const Gap(8),
-
-        // 添加按钮
-        PrimaryButton(
-          onPressed: isLoading.value ? null : addSourcePlugins,
-          child: isLoading.value
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('添加音源插件'),
-        ),
       ],
     );
   }

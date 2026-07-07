@@ -188,6 +188,8 @@ class _NavigationRailLayout extends HookConsumerWidget {
                       tabsRouter.setActiveIndex(index);
                     } else if (index == 0) {
                       // 已在 Home Tab：点击「首页」按钮重置内联视图
+                      // 同步 selectedKey，确保从「我的库」视图切回时上方主导航正确高亮
+                      selectedKey.value = key;
                       ref
                           .read(homeNavProvider.notifier)
                           .showNormal();
