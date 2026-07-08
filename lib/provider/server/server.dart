@@ -43,7 +43,7 @@ final serverProvider = FutureProvider((ref) async {
   );
 
   AppLogger.log.t(
-    'Playback server at http://${server.address.host}:${server.port}',
+    '[server] Playback server at http://${server.address.host}:${server.port}',
   );
 
   ref.onDispose(() {
