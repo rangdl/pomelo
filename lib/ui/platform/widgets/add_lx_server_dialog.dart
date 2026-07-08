@@ -173,8 +173,8 @@ class _LxServerAccountContent extends HookConsumerWidget {
         ),
         const Gap(4),
         Text(
-          '使用本地音源：开启后获取播放链接时优先从本地音乐库匹配，'
-          '匹配失败再回退到在线解析（需同时在「音源设置」中开启本地音源）',
+          '使用本地音源：开启后获取播放链接时优先通过本地音源脚本解析，'
+          '解析失败再回退到在线解析（需同时在「音源设置」中开启本地音源并添加音源脚本）',
           style: TextStyle(
             fontSize: 12,
             color: Theme.of(context).colorScheme.mutedForeground,

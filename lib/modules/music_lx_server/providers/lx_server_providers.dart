@@ -3,8 +3,8 @@ import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
-import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
+import 'package:pomelo/modules/music_lx/providers/lx_providers.dart';
 
 import '../repository/lx_server_client.dart';
 import '../repository/lx_server_music_server.dart';
@@ -17,9 +17,11 @@ String _cleanUrl(String url) => url.replaceAll(RegExp(r'/+$'), '');
 /// 从 [musicServerConfigsProvider] 读取 LxServerConfig，
 /// 配置变化时自动重建。配置为 null 或连接失败时返回 null。
 ///
-/// 同时监听全局 [UserPreference.localAudioSourceEnabled] 开关，
+/// 同时监听全局 [UserPreference.localAudioSourceEnabled] 开关与
+/// [lxSourceEngineProvider]（本地音源脚本引擎），
 /// 当全局开关与 LxServerConfig.useLocalAudioSource 均开启时，
 /// 启用本地音源优先策略（详见 [LxServerMusicServer.getMusicUrl]）。
+/// 脚本列表变化时自动重建以加载最新的本地音源引擎。
 final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
   ref,
 ) async {
@@ -31,6 +33,9 @@ final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
   final globalLocalAudioEnabled = ref.watch(
     userPreferenceProvider.select((p) => p.localAudioSourceEnabled),
   );
+
+  // 监听本地音源脚本引擎，脚本变化时自动重建
+  final sourceEngine = await ref.watch(lxSourceEngineProvider.future);
 
   final cleanUrl = _cleanUrl(config.serverUrl);
   final client = LxServerClient(
@@ -67,7 +72,7 @@ final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
     allowSourceSwitching: config.allowSourceSwitching,
     useLocalAudioSource:
         globalLocalAudioEnabled && config.useLocalAudioSource,
-    database: ref.read(databaseProvider),
+    sourceEngine: sourceEngine,
   );
 
   ref.onDispose(() => client.dispose());

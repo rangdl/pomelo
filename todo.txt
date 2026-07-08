@@ -18,3 +18,7 @@
 
 1.drift添加音源存储表,存储设置页面添加的音源脚本使用parseLxMusicScriptInfo解析之后的数据,然后音源文件作为script字段存储,不再存储文件,添加音源之后自动加载,初始化成功之后回调的参数格式是{"kw":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]},"kg":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]},"tx":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]},"wy":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]},"mg":{"type":"music","actions":["musicUrl"],"qualitys":["128k","320k","flac"]}},同时记录音源注册的库(kw,kg等)和库对应的音质列表
 2.drift添加音源解析记录表,记录本地音源插件解析记录,记录库,音质,成功与否,以便后续统计音源解析成功率
+
+
+1.audiotags替换为metadata_god插件
+2.看看歌曲播放的流程有没有可以优化的地方
