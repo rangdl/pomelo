@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
+import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/provider/server/sourced_track.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
@@ -367,7 +368,7 @@ class ServerPlaybackRoutes {
   }) async {
     // 推断文件扩展名
     final contentType = headers['content-type']?.first;
-    final extension = track.src != null
+    final extension = track.src != null && track.src!.isNotEmpty
         ? MusicCacheDir.extensionFromUrl(track.src!)
         : MusicCacheDir.extensionFromContentType(contentType);
 
@@ -406,6 +407,9 @@ class ServerPlaybackRoutes {
         '[Playback] 缓存写入完成: track=${track.title}, ${buffer.length} bytes → ${file.path}',
       );
 
+      // 根据 Track 信息写入音乐标签（重点：歌词、封面）
+      await _writeTagsToCacheFile(track, file.path);
+
       // 持久化缓存文件路径（需有音质信息）
       if (quality != null) {
         final notifier = ref.read(sourcedTrackProvider(track).notifier);
@@ -421,6 +425,154 @@ class ServerPlaybackRoutes {
     } catch (e) {
       AppLogger.log.w('[Playback] 缓存文件写入失败: $e');
     }
+  }
+
+  /// 根据Track信息写入音乐标签到缓存文件
+  ///
+  /// 重点写入歌词与封面：
+  /// - 歌词：优先保留文件已有标签，缺失时从 MusicServer 获取
+  /// - 封面：优先保留文件已有标签，缺失时从 Track.coverArt 下载
+  /// - 其他字段：保留文件已有标签，缺失时用 Track 信息补全
+  ///
+  /// 写入失败仅记录日志，不影响播放和缓存。
+  Future<void> _writeTagsToCacheFile(Track track, String filePath) async {
+    try {
+      // 读取文件已有标签
+      Tag? existing = await AudioTags.read(filePath);
+
+      final existingLyrics = existing?.lyrics;
+      final hasCover = (existing?.pictures.length ?? 0) > 0;
+
+      // 获取缺失的歌词
+      String? lyrics = existingLyrics;
+      if (lyrics == null || lyrics.isEmpty) {
+        lyrics = await _fetchLyrics(track);
+      }
+
+      // 获取缺失的封面
+      List<Picture> pictures = existing?.pictures ?? const [];
+      if (!hasCover && track.coverArt != null && track.coverArt!.isNotEmpty) {
+        final coverBytes = await _fetchCoverBytes(track.coverArt!);
+        if (coverBytes != null && coverBytes.isNotEmpty) {
+          final mimeType = _inferMimeType(track.coverArt!, coverBytes);
+          pictures = [
+            Picture(
+              pictureType: PictureType.coverFront,
+              mimeType: mimeType,
+              bytes: coverBytes,
+            ),
+          ];
+        }
+      }
+
+      // 仅当获取到新信息时才写入
+      final needWriteLyrics =
+          lyrics != null && lyrics.isNotEmpty && (existingLyrics == null || existingLyrics.isEmpty);
+      final needWriteCover = pictures.isNotEmpty && !hasCover;
+      if (!needWriteLyrics && !needWriteCover && existing != null) {
+        AppLogger.log.d('[Playback] 标签无需补充: track=${track.title}');
+        return;
+      }
+
+      final enrichedTag = Tag(
+        title: existing?.title ?? track.title,
+        trackArtist: existing?.trackArtist ?? track.artist,
+        album: existing?.album ?? track.album,
+        albumArtist: existing?.albumArtist,
+        year: existing?.year ?? track.year,
+        genre: existing?.genre ?? track.genre,
+        trackNumber: existing?.trackNumber ?? track.track,
+        trackTotal: existing?.trackTotal,
+        discNumber: existing?.discNumber ?? track.discNumber,
+        discTotal: existing?.discTotal,
+        lyrics: (lyrics != null && lyrics.isNotEmpty) ? lyrics : existingLyrics,
+        duration: existing?.duration,
+        pictures: pictures,
+        bpm: existing?.bpm,
+      );
+
+      await AudioTags.write(filePath, enrichedTag);
+      AppLogger.log.d(
+        '[Playback] 标签写入完成: track=${track.title}, '
+        'lyrics=${lyrics != null && lyrics.isNotEmpty ? "yes" : "no"}, '
+        'cover=${pictures.isNotEmpty ? "yes" : "no"}',
+      );
+    } catch (e) {
+      AppLogger.log.w('[Playback] 标签写入失败: $e');
+    }
+  }
+
+  /// 从 MusicServer 获取歌词
+  Future<String?> _fetchLyrics(Track track) async {
+    try {
+      final sourceId = track.source?.id;
+      if (sourceId == null) return null;
+      await ref.read(musicServersProvider.future);
+      final service = await ref.read(musicServerByProvider(sourceId).future);
+      if (service == null) return null;
+      return await service.getLyric(track);
+    } catch (e) {
+      AppLogger.log.w('[Playback] 获取歌词失败: $e');
+      return null;
+    }
+  }
+
+  /// 从 URL 或本地路径获取封面字节
+  Future<Uint8List?> _fetchCoverBytes(String coverArt) async {
+    try {
+      // 本地路径：直接读取
+      if (_isLocalPath(coverArt)) {
+        final file = File(coverArt);
+        if (await file.exists()) {
+          return await file.readAsBytes();
+        }
+        return null;
+      }
+      // HTTP(S) URL：下载
+      final res = await dio.get<List<int>>(
+        coverArt,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      final data = res.data;
+      if (data == null || data.isEmpty) return null;
+      return Uint8List.fromList(data);
+    } catch (e) {
+      AppLogger.log.w('[Playback] 获取封面失败: $e');
+      return null;
+    }
+  }
+
+  /// 根据 URL 扩展名或文件头推断图片 MIME 类型
+  MimeType? _inferMimeType(String url, Uint8List bytes) {
+    final lower = url.toLowerCase();
+    if (lower.endsWith('.png')) return MimeType.png;
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return MimeType.jpeg;
+    if (lower.endsWith('.gif')) return MimeType.gif;
+    if (lower.endsWith('.bmp')) return MimeType.bmp;
+    if (lower.endsWith('.tiff') || lower.endsWith('.tif')) {
+      return MimeType.tiff;
+    }
+    // 从文件头推断
+    if (bytes.length >= 4 &&
+        bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) {
+      return MimeType.png;
+    }
+    if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xD8) {
+      return MimeType.jpeg;
+    }
+    if (bytes.length >= 3 &&
+        bytes[0] == 0x47 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46) {
+      return MimeType.gif;
+    }
+    if (bytes.length >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4D) {
+      return MimeType.bmp;
+    }
+    return null;
   }
 
   /// 把缓存的在线曲目信息写入本地音乐库
