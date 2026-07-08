@@ -21,4 +21,5 @@
 
 
 1.audiotags替换为metadata_god插件
-2.看看歌曲播放的流程有没有可以优化的地方
+2.本地音源插件初始化时会有inited和updateAlert两种回调,当inited触发时代表初始化成功,当updateAlert触发时代表此此脚本需要更新,传递log和updateUrl两个参数log为更新日志,updateUrl为更新路径,如果在插件初始化时有脚本回调了updateUrl请存储此状态并弹窗提示有脚本需要更新,同时在音源插件设置页面显示更新按钮,点击后弹窗展示log对应的更新日志,并添加按钮去更新,点击之后使用系统浏览器打开updateUrl链接
+3.看看歌曲播放的流程有没有可以优化的地方
