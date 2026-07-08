@@ -12,13 +12,13 @@ import 'lx_server_models.dart';
 /// 由 `/api/music/progress` 端点以 Server-Sent Events 协议返回。
 class LxServerProgressEvent {
   /// 来源名称（一般为音源标识）
-  final String name;
+  final String? name;
 
   /// 状态：'success' | 'fail' | 其他
-  final String status;
+  final String? status;
 
   /// 详细信息（不为空时应该用 Toast 提示用户）
-  final String message;
+  final String? message;
 
   const LxServerProgressEvent({
     required this.name,
@@ -28,9 +28,9 @@ class LxServerProgressEvent {
 
   factory LxServerProgressEvent.fromJson(Map<String, dynamic> json) {
     return LxServerProgressEvent(
-      name: json['name'] as String? ?? '',
-      status: json['status'] as String? ?? '',
-      message: json['message'] as String? ?? '',
+      name: json['name'] as String?,
+      status: json['status'] as String?,
+      message: json['message'] as String?,
     );
   }
 
@@ -442,9 +442,7 @@ class LxServerClient {
     int limit = 20,
   }) async {
     await ensureLoggedIn();
-    AppLogger.log.i(
-      '[LxServer] 获取歌手专辑: source=$source, id=$id, page=$page',
-    );
+    AppLogger.log.i('[LxServer] 获取歌手专辑: source=$source, id=$id, page=$page');
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '$serverUrl/api/music/artistAlbums',
@@ -452,7 +450,8 @@ class LxServerClient {
         options: _authOptions,
       );
       final data = response.data!;
-      final list = (data['list'] as List<dynamic>?)
+      final list =
+          (data['list'] as List<dynamic>?)
               ?.map((e) => LxServerAlbum.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [];
@@ -483,9 +482,7 @@ class LxServerClient {
     String order = 'hot',
   }) async {
     await ensureLoggedIn();
-    AppLogger.log.i(
-      '[LxServer] 获取歌手歌曲: source=$source, id=$id, order=$order',
-    );
+    AppLogger.log.i('[LxServer] 获取歌手歌曲: source=$source, id=$id, order=$order');
     try {
       final response = await _dio.get(
         '$serverUrl/api/music/artistSongs',
@@ -524,16 +521,16 @@ class LxServerClient {
   ///
   /// GET /api/music/albumSongs?source=&id=
   /// 返回专辑元信息（name/publishTime/source）及其曲目列表。
-  Future<({
-    List<LxServerSong> list,
-    int total,
-    String? name,
-    String? publishTime,
-    String source,
-  })> getAlbumSongs({
-    required String source,
-    required String id,
-  }) async {
+  Future<
+    ({
+      List<LxServerSong> list,
+      int total,
+      String? name,
+      String? publishTime,
+      String source,
+    })
+  >
+  getAlbumSongs({required String source, required String id}) async {
     await ensureLoggedIn();
     AppLogger.log.i('[LxServer] 获取专辑歌曲: source=$source, id=$id');
     try {
@@ -543,7 +540,8 @@ class LxServerClient {
         options: _authOptions,
       );
       final data = response.data!;
-      final list = (data['list'] as List<dynamic>?)
+      final list =
+          (data['list'] as List<dynamic>?)
               ?.map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [];
@@ -815,12 +813,27 @@ class LxServerClient {
     );
 
     // 启动 SSE 进度监听（不阻塞主请求）
-    final progressFuture = _listenProgress(reqId);
+    _listenProgress(reqId, (attempt) {
+      final songNamePrefix = attempt.name ?? songInfo['name'] as String? ?? '';
+      final message =
+          attempt.message ?? (attempt.status == 'success' ? '解析成功' : '解析失败');
+      final msg = '[$songNamePrefix] $message';
+      if (attempt.status == 'success') {
+        AppToast().success(msg);
+      } else {
+        AppToast().error(msg);
+      }
+    });
+    // [Fix] 给予 SSE 连接极短的建连时间，确保并发请求下后端能优先捕获到 SSE 客户端
+    Future.delayed(const Duration(milliseconds: 50));
 
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '$serverUrl/api/music/url',
-        data: {'songInfo': songInfo, 'quality': quality},
+        data: {
+          'songInfo': songInfo, 'quality': quality,
+          'enableAutoSwitchApiSource': true, // 开启自动换源
+        },
         options: _authOptions.copyWith(
           contentType: Headers.jsonContentType,
           headers: {
@@ -834,23 +847,11 @@ class LxServerClient {
       final url = data['url'] as String?;
       if (url == null || url.isEmpty) {
         final msg = data['message'] ?? '服务器未返回有效 URL';
-        AppLogger.log.e(
-          '[LxServer] 获取播放链接失败: source=$source, quality=$quality, '
-          '原因=$msg',
-        );
         throw Exception('获取播放链接失败: $msg');
       }
       AppLogger.log.i(
         '[LxServer] 获取播放链接成功: source=$source, quality=$quality, url=$url',
       );
-
-      // 等待 SSE 流结束（进度已通过 Toast 实时提示）
-      // 添加 3 秒超时，避免服务器未正确关闭 SSE 流时阻塞播放
-      try {
-        await progressFuture.timeout(const Duration(seconds: 3));
-      } catch (_) {
-        // 超时或异常都不影响主流程
-      }
 
       // 代理播放：将原始 URL 包装为 /api/music/download
       if (proxyPlayback) {
@@ -862,10 +863,6 @@ class LxServerClient {
       }
       return url;
     } catch (e, s) {
-      // 已记录过日志的 Exception 直接 rethrow
-      if (e is Exception && e.toString().startsWith('Exception: 获取播放链接失败')) {
-        rethrow;
-      }
       AppLogger.reportError(
         e,
         s,
@@ -891,7 +888,10 @@ class LxServerClient {
   ///
   /// GET /api/music/progress?reqId=<>，使用 text/event-stream 协议。
   /// 收到事件时，若 message 不为空则通过 Toast 提示。
-  Future<void> _listenProgress(String reqId) async {
+  Future<void> _listenProgress(
+    String reqId,
+    Function(LxServerProgressEvent event) onMessage,
+  ) async {
     try {
       final response = await _dio.get<ResponseBody>(
         '$serverUrl/api/music/progress',
@@ -918,17 +918,20 @@ class LxServerClient {
           if (sepIndex + 2 < raw.length) {
             buffer.write(raw.substring(sepIndex + 2));
           }
-          _handleSseEvent(eventBlock);
+          _handleSseEvent(eventBlock, onMessage);
         }
       }
-    } catch (e) {
+    } catch (e, s) {
       // SSE 进度是辅助提示，失败不影响主流程
-      AppLogger.log.d('[LxServer] SSE 进度监听异常（可忽略）: $e');
+      AppLogger.reportError(e, s, '[LxServer] SSE 进度监听异常（可忽略）: $e');
     }
   }
 
   /// 解析单个 SSE 事件块
-  void _handleSseEvent(String eventBlock) {
+  void _handleSseEvent(
+    String eventBlock,
+    Function(LxServerProgressEvent event) onMessage,
+  ) {
     String? dataLine;
     for (final line in eventBlock.split('\n')) {
       if (line.startsWith('data:')) {
@@ -936,30 +939,16 @@ class LxServerClient {
       }
     }
     if (dataLine == null || dataLine.isEmpty) return;
-
     try {
       final json = jsonDecode(dataLine) as Map<String, dynamic>;
       final event = LxServerProgressEvent.fromJson(json);
-      AppLogger.log.d(
-        '[LxServer] SSE 进度事件: name=${event.name}, status=${event.status}, '
-        'message=${event.message}',
+      onMessage(event);
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxServer] SSE 事件 JSON 解析失败: $e, raw=$dataLine',
       );
-      // message 不为空时通过 Toast 提示
-      if (event.message.isNotEmpty) {
-        if (event.isFail) {
-          AppToast().error(event.message);
-        } else if (event.isSuccess) {
-          AppToast().success(event.message);
-        } else {
-          AppToast().info(event.message);
-        }
-      } else {
-        if (event.isSuccess) {
-          AppToast().info('${event.name} 解析成功');
-        }
-      }
-    } catch (e) {
-      AppLogger.log.d('[LxServer] SSE 事件 JSON 解析失败: $e, raw=$dataLine');
     }
   }
 
@@ -1028,8 +1017,8 @@ class LxServerClient {
         options: Options(responseType: ResponseType.json),
       );
       return true;
-    } catch (e) {
-      AppLogger.log.w('[LxServer] 服务器连接失败: $e');
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[LxServer] 服务器连接失败: $e');
       return false;
     }
   }
