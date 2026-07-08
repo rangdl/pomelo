@@ -71,9 +71,9 @@ class MusicCacheDir {
   static String extensionFromContentType(String? contentType) {
     if (contentType == null) return '.mp3';
     final ct = contentType.toLowerCase();
-    if (ct.contains('flac')) return '.flac';
+    if (ct.contains('flac') || ct.contains('ogg')) return '.flac';
     if (ct.contains('wav')) return '.wav';
-    if (ct.contains('ogg')) return '.ogg';
+    // if (ct.contains('ogg')) return '.ogg';
     if (ct.contains('m4a') || ct.contains('mp4')) return '.m4a';
     if (ct.contains('aac')) return '.aac';
     return '.mp3';
@@ -87,8 +87,15 @@ class MusicCacheDir {
       final dotIndex = path.lastIndexOf('.');
       if (dotIndex >= 0) {
         final ext = path.substring(dotIndex).toLowerCase();
-        if ({'.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.wma'}
-            .contains(ext)) {
+        if ({
+          '.mp3',
+          '.flac',
+          '.wav',
+          '.ogg',
+          '.m4a',
+          '.aac',
+          '.wma',
+        }.contains(ext)) {
           return ext;
         }
       }
@@ -132,7 +139,13 @@ class MusicCacheDir {
 
   /// 已知的音频缓存文件扩展名
   static const _audioExtensions = {
-    '.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.wma',
+    '.mp3',
+    '.flac',
+    '.wav',
+    '.ogg',
+    '.m4a',
+    '.aac',
+    '.wma',
   };
 
   /// 清空缓存目录
@@ -199,11 +212,13 @@ class MusicCacheDir {
           if (!_audioExtensions.contains(ext)) continue;
           try {
             final stat = await entity.stat();
-            files.add(_CacheFileEntry(
-              file: entity,
-              size: stat.size,
-              modified: stat.modified,
-            ));
+            files.add(
+              _CacheFileEntry(
+                file: entity,
+                size: stat.size,
+                modified: stat.modified,
+              ),
+            );
           } catch (_) {}
         }
       }

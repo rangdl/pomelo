@@ -1,8 +1,7 @@
 /// 音源设置页面
 ///
 /// 集中管理音源相关设置：
-/// - 本地音源全局开关（配合各 lx_server 的 `useLocalAudioSource` 开关使用）
-/// - Lx 音源脚本管理（脚本内容持久化到 drift 表，不依赖文件系统）
+/// - 本地音源全局开关 + 本地音源脚本管理（脚本内容持久化到 drift 表，不依赖文件系统）
 /// - 各 Lx Server 配置的「使用本地音源」开关
 ///
 /// 移动端作为全屏页面打开，桌面端作为对话框打开。
@@ -23,8 +22,14 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'dart:io';
 
-/// 本地音源全局开关区块
-class LocalAudioSourceSection extends ConsumerWidget {
+/// 本地音源区块
+///
+/// 包含全局开关与本地音源脚本管理：
+/// - 全局开关：配合各 Lx Server 的 `useLocalAudioSource` 开关使用
+/// - 脚本管理：添加/移除本地音源脚本，脚本内容持久化到 drift 表
+///
+/// 添加脚本时解析脚本头部元信息并加载验证以获取注册的库与音质列表。
+class LocalAudioSourceSection extends HookConsumerWidget {
   const LocalAudioSourceSection({super.key});
 
   @override
@@ -33,85 +38,7 @@ class LocalAudioSourceSection extends ConsumerWidget {
       userPreferenceProvider.select((p) => p.localAudioSourceEnabled),
     );
     final colorScheme = Theme.of(context).colorScheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '本地音源',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: colorScheme.mutedForeground,
-          ),
-        ),
-        const Gap(8),
-        Card(
-          child: Column(
-            children: [
-              ListTile(
-                leading: const Icon(Icons.graphic_eq, size: 20),
-                title: const Text('优先使用本地音源'),
-                subtitle: Text(
-                  enabled ? '当前：已启用' : '当前：已关闭',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: colorScheme.mutedForeground,
-                  ),
-                ),
-                trailing: Switch(
-                  value: enabled,
-                  onChanged: (v) => ref
-                      .read(userPreferenceProvider.notifier)
-                      .setLocalAudioSourceEnabled(v),
-                ),
-              ),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.info_outline,
-                      size: 14,
-                      color: colorScheme.mutedForeground,
-                    ),
-                    const Gap(6),
-                    Expanded(
-                      child: Text(
-                        '开启后，配合各 Lx Server 配置中的「使用本地音源」开关，'
-                        '获取播放链接时优先从本地音乐库匹配，失败再回退到在线解析',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: colorScheme.mutedForeground,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Lx 音源脚本管理区块
-///
-/// 脚本内容直接持久化到 drift 表（[LxSourceScriptTable]），
-/// 添加时解析脚本头部元信息并加载验证以获取注册的库与音质列表。
-class LxSourcePluginSection extends HookConsumerWidget {
-  const LxSourcePluginSection({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     final isLoading = useState(false);
-    final colorScheme = Theme.of(context).colorScheme;
     final scriptsAsync = ref.watch(lxSourceScriptsProvider);
 
     Future<void> addScript() async {
@@ -160,21 +87,21 @@ class LxSourcePluginSection extends HookConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 标题 + 说明
+        // 标题 + 添加按钮
         Row(
           children: [
-            Icon(Icons.audiotrack, size: 24, color: colorScheme.primary),
+            Icon(Icons.graphic_eq, size: 24, color: colorScheme.primary),
             const Gap(8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '音源脚本',
+                    '本地音源',
                     style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                   Text(
-                    'Lx 音源插件脚本，提供音乐播放链接查询，支持多份添加',
+                    '通过本地音源脚本获取播放链接，优先于在线解析',
                     style: TextStyle(
                       fontSize: 11,
                       color: colorScheme.mutedForeground,
@@ -203,6 +130,59 @@ class LxSourcePluginSection extends HookConsumerWidget {
                     ),
             ),
           ],
+        ),
+        const Gap(8),
+
+        // 全局开关
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.toggle_on, size: 20),
+                title: const Text('优先使用本地音源'),
+                subtitle: Text(
+                  enabled ? '当前：已启用' : '当前：已关闭',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.mutedForeground,
+                  ),
+                ),
+                trailing: Switch(
+                  value: enabled,
+                  onChanged: (v) => ref
+                      .read(userPreferenceProvider.notifier)
+                      .setLocalAudioSourceEnabled(v),
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 14,
+                      color: colorScheme.mutedForeground,
+                    ),
+                    const Gap(6),
+                    Expanded(
+                      child: Text(
+                        '开启后，配合各 Lx Server 配置中的「使用本地音源」开关，'
+                        '获取播放链接时优先通过本地音源脚本解析，失败再回退到在线解析',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: colorScheme.mutedForeground,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         const Gap(8),
 
@@ -462,7 +442,7 @@ class LxServerLocalSourceSection extends ConsumerWidget {
               Expanded(
                 child: Text(
                   '为每个 Lx Server 独立配置是否使用本地音源。'
-                  '需同时在上方「本地音源」中启用全局开关才会生效',
+                  '需同时在上方「本地音源」中启用全局开关并添加音源脚本才会生效',
                   style: TextStyle(
                     fontSize: 12,
                     color: colorScheme.mutedForeground,
@@ -501,8 +481,6 @@ class AudioSourceSettingsPage extends ConsumerWidget {
         padding: const EdgeInsets.all(16),
         children: [
           const LocalAudioSourceSection(),
-          const Gap(24),
-          const LxSourcePluginSection(),
           const Gap(24),
           const LxServerLocalSourceSection(),
         ],
@@ -547,8 +525,6 @@ class _AudioSourceSettingsDialog extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const LocalAudioSourceSection(),
-              const Gap(20),
-              const LxSourcePluginSection(),
               const Gap(20),
               const LxServerLocalSourceSection(),
             ],
