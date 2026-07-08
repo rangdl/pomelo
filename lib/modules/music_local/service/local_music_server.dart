@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:audiotags/audiotags.dart';
 import 'package:drift/drift.dart' show Value;
+import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/core.dart';
@@ -28,7 +28,7 @@ const _audioExtensions = {
 /// 实现 [MusicServer] 接口，提供本地音乐的查询能力。
 ///
 /// 扫描流程：
-/// 1. 用 [AudioTags] 读取音频文件元数据标签（ID3/FLAC/MP4）
+/// 1. 用 [MetadataGod] 读取音频文件元数据标签（ID3/FLAC/MP4）
 /// 2. 提取封面图片到 `<appSupport>/pomelo/local_covers/` 目录
 /// 3. 完整 Track JSON 持久化到 drift [LocalTrackTable]（sourceId='local'）
 /// 4. 启动时优先从 drift 加载，避免重复扫描
@@ -203,33 +203,33 @@ class LocalMusicServer extends MusicServer {
   /// 扫描单个文件，读取标签并构建 Track
   Future<Track?> _scanFile(File file) async {
     try {
-      Tag? tag;
+      Metadata? meta;
       try {
-        tag = await AudioTags.read(file.path);
+        meta = await MetadataGod.readMetadata(file: file.path);
       } catch (e) {
         AppLogger.log.w('[LocalMusic] 读取标签失败 ${file.path}: $e');
-        tag = null;
+        meta = null;
       }
 
       final fileName = p.basenameWithoutExtension(file.path);
-      final tagTitle = tag?.title;
-      final tagArtist = tag?.trackArtist;
-      final tagAlbum = tag?.album;
+      final tagTitle = meta?.title;
+      final tagArtist = meta?.artist;
+      final tagAlbum = meta?.album;
       final title = (tagTitle != null && tagTitle.isNotEmpty) ? tagTitle : fileName;
       final artist =
           (tagArtist != null && tagArtist.isNotEmpty) ? tagArtist : null;
       final album = (tagAlbum != null && tagAlbum.isNotEmpty) ? tagAlbum : null;
-      final year = tag?.year;
-      final trackNumber = tag?.trackNumber;
-      final discNumber = tag?.discNumber;
-      final genre = tag?.genre;
-      final duration = tag?.duration ?? 0;
+      final year = meta?.year;
+      final trackNumber = meta?.trackNumber;
+      final discNumber = meta?.discNumber;
+      final genre = meta?.genre;
+      final duration = meta?.durationMs?.toInt() ?? 0;
 
       // 提取封面图片到本地文件
       String? coverArt;
-      final pictures = tag?.pictures;
-      if (pictures != null && pictures.isNotEmpty) {
-        coverArt = await _saveCover(file.path, pictures.first.bytes);
+      final picture = meta?.picture;
+      if (picture != null && picture.data.isNotEmpty) {
+        coverArt = await _saveCover(file.path, picture.data);
       }
 
       final id = 'local-${_stableHash(file.path)}';

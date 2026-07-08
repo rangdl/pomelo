@@ -191,10 +191,10 @@ class LxSourceEngine {
       }
       final url = dynamicUrl.toString();
       return url;
-    } catch (e) {
+    } catch (e, s) {
       AppLogger.reportError(
         e,
-        null,
+        s,
         '[LxSourceEngine] 获取 $libraryId 播放链接异常: $e',
       );
       return '';

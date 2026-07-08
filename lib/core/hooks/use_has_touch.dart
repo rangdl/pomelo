@@ -14,7 +14,8 @@ bool useHasTouch() {
           event.kind == PointerDeviceKind.mouse ||
           event.kind == PointerDeviceKind.touch ||
           event.kind == PointerDeviceKind.stylus ||
-          event.kind == PointerDeviceKind.invertedStylus;
+          event.kind == PointerDeviceKind.invertedStylus ||
+          event.kind == PointerDeviceKind.trackpad;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
