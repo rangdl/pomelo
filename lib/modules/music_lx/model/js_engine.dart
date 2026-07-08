@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -526,25 +527,105 @@ function __go_raw_inflate(dataHex) {
   /// 统一的异步JS执行方法
   ///
   /// 执行 JS 表达式并处理 Promise，循环排空微任务，带超时保护。
-  /// 返回 Promise resolve 的原始值。
+  /// 返回 Promise resolve 的值（JSON 解码后的 Dart 对象）。
+  ///
+  /// 实现说明：不使用 flutter_js 的 [handlePromise]（其在 macOS/JSC 上
+  /// 因 stringResult 不匹配 '[object Promise]' 而失效），改用自定义的
+  /// 全局变量 + 轮询机制，兼容 JSC 与 QuickJS。
   Future<dynamic> evalAsync(String expression) async {
-    final result = await _jsRuntime.evaluateAsync(expression);
-    // 循环调用排空所有微任务（Promise resolve 会触发多个 .then() 链）
+    // 生成唯一的结果 ID，用于在 JS 全局对象上暂存结果
+    final resultId = '_eval_${DateTime.now().microsecondsSinceEpoch}';
+
+    // 包装表达式：执行后将结果（含 Promise）存入全局变量并追踪完成状态
+    final wrappedExpression = '''
+(function() {
+  var __result;
+  try {
+    __result = ($expression);
+  } catch (e) {
+    globalThis['$resultId'] = { done: true, error: String(e), value: null };
+    return;
+  }
+  if (__result != null && typeof __result.then === 'function') {
+    globalThis['$resultId'] = { done: false, error: null, value: null };
+    __result.then(
+      function(v) {
+        globalThis['$resultId'].done = true;
+        globalThis['$resultId'].value = v;
+      },
+      function(e) {
+        globalThis['$resultId'].done = true;
+        globalThis['$resultId'].error = String(e);
+      }
+    );
+  } else {
+    globalThis['$resultId'] = { done: true, error: null, value: __result };
+  }
+})()
+''';
+
+    final result = await _jsRuntime.evaluateAsync(wrappedExpression);
+    // 排空包装表达式本身可能产生的微任务
     while (_jsRuntime.executePendingJob() > 0) {}
 
     if (result.isError) {
       throw Exception('JS执行错误: ${result.toString()}');
     }
 
-    // 带超时等待 Promise 结果，防止无限等待
-    final asyncResult = await _jsRuntime
-        .handlePromise(result)
-        .timeout(const Duration(seconds: 30));
+    // 轮询等待 Promise 完成（带 30 秒超时保护）
+    final deadline = DateTime.now().add(const Duration(seconds: 30));
+    while (true) {
+      // 排空微任务：fetch 回调、Promise.then 链等
+      while (_jsRuntime.executePendingJob() > 0) {}
 
-    // 排空回调产生的新微任务
-    while (_jsRuntime.executePendingJob() > 0) {}
+      final doneResult = _jsRuntime.evaluate(
+        "globalThis['$resultId'].done",
+      );
+      if (doneResult.stringResult == 'true') {
+        break;
+      }
 
-    return asyncResult.rawResult;
+      if (DateTime.now().isAfter(deadline)) {
+        _jsRuntime.evaluate("delete globalThis['$resultId']");
+        throw TimeoutException('JS Promise 执行超时（30s）');
+      }
+
+      await Future.delayed(const Duration(milliseconds: 20));
+    }
+
+    // 检查是否有错误
+    final errorResult = _jsRuntime.evaluate(
+      "globalThis['$resultId'].error",
+    );
+    if (errorResult.stringResult != 'null' &&
+        errorResult.stringResult != 'undefined' &&
+        errorResult.stringResult.isNotEmpty) {
+      final errorMsg = _jsRuntime.evaluate(
+        "String(globalThis['$resultId'].error)",
+      ).stringResult;
+      _jsRuntime.evaluate("delete globalThis['$resultId']");
+      throw Exception('JS Promise rejected: $errorMsg');
+    }
+
+    // 通过 JSON.stringify 获取值的字符串表示，再解码为 Dart 对象
+    final valueResult = _jsRuntime.evaluate(
+      "JSON.stringify(globalThis['$resultId'].value)",
+    );
+    _jsRuntime.evaluate("delete globalThis['$resultId']");
+
+    final jsonStr = valueResult.stringResult;
+    if (jsonStr == 'undefined' ||
+        jsonStr == 'null' ||
+        jsonStr.isEmpty) {
+      return null;
+    }
+
+    try {
+      return jsonDecode(jsonStr);
+    } catch (_) {
+      // JSON 解码失败（如值为 undefined 等非 JSON 类型），返回原始字符串
+      return jsonStr;
+    }
   }
 
   void dispose() {

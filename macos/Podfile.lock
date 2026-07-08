@@ -4,8 +4,6 @@ PODS:
     - FlutterMacOS
   - audio_session (0.0.1):
     - FlutterMacOS
-  - audiotags (1.4.5):
-    - FlutterMacOS
   - bonsoir_darwin (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -15,6 +13,8 @@ PODS:
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
   - media_kit_libs_macos_audio (1.0.4):
+    - FlutterMacOS
+  - metadata_god (0.0.1):
     - FlutterMacOS
   - package_info_plus (0.0.1):
     - FlutterMacOS
@@ -59,12 +59,12 @@ PODS:
 DEPENDENCIES:
   - audio_service (from `Flutter/ephemeral/.symlinks/plugins/audio_service/darwin`)
   - audio_session (from `Flutter/ephemeral/.symlinks/plugins/audio_session/macos`)
-  - audiotags (from `Flutter/ephemeral/.symlinks/plugins/audiotags/macos`)
   - bonsoir_darwin (from `Flutter/ephemeral/.symlinks/plugins/bonsoir_darwin/darwin`)
   - file_picker (from `Flutter/ephemeral/.symlinks/plugins/file_picker/macos`)
   - flutter_js (from `Flutter/ephemeral/.symlinks/plugins/flutter_js/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - media_kit_libs_macos_audio (from `Flutter/ephemeral/.symlinks/plugins/media_kit_libs_macos_audio/macos`)
+  - metadata_god (from `Flutter/ephemeral/.symlinks/plugins/metadata_god/macos`)
   - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
@@ -82,8 +82,6 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/audio_service/darwin
   audio_session:
     :path: Flutter/ephemeral/.symlinks/plugins/audio_session/macos
-  audiotags:
-    :path: Flutter/ephemeral/.symlinks/plugins/audiotags/macos
   bonsoir_darwin:
     :path: Flutter/ephemeral/.symlinks/plugins/bonsoir_darwin/darwin
   file_picker:
@@ -94,6 +92,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral
   media_kit_libs_macos_audio:
     :path: Flutter/ephemeral/.symlinks/plugins/media_kit_libs_macos_audio/macos
+  metadata_god:
+    :path: Flutter/ephemeral/.symlinks/plugins/metadata_god/macos
   package_info_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   path_provider_foundation:
@@ -112,12 +112,12 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   audio_service: cab6c1a0eaf01b5a35b567e11fa67d3cc1956910
   audio_session: 728ae3823d914f809c485d390274861a24b0904e
-  audiotags: 62a1e6607f8eaf47aae94c9cdc95a2ba94e982b8
   bonsoir_darwin: e3b8526c42ca46a885142df84229131dfabea842
   file_picker: e716a70a9fe5fd9e09ebc922d7541464289443af
   flutter_js: c664361655af1d8fc24e278c7d086e9cbe0d68bc
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   media_kit_libs_macos_audio: 3871782a4f3f84c77f04d7666c87800a781c24da
+  metadata_god: 829f61208b44ac1173e7cd32ab740d8776be5435
   package_info_plus: 12f1c5c2cfe8727ca46cbd0b26677728972d9a5b
   path_provider_foundation: 0b743cbb62d8e47eab856f09262bb8c1ddcfe6ba
   screen_retriever_macos: 038d3f7b34a779b06f536842003e41e8ec1fb4b7
