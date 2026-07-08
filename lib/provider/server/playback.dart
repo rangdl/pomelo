@@ -3,17 +3,16 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:audiotags/audiotags.dart';
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:dio/dio.dart' hide Response;
 import 'package:drift/drift.dart' show Value;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:metadata_god/metadata_god.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
-import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/provider/server/sourced_track.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
@@ -429,54 +428,50 @@ class ServerPlaybackRoutes {
 
   /// 根据Track信息写入音乐标签到缓存文件
   ///
-  /// 重点写入歌词与封面：
-  /// - 歌词：优先保留文件已有标签，缺失时从 MusicServer 获取
+  /// 重点写入封面：
   /// - 封面：优先保留文件已有标签，缺失时从 Track.coverArt 下载
   /// - 其他字段：保留文件已有标签，缺失时用 Track 信息补全
+  ///
+  /// 注意：metadata_god 不支持 lyrics/bpm 字段，歌词不再写入文件标签。
+  /// 歌词获取仍在播放器层通过 [MusicServer.getLyric] 提供。
   ///
   /// 写入失败仅记录日志，不影响播放和缓存。
   Future<void> _writeTagsToCacheFile(Track track, String filePath) async {
     try {
       // 读取文件已有标签
-      Tag? existing = await AudioTags.read(filePath);
-
-      final existingLyrics = existing?.lyrics;
-      final hasCover = (existing?.pictures.length ?? 0) > 0;
-
-      // 获取缺失的歌词
-      String? lyrics = existingLyrics;
-      if (lyrics == null || lyrics.isEmpty) {
-        lyrics = await _fetchLyrics(track);
+      Metadata? existing;
+      try {
+        existing = await MetadataGod.readMetadata(file: filePath);
+      } catch (_) {
+        existing = null;
       }
 
+      final hasCover = existing?.picture != null &&
+          existing!.picture!.data.isNotEmpty;
+
       // 获取缺失的封面
-      List<Picture> pictures = existing?.pictures ?? const [];
+      Picture? picture = existing?.picture;
       if (!hasCover && track.coverArt != null && track.coverArt!.isNotEmpty) {
         final coverBytes = await _fetchCoverBytes(track.coverArt!);
         if (coverBytes != null && coverBytes.isNotEmpty) {
           final mimeType = _inferMimeType(track.coverArt!, coverBytes);
-          pictures = [
-            Picture(
-              pictureType: PictureType.coverFront,
-              mimeType: mimeType,
-              bytes: coverBytes,
-            ),
-          ];
+          picture = Picture(
+            data: coverBytes,
+            mimeType: mimeType,
+          );
         }
       }
 
-      // 仅当获取到新信息时才写入
-      final needWriteLyrics =
-          lyrics != null && lyrics.isNotEmpty && (existingLyrics == null || existingLyrics.isEmpty);
-      final needWriteCover = pictures.isNotEmpty && !hasCover;
-      if (!needWriteLyrics && !needWriteCover && existing != null) {
+      // 仅当获取到新封面时才写入（metadata_god 不支持 lyrics）
+      final needWriteCover = picture != null && !hasCover;
+      if (!needWriteCover && existing != null) {
         AppLogger.log.d('[Playback] 标签无需补充: track=${track.title}');
         return;
       }
 
-      final enrichedTag = Tag(
+      final enriched = Metadata(
         title: existing?.title ?? track.title,
-        trackArtist: existing?.trackArtist ?? track.artist,
+        artist: existing?.artist ?? track.artist,
         album: existing?.album ?? track.album,
         albumArtist: existing?.albumArtist,
         year: existing?.year ?? track.year,
@@ -485,35 +480,17 @@ class ServerPlaybackRoutes {
         trackTotal: existing?.trackTotal,
         discNumber: existing?.discNumber ?? track.discNumber,
         discTotal: existing?.discTotal,
-        lyrics: (lyrics != null && lyrics.isNotEmpty) ? lyrics : existingLyrics,
-        duration: existing?.duration,
-        pictures: pictures,
-        bpm: existing?.bpm,
+        durationMs: existing?.durationMs,
+        picture: picture,
       );
 
-      await AudioTags.write(filePath, enrichedTag);
+      await MetadataGod.writeMetadata(file: filePath, metadata: enriched);
       AppLogger.log.d(
         '[Playback] 标签写入完成: track=${track.title}, '
-        'lyrics=${lyrics != null && lyrics.isNotEmpty ? "yes" : "no"}, '
-        'cover=${pictures.isNotEmpty ? "yes" : "no"}',
+        'cover=${picture != null ? "yes" : "no"}',
       );
     } catch (e) {
       AppLogger.log.w('[Playback] 标签写入失败: $e');
-    }
-  }
-
-  /// 从 MusicServer 获取歌词
-  Future<String?> _fetchLyrics(Track track) async {
-    try {
-      final sourceId = track.source?.id;
-      if (sourceId == null) return null;
-      await ref.read(musicServersProvider.future);
-      final service = await ref.read(musicServerByProvider(sourceId).future);
-      if (service == null) return null;
-      return await service.getLyric(track);
-    } catch (e) {
-      AppLogger.log.w('[Playback] 获取歌词失败: $e');
-      return null;
     }
   }
 
@@ -543,14 +520,14 @@ class ServerPlaybackRoutes {
   }
 
   /// 根据 URL 扩展名或文件头推断图片 MIME 类型
-  MimeType? _inferMimeType(String url, Uint8List bytes) {
+  String _inferMimeType(String url, Uint8List bytes) {
     final lower = url.toLowerCase();
-    if (lower.endsWith('.png')) return MimeType.png;
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return MimeType.jpeg;
-    if (lower.endsWith('.gif')) return MimeType.gif;
-    if (lower.endsWith('.bmp')) return MimeType.bmp;
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    if (lower.endsWith('.bmp')) return 'image/bmp';
     if (lower.endsWith('.tiff') || lower.endsWith('.tif')) {
-      return MimeType.tiff;
+      return 'image/tiff';
     }
     // 从文件头推断
     if (bytes.length >= 4 &&
@@ -558,21 +535,21 @@ class ServerPlaybackRoutes {
         bytes[1] == 0x50 &&
         bytes[2] == 0x4E &&
         bytes[3] == 0x47) {
-      return MimeType.png;
+      return 'image/png';
     }
     if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xD8) {
-      return MimeType.jpeg;
+      return 'image/jpeg';
     }
     if (bytes.length >= 3 &&
         bytes[0] == 0x47 &&
         bytes[1] == 0x49 &&
         bytes[2] == 0x46) {
-      return MimeType.gif;
+      return 'image/gif';
     }
     if (bytes.length >= 2 && bytes[0] == 0x42 && bytes[1] == 0x4D) {
-      return MimeType.bmp;
+      return 'image/bmp';
     }
-    return null;
+    return 'application/octet-stream';
   }
 
   /// 把缓存的在线曲目信息写入本地音乐库
@@ -590,39 +567,37 @@ class ServerPlaybackRoutes {
       // 尝试从缓存文件读取标签信息
       Track enriched = track;
       try {
-        final tag = await AudioTags.read(cachePath);
-        if (tag != null) {
-          String? coverArt = track.coverArt;
-          // 提取封面到本地 covers 目录
-          final pictures = tag.pictures;
-          if (pictures.isNotEmpty) {
-            final savedCover = await _saveCoverToCache(
-              track.id,
-              pictures.first.bytes,
-            );
-            if (savedCover != null) coverArt = savedCover;
-          }
-          enriched = track.copyWith(
-            title: (tag.title != null && tag.title!.isNotEmpty)
-                ? tag.title!
-                : track.title,
-            artist: (tag.trackArtist != null && tag.trackArtist!.isNotEmpty)
-                ? tag.trackArtist
-                : track.artist,
-            album: (tag.album != null && tag.album!.isNotEmpty)
-                ? tag.album
-                : track.album,
-            coverArt: coverArt,
-            duration: (tag.duration != null && tag.duration! > 0)
-                ? tag.duration!
-                : track.duration,
-            year: tag.year ?? track.year,
-            genre: tag.genre ?? track.genre,
-            track: tag.trackNumber ?? track.track,
-            discNumber: tag.discNumber ?? track.discNumber,
-            path: cachePath,
+        final meta = await MetadataGod.readMetadata(file: cachePath);
+        String? coverArt = track.coverArt;
+        // 提取封面到本地 covers 目录
+        final picture = meta.picture;
+        if (picture != null && picture.data.isNotEmpty) {
+          final savedCover = await _saveCoverToCache(
+            track.id,
+            picture.data,
           );
+          if (savedCover != null) coverArt = savedCover;
         }
+        enriched = track.copyWith(
+          title: (meta.title != null && meta.title!.isNotEmpty)
+              ? meta.title!
+              : track.title,
+          artist: (meta.artist != null && meta.artist!.isNotEmpty)
+              ? meta.artist
+              : track.artist,
+          album: (meta.album != null && meta.album!.isNotEmpty)
+              ? meta.album
+              : track.album,
+          coverArt: coverArt,
+          duration: (meta.durationMs != null && meta.durationMs! > 0)
+              ? meta.durationMs!.toInt()
+              : track.duration,
+          year: meta.year ?? track.year,
+          genre: meta.genre ?? track.genre,
+          track: meta.trackNumber ?? track.track,
+          discNumber: meta.discNumber ?? track.discNumber,
+          path: cachePath,
+        );
       } catch (e) {
         AppLogger.log.w('[Playback] 读取缓存文件标签失败: $e');
       }
