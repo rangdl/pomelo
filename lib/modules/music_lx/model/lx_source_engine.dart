@@ -91,6 +91,7 @@ class LxSourceEngine {
     // 桥接 事件监听 updateAlert
     engine.jsRuntime.onMessage('updateAlert', (arguments) {
       final updateUrl = arguments['updateUrl'] ?? '';
+      // final log = arguments['log'] ?? '';
       AppLogger.log.i('[LxSourceEngine] 需要更新: $updateUrl');
       completer.complete(false);
     });
