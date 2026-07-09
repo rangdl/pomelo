@@ -446,8 +446,8 @@ class ServerPlaybackRoutes {
         existing = null;
       }
 
-      final hasCover = existing?.picture != null &&
-          existing!.picture!.data.isNotEmpty;
+      final hasCover =
+          existing?.picture != null && existing!.picture!.data.isNotEmpty;
 
       // 获取缺失的封面
       Picture? picture = existing?.picture;
@@ -455,10 +455,7 @@ class ServerPlaybackRoutes {
         final coverBytes = await _fetchCoverBytes(track.coverArt!);
         if (coverBytes != null && coverBytes.isNotEmpty) {
           final mimeType = _inferMimeType(track.coverArt!, coverBytes);
-          picture = Picture(
-            data: coverBytes,
-            mimeType: mimeType,
-          );
+          picture = Picture(data: coverBytes, mimeType: mimeType);
         }
       }
 
@@ -572,10 +569,7 @@ class ServerPlaybackRoutes {
         // 提取封面到本地 covers 目录
         final picture = meta.picture;
         if (picture != null && picture.data.isNotEmpty) {
-          final savedCover = await _saveCoverToCache(
-            track.id,
-            picture.data,
-          );
+          final savedCover = await _saveCoverToCache(track.id, picture.data);
           if (savedCover != null) coverArt = savedCover;
         }
         enriched = track.copyWith(
