@@ -103,6 +103,7 @@ dependencies:
   convert: ^3.1.1          # hex 编解码
   url_launcher: ^6.3.1     # 打开浏览器下载更新
   collection: ^1.18.0      # 列表工具
+  dlna_dart: ^0.1.0        # DLNA 投屏（SSDP 发现 + SOAP 控制）
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1

@@ -29,7 +29,6 @@ import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart' as svc;
 import 'package:pomelo/services/audio_player/media.dart';
-import 'package:pomelo/services/cast/didl_metadata.dart';
 import 'package:pomelo/services/cast/dlna_cast_service.dart';
 import 'package:pomelo/services/cast/dlna_device.dart';
 import 'package:pomelo/services/logger/logger.dart';
@@ -281,9 +280,8 @@ class CastNotifier extends Notifier<CastState> {
     }
 
     AppLogger.log.i('[Cast] 投送曲目: ${track.title} -> $url');
-    // 构造 DIDL-Lite 元数据，让设备显示标题/艺术家/专辑/封面
-    final metadata = buildDidlLiteMetadata(track, url);
-    await _service.castTrack(url, metadata: metadata);
+    // dlna_dart 内部构建 DIDL-Lite 元数据，仅传 title
+    await _service.castTrack(url, title: track.title);
   }
 
   /// 解析投屏 URL
