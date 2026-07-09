@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' show MediaKit;
+import 'package:metadata_god/metadata_god.dart';
 import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/preferences/user_preference.dart';
@@ -31,6 +32,7 @@ void main() async {
   AppLogger.runZoned(() async {
     WidgetsFlutterBinding.ensureInitialized();
     MediaKit.ensureInitialized();
+    MetadataGod.initialize();
     if (kIsWindows) {
       await SMTCWindows.initialize();
     }
@@ -116,6 +118,7 @@ class Pomelo extends HookConsumerWidget {
                     PointerDeviceKind.touch,
                     PointerDeviceKind.stylus,
                     PointerDeviceKind.invertedStylus,
+                    PointerDeviceKind.trackpad,
                   }
                 : null,
           ),
