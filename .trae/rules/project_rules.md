@@ -1083,16 +1083,7 @@ import 'package:pomelo/core/toast.dart';
 
 ## 二十一、Git Commit 规范
 
-- 所有 git commit message **必须**使用简体中文
-- 严格使用格式：`<类型>: <描述>`
-- 允许类型：`feat`（新功能）、`fix`（修复）、`docs`（文档）、`refactor`（重构）、`test`（测试）
-- 只输出最终 commit message，不要附加解释
-- 描述要短、准、清晰
-
-示例：
-- `feat: 新增歌单详情页内联导航`
-- `fix: 修复桌面端关闭窗口白屏问题`
-- `refactor: 音乐源配置迁移到 drift 统一存储`
+移动到git-commit-message.md中
 
 ---
 
