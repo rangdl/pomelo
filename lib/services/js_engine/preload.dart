@@ -29,6 +29,11 @@ final preloadJS = """
     local: ['musicUrl', 'lyric', 'pic'],
   }
 
+  let resolve = null, reject = null;
+  const promise= new Promise((r, j) => {
+    resolve=r;
+    reject = j;
+  });
   globalThis.lx = {
     sources: [],
     version: '2.0.0',
@@ -81,7 +86,7 @@ final preloadJS = """
         try {
           body = resp.data;
           try{
-            body = await resp.json()
+            body = await resp.json();
           }catch(_){}
           var response = {
             statusCode: resp.status,
@@ -97,7 +102,7 @@ final preloadJS = """
         } catch (err) {
           if (aborted) return;
           var errMsg = (err && err.message) ? err.message : String(err);
-          console.error('[lx.request2] fetch/text catch: ' + errMsg);
+          console.error('[lx.request] fetch/text catch: ' + errMsg);
           safeCallback(new Error(errMsg), null, null);
         }
       }).catch((err)=>{
@@ -106,39 +111,6 @@ final preloadJS = """
         console.error('[lx.request] fetch/text catch: ' + errMsg);
         safeCallback(new Error(errMsg), null, null);
       })
-      // __native_send_request(method, url, data, options, (err, resp, body) => {
-      //   if (aborted) return;
-      //   if (err) {
-      //     safeCallback(new Error(err), null, null);
-      //     return;
-      //   }
-      //   console.error('[lx.request] fetch resolved, status=' + resp.status + ' url=' + url.substring(0, 100));
-      //   try {
-      //     body = resp.body = resp.raw.toString()
-      //     try {
-      //       resp.body = JSON.parse(resp.body)
-      //     } catch (_) {}
-      //     body = resp.body
-      //
-      //     var response = {
-      //       statusCode: resp.statusCode,
-      //       statusMessage: resp.statusMessage,
-      //       headers: resp.headers,
-      //       bytes: resp.bytes,
-      //       raw: resp.raw,
-      //       body,
-      //     };
-      //     console.error('[lx.request] calling safeCallback, statusCode=' + response.statusCode);
-      //     safeCallback(null, response, body);
-      //     console.error('[lx.request] safeCallback returned');
-      //   } catch (err) {
-      //     if (aborted) return;
-      //     var errMsg = (err && err.message) ? err.message : String(err);
-      //     console.error('[lx.request] fetch/text catch: ' + errMsg);
-      //     safeCallback(new Error(errMsg), null, null);
-      //   }
-      // })
-
       return () => {
         aborted = true;
       }
@@ -165,12 +137,18 @@ final preloadJS = """
         } else {
           console.error('[lx.send] inited but no sources in data');
         }
+        // resolve(data)
+        // return Promise.resolve()
+      }else if (eventName === 'updateAlert') {
+        // reject(data)
+        // return Promise.resolve()
       }
-      if (typeof globalThis.sendMessage === 'function') {
-        globalThis.sendMessage(eventName, data)
-      } else {
-        console.error('[lx.send] globalThis.sendMessage is not a function!');
-      }
+      resolve([eventName, data])
+      // if (typeof globalThis.sendMessage === 'function') {
+      //   globalThis.sendMessage(eventName, data)
+      // } else {
+      //   console.error('[lx.send] globalThis.sendMessage is not a function!');
+      // }
       return Promise.resolve()
     },
     on(eventName, handler) {
@@ -271,14 +249,12 @@ final preloadJS = """
     _scriptInfo.author= userApi.author
     _scriptInfo.homepage= userApi.homepage
     _scriptInfo.rawScript= userApi.rawScript
-    return '123';
+    // 初始化直接运行脚本
+    new Function(userApi.rawScript).call(globalThis);
+    return promise;
   }
   // Browser-like global aliases (needed by obfuscated scripts)
   globalThis.window = globalThis;
   globalThis.global = globalThis;
-  if (typeof clearTimeout !== "function"){
-    globalThis.clearTimeout = function clearTimeout(index) {}
-  }
 })()
-
 """;
