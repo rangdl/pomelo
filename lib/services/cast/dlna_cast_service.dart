@@ -11,11 +11,13 @@
 /// 设计要点：
 /// - Service 层无状态依赖（不持有 Riverpod Ref），符合项目分层规范
 /// - 所有控制方法在未连接时返回安全的默认值（不抛异常）
+/// - 控制客户端通过 [DlnaDiscovery.deviceManager] 取回底层 `DLNADevice`
 library;
 
 import 'package:pomelo/services/cast/dlna_control.dart';
 import 'package:pomelo/services/cast/dlna_device.dart';
 import 'package:pomelo/services/cast/dlna_discovery.dart';
+import 'package:pomelo/services/logger/logger.dart';
 
 /// 投屏进度信息
 typedef CastPositionInfo = ({Duration position, Duration duration});
@@ -48,22 +50,30 @@ class DlnaCastService {
 
   /// 连接到目标设备
   ///
+  /// 通过 [DlnaDiscovery.deviceManager] 取回底层 `DLNADevice` 用于 SOAP 控制。
   /// 如果设备未提供 AVTransport 服务，将无法投屏。
   void connect(DlnaDevice device) {
     _currentDevice = device;
-    _control = DlnaControl(device);
+    final dlnaDevice = _discovery.deviceManager?.deviceList[device.id];
+    if (dlnaDevice == null) {
+      AppLogger.log.w('[DlnaCastService] 未找到底层 DLNADevice: ${device.id}');
+      throw StateError('未找到底层 DLNADevice: ${device.id}');
+    }
+    _control = DlnaControl(device, dlnaDevice);
   }
 
   /// 投送曲目并播放
   ///
   /// 流程：SetAVTransportURI -> 等待设备就绪 -> Play。
   /// 中间间隔 300ms 让设备有时间加载 URI（实测某些电视需要这个间隔）。
-  Future<void> castTrack(String url, {String? metadata}) async {
+  ///
+  /// [title]：曲目标题，会写入 DIDL-Lite 元数据展示在设备端。
+  Future<void> castTrack(String url, {String title = ''}) async {
     final control = _control;
     if (control == null) {
       throw StateError('DlnaCastService 未连接设备');
     }
-    await control.setAvTransportUri(url, metadata: metadata);
+    await control.setAvTransportUri(url, title: title);
     // 给设备一些时间加载 URI
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await control.play();
@@ -165,5 +175,6 @@ class DlnaCastService {
   void dispose() {
     _control = null;
     _currentDevice = null;
+    _discovery.dispose();
   }
 }
