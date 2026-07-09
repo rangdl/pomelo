@@ -30,11 +30,11 @@ jobs:
           #     dist/*/*.deb
           #     dist/*/*.AppImage
           #     dist/*/*.tar.xz
-          # - os: ubuntu-22.04
-          #   platform: android
-          #   arch: all
-          #   files: |
-          #     dist/*/*.apk
+          - os: ubuntu-22.04
+            platform: android
+            arch: all
+            files: |
+              dist/*/*.apk
           - os: windows-2022
             platform: windows
             arch: x86
