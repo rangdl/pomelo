@@ -767,6 +767,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.2"
+  jsf:
+    dependency: "direct main"
+    description:
+      name: jsf
+      sha256: "49f83b768ad16abbd969d622c00d48d6f72efaa661454a19f8223caa13d040e5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   json_annotation:
     dependency: "direct main"
     description:

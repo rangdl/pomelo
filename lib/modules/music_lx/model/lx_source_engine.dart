@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:pomelo/services/js_engine/js_engine.dart';
+import 'package:pomelo/services/js_engine/preload.dart';
 import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
-import 'package:pomelo/modules/music_lx/model/preload.dart';
-import 'js_engine.dart';
+// import 'package:pomelo/modules/music_lx/model/preload.dart';
+// import 'js_engine.dart';
 
 /// 音源插件声明的库能力
 ///
@@ -59,11 +61,10 @@ class LxSourceEngine {
     final engine = JsEngine();
 
     // 加载Preloadjs
-    final resultPreload = engine.jsRuntime.evaluate(preloadJS);
-    if (resultPreload.isError) {
-      AppLogger.log.e(
-        '[LxSourceEngine] preloadJS加载失败: ${resultPreload.toString()}',
-      );
+    try {
+      engine.eval(preloadJS);
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[LxSourceEngine] preloadJS加载失败: $e');
       engine.dispose();
       return [];
     }
@@ -71,11 +72,14 @@ class LxSourceEngine {
     // 解析脚本
     final userApi = parseLxMusicScriptInfo(scriptContent);
     userApi['rawScript'] = scriptContent;
-    final userApiText = jsonEncode(userApi);
+    // final userApiText = jsonEncode(userApi);
     // 初始化脚本运行环境
-    final resultEnv = engine.jsRuntime.evaluate('initEnv($userApiText)');
-    if (resultEnv.isError) {
-      AppLogger.log.e('[LxSourceEngine] Env初始化失败: ${resultEnv.toString()}');
+    try {
+      final result = engine.jsRuntime.call('initEnv', [userApi]);
+      print(result);
+      // engine.eval('initEnv($userApiText)');
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[LxSourceEngine] Env初始化失败: $e');
       engine.dispose();
       return [];
     }
@@ -83,25 +87,38 @@ class LxSourceEngine {
     final completer = Completer<bool>();
     List<LxSourceLibrary> libraries = [];
     // 桥接 事件监听 inited — 从 sources 参数直接解析库列表
-    engine.jsRuntime.onMessage('inited', (arguments) {
-      final sources = (arguments['sources'] ?? {}) as Map<String, dynamic>;
-      libraries = _parseSources(sources);
-      completer.complete(true);
+    engine.jsRuntime.registerFunction('sendMessage', (List<dynamic> args) {
+      String type = args[0] as String;
+      Map<String, dynamic> arguments = args[1] as Map<String, dynamic>;
+      if (type == 'inited') {
+        final sources = (arguments['sources'] ?? {}) as Map<String, dynamic>;
+        libraries = _parseSources(sources);
+        completer.complete(true);
+      } else if (type == 'updateAlert') {
+        final updateUrl = arguments['updateUrl'] ?? '';
+        // final log = arguments['log'] ?? '';
+        AppLogger.log.i('[LxSourceEngine] 需要更新: $updateUrl');
+        completer.complete(false);
+      }
     });
-    // 桥接 事件监听 updateAlert
-    engine.jsRuntime.onMessage('updateAlert', (arguments) {
-      final updateUrl = arguments['updateUrl'] ?? '';
-      // final log = arguments['log'] ?? '';
-      AppLogger.log.i('[LxSourceEngine] 需要更新: $updateUrl');
-      completer.complete(false);
-    });
+
+    // engine.jsRuntime.onMessage('inited', (arguments) {
+    //   final sources = (arguments['sources'] ?? {}) as Map<String, dynamic>;
+    //   libraries = _parseSources(sources);
+    //   completer.complete(true);
+    // });
+    // // 桥接 事件监听 updateAlert
+    // engine.jsRuntime.onMessage('updateAlert', (arguments) {
+    //   final updateUrl = arguments['updateUrl'] ?? '';
+    //   // final log = arguments['log'] ?? '';
+    //   AppLogger.log.i('[LxSourceEngine] 需要更新: $updateUrl');
+    //   completer.complete(false);
+    // });
     // 执行脚本
-    final result = engine.jsRuntime.evaluate(
-      '!(function (){$scriptContent})();',
-    );
-    if (result.isError) {
-      AppLogger.log.e('[LxSourceEngine] 音源插件加载失败: ${result.toString()}');
-      engine.dispose();
+    try {
+      engine.eval('!(function (){$scriptContent})();');
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[LxSourceEngine] 音源插件加载失败: $e');
       return [];
     }
 
@@ -192,11 +209,7 @@ class LxSourceEngine {
       final url = dynamicUrl.toString();
       return url;
     } catch (e, s) {
-      AppLogger.reportError(
-        e,
-        s,
-        '[LxSourceEngine] 获取 $libraryId 播放链接异常: $e',
-      );
+      AppLogger.reportError(e, s, '[LxSourceEngine] 获取 $libraryId 播放链接异常: $e');
       return '';
     }
   }
