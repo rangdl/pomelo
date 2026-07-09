@@ -72,58 +72,28 @@ class LxSourceEngine {
     // 解析脚本
     final userApi = parseLxMusicScriptInfo(scriptContent);
     userApi['rawScript'] = scriptContent;
-    // final userApiText = jsonEncode(userApi);
+    final userApiText = jsonEncode(userApi);
+    List<LxSourceLibrary> libraries = [];
     // 初始化脚本运行环境
     try {
-      final result = engine.jsRuntime.call('initEnv', [userApi]);
-      print(result);
       // engine.eval('initEnv($userApiText)');
-    } catch (e, s) {
-      AppLogger.reportError(e, s, '[LxSourceEngine] Env初始化失败: $e');
-      engine.dispose();
-      return [];
-    }
-
-    final completer = Completer<bool>();
-    List<LxSourceLibrary> libraries = [];
-    // 桥接 事件监听 inited — 从 sources 参数直接解析库列表
-    engine.jsRuntime.registerFunction('sendMessage', (List<dynamic> args) {
+      // final result = engine.jsRuntime.call('initEnv', [userApi]);
+      final args = await engine.jsRuntime.evalAsync('initEnv($userApiText)');
       String type = args[0] as String;
       Map<String, dynamic> arguments = args[1] as Map<String, dynamic>;
       if (type == 'inited') {
         final sources = (arguments['sources'] ?? {}) as Map<String, dynamic>;
         libraries = _parseSources(sources);
-        completer.complete(true);
       } else if (type == 'updateAlert') {
         final updateUrl = arguments['updateUrl'] ?? '';
         // final log = arguments['log'] ?? '';
         AppLogger.log.i('[LxSourceEngine] 需要更新: $updateUrl');
-        completer.complete(false);
       }
-    });
-
-    // engine.jsRuntime.onMessage('inited', (arguments) {
-    //   final sources = (arguments['sources'] ?? {}) as Map<String, dynamic>;
-    //   libraries = _parseSources(sources);
-    //   completer.complete(true);
-    // });
-    // // 桥接 事件监听 updateAlert
-    // engine.jsRuntime.onMessage('updateAlert', (arguments) {
-    //   final updateUrl = arguments['updateUrl'] ?? '';
-    //   // final log = arguments['log'] ?? '';
-    //   AppLogger.log.i('[LxSourceEngine] 需要更新: $updateUrl');
-    //   completer.complete(false);
-    // });
-    // 执行脚本
-    try {
-      engine.eval('!(function (){$scriptContent})();');
     } catch (e, s) {
-      AppLogger.reportError(e, s, '[LxSourceEngine] 音源插件加载失败: $e');
+      AppLogger.reportError(e, s, '[LxSourceEngine] 脚本初始化失败: $e');
+      engine.dispose();
       return [];
     }
-
-    // 等待初始化完成
-    await completer.future;
 
     if (libraries.isEmpty) {
       AppLogger.log.w('[LxSourceEngine] 音源插件未注册任何库');

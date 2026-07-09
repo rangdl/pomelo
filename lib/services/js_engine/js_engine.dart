@@ -82,6 +82,7 @@ class JsEngine {
         delete __NATIVE__setTimeoutCallbacks[$idx];
       """);
       });
+      return idx;
     });
   }
 
@@ -234,6 +235,101 @@ class JsEngine {
       String dataHex = args[0] as String;
       return goRawInflate(dataHex);
     });
+  }
+
+  String cryptoAesEncrypt(
+    String dataHex,
+    String mode,
+    String keyHex,
+    String ivHex,
+  ) {
+    try {
+      // 1. 解析输入
+      final buffer = Uint8List.fromList(hex.decode(dataHex));
+      final key = Uint8List.fromList(hex.decode(keyHex));
+      final iv = ivHex.isEmpty ? null : Uint8List.fromList(hex.decode(ivHex));
+
+      // 2. 解析 mode
+      final parts = mode.split('-');
+      if (parts.length != 3 || parts[0] != 'aes') {
+        throw ArgumentError(
+          'Invalid mode format, expected "aes-{128|192|256}-{CBC|ECB|...}"',
+        );
+      }
+      final keySize = int.parse(parts[1]); // 128, 192, 256
+      final modeName = parts[2].toUpperCase();
+
+      final keyLenBytes = keySize ~/ 8;
+      if (key.length != keyLenBytes) {
+        throw ArgumentError(
+          'Key must be $keyLenBytes bytes for $keySize-bit AES',
+        );
+      }
+
+      // 3. 创建 AES 引擎和分组模式
+      final engine = AESEngine();
+      late BlockCipher blockCipher;
+      bool needsIv = true;
+
+      switch (modeName) {
+        case 'CBC':
+          blockCipher = CBCBlockCipher(engine);
+          break;
+        case 'ECB':
+          blockCipher = ECBBlockCipher(engine);
+          needsIv = false;
+          break;
+        case 'CFB':
+          blockCipher = CFBBlockCipher(engine, 16); // CFB-128 (16 bytes)
+          break;
+        case 'OFB':
+          blockCipher = OFBBlockCipher(engine, 16); // OFB-128 (16 bytes)
+          break;
+        case 'CTR':
+          blockCipher = SICBlockCipher(16, SICStreamCipher(engine));
+          break;
+        default:
+          throw ArgumentError('Unsupported mode: $modeName');
+      }
+
+      // 初始化参数
+      CipherParameters params;
+      if (needsIv) {
+        if (iv == null || iv.length != 16) {
+          throw ArgumentError(
+            'IV must be 16 bytes (32 hex chars) for mode $modeName',
+          );
+        }
+        params = ParametersWithIV(KeyParameter(key), iv);
+      } else {
+        params = KeyParameter(key);
+      }
+
+      // 加密
+      Uint8List encrypted;
+      if (modeName == 'CBC' || modeName == 'ECB') {
+        // 块模式：PKCS7 填充
+        final cipher = PaddedBlockCipherImpl(PKCS7Padding(), blockCipher);
+        cipher.init(true, PaddedBlockCipherParameters(params, null));
+        encrypted = Uint8List.fromList(cipher.process(buffer));
+      } else {
+        // 流式模式（CTR, CFB, OFB）：无填充，按块处理
+        blockCipher.init(true, params);
+        final blockSize = blockCipher.blockSize;
+        final paddedLen =
+            ((buffer.length + blockSize - 1) ~/ blockSize) * blockSize;
+        final padded = Uint8List(paddedLen);
+        padded.setAll(0, buffer);
+        final out = Uint8List(paddedLen);
+        for (var i = 0; i < paddedLen; i += blockSize) {
+          blockCipher.processBlock(padded, i, out, i);
+        }
+        encrypted = Uint8List.sublistView(out, 0, buffer.length);
+      }
+      return hex.encode(encrypted);
+    } catch (e) {
+      return '';
+    }
   }
 
   String goCryptoAesEncrypt(
