@@ -33,7 +33,16 @@ final playHistoryProvider = FutureProvider.autoDispose<List<PlayHistoryEntry>>((
       final json = jsonDecode(e.trackJson) as Map<String, dynamic>;
       track = Track.fromJson(json);
     } catch (_) {
-      track = Track(id: e.trackId, title: e.title);
+      track = Track(
+        id: e.trackId,
+        title: e.title,
+        source: (
+          id: e.sourceId,
+          name: e.sourceName,
+          libraryId: null,
+          libraryName: null,
+        ),
+      );
     }
     return PlayHistoryEntry(
       track: track,

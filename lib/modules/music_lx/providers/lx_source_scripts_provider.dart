@@ -18,7 +18,9 @@ import 'package:pomelo/services/logger/logger.dart';
 /// 所有 Lx 音源脚本列表
 ///
 /// 从 drift `lx_source_scripts` 表加载，按添加时间正序。
-final lxSourceScriptsProvider = FutureProvider<List<LxSourceScript>>((ref) async {
+final lxSourceScriptsProvider = FutureProvider<List<LxSourceScript>>((
+  ref,
+) async {
   final db = ref.watch(databaseProvider);
   final rows = await db.getAllLxSourceScripts();
   return rows
@@ -71,8 +73,8 @@ class LxSourceScriptsNotifier extends Notifier<List<LxSourceScript>> {
     List<LxSourceLibrary> libraries;
     try {
       libraries = await tempEngine.loadPlugin(scriptContent);
-    } catch (e) {
-      AppLogger.log.e('[LxSourceScripts] 脚本加载验证失败: $e');
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[LxSourceScripts] 脚本加载验证失败: $e');
       tempEngine.dispose();
       return null;
     } finally {
@@ -120,5 +122,5 @@ class LxSourceScriptsNotifier extends Notifier<List<LxSourceScript>> {
 /// Lx 音源脚本管理 Provider
 final lxSourceScriptsNotifierProvider =
     NotifierProvider<LxSourceScriptsNotifier, List<LxSourceScript>>(
-  LxSourceScriptsNotifier.new,
-);
+      LxSourceScriptsNotifier.new,
+    );

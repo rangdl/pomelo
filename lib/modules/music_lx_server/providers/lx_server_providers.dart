@@ -34,9 +34,6 @@ final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
     userPreferenceProvider.select((p) => p.localAudioSourceEnabled),
   );
 
-  // 监听本地音源脚本引擎，脚本变化时自动重建
-  final sourceEngine = await ref.watch(lxSourceEngineProvider.future);
-
   final cleanUrl = _cleanUrl(config.serverUrl);
   final client = LxServerClient(
     serverUrl: cleanUrl,
@@ -70,9 +67,7 @@ final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
     sourceId: config.id,
     sourceName: config.name,
     allowSourceSwitching: config.allowSourceSwitching,
-    useLocalAudioSource:
-        globalLocalAudioEnabled && config.useLocalAudioSource,
-    sourceEngine: sourceEngine,
+    useLocalAudioSource: globalLocalAudioEnabled && config.useLocalAudioSource,
   );
 
   ref.onDispose(() => client.dispose());

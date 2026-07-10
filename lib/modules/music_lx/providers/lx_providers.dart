@@ -95,8 +95,12 @@ final lxSourceEngineProvider = FutureProvider<LxSourceEngine>((ref) async {
       AppLogger.log.i(
         '[LxSourceEngine] 脚本 ${script.name} 加载成功，库: ${libs.map((l) => l.id).join(", ")}',
       );
-    } catch (e) {
-      AppLogger.log.e('[LxSourceEngine] 脚本 ${script.name} 加载失败: $e');
+    } catch (e, s) {
+      AppLogger.reportError(
+        e,
+        s,
+        '[LxSourceEngine] 脚本 ${script.name} 加载失败: $e',
+      );
     }
   }
   ref.onDispose(() => engine.dispose());

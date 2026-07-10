@@ -81,7 +81,7 @@ class PlayableTrackTile extends HookConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (trailingExtra != null) trailingExtra!,
-        Text(track.source?.name ?? '').muted,
+        Text(track.source.name).muted,
         if (showMoreActions)
           TrackMoreActionsButton(
             track: track,
@@ -101,9 +101,7 @@ class PlayableTrackTile extends HookConsumerWidget {
       showCover: showCover,
       onTap: () async {
         if (isActive) {
-          audioPlayerState.playing
-              ? audioPlayer.pause()
-              : audioPlayer.resume();
+          audioPlayerState.playing ? audioPlayer.pause() : audioPlayer.resume();
           return;
         }
         // 本地曲目：校验文件存在
@@ -121,11 +119,7 @@ class PlayableTrackTile extends HookConsumerWidget {
               0,
               playlist!.length - 1,
             );
-            notifier.load(
-              playlist!,
-              initialIndex: safeIndex,
-              autoPlay: true,
-            );
+            notifier.load(playlist!, initialIndex: safeIndex, autoPlay: true);
           } else {
             notifier.load([track], autoPlay: true);
           }

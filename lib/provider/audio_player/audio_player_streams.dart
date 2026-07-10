@@ -123,8 +123,8 @@ class AudioPlayerStreamListeners {
             PlayHistoryTableCompanion.insert(
               trackId: activeTrack.id,
               trackJson: jsonEncode(activeTrack.toJson()),
-              sourceId: activeTrack.source?.id ?? '',
-              sourceName: Value(activeTrack.source?.name ?? ''),
+              sourceId: activeTrack.source.id,
+              sourceName: Value(activeTrack.source.name),
               title: activeTrack.title,
               artist: Value(activeTrack.artist),
               coverArt: Value(activeTrack.coverArt),

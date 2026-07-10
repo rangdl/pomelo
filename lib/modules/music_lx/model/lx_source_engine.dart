@@ -148,15 +148,16 @@ class LxSourceEngine {
     quality = '128k',
   }) async {
     // 找到支持该库的音源插件引擎
-    final entry = _findEntry(libraryId);
-    if (entry == null) {
-      AppLogger.log.e('[LxSourceEngine] 库 $libraryId 未找到对应的音源插件');
+    final entries = _plugins.where(
+      (v) => v.libraries.any(
+        (l) => l.id == libraryId && l.qualitys.contains(quality),
+      ),
+    );
+    if (entries.isEmpty) {
+      AppLogger.log.e('[LxSourceEngine] 库 $libraryId $quality 未找到对应的音源插件');
       return '';
     }
-
     // 构建传递给 JS 端的歌曲信息
-    final requestKey =
-        "request__${Random().nextDouble().toString().substring(2)}";
     final data = {
       'source': libraryId,
       'action': 'musicUrl',
@@ -166,22 +167,24 @@ class LxSourceEngine {
       },
     };
     final dataText = jsonEncode(data);
-
-    try {
-      final raw = await entry.engine.evalAsync(
-        'globalThis.lx._dispatch(`$requestKey`, `request`, $dataText)',
-      );
-
-      dynamic dynamicUrl = raw;
-      if (raw is Future) {
-        dynamicUrl = await raw;
+    for (final entry in entries) {
+      final requestKey =
+          "request__${Random().nextDouble().toString().substring(2)}";
+      try {
+        final raw = await entry.engine.evalAsync(
+          'globalThis.lx._dispatch(`$requestKey`, `request`, $dataText)',
+        );
+        final url = raw.toString();
+        if (url.isNotEmpty) return url;
+      } catch (e, s) {
+        AppLogger.reportError(
+          e,
+          s,
+          '[LxSourceEngine] 获取 $libraryId $quality 播放链接异常: $e',
+        );
       }
-      final url = dynamicUrl.toString();
-      return url;
-    } catch (e, s) {
-      AppLogger.reportError(e, s, '[LxSourceEngine] 获取 $libraryId 播放链接异常: $e');
-      return '';
     }
+    return '';
   }
 
   /// 查找支持指定库的音源插件条目

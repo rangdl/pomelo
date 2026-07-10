@@ -1,4 +1,3 @@
-
 import 'package:pomelo/core/models/metadata/track.dart';
 
 /// 合并后的曲目展示模型
@@ -9,7 +8,8 @@ class MergedTrack {
   final Track primary;
 
   /// 该曲目出现的所有来源
-  final List<({String id, String name, String? libraryId, String? libraryName})> sources;
+  final List<({String id, String name, String? libraryId, String? libraryName})>
+  sources;
 
   /// 来源数 > 1 表示多平台都有
   bool get hasMultipleSources => sources.length > 1;
@@ -27,18 +27,15 @@ List<MergedTrack> mergeTracks(Iterable<Track> tracks) {
     final existing = map[track.id];
     if (existing != null) {
       // 已有，补充来源（去重）
-      final hasSource = existing.sources.any((s) => s.id == track.source?.id);
+      final hasSource = existing.sources.any((s) => s.id == track.source.id);
       if (!hasSource) {
         map[track.id] = MergedTrack(
           primary: existing.primary,
-          sources: [...existing.sources, if (track.source != null) track.source!],
+          sources: [...existing.sources, track.source],
         );
       }
     } else {
-      map[track.id] = MergedTrack(
-        primary: track,
-        sources: [if (track.source != null) track.source!],
-      );
+      map[track.id] = MergedTrack(primary: track, sources: [track.source]);
     }
   }
   return map.values.toList();
