@@ -7,6 +7,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/core/models/metadata/track.dart' show Track;
+import '../../global.dart';
 import '../audio_player/audio_player.dart';
 import 'mobile_audio_service.dart';
 import 'windows_audio_service.dart';
@@ -37,12 +38,12 @@ class AudioServices with WidgetsBindingObserver {
             config: AudioServiceConfig(
               androidNotificationChannelId: switch (isLinux) {
                 (true) => "pomelo",
-                (_) => "oss.krtirtho.pomelo",
+                (_) => "cn.rang.pomelo",
               },
-              androidNotificationChannelName: '柚子音乐',
+              androidNotificationChannelName: appNameDisplay,
               androidNotificationOngoing: false,
               androidStopForegroundOnPause: false,
-              androidNotificationChannelDescription: "柚子音乐媒体控制",
+              androidNotificationChannelDescription: "$appNameDisplay媒体控制",
             ),
           )
         : null;
