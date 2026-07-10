@@ -18,6 +18,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/music_lx/providers/lx_providers.dart';
 import 'package:pomelo/services/logger/logger.dart';
+import 'package:pomelo/services/rate_limiter.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
@@ -172,8 +173,11 @@ class SourcedTrack {
     Track track, {
     required String quality,
   }) async {
+    // 限流：每秒最多 3 次
+    await musicUrlRateLimiter.acquire();
+
     final sourceId = track.source.id;
-    
+
     // 等待服务列表加载完成，然后查找对应服务
     await ref.read(musicServersProvider.future);
     final service = await ref.read(musicServerByProvider(sourceId).future);
@@ -387,8 +391,11 @@ class SourcedTrackNotifier extends AsyncNotifier<SourcedTrack> {
 
   /// 调用对应 MusicServer 获取播放链接
   Future<String> _getMusicUrl(Track track, {required String quality}) async {
+    // 限流：每秒最多 3 次
+    await musicUrlRateLimiter.acquire();
+
     final sourceId = track.source.id;
-    
+
     // 等待服务列表加载完成，然后查找对应服务
     await ref.read(musicServersProvider.future);
     final service = await ref.read(musicServerByProvider(sourceId).future);

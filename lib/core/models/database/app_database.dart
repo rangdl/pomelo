@@ -10,6 +10,7 @@ import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 import 'local_library_table.dart';
 import 'lx_source_script_table.dart';
+import 'lx_source_usage_table.dart';
 import 'music_server_config_table.dart';
 import 'player_state_table.dart';
 
@@ -36,6 +37,7 @@ part 'app_database.g.dart';
   LocalArtistTable,
   LocalPlaylistTable,
   LxSourceScriptTable,
+  LxSourceUsageTable,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
@@ -44,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -73,6 +75,14 @@ class AppDatabase extends _$AppDatabase {
           if (from < 6) {
             // v6: 新增 LxSourceScriptTable（音源脚本内容存储，替代文件存储）
             await m.createTable(lxSourceScriptTable);
+          }
+          if (from < 7) {
+            // v7: LxSourceScriptTable 新增 sortOrder 列 + LxSourceUsageTable
+            await m.addColumn(
+              lxSourceScriptTable,
+              lxSourceScriptTable.sortOrder,
+            );
+            await m.createTable(lxSourceUsageTable);
           }
         },
       );
@@ -246,10 +256,13 @@ class AppDatabase extends _$AppDatabase {
 
   // ========== Lx 音源脚本 ==========
 
-  /// 获取所有 Lx 音源脚本（按添加时间正序）
+  /// 获取所有 Lx 音源脚本（按 sortOrder 升序，其次 createdAt 升序）
   Future<List<LxSourceScriptEntity>> getAllLxSourceScripts() {
     return (select(lxSourceScriptTable)
-          ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.sortOrder),
+            (t) => OrderingTerm.asc(t.createdAt),
+          ]))
         .get();
   }
 
@@ -264,6 +277,92 @@ class AppDatabase extends _$AppDatabase {
     return (delete(lxSourceScriptTable)
           ..where((t) => t.id.equals(id)))
         .go();
+  }
+
+  /// 批量更新脚本排序顺序
+  ///
+  /// [orderedIds] 为按顺序排列的脚本 ID 列表，索引即为 sortOrder。
+  Future<void> updateScriptSortOrders(List<String> orderedIds) async {
+    await batch((batch) {
+      for (int i = 0; i < orderedIds.length; i++) {
+        batch.update(
+          lxSourceScriptTable,
+          LxSourceScriptTableCompanion(sortOrder: Value(i)),
+          where: (t) => t.id.equals(orderedIds[i]),
+        );
+      }
+    });
+  }
+
+  // ========== Lx 音源使用记录 ==========
+
+  /// 获取指定脚本的所有库使用记录
+  Future<List<LxSourceUsageEntity>> getLxSourceUsages(String scriptId) {
+    return (select(lxSourceUsageTable)
+          ..where((t) => t.scriptId.equals(scriptId)))
+        .get();
+  }
+
+  /// 获取所有使用记录
+  Future<List<LxSourceUsageEntity>> getAllLxSourceUsages() {
+    return select(lxSourceUsageTable).get();
+  }
+
+  /// 累加使用记录（upsert 语义）
+  ///
+  /// 成功时 [success] 为 true，[durationMs] 为本次耗时。
+  /// 新记录的 min/max 初始化为 [durationMs]，已有记录则更新 min/max。
+  Future<void> incrementLxSourceUsage({
+    required String scriptId,
+    required String libraryId,
+    required bool success,
+    required int durationMs,
+  }) async {
+    final existing = await (select(lxSourceUsageTable)
+          ..where(
+            (t) =>
+                t.scriptId.equals(scriptId) & t.libraryId.equals(libraryId),
+          ))
+        .getSingleOrNull();
+
+    if (existing == null) {
+      await into(lxSourceUsageTable).insert(
+        LxSourceUsageTableCompanion.insert(
+          scriptId: scriptId,
+          libraryId: libraryId,
+          totalCount: Value(success ? 1 : 1),
+          successCount: Value(success ? 1 : 0),
+          maxDurationMs: Value(durationMs),
+          minDurationMs: Value(durationMs),
+          totalDurationMs: Value(durationMs),
+        ),
+      );
+    } else {
+      final newTotal = existing.totalCount + 1;
+      final newSuccess = existing.successCount + (success ? 1 : 0);
+      final newMax = existing.maxDurationMs == 0
+          ? durationMs
+          : (durationMs > existing.maxDurationMs
+              ? durationMs
+              : existing.maxDurationMs);
+      final newMin = existing.minDurationMs == 0
+          ? durationMs
+          : (durationMs < existing.minDurationMs
+              ? durationMs
+              : existing.minDurationMs);
+      await (update(lxSourceUsageTable)
+            ..where(
+              (t) =>
+                  t.scriptId.equals(scriptId) & t.libraryId.equals(libraryId),
+            ))
+          .write(LxSourceUsageTableCompanion(
+        totalCount: Value(newTotal),
+        successCount: Value(newSuccess),
+        maxDurationMs: Value(newMax),
+        minDurationMs: Value(newMin),
+        totalDurationMs: Value(existing.totalDurationMs + durationMs),
+      ));
+    }
   }
 
   // ========== 本地音乐库 - 曲目 ==========

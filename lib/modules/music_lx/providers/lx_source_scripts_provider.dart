@@ -17,7 +17,7 @@ import 'package:pomelo/services/logger/logger.dart';
 
 /// 所有 Lx 音源脚本列表
 ///
-/// 从 drift `lx_source_scripts` 表加载，按添加时间正序。
+/// 从 drift `lx_source_scripts` 表加载，按 sortOrder 升序。
 final lxSourceScriptsProvider = FutureProvider<List<LxSourceScript>>((
   ref,
 ) async {
@@ -36,6 +36,7 @@ final lxSourceScriptsProvider = FutureProvider<List<LxSourceScript>>((
           librariesJson: e.librariesJson,
           createdAt: e.createdAt,
           enabled: e.enabled,
+          sortOrder: e.sortOrder,
         ),
       )
       .toList();
@@ -88,7 +89,8 @@ class LxSourceScriptsNotifier extends Notifier<List<LxSourceScript>> {
       AppLogger.log.w('[LxSourceScripts] 脚本未注册任何库，仍保存以备后用');
     }
 
-    // 持久化
+    // 持久化（新脚本 sortOrder 设为当前列表长度，排到末尾）
+    final currentScripts = state;
     await _db.upsertLxSourceScript(
       LxSourceScriptTableCompanion.insert(
         id: id,
@@ -100,6 +102,7 @@ class LxSourceScriptsNotifier extends Notifier<List<LxSourceScript>> {
         script: scriptContent,
         librariesJson: Value(LxSourceScript.librariesToJson(libraries)),
         enabled: const Value(true),
+        sortOrder: Value(currentScripts.length),
       ),
     );
 
@@ -117,6 +120,16 @@ class LxSourceScriptsNotifier extends Notifier<List<LxSourceScript>> {
     ref.invalidate(lxSourceScriptsProvider);
     AppLogger.log.i('[LxSourceScripts] 脚本已删除 id=$id');
   }
+
+  /// 重新排序脚本
+  ///
+  /// [orderedIds] 为按新顺序排列的脚本 ID 列表。
+  /// 批量更新 sortOrder 后刷新 Provider。
+  Future<void> reorderScripts(List<String> orderedIds) async {
+    await _db.updateScriptSortOrders(orderedIds);
+    ref.invalidate(lxSourceScriptsProvider);
+    AppLogger.log.i('[LxSourceScripts] 脚本排序已更新, 顺序: $orderedIds');
+  }
 }
 
 /// Lx 音源脚本管理 Provider
@@ -124,3 +137,13 @@ final lxSourceScriptsNotifierProvider =
     NotifierProvider<LxSourceScriptsNotifier, List<LxSourceScript>>(
       LxSourceScriptsNotifier.new,
     );
+
+/// 所有 Lx 音源使用记录
+///
+/// 从 drift `lx_source_usages` 表加载，用于在音源设置页面展示成功率与耗时。
+/// 调用 [ref.invalidate] 刷新数据。
+final lxSourceUsagesProvider =
+    FutureProvider<List<LxSourceUsageEntity>>((ref) async {
+      final db = ref.watch(databaseProvider);
+      return db.getAllLxSourceUsages();
+    });

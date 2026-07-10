@@ -61,6 +61,91 @@ class ServerPlaybackRoutes {
     return !lower.startsWith('http://') && !lower.startsWith('https://');
   }
 
+  /// 解析播放链接，校验失败时按降级序列重试
+  ///
+  /// 流程：
+  /// 1. 优先使用已缓存 URL（[SourcedTrack.url] 或 [resolveValidUrl]）
+  /// 2. 调用 [validate] 校验 URL，通过则返回
+  /// 3. 校验失败则清空缓存，迭代 [SourcedTrackNotifier.downgradeList]：
+  ///    逐个音质获取新 URL → 校验 → 通过则缓存并返回
+  /// 4. 全部失败时尝试 [SourcedTrackNotifier.fallbackUrl]
+  /// 5. 仍失败返回 null（由调用方决定如何处理）
+  ///
+  /// [validate] 应返回 true 表示 URL 可用。
+  /// 内部会调用 [SourcedTrackNotifier.invalidateUrl] / [cacheUrl] 维护缓存状态。
+  Future<String?> _resolveUrlWithDowngrade(
+    SourcedTrack track,
+    Future<bool> Function(String url) validate,
+  ) async {
+    final notifier = ref.read(sourcedTrackProvider(track.query).notifier);
+
+    // 1. 初始 URL（命中缓存或首次解析）
+    final initialUrl = track.url ?? await notifier.resolveValidUrl();
+    if (initialUrl.isNotEmpty && await validate(initialUrl)) {
+      return initialUrl;
+    }
+
+    // 2. 降级重试
+    AppLogger.log.w(
+      '[Playback] URL 校验失败，开始降级重试: ${track.query.title}',
+    );
+    notifier.invalidateUrl();
+
+    for (final quality in notifier.downgradeList) {
+      try {
+        final url = await notifier.getUrlForQuality(quality);
+        if (url.isEmpty) continue;
+        if (await validate(url)) {
+          notifier.cacheUrl(url, quality);
+          AppLogger.log.i(
+            '[Playback] 降级成功: quality=$quality, track=${track.query.title}',
+          );
+          return url;
+        }
+        AppLogger.log.w(
+          '[Playback] 降级 URL 校验失败: quality=$quality',
+        );
+      } catch (e) {
+        AppLogger.log.w(
+          '[Playback] 降级获取链接失败 quality=$quality: $e',
+        );
+      }
+    }
+
+    // 3. 回退到 track.src / track.path
+    final fallback = notifier.fallbackUrl;
+    if (fallback.isNotEmpty && await validate(fallback)) {
+      AppLogger.log.i(
+        '[Playback] 回退成功: src/path, track=${track.query.title}',
+      );
+      return fallback;
+    }
+
+    AppLogger.log.e(
+      '[Playback] 所有音质均无法获取有效播放链接: ${track.query.title}',
+    );
+    return null;
+  }
+
+  /// HEAD 校验 URL 是否可用（status < 400）
+  Future<bool> _validateUrlByHead(String url) async {
+    try {
+      final options = Options(
+        headers: {
+          'Cache-Control': 'max-age=3600',
+          'Connection': 'keep-alive',
+          'host': Uri.parse(url).host,
+        },
+        validateStatus: (status) => true,
+      );
+      final res = await dio.head(url, options: options);
+      return res.statusCode != null && res.statusCode! < 400;
+    } catch (e) {
+      AppLogger.log.w('[Playback] HEAD 校验异常: $e');
+      return false;
+    }
+  }
+
   Future<SourcedTrack?> _getSourcedTrack(
     Request request,
     String trackId,
@@ -104,15 +189,14 @@ class ServerPlaybackRoutes {
       }
     }
 
-    // 2. 回退到 HTTP HEAD
+    // 2. 回退到 HTTP HEAD（带降级重试）
     AppLogger.log.d(
       '[Playback] HEAD request for track: ${track.query.title}, Headers: ${request.headers}',
     );
-    final url =
-        track.url ??
-        await ref
-            .read(sourcedTrackProvider(track.query).notifier)
-            .resolveValidUrl();
+    final url = await _resolveUrlWithDowngrade(track, _validateUrlByHead);
+    if (url == null) {
+      throw Exception('无法获取有效的播放链接');
+    }
     final options = Options(
       headers: {
         'Cache-Control': 'max-age=3600',
@@ -161,15 +245,14 @@ class ServerPlaybackRoutes {
       }
     }
 
-    // 2. 回退到 HTTP GET
+    // 2. 回退到 HTTP GET（带降级重试）
     AppLogger.log.d(
       '[Playback] GET request for track: ${track.query.title}, Headers: ${request.headers}',
     );
-    final url =
-        track.url ??
-        await ref
-            .read(sourcedTrackProvider(track.query).notifier)
-            .resolveValidUrl();
+    final url = await _resolveUrlWithDowngrade(track, _validateUrlByHead);
+    if (url == null) {
+      throw Exception('无法获取有效的播放链接');
+    }
 
     final options = Options(
       headers: {
