@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:collection/collection.dart';
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:dio/dio.dart' hide Response;
 import 'package:drift/drift.dart' show Value;
@@ -13,10 +14,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
+import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/provider/server/sourced_track.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
-import 'package:pomelo/services/audio_player/media.dart';
 import 'package:pomelo/services/logger/logger.dart';
 import 'package:shelf/shelf.dart';
 
@@ -54,157 +55,64 @@ class ServerPlaybackRoutes {
     );
   }
 
-  /// 解析并 HEAD 校验播放链接
-  ///
-  /// 流程（优先级从高到低）：
-  /// 1. 命中 provider 内存缓存 → 直接返回（可能是 URL 或本地文件路径）
-  /// 2. 持久化的本地缓存文件（按降级序列匹配首个存在的文件）→ 返回文件路径
-  /// 3. 持久化的播放链接 + HEAD 校验 → 返回 URL
-  /// 4. 重新获取链接（按降级序列逐个 getUrlForQuality + HEAD 校验）+ 持久化 URL
-  /// 5. 回退到 `track.src` / `track.path` + HEAD 校验
-  /// 6. 仍失败抛出 `无法获取有效的播放链接`
-  ///
-  /// 返回值可能是 HTTP(S) URL，也可能是本地文件绝对路径，调用方需通过
-  /// [_isLocalPath] 判断后再决定使用 [dio] 请求或 [File] 读取。
-  Future<String> _resolveValidUrl(Track track) async {
-    final notifier = ref.read(sourcedTrackProvider(track).notifier);
-
-    // 1. 命中内存缓存直接返回
-    final cached = ref.read(sourcedTrackProvider(track)).url;
-    if (cached != null && cached.isNotEmpty) return cached;
-
-    final downgradeList = notifier.downgradeList;
-    AppLogger.log.i(
-      '[Playback] 解析开始: track=${track.title}, 降级序列=$downgradeList',
-    );
-
-    // 2. 优先使用持久化的本地缓存文件
-    try {
-      final cachedFile = await notifier.findCachedFile(downgradeList);
-      if (cachedFile != null) {
-        notifier.cacheUrl(cachedFile.path, cachedFile.quality);
-        AppLogger.log.i(
-          '[Playback] 命中本地缓存文件: quality=${cachedFile.quality}, track=${track.title}',
-        );
-        return cachedFile.path;
-      }
-    } catch (e) {
-      AppLogger.log.w('[Playback] 查找本地缓存文件失败: $e');
-    }
-
-    // 3. 次选持久化的播放链接（需 HEAD 校验）
-    try {
-      final cachedUrl = await notifier.findCachedUrl(downgradeList);
-      if (cachedUrl != null) {
-        if (await _headValidate(cachedUrl.url)) {
-          notifier.cacheUrl(cachedUrl.url, cachedUrl.quality);
-          AppLogger.log.i(
-            '[Playback] 命中缓存URL: quality=${cachedUrl.quality}, track=${track.title}',
-          );
-          return cachedUrl.url;
-        } else {
-          AppLogger.log.w(
-            '[Playback] 缓存URL失效: quality=${cachedUrl.quality}, url=${cachedUrl.url}',
-          );
-        }
-      }
-    } catch (e) {
-      AppLogger.log.w('[Playback] 查找缓存URL失败: $e');
-    }
-
-    // 4. 全部未命中或 URL 失效，重新获取播放链接
-    for (final quality in downgradeList) {
-      try {
-        final url = await notifier.getUrlForQuality(quality);
-        if (url.isEmpty) {
-          AppLogger.log.w('[Playback] 获取链接为空 quality=$quality');
-          continue;
-        }
-        if (await _headValidate(url)) {
-          notifier.cacheUrl(url, quality);
-          // 持久化 URL，便于下次直接命中
-          await notifier.saveUrlToPersistence(quality, url);
-          AppLogger.log.i(
-            '[Playback] 解析成功: quality=$quality, track=${track.title}',
-          );
-          return url;
-        }
-        AppLogger.log.w('[Playback] HEAD 失败 quality=$quality, url=$url');
-      } catch (e) {
-        AppLogger.log.w('[Playback] 获取链接失败 quality=$quality: $e');
-      }
-    }
-
-    // 5. 所有音质路径均失败，最后回退到 track.src / track.path
-    final fallback = notifier.fallbackUrl;
-    if (fallback.isNotEmpty && await _headValidate(fallback)) {
-      notifier.cacheUrl(fallback, null);
-      AppLogger.log.i('[Playback] 回退成功: src/path, track=${track.title}');
-      return fallback;
-    }
-
-    AppLogger.log.e('[Playback] 所有音质均无法获取有效播放链接: ${track.title}');
-    throw Exception('无法获取有效的播放链接');
-  }
-
   /// 判断字符串是否为本地文件路径（而非 HTTP(S) URL）
   bool _isLocalPath(String s) {
     final lower = s.toLowerCase();
     return !lower.startsWith('http://') && !lower.startsWith('https://');
   }
 
-  /// HEAD 校验
-  ///
-  /// 返回 true 表示链接有效（2xx/3xx），false 表示无效或异常。
-  ///
-  /// 对于本地文件路径（非 http(s)），改为校验文件是否存在。
-  Future<bool> _headValidate(String url) async {
-    // 本地文件路径：校验文件存在性
-    if (_isLocalPath(url)) {
-      try {
-        return File(url).existsSync();
-      } catch (e) {
-        AppLogger.log.w('[Playback] 本地文件校验异常 path=$url: $e');
-        return false;
-      }
-    }
-    try {
-      final options = Options(
-        headers: {
-          'Cache-Control': 'max-age=3600',
-          'Connection': 'keep-alive',
-          'host': Uri.parse(url).host,
-        },
-        validateStatus: (status) => true,
-      );
-      final res = await dio.head(url, options: options);
-      return res.statusCode != null && res.statusCode! < 400;
-    } catch (e) {
-      AppLogger.log.w('[Playback] HEAD 异常 url=$url: $e');
-      return false;
-    }
-  }
-
-  Future<Track?> _getSourcedTrack() async {
+  Future<SourcedTrack?> _getSourcedTrack(
+    Request request,
+    String trackId,
+  ) async {
     // 从底层播放器获取当前曲目信息
-    final playlist = audioPlayer.playlist;
-    if (playlist.index < 0 || playlist.medias.isEmpty) return null;
-    final media = playlist.medias.elementAtOrNull(playlist.index);
-    if (media == null) return null;
-    return PomeloMedia.media(media).track;
+    final playlist = ref.read(audioPlayerProvider);
+    final track = playlist.tracks.firstWhereOrNull((v) => v.id == trackId);
+    if (track == null) {
+      return null;
+    }
+    final activeSourcedTrack = await ref.read(
+      sourcedTrackProvider(track).future,
+    );
+    return activeSourcedTrack;
   }
 
   Future<dio_lib.Response> streamTrackInformation(
     Request request,
-    Track track,
-    String url,
+    SourcedTrack track,
   ) async {
-    AppLogger.log.d(
-      '[Playback] HEAD request for track: ${track.title}, Headers: ${request.headers}',
-    );
+    // 1. 优先使用本地缓存文件
+    final localPath = track.path;
+    if (localPath != null && localPath.isNotEmpty) {
+      final file = File(localPath);
+      if (await file.exists()) {
+        final stat = await file.stat();
+        final extension = MusicCacheDir.extensionFromUrl(localPath);
+        final contentType = MusicCacheDir.contentTypeFromExtension(extension);
+        AppLogger.log.d(
+          '[Playback] 命中本地缓存文件(HEAD): ${track.query.title}, path=$localPath',
+        );
+        return dio_lib.Response(
+          requestOptions: RequestOptions(path: localPath),
+          statusCode: 200,
+          headers: Headers.fromMap({
+            'content-type': [contentType],
+            'content-length': [stat.size.toString()],
+            'accept-ranges': ['bytes'],
+          }),
+        );
+      }
+    }
 
-    // _resolveValidUrl 已完成 HEAD 校验与音质降级，这里再做一次 HEAD
-    // 以获取最新的响应头（content-length、content-type、accept-ranges 等）
+    // 2. 回退到 HTTP HEAD
+    AppLogger.log.d(
+      '[Playback] HEAD request for track: ${track.query.title}, Headers: ${request.headers}',
+    );
+    final url =
+        track.url ??
+        await ref
+            .read(sourcedTrackProvider(track.query).notifier)
+            .resolveValidUrl();
     final options = Options(
       headers: {
         'Cache-Control': 'max-age=3600',
@@ -218,13 +126,50 @@ class ServerPlaybackRoutes {
 
   Future<dio_lib.Response> streamTrack(
     Request request,
-    Track track,
+    SourcedTrack track,
     Map<String, dynamic> headers,
-    String url,
   ) async {
+    // 1. 优先使用本地缓存文件
+    final localPath = track.path;
+    if (localPath != null && localPath.isNotEmpty) {
+      final file = File(localPath);
+      if (await file.exists()) {
+        final stat = await file.stat();
+        final extension = MusicCacheDir.extensionFromUrl(localPath);
+        final contentType = MusicCacheDir.contentTypeFromExtension(extension);
+        AppLogger.log.d(
+          '[Playback] 命中本地缓存文件(GET): ${track.query.title}, path=$localPath',
+        );
+        return dio_lib.Response(
+          requestOptions: RequestOptions(path: localPath),
+          statusCode: 200,
+          headers: Headers.fromMap({
+            'content-type': [contentType],
+            'content-length': [stat.size.toString()],
+            'accept-ranges': ['bytes'],
+          }),
+          data: ResponseBody(
+            file.openRead().map((chunk) => Uint8List.fromList(chunk)),
+            stat.size,
+            headers: {
+              'content-type': [contentType],
+              'content-length': [stat.size.toString()],
+              'accept-ranges': ['bytes'],
+            },
+          ),
+        );
+      }
+    }
+
+    // 2. 回退到 HTTP GET
     AppLogger.log.d(
-      '[Playback] GET request for track: ${track.title}, Headers: ${request.headers}',
+      '[Playback] GET request for track: ${track.query.title}, Headers: ${request.headers}',
     );
+    final url =
+        track.url ??
+        await ref
+            .read(sourcedTrackProvider(track.query).notifier)
+            .resolveValidUrl();
 
     final options = Options(
       headers: {
@@ -240,7 +185,7 @@ class ServerPlaybackRoutes {
     final res = await dio.get<ResponseBody>(url, options: options);
 
     AppLogger.log.d(
-      '[Playback] Response for track: ${track.title}, '
+      '[Playback] Response for track: ${track.query.title}, '
       'Status: ${res.statusCode}, Headers: ${res.headers.map}',
     );
 
@@ -250,31 +195,12 @@ class ServerPlaybackRoutes {
   /// @head('/stream/<trackId>')
   Future<Response> headStreamTrackId(Request request, String trackId) async {
     try {
-      final activeTrack = await _getSourcedTrack();
-      if (activeTrack == null || activeTrack.src == null) {
+      final activeTrack = await _getSourcedTrack(request, trackId);
+      if (activeTrack == null) {
         return Response.notFound('No active track or track is not streamable');
       }
-      final url = await _resolveValidUrl(activeTrack);
 
-      // 本地缓存文件：直接返回文件元信息
-      if (_isLocalPath(url)) {
-        final file = File(url);
-        if (!await file.exists()) {
-          return Response.notFound('Cache file not found');
-        }
-        final stat = await file.stat();
-        final extension = MusicCacheDir.extensionFromUrl(url);
-        return Response(
-          200,
-          headers: {
-            'content-type': [MusicCacheDir.contentTypeFromExtension(extension)],
-            'content-length': [stat.size.toString()],
-            'accept-ranges': ['bytes'],
-          },
-        );
-      }
-
-      final res = await streamTrackInformation(request, activeTrack, url);
+      final res = await streamTrackInformation(request, activeTrack);
 
       return Response(
         res.statusCode!,
@@ -293,44 +219,31 @@ class ServerPlaybackRoutes {
   /// @get('/stream/<trackId>')
   Future<Response> getStreamTrackId(Request request, String trackId) async {
     try {
-      final activeTrack = await _getSourcedTrack();
-      if (activeTrack == null || activeTrack.src == null) {
-        return Response.notFound('No active track or track is not streamable');
-      }
-      final url = await _resolveValidUrl(activeTrack);
-
-      // 本地缓存文件：直接以文件流响应（无需再次缓存）
-      if (_isLocalPath(url)) {
-        final file = File(url);
-        if (!await file.exists()) {
-          return Response.notFound('Cache file not found');
-        }
-        final stat = await file.stat();
-        final extension = MusicCacheDir.extensionFromUrl(url);
-        return Response(
-          200,
-          body: file.openRead(),
-          headers: {
-            'content-type': [MusicCacheDir.contentTypeFromExtension(extension)],
-            'content-length': [stat.size.toString()],
-            'accept-ranges': ['bytes'],
-          },
-        );
+      final activeTrack = await _getSourcedTrack(request, trackId);
+      if (activeTrack == null) {
+        return Response.notFound('Track not found in the current queue');
       }
 
-      final res = await streamTrack(request, activeTrack, request.headers, url);
+      final res = await streamTrack(request, activeTrack, request.headers);
 
       if (res.data is ResponseBody) {
         final responseBody = res.data as ResponseBody;
         final sanitizedHeaders = _sanitizeHeaders(res.headers.map);
 
-        // 读取当前解析命中的音质（用于持久化缓存路径）
-        final quality = ref.read(sourcedTrackProvider(activeTrack)).quality;
+        // 本地缓存文件：直接返回文件流，无需再次缓存
+        if (_isLocalPath(res.requestOptions.path)) {
+          return Response(
+            res.statusCode!,
+            body: responseBody.stream,
+            headers: sanitizedHeaders,
+          );
+        }
 
-        // 缓存音频流到文件（异步，不阻塞响应）
+        // HTTP 流：缓存音频流到文件（异步，不阻塞响应）
+        final quality = activeTrack.quality;
         final cachedStream = await _teeStreamToCache(
           responseBody.stream,
-          activeTrack,
+          activeTrack.query,
           sanitizedHeaders,
           quality: quality,
         );
@@ -559,7 +472,7 @@ class ServerPlaybackRoutes {
   Future<void> _saveToLocalLibrary(Track track, String cachePath) async {
     try {
       final database = ref.read(databaseProvider);
-      final sourceId = track.source?.id ?? 'unknown';
+      final sourceId = track.source.id;
 
       // 尝试从缓存文件读取标签信息
       Track enriched = track;
@@ -608,7 +521,7 @@ class ServerPlaybackRoutes {
         path: Value(cachePath),
         src: Value(enriched.src),
         sourceId: sourceId,
-        libraryId: Value(enriched.source?.libraryId),
+        libraryId: Value(enriched.source.libraryId),
         isLocal: const Value(false),
         trackJson: jsonEncode(enriched.toJson()),
       );

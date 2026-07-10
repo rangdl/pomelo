@@ -1,11 +1,10 @@
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
-import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';
-import 'package:pomelo/modules/music_lx/providers/lx_providers.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 
 /// 所有已注册的音乐服务列表
 ///
@@ -14,13 +13,13 @@ import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart'
 /// 本 Provider 随之刷新。
 final musicServersProvider = FutureProvider<List<MusicServer>>((ref) async {
   final local = await ref.watch(localMusicServerProvider.future);
-  final lx = await ref.watch(lxMusicServerProvider.future);
+  // final lx = await ref.watch(lxMusicServerProvider.future);
   final lxServer = await ref.watch(lxServerMusicServerProvider.future);
   final subsonic = await ref.watch(subsonicServersProvider.future);
 
   return [
     local,
-    ?lx,
+    // ?lx,
     ?lxServer,
     ...subsonic,
   ];
@@ -38,9 +37,7 @@ final musicServerByProvider = FutureProvider.family<MusicServer?, String>((
   await ref.watch(musicServerConfigsProvider.future);
   final servers = await ref.watch(musicServersProvider.future);
   return servers.firstWhereOrNull((s) => s.sourceId == sourceId) ??
-      servers.firstWhereOrNull(
-        (s) => s.libraries.any((v) => v.id == sourceId),
-      );
+      servers.firstWhereOrNull((s) => s.libraries.any((v) => v.id == sourceId));
 });
 
 /// 按分类分组的所有 MusicServer

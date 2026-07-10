@@ -100,27 +100,33 @@ class _PhoneLayout extends HookConsumerWidget {
     return Scaffold(
       footers: [
         const MiniPlayer(),
-        NavigationBar(
-          alignment: NavigationBarAlignment.spaceAround,
-          labelType: NavigationLabelType.none,
-          expanded: extended,
-          onSelected: (key) {
-            final index = _navDestinations.indexWhere((d) => d.key == key);
-            if (index >= 0 && index != tabsRouter.activeIndex) {
-              selectedKey.value = key;
-              tabsRouter.setActiveIndex(index);
-            }
-          },
-          selectedKey: selectedKey.value,
-          children: _navDestinations
-              .map(
-                (d) => NavigationItem(
-                  key: d.key,
-                  label: Text(d.label),
-                  child: Icon(d.icon),
-                ),
-              )
-              .toList(),
+        SafeArea(
+          top: false,
+          child: NavigationBar(
+            alignment: NavigationBarAlignment.spaceAround,
+            labelType: NavigationLabelType.all,
+            labelSize: NavigationLabelSize.large,
+            expanded: extended,
+            expandedSize: 72,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            onSelected: (key) {
+              final index = _navDestinations.indexWhere((d) => d.key == key);
+              if (index >= 0 && index != tabsRouter.activeIndex) {
+                selectedKey.value = key;
+                tabsRouter.setActiveIndex(index);
+              }
+            },
+            selectedKey: selectedKey.value,
+            children: _navDestinations
+                .map(
+                  (d) => NavigationItem(
+                    key: d.key,
+                    label: Text(d.label),
+                    child: Icon(d.icon, size: 26),
+                  ),
+                )
+                .toList(),
+          ),
         ),
       ],
       child: children[tabsRouter.activeIndex],

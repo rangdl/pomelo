@@ -11,17 +11,44 @@
 library;
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/toast.dart';
+import 'package:pomelo/modules/music_lx/providers/lx_providers.dart';
 import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart';
+
+@immutable
+class TrackSource {
+  final String url;
+
+  /// 本地缓存文件路径（空字符串表示未缓存）
+  final String path;
+  final String type;
+  final String size;
+  const TrackSource({
+    required this.url,
+    this.path = '',
+    required this.type,
+    required this.size,
+  });
+
+  TrackSource copyWith({String? url, String? path}) {
+    return TrackSource(
+      url: url ?? this.url,
+      path: path ?? this.path,
+      type: type,
+      size: size,
+    );
+  }
+}
 
 /// 已解析音源曲目状态
 ///
@@ -31,22 +58,165 @@ import 'package:pomelo/modules/music/providers/music_providers.dart';
 /// - [url]: 已解析的播放链接（解析前为 null）
 /// - [quality]: 命中的音质标识（如 'flac'、'320k'）
 @immutable
-class SourcedTrackState {
+class SourcedTrack {
+  static const _unsetQuality = Object();
+
+  final Ref ref;
   final Track query;
-  final String? url;
+  final List<TrackSource> sources;
   final String? quality;
 
-  const SourcedTrackState({required this.query, this.url, this.quality});
+  const SourcedTrack({
+    required this.ref,
+    required this.query,
+    required this.sources,
+    this.quality,
+  });
 
-  /// 状态唯一标识，等于 `query.id`
-  String get id => query.id;
-
-  SourcedTrackState copyWith({String? url, String? quality}) {
-    return SourcedTrackState(
+  /// [quality] 传 null = 显式清除；不传 = 保持原值
+  SourcedTrack copyWith({
+    Object? quality = _unsetQuality,
+    List<TrackSource>? sources,
+  }) {
+    return SourcedTrack(
+      ref: ref,
       query: query,
-      url: url ?? this.url,
-      quality: quality ?? this.quality,
+      sources: sources ?? this.sources,
+      quality: identical(quality, _unsetQuality)
+          ? this.quality
+          : quality as String?,
     );
+  }
+
+  String? get url {
+    // 优先使用已解析的音质，其次用用户偏好音质
+    final targetQuality =
+        quality ?? ref.read(userPreferenceProvider).lxServerQuality.id;
+    final source = sources.cast<TrackSource?>().firstWhere(
+      (v) => v?.type == targetQuality,
+      orElse: () => null,
+    );
+    if (source == null) return null;
+    return source.url.isEmpty ? null : source.url;
+  }
+
+  /// 当前音质对应的本地缓存文件路径（null 表示未缓存）
+  String? get path {
+    final targetQuality =
+        quality ?? ref.read(userPreferenceProvider).lxServerQuality.id;
+    final source = sources.cast<TrackSource?>().firstWhere(
+      (v) => v?.type == targetQuality,
+      orElse: () => null,
+    );
+    if (source == null) return null;
+    return source.path.isEmpty ? null : source.path;
+  }
+
+  static Future<SourcedTrack> fetchFromTrack({
+    required Ref ref,
+    required Track query,
+  }) async {
+    final url = query.src ?? query.path ?? '';
+
+    // 如果有在线播放链接，直接返回 [TrackSource]
+    final sources = url.isNotEmpty
+        ? [TrackSource(url: url, type: '', size: query.duration.toString())]
+        : await resolveValidSources(ref, query);
+
+    return SourcedTrack(ref: ref, query: query, sources: sources);
+  }
+
+  /// 交换当前音质为下一个可用音质，返回新的 [SourcedTrack] 状态
+  Future<SourcedTrack?> swapWithQuality() async {
+    return SourcedTrack(ref: ref, query: query, sources: sources);
+  }
+
+  static Future<List<TrackSource>> resolveValidSources(
+    Ref ref,
+    Track query,
+  ) async {
+    final meta = query.meta ?? {};
+    final types = (meta['types'] as List<dynamic>?) ?? [];
+
+    final sources = types.map((v) {
+      final map = v as Map<String, dynamic>;
+      return TrackSource(
+        url: '',
+        type: map['type'] as String? ?? '',
+        size: map['size'] as String? ?? '',
+      );
+    }).toList();
+    // 读取用户偏好音质
+    final preferredQuality = ref
+        .read(userPreferenceProvider)
+        .lxServerQuality
+        .id;
+
+    // 仅解析偏好音质的 URL，其余留空待 Notifier 按需解析
+    final List<TrackSource> resolved = [];
+    for (final source in sources) {
+      if (source.type == preferredQuality) {
+        final url = await _getMusicUrl(ref, query, quality: preferredQuality);
+        resolved.add(source.copyWith(url: url));
+      } else {
+        resolved.add(source);
+      }
+    }
+
+    return resolved;
+  }
+
+  /// 调用对应 MusicServer 获取播放链接
+  static Future<String> _getMusicUrl(
+    Ref ref,
+    Track track, {
+    required String quality,
+  }) async {
+    final sourceId = track.source.id;
+    
+    // 等待服务列表加载完成，然后查找对应服务
+    await ref.read(musicServersProvider.future);
+    final service = await ref.read(musicServerByProvider(sourceId).future);
+    if (service == null) return track.src ?? track.path ?? '';
+    if (service.useLocalAudioSource) {
+      final localUrl = await _getMusicUrlLocal(ref, track, quality);
+      if (localUrl != null) return localUrl;
+      AppLogger.log.d('[SourcedTrack] 本地音源未命中，回退在线解析: track=${track.title}');
+    }
+    return service.getMusicUrl(track, quality: quality);
+  }
+
+  /// 尝试通过本地音源脚本获取播放链接
+  ///
+  /// 使用 [LxSourceEngine] 调用本地音源脚本解析播放链接。
+  /// 当脚本不支持指定库或解析失败时返回 null，回退到在线解析。
+  static Future<String?> _getMusicUrlLocal(
+    Ref ref,
+    Track track,
+    String quality,
+  ) async {
+    try {
+      final libraryId = track.source.libraryId;
+      if (libraryId != null && libraryId.isNotEmpty) {
+        final engine = await ref.read(lxSourceEngineProvider.future);
+        if (!engine.hasLibrary(libraryId)) {
+          AppLogger.log.d('[LxServer] 本地音源脚本不支持库 $libraryId，跳过');
+          return null;
+        }
+        final url = await engine.getMusicUrl(
+          libraryId,
+          track,
+          quality: quality,
+        );
+        if (url.isNotEmpty) {
+          AppToast().success('本地音源插件解析成功: ${track.title}');
+          return url;
+        }
+      }
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[LxServer] 本地音源解析失败: $e');
+    }
+    return null;
   }
 }
 
@@ -54,15 +224,65 @@ class SourcedTrackState {
 ///
 /// 通过 [NotifierProvider.family] 以 [Track] 为参数构造。
 /// 内部封装 [resolveValidUrl] 完成链接解析（仅校验非空，不做 HEAD 校验）。
-class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
+class SourcedTrackNotifier extends AsyncNotifier<SourcedTrack> {
   SourcedTrackNotifier(this.track);
 
   /// 构建参数：曲目对象
   final Track track;
 
   @override
-  SourcedTrackState build() {
-    return SourcedTrackState(query: track);
+  Future<SourcedTrack> build() async {
+    // 1. 优先从持久化加载（填充已缓存的 URL 和本地文件路径）
+    final persisted = await _loadFromPersistence();
+    if (persisted != null) return persisted;
+
+    // 2. 回退到实时解析
+    return SourcedTrack.fetchFromTrack(ref: ref, query: track);
+  }
+
+  /// 从数据库加载持久化记录，构建带缓存 URL 和本地路径的 [SourcedTrack]
+  ///
+  /// 仅当 DB 中有记录且 track 有音质类型（meta['types']）时返回非 null。
+  /// 直接 URL 曲目（无音质类型）不使用持久化。
+  Future<SourcedTrack?> _loadFromPersistence() async {
+    try {
+      final db = ref.read(databaseProvider);
+      final record = await db.getSourcedTrack(track.id);
+      if (record == null) return null;
+
+      final meta = track.meta ?? {};
+      final types = (meta['types'] as List<dynamic>?) ?? [];
+      if (types.isEmpty) return null;
+
+      final urlMap = _parseStringMap(record.urlMap);
+      final cachePathMap = _parseStringMap(record.cachePathMap);
+
+      final sources = types.map((v) {
+        final map = v as Map<String, dynamic>;
+        final type = map['type'] as String? ?? '';
+        return TrackSource(
+          url: urlMap[type] ?? '',
+          path: cachePathMap[type] ?? '',
+          type: type,
+          size: map['size'] as String? ?? '',
+        );
+      }).toList();
+
+      AppLogger.log.d(
+        '[SourcedTrack] 持久化加载: track=${track.title}, '
+        'urls=${urlMap.length}, paths=${cachePathMap.length}',
+      );
+      return SourcedTrack(ref: ref, query: track, sources: sources);
+    } catch (e) {
+      AppLogger.log.w('[SourcedTrack] 加载持久化记录失败: $e');
+      return null;
+    }
+  }
+
+  Future<SourcedTrack> swapWithQuality() async {
+    return await update((prev) async {
+      return await prev.swapWithQuality() as SourcedTrack;
+    });
   }
 
   /// 解析播放链接（仅校验非空）
@@ -77,8 +297,8 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   /// 与音质降级重试。
   Future<String> resolveValidUrl() async {
     // 命中缓存直接返回
-    if (state.url != null && state.url!.isNotEmpty) {
-      return state.url!;
+    if (state.value?.url != null && state.value!.url!.isNotEmpty) {
+      return state.value?.url ?? '';
     }
 
     final preferredQuality = ref
@@ -103,7 +323,12 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
           AppLogger.log.w('[SourcedTrack] 获取链接为空 quality=$quality');
           continue;
         }
-        state = state.copyWith(url: url, quality: quality);
+        update((prev) {
+          final newSources = prev.sources
+              .map((s) => s.type == quality ? s.copyWith(url: url) : s)
+              .toList();
+          return prev.copyWith(quality: quality, sources: newSources);
+        });
         AppLogger.log.i(
           '[SourcedTrack] 解析成功: quality=$quality, track=${track.title}',
         );
@@ -116,7 +341,8 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
     // 所有音质路径均返回空，最后回退到 track.src / track.path
     final fallback = track.src ?? track.path ?? '';
     if (fallback.isNotEmpty) {
-      state = state.copyWith(url: fallback, quality: null);
+      update((prev) => prev.copyWith(quality: null));
+      // state = state.copyWith(url: fallback, quality: null);
       AppLogger.log.i('[SourcedTrack] 回退成功: src/path, track=${track.title}');
       return fallback;
     }
@@ -161,14 +387,44 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
 
   /// 调用对应 MusicServer 获取播放链接
   Future<String> _getMusicUrl(Track track, {required String quality}) async {
-    final sourceId = track.source?.id;
-    if (sourceId == null) return track.src ?? track.path ?? '';
-
+    final sourceId = track.source.id;
+    
     // 等待服务列表加载完成，然后查找对应服务
     await ref.read(musicServersProvider.future);
     final service = await ref.read(musicServerByProvider(sourceId).future);
     if (service == null) return track.src ?? track.path ?? '';
+    if (service.useLocalAudioSource) {
+      final localUrl = await _getMusicUrlLocal(track, quality);
+      if (localUrl != null) return localUrl;
+      AppLogger.log.d('[SourcedTrack] 本地音源未命中，回退在线解析: track=${track.title}');
+    }
     return service.getMusicUrl(track, quality: quality);
+  }
+
+  /// 尝试通过本地音源脚本获取播放链接
+  ///
+  /// 使用 [LxSourceEngine] 调用本地音源脚本解析播放链接。
+  /// 当脚本不支持指定库或解析失败时返回 null，回退到在线解析。
+  Future<String?> _getMusicUrlLocal(Track track, String quality) async {
+    try {
+      final libraryId = track.source.libraryId;
+      if (libraryId != null && libraryId.isNotEmpty) {
+        final engine = await ref.read(lxSourceEngineProvider.future);
+        if (!engine.hasLibrary(libraryId)) {
+          AppLogger.log.d('[LxServer] 本地音源脚本不支持库 $libraryId，跳过');
+          return null;
+        }
+        final url = await engine.getMusicUrl(
+          libraryId,
+          track,
+          quality: quality,
+        );
+        if (url.isNotEmpty) return url;
+      }
+    } catch (e) {
+      AppLogger.log.w('[LxServer] 本地音源解析失败: $e');
+    }
+    return null;
   }
 
   // ======================================================================
@@ -205,72 +461,37 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   ///
   /// 供调用方在 HEAD 校验通过后回写缓存。
   void cacheUrl(String url, String? quality) {
-    state = state.copyWith(url: url, quality: quality);
+    update((prev) {
+      if (quality == null) return prev.copyWith(quality: null);
+      final newSources = prev.sources
+          .map((s) => s.type == quality ? s.copyWith(url: url) : s)
+          .toList();
+      return prev.copyWith(quality: quality, sources: newSources);
+    });
   }
 
   /// 失效已缓存的 URL
   ///
-  /// 清空 [url] 和 [quality]，强制下次 [resolveValidUrl] 重新解析。
+  /// 清空 [quality]，强制下次 [resolveValidUrl] 重新解析。
   void invalidateUrl() {
-    state = SourcedTrackState(query: track);
+    update((prev) => prev.copyWith(quality: null));
+  }
+
+  /// 缓存本地文件路径与音质
+  ///
+  /// 供调用方在缓存文件写入完成后回写内存状态。
+  void cacheLocalPath(String path, String quality) {
+    update((prev) {
+      final newSources = prev.sources
+          .map((s) => s.type == quality ? s.copyWith(path: path) : s)
+          .toList();
+      return prev.copyWith(quality: quality, sources: newSources);
+    });
   }
 
   // ======================================================================
   // 持久化：通过 drift 数据库缓存解析结果（URL + 缓存文件路径）
   // ======================================================================
-
-  /// 从数据库加载持久化记录
-  Future<SourcedTrackEntity?> _loadPersisted() async {
-    try {
-      final db = ref.read(databaseProvider);
-      return db.getSourcedTrack(track.id);
-    } catch (e) {
-      AppLogger.log.w('[SourcedTrack] 加载持久化记录失败: $e');
-      return null;
-    }
-  }
-
-  /// 查找持久化的本地缓存文件
-  ///
-  /// 按 [qualities] 顺序查找，返回首个存在且文件存在的缓存路径。
-  Future<({String quality, String path})?> findCachedFile(
-    List<String> qualities,
-  ) async {
-    final record = await _loadPersisted();
-    if (record == null) return null;
-
-    final cachePathMap = _parseStringMap(record.cachePathMap);
-    for (final quality in qualities) {
-      final path = cachePathMap[quality];
-      if (path != null && path.isNotEmpty) {
-        final file = File(path);
-        if (await file.exists()) {
-          return (quality: quality, path: path);
-        }
-      }
-    }
-    return null;
-  }
-
-  /// 查找持久化的播放链接
-  ///
-  /// 按 [qualities] 顺序查找，返回首个非空的 URL。
-  /// 调用方需自行 HEAD 校验。
-  Future<({String quality, String url})?> findCachedUrl(
-    List<String> qualities,
-  ) async {
-    final record = await _loadPersisted();
-    if (record == null) return null;
-
-    final urlMap = _parseStringMap(record.urlMap);
-    for (final quality in qualities) {
-      final url = urlMap[quality];
-      if (url != null && url.isNotEmpty) {
-        return (quality: quality, url: url);
-      }
-    }
-    return null;
-  }
 
   /// 持久化指定音质的播放链接
   Future<void> saveUrlToPersistence(String quality, String url) async {
@@ -284,8 +505,8 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
       await db.upsertSourcedTrack(
         SourcedTrackTableCompanion(
           trackId: Value(track.id),
-          sourceId: Value(track.source?.id ?? ''),
-          libraryId: Value(track.source?.libraryId),
+          sourceId: Value(track.source.id),
+          libraryId: Value(track.source.libraryId),
           qualities: Value(jsonEncode(_collectAvailableQualities())),
           urlMap: Value(jsonEncode(urlMap)),
           cachePathMap: Value(existing?.cachePathMap ?? '{}'),
@@ -301,10 +522,15 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
   }
 
   /// 持久化指定音质的缓存文件路径
+  ///
+  /// 同时更新内存状态（sources 中对应音质的 path 字段）。
   Future<void> saveCachePathToPersistence(
     String quality,
     String cachePath,
   ) async {
+    // 先更新内存状态
+    cacheLocalPath(cachePath, quality);
+
     try {
       final db = ref.read(databaseProvider);
       final existing = await db.getSourcedTrack(track.id);
@@ -315,8 +541,8 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
       await db.upsertSourcedTrack(
         SourcedTrackTableCompanion(
           trackId: Value(track.id),
-          sourceId: Value(existing?.sourceId ?? track.source?.id ?? ''),
-          libraryId: Value(existing?.libraryId ?? track.source?.libraryId),
+          sourceId: Value(existing?.sourceId ?? track.source.id),
+          libraryId: Value(existing?.libraryId ?? track.source.libraryId),
           qualities: Value(
             existing?.qualities ?? jsonEncode(_collectAvailableQualities()),
           ),
@@ -352,6 +578,6 @@ class SourcedTrackNotifier extends Notifier<SourcedTrackState> {
 /// final url = await ref.read(sourcedTrackProvider(track).notifier).resolveValidUrl();
 /// ```
 final sourcedTrackProvider =
-    NotifierProvider.family<SourcedTrackNotifier, SourcedTrackState, Track>(
+    AsyncNotifierProvider.family<SourcedTrackNotifier, SourcedTrack, Track>(
       SourcedTrackNotifier.new,
     );

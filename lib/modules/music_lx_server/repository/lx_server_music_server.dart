@@ -1,8 +1,7 @@
 import 'package:pomelo/core/core.dart';
-import 'package:pomelo/core/toast.dart';
-import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
+import 'package:pomelo/services/logger/logger.dart';
 
 import 'lx_server_client.dart';
 import 'lx_server_models.dart';
@@ -46,13 +45,8 @@ class LxServerMusicServer extends MusicServer {
   /// 此标志为全局开关（[UserPreference.localAudioSourceEnabled]）与
   /// 当前服务配置开关（[LxServerConfig.useLocalAudioSource]）的「与」结果，
   /// 由 [lxServerMusicServerProvider] 计算后传入。
+  @override
   final bool useLocalAudioSource;
-
-  /// 本地音源脚本引擎（用于本地音源解析）
-  ///
-  /// 当 [useLocalAudioSource] 为 true 时用于通过本地音源脚本获取播放链接。
-  /// 脚本在「音源设置」页面添加，由 [lxSourceEngineProvider] 加载。
-  final LxSourceEngine? sourceEngine;
 
   /// 所有可用库
   ///
@@ -74,7 +68,6 @@ class LxServerMusicServer extends MusicServer {
     required String sourceName,
     this.allowSourceSwitching = false,
     this.useLocalAudioSource = false,
-    this.sourceEngine,
   }) : _sourceId = sourceId,
        _sourceName = sourceName;
 
@@ -578,7 +571,7 @@ class LxServerMusicServer extends MusicServer {
     // track.meta 即完整的 songInfo（由 LxServerSong.toSongInfo() 构造）
     final songInfo = Map<String, dynamic>.from(track.meta ?? {});
     // 确保必要字段存在
-    songInfo['source'] ??= track.source?.libraryId ?? _currentSource;
+    songInfo['source'] ??= track.source.libraryId ?? _currentSource;
 
     // 按用户偏好选择音质，不可用则降级
     final typesMap = (songInfo['_types'] as Map<String, dynamic>?) ?? const {};
@@ -590,22 +583,22 @@ class LxServerMusicServer extends MusicServer {
     );
 
     // 本地音源优先：当全局开关与本服务开关均开启时，先尝试从本地音源脚本获取
-    if (useLocalAudioSource && sourceEngine != null) {
-      final localUrl = await _tryLocalAudioSource(
-        track,
-        source,
-        selectedQuality,
-      );
-      if (localUrl != null) {
-        AppLogger.log.i(
-          '[LxServer] 命中本地音源: track=${track.title} - ${track.artist}, '
-          'quality=$selectedQuality, url=$localUrl',
-        );
-        AppToast().success('本地音源插件解析成功');
-        return localUrl;
-      }
-      AppLogger.log.d('[LxServer] 本地音源未命中，回退在线解析: track=${track.title}');
-    }
+    // if (useLocalAudioSource && sourceEngine != null) {
+    //   final localUrl = await _tryLocalAudioSource(
+    //     track,
+    //     source,
+    //     selectedQuality,
+    //   );
+    //   if (localUrl != null) {
+    //     AppLogger.log.i(
+    //       '[LxServer] 命中本地音源: track=${track.title} - ${track.artist}, '
+    //       'quality=$selectedQuality, url=$localUrl',
+    //     );
+    //     AppToast().success('本地音源插件解析成功');
+    //     return localUrl;
+    //   }
+    //   AppLogger.log.d('[LxServer] 本地音源未命中，回退在线解析: track=${track.title}');
+    // }
 
     // 构造代理播放时使用的文件名：歌名 - 歌手.mp3
     final filename = _buildFilename(track);
@@ -634,27 +627,27 @@ class LxServerMusicServer extends MusicServer {
   ///
   /// 使用 [LxSourceEngine] 调用本地音源脚本解析播放链接。
   /// 当脚本不支持指定库或解析失败时返回 null，回退到在线解析。
-  Future<String?> _tryLocalAudioSource(
-    Track track,
-    String libraryId,
-    String quality,
-  ) async {
-    try {
-      final engine = sourceEngine;
-      if (engine == null) return null;
-      if (!engine.hasLibrary(libraryId)) {
-        AppLogger.log.d('[LxServer] 本地音源脚本不支持库 $libraryId，跳过');
-        return null;
-      }
+  // Future<String?> _tryLocalAudioSource(
+  //   Track track,
+  //   String libraryId,
+  //   String quality,
+  // ) async {
+  //   try {
+  //     final engine = sourceEngine;
+  //     if (engine == null) return null;
+  //     if (!engine.hasLibrary(libraryId)) {
+  //       AppLogger.log.d('[LxServer] 本地音源脚本不支持库 $libraryId，跳过');
+  //       return null;
+  //     }
 
-      final url = await engine.getMusicUrl(libraryId, track, quality: quality);
-      if (url.isEmpty) return null;
-      return url;
-    } catch (e) {
-      AppLogger.log.w('[LxServer] 本地音源解析失败: $e');
-      return null;
-    }
-  }
+  //     final url = await engine.getMusicUrl(libraryId, track, quality: quality);
+  //     if (url.isEmpty) return null;
+  //     return url;
+  //   } catch (e) {
+  //     AppLogger.log.w('[LxServer] 本地音源解析失败: $e');
+  //     return null;
+  //   }
+  // }
 
   /// 换源逻辑
   ///
@@ -662,7 +655,7 @@ class LxServerMusicServer extends MusicServer {
   /// 比对歌曲信息（标题 + 歌手），匹配成功则用新源的 songInfo 重新获取播放链接。
   /// 返回 null 表示所有库均未匹配或获取失败。
   Future<String?> _trySourceSwitching(Track track, String quality) async {
-    final originalSource = track.source?.libraryId ?? _currentSource;
+    final originalSource = track.source.libraryId ?? _currentSource;
     final keyword = _buildSearchKeyword(track);
     if (keyword.isEmpty) {
       AppLogger.log.w('[LxServer] 换源跳过: 搜索关键词为空');
@@ -772,7 +765,7 @@ class LxServerMusicServer extends MusicServer {
   @override
   Future<String?> getLyric(Track track) async {
     final songInfo = Map<String, dynamic>.from(track.meta ?? {});
-    songInfo['source'] ??= track.source?.libraryId ?? _currentSource;
+    songInfo['source'] ??= track.source.libraryId ?? _currentSource;
     return client.getLyric(songInfo: songInfo);
   }
 

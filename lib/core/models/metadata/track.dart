@@ -70,7 +70,7 @@ class Track {
   /// - [name] 服务显示名
   /// - [libraryId] 库标识（如 'tx'、'kg'），无库概念时为 null
   /// - [libraryName] 库显示名，无库概念时为 null
-  final ({String id, String name, String? libraryId, String? libraryName})?
+  final ({String id, String name, String? libraryId, String? libraryName})
   source;
 
   /// 来源原始数据
@@ -95,7 +95,7 @@ class Track {
     this.created,
     this.src,
     this.path,
-    this.source,
+    required this.source,
     this.meta,
   });
 
@@ -114,7 +114,7 @@ class Track {
 
   /// 从 JSON 创建
   factory Track.fromJson(Map<String, dynamic> json) {
-    final src = json['source'] as Map<String, dynamic>?;
+    final source = json['source'] as Map<String, dynamic>;
     return Track(
       id: json['id'] as String,
       title: json['title'] as String? ?? json['name'] as String? ?? '',
@@ -125,26 +125,27 @@ class Track {
       coverArt: json['coverArt'] as String? ?? json['cover_url'] as String?,
       duration: (json['duration'] as num?)?.toInt() ?? 0,
       track: (json['track'] as num?)?.toInt(),
-      discNumber: (json['discNumber'] as num?)?.toInt() ??
+      discNumber:
+          (json['discNumber'] as num?)?.toInt() ??
           (json['disc_number'] as num?)?.toInt(),
       year: (json['year'] as num?)?.toInt(),
       genre: json['genre'] as String?,
-      bitRate: (json['bitRate'] as num?)?.toInt() ??
+      bitRate:
+          (json['bitRate'] as num?)?.toInt() ??
           (json['bit_rate'] as num?)?.toInt(),
-      playCount: (json['playCount'] as num?)?.toInt() ??
+      playCount:
+          (json['playCount'] as num?)?.toInt() ??
           (json['play_count'] as num?)?.toInt(),
       starred: tryParseDateTime(json['starred']),
       created: tryParseDateTime(json['created'] ?? json['created_at']),
       src: json['src'] as String?,
       path: json['path'] as String?,
-      source: src != null
-          ? (
-              id: src['id'] as String,
-              name: src['name'] as String,
-              libraryId: src['libraryId'] as String?,
-              libraryName: src['libraryName'] as String?,
-            )
-          : null,
+      source: (
+        id: source['id'] as String,
+        name: source['name'] as String,
+        libraryId: source['libraryId'] as String?,
+        libraryName: source['libraryName'] as String?,
+      ),
       meta: json['meta'] != null
           ? Map<String, dynamic>.from(json['meta'] as Map)
           : null,
@@ -172,13 +173,13 @@ class Track {
       if (created != null) 'created': created!.toIso8601String(),
       if (src != null) 'src': src,
       if (path != null) 'path': path,
-      if (source != null)
-        'source': {
-          'id': source!.id,
-          'name': source!.name,
-          if (source!.libraryId != null) 'libraryId': source!.libraryId,
-          if (source!.libraryName != null) 'libraryName': source!.libraryName,
-        },
+      'source': {
+        'id': source.id,
+        'name': source.name,
+        if (source.libraryId != null) 'libraryId': source.libraryId,
+        if (source.libraryName != null) 'libraryName': source.libraryName,
+      },
+
       if (meta != null) 'meta': meta,
     };
   }
@@ -220,7 +221,7 @@ class Track {
     bool clearCreated = false,
     bool clearSrc = false,
     bool clearPath = false,
-    bool clearSource = false,
+    // bool clearSource = false,
     bool clearMeta = false,
   }) {
     return Track(
@@ -242,14 +243,13 @@ class Track {
       created: clearCreated ? null : (created ?? this.created),
       src: clearSrc ? null : (src ?? this.src),
       path: clearPath ? null : (path ?? this.path),
-      source: clearSource ? null : (source ?? this.source),
+      source: source ?? this.source,
       meta: clearMeta ? null : (meta ?? this.meta),
     );
   }
 
   @override
-  String toString() =>
-      'Track(id: $id, title: $title, artist: $artist)';
+  String toString() => 'Track(id: $id, title: $title, artist: $artist)';
 
   @override
   bool operator ==(Object other) =>
@@ -277,23 +277,23 @@ class Track {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        title,
-        artist,
-        album,
-        albumId,
-        artistId,
-        coverArt,
-        duration,
-        track,
-        discNumber,
-        year,
-        genre,
-        bitRate,
-        playCount,
-        starred,
-        created,
-        src,
-        path,
-      );
+    id,
+    title,
+    artist,
+    album,
+    albumId,
+    artistId,
+    coverArt,
+    duration,
+    track,
+    discNumber,
+    year,
+    genre,
+    bitRate,
+    playCount,
+    starred,
+    created,
+    src,
+    path,
+  );
 }

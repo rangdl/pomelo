@@ -222,8 +222,10 @@ class LxMusicServer extends MusicServer {
   }
 
   @override
-  Future<PaginationResponse<Playlist>> getPlaylists(
-      {int page = 1, int limit = 20}) {
+  Future<PaginationResponse<Playlist>> getPlaylists({
+    int page = 1,
+    int limit = 20,
+  }) {
     throw UnimplementedError('$sourceName(getPlaylists) 尚未实现');
   }
 
@@ -232,21 +234,20 @@ class LxMusicServer extends MusicServer {
   @override
   Future<String> getMusicUrl(Track track, {String? quality}) async {
     if (sourceEngine == null) {
-      throw UnimplementedError(
-          '$sourceName(getMusicUrl) 未加载音源插件，无法获取播放链接');
+      throw UnimplementedError('$sourceName(getMusicUrl) 未加载音源插件，无法获取播放链接');
     }
     // 根据 track.source.libraryId 路由到对应库获取播放链接
-    final libraryId = track.source?.libraryId ?? _defaultLibraryId;
+    final libraryId = track.source.libraryId ?? _defaultLibraryId;
     if (libraryId == null) {
-      throw UnimplementedError(
-          '$sourceName(getMusicUrl) 无法确定歌曲所属库，且无默认库');
+      throw UnimplementedError('$sourceName(getMusicUrl) 无法确定歌曲所属库，且无默认库');
     }
     if (!sourceEngine!.hasLibrary(libraryId)) {
       // 回退到默认库
       final fallback = _defaultLibraryId;
       if (fallback == null || !sourceEngine!.hasLibrary(fallback)) {
         throw UnimplementedError(
-            '$sourceName(getMusicUrl) 音源插件不支持库 $libraryId，且无可用回退库');
+          '$sourceName(getMusicUrl) 音源插件不支持库 $libraryId，且无可用回退库',
+        );
       }
       return sourceEngine!.getMusicUrl(fallback, track, quality: quality);
     }
