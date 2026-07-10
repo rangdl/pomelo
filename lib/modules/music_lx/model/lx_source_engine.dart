@@ -48,8 +48,15 @@ class _SourcePluginEntry {
 /// - 通过 `globalThis.lx.sources` 暴露库信息，格式为 `{kg: {actions, name, qualitys, type}, ...}`
 /// - 通过 `globalThis.lx._dispatch(key, action, data)` 调度播放链接请求
 class LxSourceEngine {
-  /// 已加载的音源插件条目列表
-  final List<_SourcePluginEntry> _plugins = [];
+  /// 已加载的音源插件条目（按 scriptId 索引，支持增量增删）
+  final Map<String, _SourcePluginEntry> _plugins = {};
+
+  /// 使用统计上报回调
+  ///
+  /// 参数：(scriptId, libraryId, success, durationMs)
+  /// 在 [getMusicUrl] 完成后调用（无论成功或失败）。
+  void Function(String scriptId, String libraryId, bool success, int durationMs)?
+      onUsageReport;
 
   /// 加载音源插件并返回其支持的库列表
   ///
@@ -57,7 +64,25 @@ class LxSourceEngine {
   /// 加载后通过 `globalThis.lx.sources` 获取该插件支持的库信息。
   ///
   /// 返回插件支持的库信息列表，加载失败返回空列表。
+  ///
+  /// 注意：此方法使用临时 scriptId，适合一次性验证场景。
+  /// 增量管理（添加/移除/启停）请使用 [loadPluginWithId] / [unloadPlugin]。
   Future<List<LxSourceLibrary>> loadPlugin(String scriptContent) async {
+    final scriptId = 'tmp_${scriptContent.hashCode.abs()}';
+    return loadPluginWithId(scriptId, scriptContent);
+  }
+
+  /// 加载音源插件并指定 scriptId（用于增量管理）
+  ///
+  /// 若 [scriptId] 已存在，先卸载旧插件再加载新的。
+  /// 返回插件支持的库信息列表，加载失败返回空列表。
+  Future<List<LxSourceLibrary>> loadPluginWithId(
+    String scriptId,
+    String scriptContent,
+  ) async {
+    // 已存在同 id 的插件，先卸载
+    _plugins.remove(scriptId)?.engine.dispose();
+
     final engine = JsEngine();
 
     // 加载Preloadjs
@@ -101,12 +126,26 @@ class LxSourceEngine {
       return [];
     }
 
-    _plugins.add(_SourcePluginEntry(engine: engine, libraries: libraries));
+    _plugins[scriptId] = _SourcePluginEntry(engine: engine, libraries: libraries);
     AppLogger.log.i(
-      '[LxSourceEngine] 音源插件加载成功，支持库: ${libraries.map((l) => l.id).join(", ")}',
+      '[LxSourceEngine] 音源插件加载成功 scriptId=$scriptId, 支持库: ${libraries.map((l) => l.id).join(", ")}',
     );
     return libraries;
   }
+
+  /// 卸载指定 scriptId 的插件
+  ///
+  /// 释放对应的 [JsEngine] 资源。不存在则无操作。
+  void unloadPlugin(String scriptId) {
+    final entry = _plugins.remove(scriptId);
+    if (entry != null) {
+      entry.engine.dispose();
+      AppLogger.log.i('[LxSourceEngine] 音源插件已卸载 scriptId=$scriptId');
+    }
+  }
+
+  /// 检查指定 scriptId 是否已加载
+  bool hasPlugin(String scriptId) => _plugins.containsKey(scriptId);
 
   /// 从 inited 事件的 sources 参数解析库列表
   ///
@@ -142,54 +181,72 @@ class LxSourceEngine {
   ///
   /// 根据 [libraryId] 找到对应的音源插件引擎，调用其 `getMusicUrl` 函数。
   /// 返回播放链接 URL，若查询失败则返回空字符串。
+  ///
+  /// 调用结束后通过 [onUsageReport] 上报使用统计（含计时）。
   Future<String> getMusicUrl(
     String libraryId,
     Track track, {
     quality = '128k',
   }) async {
-    // 找到支持该库的音源插件引擎
-    final entries = _plugins.where(
-      (v) => v.libraries.any(
-        (l) => l.id == libraryId && l.qualitys.contains(quality),
-      ),
-    );
-    if (entries.isEmpty) {
-      AppLogger.log.e('[LxSourceEngine] 库 $libraryId $quality 未找到对应的音源插件');
+    final stopwatch = Stopwatch()..start();
+    String? usedScriptId;
+    bool success = false;
+
+    try {
+      // 找到支持该库的音源插件引擎（按 scriptId 升序，保证排序优先级）
+      final matched = _plugins.entries.where(
+        (e) => e.value.libraries.any(
+          (l) => l.id == libraryId && l.qualitys.contains(quality),
+        ),
+      ).toList();
+      if (matched.isEmpty) {
+        AppLogger.log.e('[LxSourceEngine] 库 $libraryId $quality 未找到对应的音源插件');
+        return '';
+      }
+      // 构建传递给 JS 端的歌曲信息
+      final data = {
+        'source': libraryId,
+        'action': 'musicUrl',
+        'info': {
+          'type': quality,
+          'musicInfo': {...?track.meta},
+        },
+      };
+      final dataText = jsonEncode(data);
+      for (final entry in matched) {
+        usedScriptId = entry.key;
+        final requestKey =
+            "request__${Random().nextDouble().toString().substring(2)}";
+        try {
+          final raw = await entry.value.engine.evalAsync(
+            'globalThis.lx._dispatch(`$requestKey`, `request`, $dataText)',
+          );
+          final url = raw.toString();
+          if (url.isNotEmpty) {
+            success = true;
+            return url;
+          }
+        } catch (e, s) {
+          AppLogger.reportError(
+            e,
+            s,
+            '[LxSourceEngine] 获取 $libraryId $quality 播放链接异常: $e',
+          );
+        }
+      }
       return '';
-    }
-    // 构建传递给 JS 端的歌曲信息
-    final data = {
-      'source': libraryId,
-      'action': 'musicUrl',
-      'info': {
-        'type': quality,
-        'musicInfo': {...?track.meta},
-      },
-    };
-    final dataText = jsonEncode(data);
-    for (final entry in entries) {
-      final requestKey =
-          "request__${Random().nextDouble().toString().substring(2)}";
-      try {
-        final raw = await entry.engine.evalAsync(
-          'globalThis.lx._dispatch(`$requestKey`, `request`, $dataText)',
-        );
-        final url = raw.toString();
-        if (url.isNotEmpty) return url;
-      } catch (e, s) {
-        AppLogger.reportError(
-          e,
-          s,
-          '[LxSourceEngine] 获取 $libraryId $quality 播放链接异常: $e',
-        );
+    } finally {
+      stopwatch.stop();
+      final report = onUsageReport;
+      if (usedScriptId != null && report != null) {
+        report(usedScriptId, libraryId, success, stopwatch.elapsedMilliseconds);
       }
     }
-    return '';
   }
 
   /// 查找支持指定库的音源插件条目
   _SourcePluginEntry? _findEntry(String libraryId) {
-    for (final entry in _plugins) {
+    for (final entry in _plugins.values) {
       if (entry.libraries.any((l) => l.id == libraryId)) return entry;
     }
     return null;
@@ -200,17 +257,17 @@ class LxSourceEngine {
 
   /// 所有已加载的库信息列表
   List<LxSourceLibrary> get libraries =>
-      _plugins.expand((e) => e.libraries).toList();
+      _plugins.values.expand((e) => e.libraries).toList();
 
   /// 所有已加载的库 ID 列表
   List<String> get libraryIds =>
-      _plugins.expand((e) => e.libraries.map((l) => l.id)).toList();
+      _plugins.values.expand((e) => e.libraries.map((l) => l.id)).toList();
 
   /// 已加载的插件数量
   int get pluginCount => _plugins.length;
 
   void dispose() {
-    for (final entry in _plugins) {
+    for (final entry in _plugins.values) {
       entry.engine.dispose();
     }
     _plugins.clear();

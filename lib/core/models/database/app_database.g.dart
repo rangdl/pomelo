@@ -5095,6 +5095,18 @@ class $LxSourceScriptTableTable extends LxSourceScriptTable
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5107,6 +5119,7 @@ class $LxSourceScriptTableTable extends LxSourceScriptTable
     librariesJson,
     createdAt,
     enabled,
+    sortOrder,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5189,6 +5202,12 @@ class $LxSourceScriptTableTable extends LxSourceScriptTable
         enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
       );
     }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
     return context;
   }
 
@@ -5238,6 +5257,10 @@ class $LxSourceScriptTableTable extends LxSourceScriptTable
         DriftSqlType.bool,
         data['${effectivePrefix}enabled'],
       )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
     );
   }
 
@@ -5278,6 +5301,11 @@ class LxSourceScriptEntity extends DataClass
 
   /// 是否启用
   final bool enabled;
+
+  /// 排序顺序（数值越小越靠前，默认 0）
+  ///
+  /// 用户拖拽排序后更新此字段。调用音源时按此字段升序使用。
+  final int sortOrder;
   const LxSourceScriptEntity({
     required this.id,
     required this.name,
@@ -5289,6 +5317,7 @@ class LxSourceScriptEntity extends DataClass
     required this.librariesJson,
     required this.createdAt,
     required this.enabled,
+    required this.sortOrder,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5311,6 +5340,7 @@ class LxSourceScriptEntity extends DataClass
     map['libraries_json'] = Variable<String>(librariesJson);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['enabled'] = Variable<bool>(enabled);
+    map['sort_order'] = Variable<int>(sortOrder);
     return map;
   }
 
@@ -5334,6 +5364,7 @@ class LxSourceScriptEntity extends DataClass
       librariesJson: Value(librariesJson),
       createdAt: Value(createdAt),
       enabled: Value(enabled),
+      sortOrder: Value(sortOrder),
     );
   }
 
@@ -5353,6 +5384,7 @@ class LxSourceScriptEntity extends DataClass
       librariesJson: serializer.fromJson<String>(json['librariesJson']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       enabled: serializer.fromJson<bool>(json['enabled']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
     );
   }
   @override
@@ -5369,6 +5401,7 @@ class LxSourceScriptEntity extends DataClass
       'librariesJson': serializer.toJson<String>(librariesJson),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'enabled': serializer.toJson<bool>(enabled),
+      'sortOrder': serializer.toJson<int>(sortOrder),
     };
   }
 
@@ -5383,6 +5416,7 @@ class LxSourceScriptEntity extends DataClass
     String? librariesJson,
     DateTime? createdAt,
     bool? enabled,
+    int? sortOrder,
   }) => LxSourceScriptEntity(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -5394,6 +5428,7 @@ class LxSourceScriptEntity extends DataClass
     librariesJson: librariesJson ?? this.librariesJson,
     createdAt: createdAt ?? this.createdAt,
     enabled: enabled ?? this.enabled,
+    sortOrder: sortOrder ?? this.sortOrder,
   );
   LxSourceScriptEntity copyWithCompanion(LxSourceScriptTableCompanion data) {
     return LxSourceScriptEntity(
@@ -5411,6 +5446,7 @@ class LxSourceScriptEntity extends DataClass
           : this.librariesJson,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
     );
   }
 
@@ -5426,7 +5462,8 @@ class LxSourceScriptEntity extends DataClass
           ..write('script: $script, ')
           ..write('librariesJson: $librariesJson, ')
           ..write('createdAt: $createdAt, ')
-          ..write('enabled: $enabled')
+          ..write('enabled: $enabled, ')
+          ..write('sortOrder: $sortOrder')
           ..write(')'))
         .toString();
   }
@@ -5443,6 +5480,7 @@ class LxSourceScriptEntity extends DataClass
     librariesJson,
     createdAt,
     enabled,
+    sortOrder,
   );
   @override
   bool operator ==(Object other) =>
@@ -5457,7 +5495,8 @@ class LxSourceScriptEntity extends DataClass
           other.script == this.script &&
           other.librariesJson == this.librariesJson &&
           other.createdAt == this.createdAt &&
-          other.enabled == this.enabled);
+          other.enabled == this.enabled &&
+          other.sortOrder == this.sortOrder);
 }
 
 class LxSourceScriptTableCompanion
@@ -5472,6 +5511,7 @@ class LxSourceScriptTableCompanion
   final Value<String> librariesJson;
   final Value<DateTime> createdAt;
   final Value<bool> enabled;
+  final Value<int> sortOrder;
   final Value<int> rowid;
   const LxSourceScriptTableCompanion({
     this.id = const Value.absent(),
@@ -5484,6 +5524,7 @@ class LxSourceScriptTableCompanion
     this.librariesJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.enabled = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LxSourceScriptTableCompanion.insert({
@@ -5497,6 +5538,7 @@ class LxSourceScriptTableCompanion
     this.librariesJson = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.enabled = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
@@ -5512,6 +5554,7 @@ class LxSourceScriptTableCompanion
     Expression<String>? librariesJson,
     Expression<DateTime>? createdAt,
     Expression<bool>? enabled,
+    Expression<int>? sortOrder,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5525,6 +5568,7 @@ class LxSourceScriptTableCompanion
       if (librariesJson != null) 'libraries_json': librariesJson,
       if (createdAt != null) 'created_at': createdAt,
       if (enabled != null) 'enabled': enabled,
+      if (sortOrder != null) 'sort_order': sortOrder,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5540,6 +5584,7 @@ class LxSourceScriptTableCompanion
     Value<String>? librariesJson,
     Value<DateTime>? createdAt,
     Value<bool>? enabled,
+    Value<int>? sortOrder,
     Value<int>? rowid,
   }) {
     return LxSourceScriptTableCompanion(
@@ -5553,6 +5598,7 @@ class LxSourceScriptTableCompanion
       librariesJson: librariesJson ?? this.librariesJson,
       createdAt: createdAt ?? this.createdAt,
       enabled: enabled ?? this.enabled,
+      sortOrder: sortOrder ?? this.sortOrder,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5590,6 +5636,9 @@ class LxSourceScriptTableCompanion
     if (enabled.present) {
       map['enabled'] = Variable<bool>(enabled.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5609,6 +5658,502 @@ class LxSourceScriptTableCompanion
           ..write('librariesJson: $librariesJson, ')
           ..write('createdAt: $createdAt, ')
           ..write('enabled: $enabled, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LxSourceUsageTableTable extends LxSourceUsageTable
+    with TableInfo<$LxSourceUsageTableTable, LxSourceUsageEntity> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LxSourceUsageTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _scriptIdMeta = const VerificationMeta(
+    'scriptId',
+  );
+  @override
+  late final GeneratedColumn<String> scriptId = GeneratedColumn<String>(
+    'script_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _libraryIdMeta = const VerificationMeta(
+    'libraryId',
+  );
+  @override
+  late final GeneratedColumn<String> libraryId = GeneratedColumn<String>(
+    'library_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalCountMeta = const VerificationMeta(
+    'totalCount',
+  );
+  @override
+  late final GeneratedColumn<int> totalCount = GeneratedColumn<int>(
+    'total_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _successCountMeta = const VerificationMeta(
+    'successCount',
+  );
+  @override
+  late final GeneratedColumn<int> successCount = GeneratedColumn<int>(
+    'success_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _maxDurationMsMeta = const VerificationMeta(
+    'maxDurationMs',
+  );
+  @override
+  late final GeneratedColumn<int> maxDurationMs = GeneratedColumn<int>(
+    'max_duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _minDurationMsMeta = const VerificationMeta(
+    'minDurationMs',
+  );
+  @override
+  late final GeneratedColumn<int> minDurationMs = GeneratedColumn<int>(
+    'min_duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _totalDurationMsMeta = const VerificationMeta(
+    'totalDurationMs',
+  );
+  @override
+  late final GeneratedColumn<int> totalDurationMs = GeneratedColumn<int>(
+    'total_duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    scriptId,
+    libraryId,
+    totalCount,
+    successCount,
+    maxDurationMs,
+    minDurationMs,
+    totalDurationMs,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'lx_source_usage_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LxSourceUsageEntity> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('script_id')) {
+      context.handle(
+        _scriptIdMeta,
+        scriptId.isAcceptableOrUnknown(data['script_id']!, _scriptIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scriptIdMeta);
+    }
+    if (data.containsKey('library_id')) {
+      context.handle(
+        _libraryIdMeta,
+        libraryId.isAcceptableOrUnknown(data['library_id']!, _libraryIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_libraryIdMeta);
+    }
+    if (data.containsKey('total_count')) {
+      context.handle(
+        _totalCountMeta,
+        totalCount.isAcceptableOrUnknown(data['total_count']!, _totalCountMeta),
+      );
+    }
+    if (data.containsKey('success_count')) {
+      context.handle(
+        _successCountMeta,
+        successCount.isAcceptableOrUnknown(
+          data['success_count']!,
+          _successCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('max_duration_ms')) {
+      context.handle(
+        _maxDurationMsMeta,
+        maxDurationMs.isAcceptableOrUnknown(
+          data['max_duration_ms']!,
+          _maxDurationMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('min_duration_ms')) {
+      context.handle(
+        _minDurationMsMeta,
+        minDurationMs.isAcceptableOrUnknown(
+          data['min_duration_ms']!,
+          _minDurationMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_duration_ms')) {
+      context.handle(
+        _totalDurationMsMeta,
+        totalDurationMs.isAcceptableOrUnknown(
+          data['total_duration_ms']!,
+          _totalDurationMsMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {scriptId, libraryId};
+  @override
+  LxSourceUsageEntity map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LxSourceUsageEntity(
+      scriptId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}script_id'],
+      )!,
+      libraryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}library_id'],
+      )!,
+      totalCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_count'],
+      )!,
+      successCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}success_count'],
+      )!,
+      maxDurationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}max_duration_ms'],
+      )!,
+      minDurationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}min_duration_ms'],
+      )!,
+      totalDurationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_duration_ms'],
+      )!,
+    );
+  }
+
+  @override
+  $LxSourceUsageTableTable createAlias(String alias) {
+    return $LxSourceUsageTableTable(attachedDatabase, alias);
+  }
+}
+
+class LxSourceUsageEntity extends DataClass
+    implements Insertable<LxSourceUsageEntity> {
+  /// 音源脚本 ID（关联 [LxSourceScriptTable.id]）
+  final String scriptId;
+
+  /// 库 ID（如 kw、kg、tx 等）
+  final String libraryId;
+
+  /// 总调用次数
+  final int totalCount;
+
+  /// 成功次数
+  final int successCount;
+
+  /// 最高耗时（毫秒）
+  final int maxDurationMs;
+
+  /// 最低耗时（毫秒）
+  final int minDurationMs;
+
+  /// 累计耗时（毫秒），用于计算平均耗时
+  final int totalDurationMs;
+  const LxSourceUsageEntity({
+    required this.scriptId,
+    required this.libraryId,
+    required this.totalCount,
+    required this.successCount,
+    required this.maxDurationMs,
+    required this.minDurationMs,
+    required this.totalDurationMs,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['script_id'] = Variable<String>(scriptId);
+    map['library_id'] = Variable<String>(libraryId);
+    map['total_count'] = Variable<int>(totalCount);
+    map['success_count'] = Variable<int>(successCount);
+    map['max_duration_ms'] = Variable<int>(maxDurationMs);
+    map['min_duration_ms'] = Variable<int>(minDurationMs);
+    map['total_duration_ms'] = Variable<int>(totalDurationMs);
+    return map;
+  }
+
+  LxSourceUsageTableCompanion toCompanion(bool nullToAbsent) {
+    return LxSourceUsageTableCompanion(
+      scriptId: Value(scriptId),
+      libraryId: Value(libraryId),
+      totalCount: Value(totalCount),
+      successCount: Value(successCount),
+      maxDurationMs: Value(maxDurationMs),
+      minDurationMs: Value(minDurationMs),
+      totalDurationMs: Value(totalDurationMs),
+    );
+  }
+
+  factory LxSourceUsageEntity.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LxSourceUsageEntity(
+      scriptId: serializer.fromJson<String>(json['scriptId']),
+      libraryId: serializer.fromJson<String>(json['libraryId']),
+      totalCount: serializer.fromJson<int>(json['totalCount']),
+      successCount: serializer.fromJson<int>(json['successCount']),
+      maxDurationMs: serializer.fromJson<int>(json['maxDurationMs']),
+      minDurationMs: serializer.fromJson<int>(json['minDurationMs']),
+      totalDurationMs: serializer.fromJson<int>(json['totalDurationMs']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'scriptId': serializer.toJson<String>(scriptId),
+      'libraryId': serializer.toJson<String>(libraryId),
+      'totalCount': serializer.toJson<int>(totalCount),
+      'successCount': serializer.toJson<int>(successCount),
+      'maxDurationMs': serializer.toJson<int>(maxDurationMs),
+      'minDurationMs': serializer.toJson<int>(minDurationMs),
+      'totalDurationMs': serializer.toJson<int>(totalDurationMs),
+    };
+  }
+
+  LxSourceUsageEntity copyWith({
+    String? scriptId,
+    String? libraryId,
+    int? totalCount,
+    int? successCount,
+    int? maxDurationMs,
+    int? minDurationMs,
+    int? totalDurationMs,
+  }) => LxSourceUsageEntity(
+    scriptId: scriptId ?? this.scriptId,
+    libraryId: libraryId ?? this.libraryId,
+    totalCount: totalCount ?? this.totalCount,
+    successCount: successCount ?? this.successCount,
+    maxDurationMs: maxDurationMs ?? this.maxDurationMs,
+    minDurationMs: minDurationMs ?? this.minDurationMs,
+    totalDurationMs: totalDurationMs ?? this.totalDurationMs,
+  );
+  LxSourceUsageEntity copyWithCompanion(LxSourceUsageTableCompanion data) {
+    return LxSourceUsageEntity(
+      scriptId: data.scriptId.present ? data.scriptId.value : this.scriptId,
+      libraryId: data.libraryId.present ? data.libraryId.value : this.libraryId,
+      totalCount: data.totalCount.present
+          ? data.totalCount.value
+          : this.totalCount,
+      successCount: data.successCount.present
+          ? data.successCount.value
+          : this.successCount,
+      maxDurationMs: data.maxDurationMs.present
+          ? data.maxDurationMs.value
+          : this.maxDurationMs,
+      minDurationMs: data.minDurationMs.present
+          ? data.minDurationMs.value
+          : this.minDurationMs,
+      totalDurationMs: data.totalDurationMs.present
+          ? data.totalDurationMs.value
+          : this.totalDurationMs,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LxSourceUsageEntity(')
+          ..write('scriptId: $scriptId, ')
+          ..write('libraryId: $libraryId, ')
+          ..write('totalCount: $totalCount, ')
+          ..write('successCount: $successCount, ')
+          ..write('maxDurationMs: $maxDurationMs, ')
+          ..write('minDurationMs: $minDurationMs, ')
+          ..write('totalDurationMs: $totalDurationMs')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    scriptId,
+    libraryId,
+    totalCount,
+    successCount,
+    maxDurationMs,
+    minDurationMs,
+    totalDurationMs,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LxSourceUsageEntity &&
+          other.scriptId == this.scriptId &&
+          other.libraryId == this.libraryId &&
+          other.totalCount == this.totalCount &&
+          other.successCount == this.successCount &&
+          other.maxDurationMs == this.maxDurationMs &&
+          other.minDurationMs == this.minDurationMs &&
+          other.totalDurationMs == this.totalDurationMs);
+}
+
+class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
+  final Value<String> scriptId;
+  final Value<String> libraryId;
+  final Value<int> totalCount;
+  final Value<int> successCount;
+  final Value<int> maxDurationMs;
+  final Value<int> minDurationMs;
+  final Value<int> totalDurationMs;
+  final Value<int> rowid;
+  const LxSourceUsageTableCompanion({
+    this.scriptId = const Value.absent(),
+    this.libraryId = const Value.absent(),
+    this.totalCount = const Value.absent(),
+    this.successCount = const Value.absent(),
+    this.maxDurationMs = const Value.absent(),
+    this.minDurationMs = const Value.absent(),
+    this.totalDurationMs = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LxSourceUsageTableCompanion.insert({
+    required String scriptId,
+    required String libraryId,
+    this.totalCount = const Value.absent(),
+    this.successCount = const Value.absent(),
+    this.maxDurationMs = const Value.absent(),
+    this.minDurationMs = const Value.absent(),
+    this.totalDurationMs = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : scriptId = Value(scriptId),
+       libraryId = Value(libraryId);
+  static Insertable<LxSourceUsageEntity> custom({
+    Expression<String>? scriptId,
+    Expression<String>? libraryId,
+    Expression<int>? totalCount,
+    Expression<int>? successCount,
+    Expression<int>? maxDurationMs,
+    Expression<int>? minDurationMs,
+    Expression<int>? totalDurationMs,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (scriptId != null) 'script_id': scriptId,
+      if (libraryId != null) 'library_id': libraryId,
+      if (totalCount != null) 'total_count': totalCount,
+      if (successCount != null) 'success_count': successCount,
+      if (maxDurationMs != null) 'max_duration_ms': maxDurationMs,
+      if (minDurationMs != null) 'min_duration_ms': minDurationMs,
+      if (totalDurationMs != null) 'total_duration_ms': totalDurationMs,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LxSourceUsageTableCompanion copyWith({
+    Value<String>? scriptId,
+    Value<String>? libraryId,
+    Value<int>? totalCount,
+    Value<int>? successCount,
+    Value<int>? maxDurationMs,
+    Value<int>? minDurationMs,
+    Value<int>? totalDurationMs,
+    Value<int>? rowid,
+  }) {
+    return LxSourceUsageTableCompanion(
+      scriptId: scriptId ?? this.scriptId,
+      libraryId: libraryId ?? this.libraryId,
+      totalCount: totalCount ?? this.totalCount,
+      successCount: successCount ?? this.successCount,
+      maxDurationMs: maxDurationMs ?? this.maxDurationMs,
+      minDurationMs: minDurationMs ?? this.minDurationMs,
+      totalDurationMs: totalDurationMs ?? this.totalDurationMs,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (scriptId.present) {
+      map['script_id'] = Variable<String>(scriptId.value);
+    }
+    if (libraryId.present) {
+      map['library_id'] = Variable<String>(libraryId.value);
+    }
+    if (totalCount.present) {
+      map['total_count'] = Variable<int>(totalCount.value);
+    }
+    if (successCount.present) {
+      map['success_count'] = Variable<int>(successCount.value);
+    }
+    if (maxDurationMs.present) {
+      map['max_duration_ms'] = Variable<int>(maxDurationMs.value);
+    }
+    if (minDurationMs.present) {
+      map['min_duration_ms'] = Variable<int>(minDurationMs.value);
+    }
+    if (totalDurationMs.present) {
+      map['total_duration_ms'] = Variable<int>(totalDurationMs.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LxSourceUsageTableCompanion(')
+          ..write('scriptId: $scriptId, ')
+          ..write('libraryId: $libraryId, ')
+          ..write('totalCount: $totalCount, ')
+          ..write('successCount: $successCount, ')
+          ..write('maxDurationMs: $maxDurationMs, ')
+          ..write('minDurationMs: $minDurationMs, ')
+          ..write('totalDurationMs: $totalDurationMs, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5647,6 +6192,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $LocalPlaylistTableTable(this);
   late final $LxSourceScriptTableTable lxSourceScriptTable =
       $LxSourceScriptTableTable(this);
+  late final $LxSourceUsageTableTable lxSourceUsageTable =
+      $LxSourceUsageTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5663,6 +6210,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     localArtistTable,
     localPlaylistTable,
     lxSourceScriptTable,
+    lxSourceUsageTable,
   ];
 }
 
@@ -8257,6 +8805,7 @@ typedef $$LxSourceScriptTableTableCreateCompanionBuilder =
       Value<String> librariesJson,
       Value<DateTime> createdAt,
       Value<bool> enabled,
+      Value<int> sortOrder,
       Value<int> rowid,
     });
 typedef $$LxSourceScriptTableTableUpdateCompanionBuilder =
@@ -8271,6 +8820,7 @@ typedef $$LxSourceScriptTableTableUpdateCompanionBuilder =
       Value<String> librariesJson,
       Value<DateTime> createdAt,
       Value<bool> enabled,
+      Value<int> sortOrder,
       Value<int> rowid,
     });
 
@@ -8330,6 +8880,11 @@ class $$LxSourceScriptTableTableFilterComposer
 
   ColumnFilters<bool> get enabled => $composableBuilder(
     column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -8392,6 +8947,11 @@ class $$LxSourceScriptTableTableOrderingComposer
     column: $table.enabled,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$LxSourceScriptTableTableAnnotationComposer
@@ -8436,6 +8996,9 @@ class $$LxSourceScriptTableTableAnnotationComposer
 
   GeneratedColumn<bool> get enabled =>
       $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 }
 
 class $$LxSourceScriptTableTableTableManager
@@ -8491,6 +9054,7 @@ class $$LxSourceScriptTableTableTableManager
                 Value<String> librariesJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LxSourceScriptTableCompanion(
                 id: id,
@@ -8503,6 +9067,7 @@ class $$LxSourceScriptTableTableTableManager
                 librariesJson: librariesJson,
                 createdAt: createdAt,
                 enabled: enabled,
+                sortOrder: sortOrder,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -8517,6 +9082,7 @@ class $$LxSourceScriptTableTableTableManager
                 Value<String> librariesJson = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> enabled = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LxSourceScriptTableCompanion.insert(
                 id: id,
@@ -8529,6 +9095,7 @@ class $$LxSourceScriptTableTableTableManager
                 librariesJson: librariesJson,
                 createdAt: createdAt,
                 enabled: enabled,
+                sortOrder: sortOrder,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -8560,6 +9127,267 @@ typedef $$LxSourceScriptTableTableProcessedTableManager =
       LxSourceScriptEntity,
       PrefetchHooks Function()
     >;
+typedef $$LxSourceUsageTableTableCreateCompanionBuilder =
+    LxSourceUsageTableCompanion Function({
+      required String scriptId,
+      required String libraryId,
+      Value<int> totalCount,
+      Value<int> successCount,
+      Value<int> maxDurationMs,
+      Value<int> minDurationMs,
+      Value<int> totalDurationMs,
+      Value<int> rowid,
+    });
+typedef $$LxSourceUsageTableTableUpdateCompanionBuilder =
+    LxSourceUsageTableCompanion Function({
+      Value<String> scriptId,
+      Value<String> libraryId,
+      Value<int> totalCount,
+      Value<int> successCount,
+      Value<int> maxDurationMs,
+      Value<int> minDurationMs,
+      Value<int> totalDurationMs,
+      Value<int> rowid,
+    });
+
+class $$LxSourceUsageTableTableFilterComposer
+    extends Composer<_$AppDatabase, $LxSourceUsageTableTable> {
+  $$LxSourceUsageTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get scriptId => $composableBuilder(
+    column: $table.scriptId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get libraryId => $composableBuilder(
+    column: $table.libraryId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalCount => $composableBuilder(
+    column: $table.totalCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get successCount => $composableBuilder(
+    column: $table.successCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get maxDurationMs => $composableBuilder(
+    column: $table.maxDurationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minDurationMs => $composableBuilder(
+    column: $table.minDurationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalDurationMs => $composableBuilder(
+    column: $table.totalDurationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LxSourceUsageTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $LxSourceUsageTableTable> {
+  $$LxSourceUsageTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get scriptId => $composableBuilder(
+    column: $table.scriptId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get libraryId => $composableBuilder(
+    column: $table.libraryId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalCount => $composableBuilder(
+    column: $table.totalCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get successCount => $composableBuilder(
+    column: $table.successCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get maxDurationMs => $composableBuilder(
+    column: $table.maxDurationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minDurationMs => $composableBuilder(
+    column: $table.minDurationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalDurationMs => $composableBuilder(
+    column: $table.totalDurationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LxSourceUsageTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LxSourceUsageTableTable> {
+  $$LxSourceUsageTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get scriptId =>
+      $composableBuilder(column: $table.scriptId, builder: (column) => column);
+
+  GeneratedColumn<String> get libraryId =>
+      $composableBuilder(column: $table.libraryId, builder: (column) => column);
+
+  GeneratedColumn<int> get totalCount => $composableBuilder(
+    column: $table.totalCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get successCount => $composableBuilder(
+    column: $table.successCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get maxDurationMs => $composableBuilder(
+    column: $table.maxDurationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get minDurationMs => $composableBuilder(
+    column: $table.minDurationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalDurationMs => $composableBuilder(
+    column: $table.totalDurationMs,
+    builder: (column) => column,
+  );
+}
+
+class $$LxSourceUsageTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LxSourceUsageTableTable,
+          LxSourceUsageEntity,
+          $$LxSourceUsageTableTableFilterComposer,
+          $$LxSourceUsageTableTableOrderingComposer,
+          $$LxSourceUsageTableTableAnnotationComposer,
+          $$LxSourceUsageTableTableCreateCompanionBuilder,
+          $$LxSourceUsageTableTableUpdateCompanionBuilder,
+          (
+            LxSourceUsageEntity,
+            BaseReferences<
+              _$AppDatabase,
+              $LxSourceUsageTableTable,
+              LxSourceUsageEntity
+            >,
+          ),
+          LxSourceUsageEntity,
+          PrefetchHooks Function()
+        > {
+  $$LxSourceUsageTableTableTableManager(
+    _$AppDatabase db,
+    $LxSourceUsageTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LxSourceUsageTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LxSourceUsageTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LxSourceUsageTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> scriptId = const Value.absent(),
+                Value<String> libraryId = const Value.absent(),
+                Value<int> totalCount = const Value.absent(),
+                Value<int> successCount = const Value.absent(),
+                Value<int> maxDurationMs = const Value.absent(),
+                Value<int> minDurationMs = const Value.absent(),
+                Value<int> totalDurationMs = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LxSourceUsageTableCompanion(
+                scriptId: scriptId,
+                libraryId: libraryId,
+                totalCount: totalCount,
+                successCount: successCount,
+                maxDurationMs: maxDurationMs,
+                minDurationMs: minDurationMs,
+                totalDurationMs: totalDurationMs,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String scriptId,
+                required String libraryId,
+                Value<int> totalCount = const Value.absent(),
+                Value<int> successCount = const Value.absent(),
+                Value<int> maxDurationMs = const Value.absent(),
+                Value<int> minDurationMs = const Value.absent(),
+                Value<int> totalDurationMs = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LxSourceUsageTableCompanion.insert(
+                scriptId: scriptId,
+                libraryId: libraryId,
+                totalCount: totalCount,
+                successCount: successCount,
+                maxDurationMs: maxDurationMs,
+                minDurationMs: minDurationMs,
+                totalDurationMs: totalDurationMs,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LxSourceUsageTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LxSourceUsageTableTable,
+      LxSourceUsageEntity,
+      $$LxSourceUsageTableTableFilterComposer,
+      $$LxSourceUsageTableTableOrderingComposer,
+      $$LxSourceUsageTableTableAnnotationComposer,
+      $$LxSourceUsageTableTableCreateCompanionBuilder,
+      $$LxSourceUsageTableTableUpdateCompanionBuilder,
+      (
+        LxSourceUsageEntity,
+        BaseReferences<
+          _$AppDatabase,
+          $LxSourceUsageTableTable,
+          LxSourceUsageEntity
+        >,
+      ),
+      LxSourceUsageEntity,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -8589,4 +9417,6 @@ class $AppDatabaseManager {
       $$LocalPlaylistTableTableTableManager(_db, _db.localPlaylistTable);
   $$LxSourceScriptTableTableTableManager get lxSourceScriptTable =>
       $$LxSourceScriptTableTableTableManager(_db, _db.lxSourceScriptTable);
+  $$LxSourceUsageTableTableTableManager get lxSourceUsageTable =>
+      $$LxSourceUsageTableTableTableManager(_db, _db.lxSourceUsageTable);
 }

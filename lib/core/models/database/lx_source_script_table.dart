@@ -49,6 +49,11 @@ class LxSourceScriptTable extends Table {
   /// 是否启用
   BoolColumn get enabled => boolean().withDefault(const Constant(true))();
 
+  /// 排序顺序（数值越小越靠前，默认 0）
+  ///
+  /// 用户拖拽排序后更新此字段。调用音源时按此字段升序使用。
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+
   @override
   Set<Column> get primaryKey => {id};
 }

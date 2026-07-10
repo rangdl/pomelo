@@ -3,14 +3,18 @@
 /// 集中管理音源相关设置：
 /// - 本地音源全局开关 + 本地音源脚本管理（脚本内容持久化到 drift 表，不依赖文件系统）
 /// - 各 Lx Server 配置的「使用本地音源」开关
+/// - 脚本拖拽排序（左侧拖拽按钮）
+/// - 每个库的成功率展示与调用统计详情
 ///
 /// 移动端作为全屏页面打开，桌面端作为对话框打开。
 library;
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart' show ReorderableListView, ReorderableDragStartListener;
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/lx_source_script.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
@@ -40,6 +44,7 @@ class LocalAudioSourceSection extends HookConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isLoading = useState(false);
     final scriptsAsync = ref.watch(lxSourceScriptsProvider);
+    final usagesAsync = ref.watch(lxSourceUsagesProvider);
 
     Future<void> addScript() async {
       final result = await FilePicker.platform.pickFiles(
@@ -235,6 +240,7 @@ class LocalAudioSourceSection extends HookConsumerWidget {
                 ),
               );
             }
+            final usages = usagesAsync.value ?? const <LxSourceUsageEntity>[];
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -247,18 +253,44 @@ class LocalAudioSourceSection extends HookConsumerWidget {
                 ),
                 const Gap(4),
                 Card(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      for (int i = 0; i < scripts.length; i++) ...[
-                        _LxScriptTile(
-                          script: scripts[i],
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    buildDefaultDragHandles: false,
+                    itemCount: scripts.length,
+                    onReorder: (oldIndex, newIndex) async {
+                      // ReorderableListView 的 newIndex 在 oldIndex 之后时需要 -1
+                      if (newIndex > oldIndex) newIndex -= 1;
+                      final ordered = [...scripts];
+                      final moved = ordered.removeAt(oldIndex);
+                      ordered.insert(newIndex, moved);
+                      await ref
+                          .read(lxSourceScriptsNotifierProvider.notifier)
+                          .reorderScripts(ordered.map((s) => s.id).toList());
+                    },
+                    itemBuilder: (context, index) {
+                      final script = scripts[index];
+                      final scriptUsages = usages
+                          .where((u) => u.scriptId == script.id)
+                          .toList();
+                      return Padding(
+                        key: ValueKey(script.id),
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: _LxScriptTile(
+                          script: script,
+                          index: index,
+                          usages: scriptUsages,
                           colorScheme: colorScheme,
-                          onRemove: () => removeScript(scripts[i].id),
+                          onRemove: () => removeScript(script.id),
+                          onTap: () => _showScriptDetail(
+                            context,
+                            script,
+                            scriptUsages,
+                          ),
                         ),
-                        if (i < scripts.length - 1) const Divider(height: 1),
-                      ],
-                    ],
+                      );
+                    },
                   ),
                 ),
               ],
@@ -270,30 +302,65 @@ class LocalAudioSourceSection extends HookConsumerWidget {
   }
 }
 
+/// 计算指定库的成功率百分比
+///
+/// 无记录返回 100，否则返回 successCount / totalCount * 100 取整。
+int _successRate(LxSourceUsageEntity? usage) {
+  if (usage == null || usage.totalCount == 0) return 100;
+  return (usage.successCount * 100 / usage.totalCount).round();
+}
+
 /// 单条 Lx 音源脚本列表项
 class _LxScriptTile extends StatelessWidget {
   final LxSourceScript script;
+  final int index;
+  final List<LxSourceUsageEntity> usages;
   final ColorScheme colorScheme;
   final VoidCallback onRemove;
+  final VoidCallback onTap;
 
   const _LxScriptTile({
     required this.script,
+    required this.index,
+    required this.usages,
     required this.colorScheme,
     required this.onRemove,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    // 库与音质列表摘要
+    // 每个库的成功率摘要
     final libsSummary = script.libraries.isEmpty
         ? '未注册库'
-        : script.libraries.map((l) => '${l.id}(${l.qualitys.length})').join(' · ');
+        : script.libraries.map((lib) {
+            final usage = usages.firstWhere(
+              (u) => u.libraryId == lib.id,
+              orElse: () => LxSourceUsageEntity(
+                scriptId: script.id,
+                libraryId: lib.id,
+                totalCount: 0,
+                successCount: 0,
+                maxDurationMs: 0,
+                minDurationMs: 0,
+                totalDurationMs: 0,
+              ),
+            );
+            final rate = _successRate(usage);
+            return '${lib.id} $rate%';
+          }).join(' · ');
 
     return ListTile(
-      leading: Icon(
-        Icons.description,
-        size: 20,
-        color: colorScheme.primary,
+      leading: ReorderableDragStartListener(
+        index: index,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          child: Icon(
+            Icons.drag_indicator,
+            size: 20,
+            color: colorScheme.mutedForeground,
+          ),
+        ),
       ),
       title: Text(
         script.name,
@@ -334,6 +401,257 @@ class _LxScriptTile extends StatelessWidget {
         icon: const Icon(Icons.close, size: 18),
         onPressed: onRemove,
       ),
+      onTap: onTap,
+    );
+  }
+}
+
+/// 展示音源脚本详情弹窗
+void _showScriptDetail(
+  BuildContext context,
+  LxSourceScript script,
+  List<LxSourceUsageEntity> usages,
+) {
+  showDialog(
+    context: context,
+    builder: (_) => _ScriptDetailDialog(
+      script: script,
+      usages: usages,
+    ),
+  );
+}
+
+/// 音源脚本详情对话框
+///
+/// 展示脚本信息、库列表、音质列表与调用统计（成功率、调用次数、最高/最低/平均耗时）。
+class _ScriptDetailDialog extends StatelessWidget {
+  final LxSourceScript script;
+  final List<LxSourceUsageEntity> usages;
+
+  const _ScriptDetailDialog({required this.script, required this.usages});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final metaInfo = [
+      if (script.author != null && script.author!.isNotEmpty)
+        ('作者', script.author!),
+      if (script.version != null && script.version!.isNotEmpty)
+        ('版本', script.version!),
+      if (script.description != null && script.description!.isNotEmpty)
+        ('描述', script.description!),
+      if (script.homepage != null && script.homepage!.isNotEmpty)
+        ('主页', script.homepage!),
+    ];
+
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.description, size: 20, color: colorScheme.primary),
+          const Gap(8),
+          Expanded(
+            child: Text(
+              script.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 460,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 脚本元信息
+              if (metaInfo.isNotEmpty) ...[
+                Text(
+                  '脚本信息',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.mutedForeground,
+                  ),
+                ),
+                const Gap(6),
+                ...metaInfo.map(
+                  (info) => Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          width: 48,
+                          child: Text(
+                            info.$1,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: colorScheme.mutedForeground,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            info.$2,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const Gap(12),
+              ],
+              // 库列表与统计
+              Text(
+                '库与调用统计',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.mutedForeground,
+                ),
+              ),
+              const Gap(6),
+              if (script.libraries.isEmpty)
+                Text(
+                  '未注册库',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: colorScheme.mutedForeground,
+                  ),
+                )
+              else
+                ...script.libraries.map((lib) {
+                  final usage = usages.firstWhere(
+                    (u) => u.libraryId == lib.id,
+                    orElse: () => LxSourceUsageEntity(
+                      scriptId: script.id,
+                      libraryId: lib.id,
+                      totalCount: 0,
+                      successCount: 0,
+                      maxDurationMs: 0,
+                      minDurationMs: 0,
+                      totalDurationMs: 0,
+                    ),
+                  );
+                  final rate = _successRate(usage);
+                  final avgMs = usage.totalCount > 0
+                      ? (usage.totalDurationMs / usage.totalCount).round()
+                      : 0;
+                  final rateColor = rate >= 80
+                      ? const Color(0xFF22C55E)
+                      : rate >= 50
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFFEF4444);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Card(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                lib.name,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Gap(8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: rateColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '$rate%',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: rateColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Gap(4),
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            children: lib.qualitys
+                                .map(
+                                  (q) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.muted
+                                          .withValues(alpha: 0.3),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      q,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: colorScheme.mutedForeground,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                          if (usage.totalCount > 0) ...[
+                            const Gap(6),
+                            Text(
+                              '调用 ${usage.totalCount} 次 · 成功 ${usage.successCount} 次',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colorScheme.mutedForeground,
+                              ),
+                            ),
+                            const Gap(2),
+                            Text(
+                              '最高 ${usage.maxDurationMs}ms · 最低 ${usage.minDurationMs}ms · 平均 ${avgMs}ms',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: colorScheme.mutedForeground,
+                              ),
+                            ),
+                          ] else
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                '暂无调用记录',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: colorScheme.mutedForeground,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        PrimaryButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('关闭'),
+        ),
+      ],
     );
   }
 }
