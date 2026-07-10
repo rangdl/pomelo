@@ -69,6 +69,8 @@ abstract class MusicServer {
   /// 至少应包含 [SearchType.song]。
   List<SearchType> get supportedSearchTypes => const [SearchType.song];
 
+  bool get useLocalAudioSource => false;
+
   /// 搜索曲目
   ///
   /// [libraryId] 可选，用于指定在哪个库中搜索。
@@ -167,8 +169,7 @@ abstract class MusicServer {
     String? order,
     int page = 1,
     int limit = 20,
-  }) async =>
-      PaginationResponse.empty(page: page, limit: limit);
+  }) async => PaginationResponse.empty(page: page, limit: limit);
 
   // ========== 歌单 ==========
 
