@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/toast.dart';
@@ -25,6 +26,32 @@ class PlayQueueContent extends HookConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final tracks = state.tracks;
     final activeTrack = state.activeTrack;
+
+    // 滚动控制器：首次打开时定位到当前播放曲目
+    final scrollController = useScrollController();
+    useEffect(() {
+      if (tracks.isEmpty || activeTrack == null) return null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!scrollController.hasClients) return;
+        final activeIndex = tracks.indexWhere((t) => t.id == activeTrack.id);
+        if (activeIndex <= 0) return;
+        // 估算每项高度（封面40 + ListTile padding + Card 间距）
+        const itemHeight = 72.0;
+        final viewport = scrollController.position.viewportDimension;
+        // 让活跃项大致位于视口上 1/3 处
+        final target = (activeIndex * itemHeight) - (viewport / 3);
+        final clamped = target.clamp(
+          0.0,
+          scrollController.position.maxScrollExtent,
+        );
+        scrollController.animateTo(
+          clamped,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+      return null;
+    }, const []);
 
     if (tracks.isEmpty) {
       return Center(
@@ -69,6 +96,7 @@ class PlayQueueContent extends HookConsumerWidget {
         const Divider(height: 1),
         Expanded(
           child: ListView.builder(
+            controller: scrollController,
             padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: tracks.length,
             itemBuilder: (context, index) {

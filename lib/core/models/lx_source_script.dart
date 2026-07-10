@@ -42,6 +42,9 @@ class LxSourceScript {
   /// 是否启用
   final bool enabled;
 
+  /// 排序顺序（数值越小越靠前）
+  final int sortOrder;
+
   const LxSourceScript({
     required this.id,
     required this.name,
@@ -53,6 +56,7 @@ class LxSourceScript {
     required this.libraries,
     required this.createdAt,
     this.enabled = true,
+    this.sortOrder = 0,
   });
 
   /// 从 drift 实体构造
@@ -69,6 +73,7 @@ class LxSourceScript {
     required String librariesJson,
     required DateTime createdAt,
     required bool enabled,
+    required int sortOrder,
   }) {
     return LxSourceScript(
       id: id,
@@ -81,6 +86,7 @@ class LxSourceScript {
       libraries: _parseLibrariesJson(librariesJson),
       createdAt: createdAt,
       enabled: enabled,
+      sortOrder: sortOrder,
     );
   }
 
