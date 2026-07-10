@@ -14,6 +14,7 @@ import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../global.dart';
 import '../player/mini_player.dart';
 import 'root_providers.dart';
 
@@ -190,9 +191,7 @@ class _NavigationRailLayout extends HookConsumerWidget {
                       // 已在 Home Tab：点击「首页」按钮重置内联视图
                       // 同步 selectedKey，确保从「我的库」视图切回时上方主导航正确高亮
                       selectedKey.value = key;
-                      ref
-                          .read(homeNavProvider.notifier)
-                          .showNormal();
+                      ref.read(homeNavProvider.notifier).showNormal();
                     }
                   },
                 ),
@@ -265,8 +264,7 @@ class _Sidebar extends HookConsumerWidget {
                       icon: d.icon,
                       label: d.label,
                       extended: extended,
-                      isSelected:
-                          !libraryViewActive && selectedKey == d.key,
+                      isSelected: !libraryViewActive && selectedKey == d.key,
                       colorScheme: colorScheme,
                       onTap: () => onSelectKey(d.key),
                     ),
@@ -307,7 +305,7 @@ class _AppHeader extends StatelessWidget {
                 Icon(PomeloIcons.music, size: 24, color: colorScheme.primary),
                 const Gap(8),
                 Text(
-                  '柚子音乐',
+                  appNameDisplay,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -427,8 +425,7 @@ class _LibrarySidebarSection extends HookConsumerWidget {
         libraryViewActive && homeNav is HomeNavDefaultList;
     final isFavoritesSelected =
         libraryViewActive && homeNav is HomeNavFavorites;
-    final isPlaylistSelected =
-        libraryViewActive && homeNav is HomeNavPlaylist;
+    final isPlaylistSelected = libraryViewActive && homeNav is HomeNavPlaylist;
 
     // 当处于某个具体歌单视图时，自动展开「我的歌单」子列表
     useEffect(() {
@@ -602,7 +599,8 @@ class _UserPlaylistList extends HookConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     // 当前选中的歌单 ID（若处于歌单视图）
-    final String? activePlaylistId = (libraryViewActive && homeNav is HomeNavPlaylist)
+    final String? activePlaylistId =
+        (libraryViewActive && homeNav is HomeNavPlaylist)
         ? (homeNav as HomeNavPlaylist).ref.playlistId
         : null;
 
@@ -703,10 +701,7 @@ class _UserPlaylistList extends HookConsumerWidget {
               behavior: HitTestBehavior.opaque,
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: BorderRadius.circular(8),

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.rang" "\0"
-            VALUE "FileDescription", "柚子音乐" "\0"
+            VALUE "CompanyName", "cn.rang" "\0"
+            VALUE "FileDescription", "pomelo" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "柚子音乐" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.rang. All rights reserved." "\0"
+            VALUE "InternalName", "pomelo" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 cn.rang. All rights reserved." "\0"
             VALUE "OriginalFilename", "pomelo.exe" "\0"
-            VALUE "ProductName", "柚子音乐" "\0"
+            VALUE "ProductName", "pomelo" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
