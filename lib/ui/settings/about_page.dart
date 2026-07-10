@@ -5,6 +5,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import '../../global.dart';
+
 /// 关于页面
 ///
 /// 展示应用名称、版本号、简介、技术栈与第三方依赖。
@@ -67,8 +69,8 @@ class AboutPage extends HookConsumerWidget {
               ),
             ),
             const Gap(16),
-            const Text(
-              '柚子音乐',
+            Text(
+              appNameDisplay,
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
             ),
             const Gap(4),
@@ -100,7 +102,7 @@ class AboutPage extends HookConsumerWidget {
       // 版权
       Center(
         child: Text(
-          '© ${DateTime.now().year} 柚子音乐',
+          '© ${DateTime.now().year} $appNameDisplay',
           style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
         ),
       ),

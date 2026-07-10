@@ -22,6 +22,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'core/helper.dart';
 import 'core/hooks/use_has_touch.dart';
+import 'global.dart';
 import 'services/audio_player/audio_player.dart' show audioPlayer;
 import 'services/logger/logger.dart';
 
@@ -150,7 +151,7 @@ Future<void> _runPlatformSpecificCode() async {
     size: const Size(1050, 700),
     center: true,
     skipTaskbar: false,
-    title: '柚子音乐',
+    title: appNameDisplay,
     // Windows 隐藏原生标题栏，使用自定义右侧标题栏
     titleBarStyle: Helper.isWindows
         ? TitleBarStyle.hidden
@@ -159,6 +160,6 @@ Future<void> _runPlatformSpecificCode() async {
   await windowManager.waitUntilReadyToShow(windowOptions, () async {
     await windowManager.setPreventClose(true);
     // 从 Dart 侧设置窗口标题，避免 C++ 源文件编码导致的乱码
-    await windowManager.setTitle('柚子音乐');
+    await windowManager.setTitle(appNameDisplay);
   });
 }
