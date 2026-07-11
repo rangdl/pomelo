@@ -825,7 +825,7 @@ class LxServerClient {
       }
     });
     // [Fix] 给予 SSE 连接极短的建连时间，确保并发请求下后端能优先捕获到 SSE 客户端
-    Future.delayed(const Duration(milliseconds: 50));
+    Future.delayed(const Duration(milliseconds: 100));
 
     try {
       final response = await _dio.post<Map<String, dynamic>>(

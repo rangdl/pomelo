@@ -260,7 +260,7 @@ class SourcedTrack {
           track,
           quality: quality,
         );
-        if (url.isNotEmpty) {
+        if (url.isNotEmpty && url != 'undefined') {
           AppToast().success('本地音源插件解析成功: ${track.title}');
           return url;
         }
