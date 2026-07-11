@@ -146,6 +146,12 @@ class MiniPlayer extends HookConsumerWidget {
               ),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 300),
+                layoutBuilder: (currentChild, previousChildren) {
+                  return Stack(
+                    alignment: Alignment.centerLeft,
+                    children: <Widget>[...previousChildren, ?currentChild],
+                  );
+                },
                 child: Text(
                   // 有当前歌词时优先展示歌词，否则回退到歌手名
                   (currentLyric != null && currentLyric.isNotEmpty)
