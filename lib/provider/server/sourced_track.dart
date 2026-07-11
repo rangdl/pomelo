@@ -94,13 +94,11 @@ class SourcedTrack {
     return sources.firstWhereOrNull((v) => v.type == targetQuality)?.url;
   }
 
-  /// 当前音质对应的本地缓存文件路径（null 表示未缓存）
+  /// 当前音质对应的本地缓存文件路径（空字符串表示未缓存）
   String get path {
     final targetQuality = quality;
-    final source = sources.cast<TrackSource>().firstWhere(
-      (v) => v.type == targetQuality,
-    );
-    return source.path;
+    final source = sources.firstWhereOrNull((v) => v.type == targetQuality);
+    return source?.path ?? '';
   }
 
   static Future<SourcedTrack> fetchFromTrack({
@@ -177,6 +175,7 @@ class SourcedTrack {
     TrackSource source,
   ) async {
     final url = await _getMusicUrl(ref, query, quality: source.type);
+    if (url.isEmpty) return source.copyWith(url: '');
     // 校验URL是否可用
     final options = Options(
       headers: {
@@ -303,7 +302,7 @@ class SourcedTrack {
       ref: ref,
       query: query,
       sources: resolved,
-      quality: quality,
+      quality: targetQuality,
     );
   }
 

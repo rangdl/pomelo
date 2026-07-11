@@ -787,6 +787,20 @@ if (results.failures.isNotEmpty) {
 
 Lx 插件文件复制到 `<appSupportDir>/lx_scripts/` 目录，配置（路径列表）存入 `MusicServerConfigTable`（`LxPluginConfig`）。
 
+### 3. JsEngine.evalAsync 约定
+
+jsf 库的 `JsRuntime.evalAsync()` 使用 `Future.delayed(Duration.zero)` 轮询 Promise 状态，会导致主线程消息爆炸（"Failed to post message to main thread"）。
+
+**必须**使用 `JsEngine.evalAsync()`（`lib/services/js_engine/js_engine.dart`），它用 5ms 轮询间隔替代 `Duration.zero`。
+
+```dart
+// ✅ 正确
+final result = await engine.evalAsync(expression);
+
+// ❌ 错误 — 绕过 JsEngine，使用 jsf 默认的 Duration.zero 轮询
+final result = await engine.jsRuntime.evalAsync(expression);
+```
+
 ---
 
 ## 十七、日志
@@ -837,6 +851,23 @@ Lx 插件文件复制到 `<appSupportDir>/lx_scripts/` 目录，配置（路径�
 
 Lx Server 播放链接**必须**通过 HEAD 请求验证后使用；若无效则音质降级，全部失败时抛出"无法获取有效的播放链接"错误。
 
+**SourcedTrack 架构**（`lib/provider/server/sourced_track.dart`）：
+- `TrackSource`：`url`（播放链接）、`path`（本地缓存文件路径）、`type`（音质）、`size`，全部 `final`
+- `SourcedTrack.fetchFromTrack()`：解析时同步完成 HEAD 校验 + 缓存路径生成
+- `SourcedTrackNotifier.build()`：优先从 DB 持久化加载（`urlMap` + `cachePathMap`），无记录时回退 `fetchFromTrack()`
+- `listenSelf`：状态变更时自动持久化到 DB
+- `refreshStreamingUrl()`：重新解析播放链接
+
+**播放链接获取限流**：
+- 限流器：`RateLimiter`（`lib/services/rate_limiter.dart`），滑动窗口算法
+- 全局实例：`musicUrlRateLimiter`，每秒最多 3 次
+- 在 `SourcedTrack._getMusicUrl()` 中调用 `musicUrlRateLimiter.acquire()`
+
+**playback.dart 流程**：
+- `streamTrackInformation`（HEAD）：优先检查 `track.path` 本地缓存文件，存在则返回文件元信息
+- `streamTrack`（GET）：优先检查 `track.path` 本地缓存文件，存在则返回文件流
+- URL 为 null 时调用 `refreshStreamingUrl()` 重新解析
+
 ### 4. Lx Server 换源
 
 `LxServerConfig.allowSourceSwitching`（默认 false）启用后，当所有音质获取播放链接失败时，跨其他库搜索（`title artist` 关键词），按 title（大小写不敏感精确匹配）+ artist（包含匹配）匹配新源。
@@ -855,6 +886,8 @@ Lx Server 播放链接**必须**通过 HEAD 请求验证后使用；若无效则
 1. 本地缓存文件
 2. 缓存 URL（HEAD 验证）
 3. 重新获取 URL
+
+**持久化方式**：`SourcedTrackNotifier` 通过 `listenSelf` 自动将 `sources`（url + path）批量写入 DB 的 `urlMap` 和 `cachePathMap` 列。
 
 ---
 
@@ -1116,6 +1149,10 @@ import 'package:pomelo/core/toast.dart';
 | 选中态用 `useState` | 跨页面用 `NotifierProvider` |
 | 音乐源配置写入 `UserPreference` | 用 `musicServerConfigsNotifierProvider` |
 | `MenuItem.onPressed` 当 `VoidCallback` | 签名是 `void Function(BuildContext)` |
+| `AnimatedSwitcher` 用 `alignment` 参数 | Flutter 的 `AnimatedSwitcher` 无 `alignment` 参数，用 `layoutBuilder` + `Stack(alignment:)` |
+| `engine.jsRuntime.evalAsync()` | 用 `engine.evalAsync()`（5ms 轮询，避免主线程消息爆炸） |
+| `firstWhere` 无 `orElse` | 用 `firstWhereOrNull`（来自 `package:collection`），避免 `StateError` |
+| `SourcedTrackNotifier` 手动持久化 | `listenSelf` 自动持久化，无需手动调用 `saveCachePathToPersistence` |
 
 ---
 
