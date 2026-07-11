@@ -55,8 +55,13 @@ class LxSourceEngine {
   ///
   /// 参数：(scriptId, libraryId, success, durationMs)
   /// 在 [getMusicUrl] 完成后调用（无论成功或失败）。
-  void Function(String scriptId, String libraryId, bool success, int durationMs)?
-      onUsageReport;
+  void Function(
+    String scriptId,
+    String libraryId,
+    bool success,
+    int durationMs,
+  )?
+  onUsageReport;
 
   /// 加载音源插件并返回其支持的库列表
   ///
@@ -103,7 +108,7 @@ class LxSourceEngine {
     try {
       // engine.eval('initEnv($userApiText)');
       // final result = engine.jsRuntime.call('initEnv', [userApi]);
-      final args = await engine.jsRuntime.evalAsync('initEnv($userApiText)');
+      final args = await engine.evalAsync('initEnv($userApiText)');
       String type = args[0] as String;
       Map<String, dynamic> arguments = args[1] as Map<String, dynamic>;
       if (type == 'inited') {
@@ -126,7 +131,10 @@ class LxSourceEngine {
       return [];
     }
 
-    _plugins[scriptId] = _SourcePluginEntry(engine: engine, libraries: libraries);
+    _plugins[scriptId] = _SourcePluginEntry(
+      engine: engine,
+      libraries: libraries,
+    );
     AppLogger.log.i(
       '[LxSourceEngine] 音源插件加载成功 scriptId=$scriptId, 支持库: ${libraries.map((l) => l.id).join(", ")}',
     );
@@ -194,11 +202,13 @@ class LxSourceEngine {
 
     try {
       // 找到支持该库的音源插件引擎（按 scriptId 升序，保证排序优先级）
-      final matched = _plugins.entries.where(
-        (e) => e.value.libraries.any(
-          (l) => l.id == libraryId && l.qualitys.contains(quality),
-        ),
-      ).toList();
+      final matched = _plugins.entries
+          .where(
+            (e) => e.value.libraries.any(
+              (l) => l.id == libraryId && l.qualitys.contains(quality),
+            ),
+          )
+          .toList();
       if (matched.isEmpty) {
         AppLogger.log.e('[LxSourceEngine] 库 $libraryId $quality 未找到对应的音源插件');
         return '';
@@ -222,7 +232,7 @@ class LxSourceEngine {
             'globalThis.lx._dispatch(`$requestKey`, `request`, $dataText)',
           );
           final url = raw.toString();
-          if (url.isNotEmpty) {
+          if (url.isNotEmpty && url != 'undefined') {
             success = true;
             return url;
           }
