@@ -32,7 +32,7 @@ class StatisticsPage extends StatelessWidget {
               onPressed: () async {
                 final result2 = await js.jsRuntime.eval('console.log(123)');
                 print(result2);
-                final result = await js.jsRuntime.evalAsync('''
+                final result = await js.evalAsync('''
   fetch('http://192.168.0.200/test/rang/md5.min.js', {
     method: 'get',
     timeout: 5000, // 毫秒

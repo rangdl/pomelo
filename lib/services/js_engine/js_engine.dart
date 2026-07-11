@@ -558,8 +558,54 @@ class JsEngine {
     }
   }
 
-  Future<dynamic> evalAsync(String expression) async {
-    return await _jsRuntime.evalAsync(expression);
+  /// 评估 JS 表达式并等待 Promise 完成
+  ///
+  /// 自定义实现，使用 5ms 轮询间隔代替 jsf 默认的 Duration.zero。
+  /// jsf 的 awaitValue 使用 Future.delayed(Duration.zero) 轮询 Promise 状态，
+  /// 当 Promise pending 时间较长（如等待 fetch 响应）时，会在主线程
+  /// 积压大量消息，导致 "Failed to post message to main thread" 错误。
+  /// 5ms 间隔将消息频率从 ~60000/s 降至 ~200/s。
+  Future<dynamic> evalAsync(String expression, {Duration? timeout}) async {
+    final value = _jsRuntime.evalValue(expression);
+    try {
+      // QuickJS value type 常量（jsf 未导出，硬编码）
+      const jsfValuePromise = 10;
+      const jsfPromisePending = 0;
+      const jsfPromiseRejected = 2;
+
+      // 非 Promise 结果直接返回
+      if (value.type != jsfValuePromise) {
+        return value.toDart();
+      }
+
+      // 轮询等待 Promise resolve/reject
+      final started = DateTime.now();
+      while (value.type == jsfValuePromise &&
+          value.promiseState == jsfPromisePending) {
+        _jsRuntime.executePendingJobs();
+        if (timeout != null &&
+            DateTime.now().difference(started) > timeout) {
+          throw JsException('JavaScript promise timed out after $timeout.');
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+
+      if (value.type != jsfValuePromise) {
+        return value.toDart();
+      }
+
+      final result = value.promiseResult();
+      try {
+        if (value.promiseState == jsfPromiseRejected) {
+          throw JsException(result.toDart().toString());
+        }
+        return result.toDart();
+      } finally {
+        result.dispose();
+      }
+    } finally {
+      value.dispose();
+    }
   }
 
   dynamic eval(String expression) {

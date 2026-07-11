@@ -67,6 +67,16 @@ class MusicCacheDir {
     return File(p.join(dir, '$safeName$extension'));
   }
 
+  static Future<String> getCacheFilePath(
+    String trackId,
+    String extension,
+  ) async {
+    final dir = await getOrCreate();
+    // 清理 trackId 为安全文件名
+    final safeName = trackId.replaceAll(RegExp(r'[^\w\-]'), '_');
+    return p.join(dir, '$safeName$extension');
+  }
+
   /// 从 Content-Type 推断扩展名
   static String extensionFromContentType(String? contentType) {
     if (contentType == null) return '.mp3';
