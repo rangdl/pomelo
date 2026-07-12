@@ -102,13 +102,15 @@ class _PhoneLayout extends HookConsumerWidget {
         const MiniPlayer(),
         SafeArea(
           top: false,
+          bottom: true,
           child: NavigationBar(
             alignment: NavigationBarAlignment.spaceAround,
             labelType: NavigationLabelType.all,
-            labelSize: NavigationLabelSize.large,
+            labelSize: NavigationLabelSize.normal,
             expanded: extended,
-            expandedSize: 72,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            expandedSize: 68,
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+            iconSize: 24,
             onSelected: (key) {
               final index = _navDestinations.indexWhere((d) => d.key == key);
               if (index >= 0 && index != tabsRouter.activeIndex) {

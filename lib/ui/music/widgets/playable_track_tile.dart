@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
@@ -21,8 +22,9 @@ import 'package:pomelo/ui/music/widgets/track_tile.dart';
 ///       并跳转到 [playlistIndex] 播放
 ///     - 否则降级为仅覆盖为单曲
 ///
-/// 右侧 trailing 自动构建为「来源名 + 更多操作按钮（可选）」，
-/// 不再显示单独的播放按钮。
+/// 响应式「更多操作」：
+/// - 移动端：trailing 显示 TrackMoreActionsButton 图标按钮
+/// - 桌面端：不显示按钮，整卡右键（onSecondaryTap）弹出下拉菜单
 ///
 /// 如需自定义 onTap（如播放队列页跳转），请直接使用 [TrackTile]。
 class PlayableTrackTile extends HookConsumerWidget {
@@ -31,7 +33,7 @@ class PlayableTrackTile extends HookConsumerWidget {
   /// 序号（1-based），传入后会在封面右上角叠加序号 badge
   final int? index;
 
-  /// 是否显示「更多操作」按钮
+  /// 是否启用「更多操作」（移动端显示按钮 / 桌面端右键菜单）
   final bool showMoreActions;
 
   /// 当 showMoreActions=true 且该回调非空时，菜单显示「从列表移除」
@@ -76,13 +78,18 @@ class PlayableTrackTile extends HookConsumerWidget {
     );
     final notifier = ref.read(audioPlayerProvider.notifier);
     final isActive = audioPlayerState.activeTrack?.id == track.id;
+    final isMobile =
+        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
 
+    // 响应式更多操作：
+    // - 移动端：trailing 中显示按钮
+    // - 桌面端：不显示按钮，整卡右键触发
     final trailing = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (trailingExtra != null) trailingExtra!,
         Text(track.source.name).muted,
-        if (showMoreActions)
+        if (showMoreActions && isMobile)
           TrackMoreActionsButton(
             track: track,
             onRemoveFromQueue: onRemoveFromQueue == null
@@ -92,7 +99,7 @@ class PlayableTrackTile extends HookConsumerWidget {
       ],
     );
 
-    return TrackTile(
+    final tile = TrackTile(
       track: track,
       index: index,
       isActive: isActive,
@@ -128,5 +135,21 @@ class PlayableTrackTile extends HookConsumerWidget {
         }
       },
     );
+
+    // 桌面端启用更多操作时，包裹 GestureDetector 处理右键
+    if (showMoreActions && !isMobile) {
+      return GestureDetector(
+        onSecondaryTap: () => showTrackMoreActions(
+          context,
+          ref,
+          track,
+          onRemoveFromQueue: onRemoveFromQueue == null
+              ? null
+              : () => onRemoveFromQueue!(track),
+        ),
+        child: tile,
+      );
+    }
+    return tile;
   }
 }

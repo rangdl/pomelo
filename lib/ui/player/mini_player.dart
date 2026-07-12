@@ -71,6 +71,8 @@ class MiniPlayer extends HookConsumerWidget {
 
     return GestureDetector(
       onTap: () => _navigateToPlayback(context),
+      // 移动端：长按整个迷你播放器都能打开播放队列
+      onLongPress: isDesktop ? null : () => _openPlayQueue(context),
       child: Container(
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.card,

@@ -116,6 +116,7 @@ class _LeaderboardSongs extends ConsumerWidget {
             return PlayableTrackTile(
               track: track,
               index: index + 1,
+              showMoreActions: true,
               playlist: displayTracks,
               playlistIndex: index,
             );

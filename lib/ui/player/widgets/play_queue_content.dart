@@ -111,10 +111,6 @@ class PlayQueueContent extends HookConsumerWidget {
                   color: colorScheme.primary,
                   size: 20,
                 ),
-                trailing: TrackMoreActionsButton(
-                  track: track,
-                  onRemoveFromQueue: () => notifier.removeTrack(track.id),
-                ),
                 onTap: () async {
                   if (isActive) {
                     // 活跃曲目：切换暂停/恢复

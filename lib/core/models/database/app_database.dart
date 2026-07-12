@@ -46,7 +46,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -83,6 +83,16 @@ class AppDatabase extends _$AppDatabase {
               lxSourceScriptTable.sortOrder,
             );
             await m.createTable(lxSourceUsageTable);
+          }
+          if (from < 8) {
+            // v8: LxSourceUsageTable 移除 totalDurationMs 列（SQLite 需重建表）
+            await m.issueCustomQuery('ALTER TABLE lx_source_usage_table RENAME TO _lx_source_usage_old');
+            await m.createTable(lxSourceUsageTable);
+            await m.issueCustomQuery(
+              'INSERT INTO lx_source_usage_table (script_id, library_id, total_count, success_count, max_duration_ms, min_duration_ms) '
+              'SELECT script_id, library_id, total_count, success_count, max_duration_ms, min_duration_ms FROM _lx_source_usage_old',
+            );
+            await m.issueCustomQuery('DROP TABLE _lx_source_usage_old');
           }
         },
       );
@@ -330,11 +340,10 @@ class AppDatabase extends _$AppDatabase {
         LxSourceUsageTableCompanion.insert(
           scriptId: scriptId,
           libraryId: libraryId,
-          totalCount: Value(success ? 1 : 1),
+          totalCount: const Value(1),
           successCount: Value(success ? 1 : 0),
           maxDurationMs: Value(durationMs),
           minDurationMs: Value(durationMs),
-          totalDurationMs: Value(durationMs),
         ),
       );
     } else {
@@ -360,7 +369,6 @@ class AppDatabase extends _$AppDatabase {
         successCount: Value(newSuccess),
         maxDurationMs: Value(newMax),
         minDurationMs: Value(newMin),
-        totalDurationMs: Value(existing.totalDurationMs + durationMs),
       ));
     }
   }

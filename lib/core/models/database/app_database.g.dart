@@ -5741,18 +5741,6 @@ class $LxSourceUsageTableTable extends LxSourceUsageTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _totalDurationMsMeta = const VerificationMeta(
-    'totalDurationMs',
-  );
-  @override
-  late final GeneratedColumn<int> totalDurationMs = GeneratedColumn<int>(
-    'total_duration_ms',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
   @override
   List<GeneratedColumn> get $columns => [
     scriptId,
@@ -5761,7 +5749,6 @@ class $LxSourceUsageTableTable extends LxSourceUsageTable
     successCount,
     maxDurationMs,
     minDurationMs,
-    totalDurationMs,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5824,15 +5811,6 @@ class $LxSourceUsageTableTable extends LxSourceUsageTable
         ),
       );
     }
-    if (data.containsKey('total_duration_ms')) {
-      context.handle(
-        _totalDurationMsMeta,
-        totalDurationMs.isAcceptableOrUnknown(
-          data['total_duration_ms']!,
-          _totalDurationMsMeta,
-        ),
-      );
-    }
     return context;
   }
 
@@ -5866,10 +5844,6 @@ class $LxSourceUsageTableTable extends LxSourceUsageTable
         DriftSqlType.int,
         data['${effectivePrefix}min_duration_ms'],
       )!,
-      totalDurationMs: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}total_duration_ms'],
-      )!,
     );
   }
 
@@ -5898,9 +5872,6 @@ class LxSourceUsageEntity extends DataClass
 
   /// 最低耗时（毫秒）
   final int minDurationMs;
-
-  /// 累计耗时（毫秒），用于计算平均耗时
-  final int totalDurationMs;
   const LxSourceUsageEntity({
     required this.scriptId,
     required this.libraryId,
@@ -5908,7 +5879,6 @@ class LxSourceUsageEntity extends DataClass
     required this.successCount,
     required this.maxDurationMs,
     required this.minDurationMs,
-    required this.totalDurationMs,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5919,7 +5889,6 @@ class LxSourceUsageEntity extends DataClass
     map['success_count'] = Variable<int>(successCount);
     map['max_duration_ms'] = Variable<int>(maxDurationMs);
     map['min_duration_ms'] = Variable<int>(minDurationMs);
-    map['total_duration_ms'] = Variable<int>(totalDurationMs);
     return map;
   }
 
@@ -5931,7 +5900,6 @@ class LxSourceUsageEntity extends DataClass
       successCount: Value(successCount),
       maxDurationMs: Value(maxDurationMs),
       minDurationMs: Value(minDurationMs),
-      totalDurationMs: Value(totalDurationMs),
     );
   }
 
@@ -5947,7 +5915,6 @@ class LxSourceUsageEntity extends DataClass
       successCount: serializer.fromJson<int>(json['successCount']),
       maxDurationMs: serializer.fromJson<int>(json['maxDurationMs']),
       minDurationMs: serializer.fromJson<int>(json['minDurationMs']),
-      totalDurationMs: serializer.fromJson<int>(json['totalDurationMs']),
     );
   }
   @override
@@ -5960,7 +5927,6 @@ class LxSourceUsageEntity extends DataClass
       'successCount': serializer.toJson<int>(successCount),
       'maxDurationMs': serializer.toJson<int>(maxDurationMs),
       'minDurationMs': serializer.toJson<int>(minDurationMs),
-      'totalDurationMs': serializer.toJson<int>(totalDurationMs),
     };
   }
 
@@ -5971,7 +5937,6 @@ class LxSourceUsageEntity extends DataClass
     int? successCount,
     int? maxDurationMs,
     int? minDurationMs,
-    int? totalDurationMs,
   }) => LxSourceUsageEntity(
     scriptId: scriptId ?? this.scriptId,
     libraryId: libraryId ?? this.libraryId,
@@ -5979,7 +5944,6 @@ class LxSourceUsageEntity extends DataClass
     successCount: successCount ?? this.successCount,
     maxDurationMs: maxDurationMs ?? this.maxDurationMs,
     minDurationMs: minDurationMs ?? this.minDurationMs,
-    totalDurationMs: totalDurationMs ?? this.totalDurationMs,
   );
   LxSourceUsageEntity copyWithCompanion(LxSourceUsageTableCompanion data) {
     return LxSourceUsageEntity(
@@ -5997,9 +5961,6 @@ class LxSourceUsageEntity extends DataClass
       minDurationMs: data.minDurationMs.present
           ? data.minDurationMs.value
           : this.minDurationMs,
-      totalDurationMs: data.totalDurationMs.present
-          ? data.totalDurationMs.value
-          : this.totalDurationMs,
     );
   }
 
@@ -6011,8 +5972,7 @@ class LxSourceUsageEntity extends DataClass
           ..write('totalCount: $totalCount, ')
           ..write('successCount: $successCount, ')
           ..write('maxDurationMs: $maxDurationMs, ')
-          ..write('minDurationMs: $minDurationMs, ')
-          ..write('totalDurationMs: $totalDurationMs')
+          ..write('minDurationMs: $minDurationMs')
           ..write(')'))
         .toString();
   }
@@ -6025,7 +5985,6 @@ class LxSourceUsageEntity extends DataClass
     successCount,
     maxDurationMs,
     minDurationMs,
-    totalDurationMs,
   );
   @override
   bool operator ==(Object other) =>
@@ -6036,8 +5995,7 @@ class LxSourceUsageEntity extends DataClass
           other.totalCount == this.totalCount &&
           other.successCount == this.successCount &&
           other.maxDurationMs == this.maxDurationMs &&
-          other.minDurationMs == this.minDurationMs &&
-          other.totalDurationMs == this.totalDurationMs);
+          other.minDurationMs == this.minDurationMs);
 }
 
 class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
@@ -6047,7 +6005,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
   final Value<int> successCount;
   final Value<int> maxDurationMs;
   final Value<int> minDurationMs;
-  final Value<int> totalDurationMs;
   final Value<int> rowid;
   const LxSourceUsageTableCompanion({
     this.scriptId = const Value.absent(),
@@ -6056,7 +6013,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
     this.successCount = const Value.absent(),
     this.maxDurationMs = const Value.absent(),
     this.minDurationMs = const Value.absent(),
-    this.totalDurationMs = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   LxSourceUsageTableCompanion.insert({
@@ -6066,7 +6022,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
     this.successCount = const Value.absent(),
     this.maxDurationMs = const Value.absent(),
     this.minDurationMs = const Value.absent(),
-    this.totalDurationMs = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : scriptId = Value(scriptId),
        libraryId = Value(libraryId);
@@ -6077,7 +6032,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
     Expression<int>? successCount,
     Expression<int>? maxDurationMs,
     Expression<int>? minDurationMs,
-    Expression<int>? totalDurationMs,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6087,7 +6041,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
       if (successCount != null) 'success_count': successCount,
       if (maxDurationMs != null) 'max_duration_ms': maxDurationMs,
       if (minDurationMs != null) 'min_duration_ms': minDurationMs,
-      if (totalDurationMs != null) 'total_duration_ms': totalDurationMs,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6099,7 +6052,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
     Value<int>? successCount,
     Value<int>? maxDurationMs,
     Value<int>? minDurationMs,
-    Value<int>? totalDurationMs,
     Value<int>? rowid,
   }) {
     return LxSourceUsageTableCompanion(
@@ -6109,7 +6061,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
       successCount: successCount ?? this.successCount,
       maxDurationMs: maxDurationMs ?? this.maxDurationMs,
       minDurationMs: minDurationMs ?? this.minDurationMs,
-      totalDurationMs: totalDurationMs ?? this.totalDurationMs,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6135,9 +6086,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
     if (minDurationMs.present) {
       map['min_duration_ms'] = Variable<int>(minDurationMs.value);
     }
-    if (totalDurationMs.present) {
-      map['total_duration_ms'] = Variable<int>(totalDurationMs.value);
-    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6153,7 +6101,6 @@ class LxSourceUsageTableCompanion extends UpdateCompanion<LxSourceUsageEntity> {
           ..write('successCount: $successCount, ')
           ..write('maxDurationMs: $maxDurationMs, ')
           ..write('minDurationMs: $minDurationMs, ')
-          ..write('totalDurationMs: $totalDurationMs, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -9135,7 +9082,6 @@ typedef $$LxSourceUsageTableTableCreateCompanionBuilder =
       Value<int> successCount,
       Value<int> maxDurationMs,
       Value<int> minDurationMs,
-      Value<int> totalDurationMs,
       Value<int> rowid,
     });
 typedef $$LxSourceUsageTableTableUpdateCompanionBuilder =
@@ -9146,7 +9092,6 @@ typedef $$LxSourceUsageTableTableUpdateCompanionBuilder =
       Value<int> successCount,
       Value<int> maxDurationMs,
       Value<int> minDurationMs,
-      Value<int> totalDurationMs,
       Value<int> rowid,
     });
 
@@ -9186,11 +9131,6 @@ class $$LxSourceUsageTableTableFilterComposer
 
   ColumnFilters<int> get minDurationMs => $composableBuilder(
     column: $table.minDurationMs,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get totalDurationMs => $composableBuilder(
-    column: $table.totalDurationMs,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -9233,11 +9173,6 @@ class $$LxSourceUsageTableTableOrderingComposer
     column: $table.minDurationMs,
     builder: (column) => ColumnOrderings(column),
   );
-
-  ColumnOrderings<int> get totalDurationMs => $composableBuilder(
-    column: $table.totalDurationMs,
-    builder: (column) => ColumnOrderings(column),
-  );
 }
 
 class $$LxSourceUsageTableTableAnnotationComposer
@@ -9272,11 +9207,6 @@ class $$LxSourceUsageTableTableAnnotationComposer
 
   GeneratedColumn<int> get minDurationMs => $composableBuilder(
     column: $table.minDurationMs,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get totalDurationMs => $composableBuilder(
-    column: $table.totalDurationMs,
     builder: (column) => column,
   );
 }
@@ -9327,7 +9257,6 @@ class $$LxSourceUsageTableTableTableManager
                 Value<int> successCount = const Value.absent(),
                 Value<int> maxDurationMs = const Value.absent(),
                 Value<int> minDurationMs = const Value.absent(),
-                Value<int> totalDurationMs = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LxSourceUsageTableCompanion(
                 scriptId: scriptId,
@@ -9336,7 +9265,6 @@ class $$LxSourceUsageTableTableTableManager
                 successCount: successCount,
                 maxDurationMs: maxDurationMs,
                 minDurationMs: minDurationMs,
-                totalDurationMs: totalDurationMs,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9347,7 +9275,6 @@ class $$LxSourceUsageTableTableTableManager
                 Value<int> successCount = const Value.absent(),
                 Value<int> maxDurationMs = const Value.absent(),
                 Value<int> minDurationMs = const Value.absent(),
-                Value<int> totalDurationMs = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => LxSourceUsageTableCompanion.insert(
                 scriptId: scriptId,
@@ -9356,7 +9283,6 @@ class $$LxSourceUsageTableTableTableManager
                 successCount: successCount,
                 maxDurationMs: maxDurationMs,
                 minDurationMs: minDurationMs,
-                totalDurationMs: totalDurationMs,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

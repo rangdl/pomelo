@@ -6,13 +6,85 @@ import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+/// 统一响应式打开「曲目更多操作」菜单。
+///
+/// 移动端：openSheet 从底部滑出
+/// 桌面端：showDropdown 在当前上下文弹出下拉菜单
+///
+/// 提供 [onRemoveFromQueue] 时显示「从列表移除」菜单项。
+void showTrackMoreActions(
+  BuildContext context,
+  WidgetRef ref,
+  Track track, {
+  VoidCallback? onRemoveFromQueue,
+}) {
+  Rx.action(
+    context,
+    mobile: () => openSheet(
+      context: context,
+      position: OverlayPosition.bottom,
+      draggable: true,
+      builder: (_) => TrackMoreActionsContent(
+        track: track,
+        onRemoveFromQueue: onRemoveFromQueue,
+      ),
+    ),
+    tablet: () => showDropdown(
+      context: context,
+      builder: (_) => DropdownMenu(
+        children: buildTrackMoreMenuItems(context, ref, track, onRemoveFromQueue),
+      ),
+    ),
+  );
+}
+
+/// 构造桌面端下拉的菜单项列表
+List<MenuItem> buildTrackMoreMenuItems(
+  BuildContext context,
+  WidgetRef ref,
+  Track track,
+  VoidCallback? onRemoveFromQueue,
+) {
+  final notifier = ref.read(audioPlayerProvider.notifier);
+  return [
+    MenuButton(
+      leading: const Icon(Icons.queue_music, size: 18),
+      child: const Text('下一首播放'),
+      onPressed: (_) {
+        notifier.addTracksAtFirst([track]);
+        context.toast.success('已添加到下一首');
+      },
+    ),
+    MenuButton(
+      leading: const Icon(Icons.playlist_add, size: 18),
+      child: const Text('添加到播放列表'),
+      onPressed: (_) {
+        notifier.addTracks([track]);
+        context.toast.success('已添加到播放列表');
+      },
+    ),
+    if (onRemoveFromQueue != null)
+      MenuButton(
+        leading: Icon(
+          Icons.delete_outline,
+          size: 18,
+          color: Theme.of(context).colorScheme.destructive,
+        ),
+        child: Text(
+          '从列表移除',
+          style: TextStyle(color: Theme.of(context).colorScheme.destructive),
+        ),
+        onPressed: (_) {
+          onRemoveFromQueue.call();
+          context.toast.success('已从列表移除');
+        },
+      ),
+  ];
+}
+
 /// 曲目「更多操作」按钮
 ///
-/// 点击后按响应式分流弹出菜单：
-/// - 移动端：openSheet 从底部滑出
-/// - 桌面端：showDropdown 在按钮旁弹出
-///
-/// 菜单项：下一首播放、添加到播放列表、（可选）从列表移除。
+/// 点击后按响应式分流弹出菜单（实际调用 [showTrackMoreActions]）。
 class TrackMoreActionsButton extends HookConsumerWidget {
   final Track track;
 
@@ -29,65 +101,13 @@ class TrackMoreActionsButton extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return IconButton.text(
       icon: const Icon(Icons.more_vert, size: 18),
-      onPressed: () => _openActions(context, ref),
-    );
-  }
-
-  void _openActions(BuildContext context, WidgetRef ref) {
-    Rx.action(
-      context,
-      mobile: () => openSheet(
-        context: context,
-        position: OverlayPosition.bottom,
-        draggable: true,
-        builder: (_) => TrackMoreActionsContent(
-          track: track,
-          onRemoveFromQueue: onRemoveFromQueue,
-        ),
-      ),
-      tablet: () => showDropdown(
-        context: context,
-        builder: (_) => DropdownMenu(children: _buildMenuItems(context, ref)),
+      onPressed: () => showTrackMoreActions(
+        context,
+        ref,
+        track,
+        onRemoveFromQueue: onRemoveFromQueue,
       ),
     );
-  }
-
-  List<MenuItem> _buildMenuItems(BuildContext context, WidgetRef ref) {
-    final notifier = ref.read(audioPlayerProvider.notifier);
-    return [
-      MenuButton(
-        leading: const Icon(Icons.queue_music, size: 18),
-        child: const Text('下一首播放'),
-        onPressed: (_) {
-          notifier.addTracksAtFirst([track]);
-          context.toast.success('已添加到下一首');
-        },
-      ),
-      MenuButton(
-        leading: const Icon(Icons.playlist_add, size: 18),
-        child: const Text('添加到播放列表'),
-        onPressed: (_) {
-          notifier.addTracks([track]);
-          context.toast.success('已添加到播放列表');
-        },
-      ),
-      if (onRemoveFromQueue != null)
-        MenuButton(
-          leading: Icon(
-            Icons.delete_outline,
-            size: 18,
-            color: Theme.of(context).colorScheme.destructive,
-          ),
-          child: Text(
-            '从列表移除',
-            style: TextStyle(color: Theme.of(context).colorScheme.destructive),
-          ),
-          onPressed: (_) {
-            onRemoveFromQueue!.call();
-            context.toast.success('已从列表移除');
-          },
-        ),
-    ];
   }
 }
 

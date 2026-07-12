@@ -283,11 +283,7 @@ class LocalAudioSourceSection extends HookConsumerWidget {
                           usages: scriptUsages,
                           colorScheme: colorScheme,
                           onRemove: () => removeScript(script.id),
-                          onTap: () => _showScriptDetail(
-                            context,
-                            script,
-                            scriptUsages,
-                          ),
+                          onTap: () => _showScriptDetail(context, script),
                         ),
                       );
                     },
@@ -343,7 +339,6 @@ class _LxScriptTile extends StatelessWidget {
                 successCount: 0,
                 maxDurationMs: 0,
                 minDurationMs: 0,
-                totalDurationMs: 0,
               ),
             );
             final rate = _successRate(usage);
@@ -410,29 +405,31 @@ class _LxScriptTile extends StatelessWidget {
 void _showScriptDetail(
   BuildContext context,
   LxSourceScript script,
-  List<LxSourceUsageEntity> usages,
 ) {
   showDialog(
     context: context,
-    builder: (_) => _ScriptDetailDialog(
-      script: script,
-      usages: usages,
-    ),
+    builder: (_) => _ScriptDetailDialog(script: script),
   );
 }
 
 /// 音源脚本详情对话框
 ///
-/// 展示脚本信息、库列表、音质列表与调用统计（成功率、调用次数、最高/最低/平均耗时）。
-class _ScriptDetailDialog extends StatelessWidget {
+/// 展示脚本信息、库列表、音质列表与调用统计（成功率、调用次数、最高/最低耗时）。
+/// 在内部通过 ref.watch 实时获取使用记录，避免依赖外部传入的静态快照导致 Dialog 不刷新。
+class _ScriptDetailDialog extends ConsumerWidget {
   final LxSourceScript script;
-  final List<LxSourceUsageEntity> usages;
 
-  const _ScriptDetailDialog({required this.script, required this.usages});
+  const _ScriptDetailDialog({required this.script});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colorScheme = Theme.of(context).colorScheme;
+    // 弹窗内部自己 watch provider，保证数据是最新的（Dialog 是独立 Route，不会随外部 rebuild）
+    final usagesAsync = ref.watch(lxSourceUsagesProvider);
+    final allUsages = usagesAsync.valueOrNull ?? const <LxSourceUsageEntity>[];
+    final usages =
+        allUsages.where((u) => u.scriptId == script.id).toList();
+
     final metaInfo = [
       if (script.author != null && script.author!.isNotEmpty)
         ('作者', script.author!),
@@ -459,7 +456,7 @@ class _ScriptDetailDialog extends StatelessWidget {
         ],
       ),
       content: SizedBox(
-        width: 460,
+        width: 560,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -533,13 +530,9 @@ class _ScriptDetailDialog extends StatelessWidget {
                       successCount: 0,
                       maxDurationMs: 0,
                       minDurationMs: 0,
-                      totalDurationMs: 0,
                     ),
                   );
                   final rate = _successRate(usage);
-                  final avgMs = usage.totalCount > 0
-                      ? (usage.totalDurationMs / usage.totalCount).round()
-                      : 0;
                   final rateColor = rate >= 80
                       ? const Color(0xFF22C55E)
                       : rate >= 50
@@ -620,7 +613,7 @@ class _ScriptDetailDialog extends StatelessWidget {
                             ),
                             const Gap(2),
                             Text(
-                              '最高 ${usage.maxDurationMs}ms · 最低 ${usage.minDurationMs}ms · 平均 ${avgMs}ms',
+                              '最高 ${usage.maxDurationMs}ms · 最低 ${usage.minDurationMs}ms',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: colorScheme.mutedForeground,
@@ -835,8 +828,8 @@ class _AudioSourceSettingsDialog extends ConsumerWidget {
     return AlertDialog(
       title: const Text('音源设置'),
       content: SizedBox(
-        width: 480,
-        height: 560,
+        width: 600,
+        height: 620,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
