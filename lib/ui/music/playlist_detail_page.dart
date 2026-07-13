@@ -17,14 +17,17 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 ///
 /// 根据 (sourceId, playlistId) 获取歌单歌曲列表。
 final playlistTracksProvider =
-    FutureProvider.family<List<Track>, ({String sourceId, String playlistId})>(
-  (ref, params) async {
-    await ref.watch(musicServersProvider.future);
-    final service = await ref.watch(musicServerByProvider(params.sourceId).future);
-    if (service == null) return [];
-    return service.getPlaylistTracks(params.playlistId);
-  },
-);
+    FutureProvider.family<List<Track>, ({String sourceId, String playlistId})>((
+      ref,
+      params,
+    ) async {
+      await ref.watch(musicServersProvider.future);
+      final service = await ref.watch(
+        musicServerByProvider(params.sourceId).future,
+      );
+      if (service == null) return [];
+      return service.getPlaylistTracks(params.playlistId);
+    });
 
 /// 歌单详情页面
 @RoutePage()
@@ -90,6 +93,8 @@ class PlaylistDetailPage extends HookConsumerWidget {
             tracks: tracks,
           );
           // 歌曲列表内容
+          // 移动端：默认（嵌入父 ListView 滚动）
+          // 桌面端：传入 physics 使其作为独立滚动区域
           final songListContent = tracks.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 48),
@@ -100,18 +105,20 @@ class PlaylistDetailPage extends HookConsumerWidget {
                     ),
                   ),
                 )
-              : TrackList(tracks: tracks, showMoreActions: true);
+              : TrackList(
+                  tracks: tracks,
+                  showMoreActions: true,
+                  physics: isMobile
+                      ? null
+                      : const AlwaysScrollableScrollPhysics(),
+                );
 
           return Rx.layout(
             context,
             // 移动端：纵向布局（封面信息在上，歌曲列表在下）
             mobile: () => ListView(
               padding: const EdgeInsets.all(12),
-              children: [
-                header,
-                const Gap(12),
-                songListContent,
-              ],
+              children: [header, const Gap(12), songListContent],
             ),
             // 桌面端（tablet 及以上）：左侧封面信息，右侧歌曲列表
             tablet: () => Row(
@@ -135,16 +142,21 @@ class PlaylistDetailPage extends HookConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, size: 48, color: colorScheme.destructive),
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: colorScheme.destructive,
+              ),
               const Gap(12),
               Text('加载失败: $err'),
               const Gap(12),
               GhostButton(
                 onPressed: () {
                   ref.invalidate(
-                    playlistTracksProvider(
-                      (sourceId: sourceId, playlistId: playlistId),
-                    ),
+                    playlistTracksProvider((
+                      sourceId: sourceId,
+                      playlistId: playlistId,
+                    )),
                   );
                 },
                 child: const Text('重试'),
@@ -234,4 +246,3 @@ class _PlaylistHeader extends StatelessWidget {
     );
   }
 }
-

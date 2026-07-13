@@ -102,4 +102,31 @@ class UserPreferenceNotifier extends Notifier<UserPreference> {
 
   Future<void> setCastLocalProxy(bool value) =>
       update((p) => p.copyWith(castLocalProxy: value));
+
+  // ==================== 搜索历史 ====================
+
+  /// 添加搜索关键词到历史记录。
+  ///
+  /// 已存在的关键词会移到最前，最多保留 20 条。
+  Future<void> addSearchKeyword(String keyword) {
+    final trimmed = keyword.trim();
+    if (trimmed.isEmpty) return Future.value();
+    return update((p) {
+      final list = List<String>.from(p.searchKeywords);
+      list.remove(trimmed);
+      list.insert(0, trimmed);
+      if (list.length > 20) list.removeRange(20, list.length);
+      return p.copyWith(searchKeywords: list);
+    });
+  }
+
+  /// 移除指定搜索关键词
+  Future<void> removeSearchKeyword(String keyword) =>
+      update((p) => p.copyWith(
+        searchKeywords: p.searchKeywords.where((k) => k != keyword).toList(),
+      ));
+
+  /// 清空搜索历史
+  Future<void> clearSearchKeywords() =>
+      update((p) => p.copyWith(searchKeywords: const []));
 }

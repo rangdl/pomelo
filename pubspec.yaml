@@ -95,7 +95,7 @@ dependencies:
       ref: 63931dfe06733d4fb7452e9981e1f0b23414d97a
   smtc_windows: ^1.1.0
   flutter_rust_bridge: ^2.11.1
-  freezed_annotation: ^2.4.1
+  freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
   file_picker: ^10.1.9
   path: ^1.9.1
@@ -104,6 +104,7 @@ dependencies:
   url_launcher: ^6.3.1     # 打开浏览器下载更新
   collection: ^1.18.0      # 列表工具
   dlna_dart: ^0.1.0        # DLNA 投屏（SSDP 发现 + SOAP 控制）
+  rusty_dlna: ^0.0.1       # DLNA 投屏（Rust 实现，备用）
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
@@ -118,7 +119,7 @@ dev_dependencies:
   # rules and activating additional ones.
   
   build_runner: ^2.4.13
-  freezed: ^2.5.4
+  freezed: ^3.0.6
   json_serializable: ^6.6.2
   auto_route_generator: ^9.0.0
   drift_dev: ^2.21.0

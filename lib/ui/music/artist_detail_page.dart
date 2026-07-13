@@ -483,20 +483,20 @@ class _ArtistAlbumsGrid extends StatelessWidget {
         final width = constraints.maxWidth;
         int crossAxisCount;
         if (width < ResponsiveBreakpoints.mobile) {
-          crossAxisCount = 2;
-        } else if (width < ResponsiveBreakpoints.tablet) {
           crossAxisCount = 3;
-        } else if (width < ResponsiveBreakpoints.desktop) {
+        } else if (width < ResponsiveBreakpoints.tablet) {
           crossAxisCount = 4;
-        } else {
+        } else if (width < ResponsiveBreakpoints.desktop) {
           crossAxisCount = 5;
+        } else {
+          crossAxisCount = 6;
         }
         return GridView.builder(
           padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
             childAspectRatio: 0.85,
           ),
           itemCount: albums.length,

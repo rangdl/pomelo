@@ -137,12 +137,14 @@ class PlayableTrackTile extends HookConsumerWidget {
     );
 
     // 桌面端启用更多操作时，包裹 GestureDetector 处理右键
+    // 使用 onSecondaryTapDown 捕获鼠标位置，让菜单在鼠标处弹出
     if (showMoreActions && !isMobile) {
       return GestureDetector(
-        onSecondaryTap: () => showTrackMoreActions(
+        onSecondaryTapDown: (details) => showTrackMoreActions(
           context,
           ref,
           track,
+          position: details.globalPosition,
           onRemoveFromQueue: onRemoveFromQueue == null
               ? null
               : () => onRemoveFromQueue!(track),

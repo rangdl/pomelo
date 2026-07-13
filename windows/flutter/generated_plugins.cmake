@@ -16,6 +16,7 @@ list(APPEND FLUTTER_FFI_PLUGIN_LIST
   jni
   jsf
   metadata_god
+  rusty_dlna
   smtc_windows
 )
 

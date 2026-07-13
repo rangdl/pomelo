@@ -24,6 +24,7 @@ import 'core/helper.dart';
 import 'core/hooks/use_has_touch.dart';
 import 'global.dart';
 import 'services/audio_player/audio_player.dart' show audioPlayer;
+import 'services/cast/rusty_dlna_service.dart';
 import 'services/logger/logger.dart';
 
 final appRouter = AppRouter(navigatorKey: appNavigatorKey);
@@ -34,6 +35,12 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     MediaKit.ensureInitialized();
     MetadataGod.initialize();
+    // 初始化 rusty_dlna（Rust 运行时，失败不影响主流程）
+    try {
+      await RustyDlnaService.ensureInitialized();
+    } catch (e) {
+      AppLogger.log.w('[main] rusty_dlna 初始化失败: $e');
+    }
     if (kIsWindows) {
       await SMTCWindows.initialize();
     }

@@ -10,7 +10,8 @@
 library;
 
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart' show ReorderableListView, ReorderableDragStartListener;
+import 'package:flutter/material.dart'
+    show ReorderableListView, ReorderableDragStartListener;
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
@@ -82,7 +83,9 @@ class LocalAudioSourceSection extends HookConsumerWidget {
 
     Future<void> removeScript(String id) async {
       try {
-        await ref.read(lxSourceScriptsNotifierProvider.notifier).removeScript(id);
+        await ref
+            .read(lxSourceScriptsNotifierProvider.notifier)
+            .removeScript(id);
         if (context.mounted) AppToast().success('音源脚本已移除');
       } catch (e) {
         if (context.mounted) AppToast().error('移除失败: $e');
@@ -127,11 +130,7 @@ class LocalAudioSourceSection extends HookConsumerWidget {
                     )
                   : const Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.add, size: 16),
-                        Gap(4),
-                        Text('添加'),
-                      ],
+                      children: [Icon(Icons.add, size: 16), Gap(4), Text('添加')],
                     ),
             ),
           ],
@@ -283,7 +282,7 @@ class LocalAudioSourceSection extends HookConsumerWidget {
                           usages: scriptUsages,
                           colorScheme: colorScheme,
                           onRemove: () => removeScript(script.id),
-                          onTap: () => _showScriptDetail(context, script),
+                          onTap: () => _showScriptDetail(context, ref, script),
                         ),
                       );
                     },
@@ -329,21 +328,23 @@ class _LxScriptTile extends StatelessWidget {
     // 每个库的成功率摘要
     final libsSummary = script.libraries.isEmpty
         ? '未注册库'
-        : script.libraries.map((lib) {
-            final usage = usages.firstWhere(
-              (u) => u.libraryId == lib.id,
-              orElse: () => LxSourceUsageEntity(
-                scriptId: script.id,
-                libraryId: lib.id,
-                totalCount: 0,
-                successCount: 0,
-                maxDurationMs: 0,
-                minDurationMs: 0,
-              ),
-            );
-            final rate = _successRate(usage);
-            return '${lib.id} $rate%';
-          }).join(' · ');
+        : script.libraries
+              .map((lib) {
+                final usage = usages.firstWhere(
+                  (u) => u.libraryId == lib.id,
+                  orElse: () => LxSourceUsageEntity(
+                    scriptId: script.id,
+                    libraryId: lib.id,
+                    totalCount: 0,
+                    successCount: 0,
+                    maxDurationMs: 0,
+                    minDurationMs: 0,
+                  ),
+                );
+                final rate = _successRate(usage);
+                return '${lib.id} $rate%';
+              })
+              .join(' · ');
 
     return ListTile(
       leading: ReorderableDragStartListener(
@@ -375,20 +376,14 @@ class _LxScriptTile extends StatelessWidget {
             ].join(' · '),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              color: colorScheme.mutedForeground,
-            ),
+            style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
           ),
           const Gap(2),
           Text(
             libsSummary,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 11,
-              color: colorScheme.mutedForeground,
-            ),
+            style: TextStyle(fontSize: 11, color: colorScheme.mutedForeground),
           ),
         ],
       ),
@@ -404,8 +399,11 @@ class _LxScriptTile extends StatelessWidget {
 /// 展示音源脚本详情弹窗
 void _showScriptDetail(
   BuildContext context,
+  WidgetRef ref,
   LxSourceScript script,
 ) {
+  // 每次打开详情时刷新使用记录，确保展示最新数据
+  ref.invalidate(lxSourceUsagesProvider);
   showDialog(
     context: context,
     builder: (_) => _ScriptDetailDialog(script: script),
@@ -426,9 +424,8 @@ class _ScriptDetailDialog extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     // 弹窗内部自己 watch provider，保证数据是最新的（Dialog 是独立 Route，不会随外部 rebuild）
     final usagesAsync = ref.watch(lxSourceUsagesProvider);
-    final allUsages = usagesAsync.valueOrNull ?? const <LxSourceUsageEntity>[];
-    final usages =
-        allUsages.where((u) => u.scriptId == script.id).toList();
+    final allUsages = usagesAsync.value ?? const <LxSourceUsageEntity>[];
+    final usages = allUsages.where((u) => u.scriptId == script.id).toList();
 
     final metaInfo = [
       if (script.author != null && script.author!.isNotEmpty)
@@ -536,8 +533,8 @@ class _ScriptDetailDialog extends ConsumerWidget {
                   final rateColor = rate >= 80
                       ? const Color(0xFF22C55E)
                       : rate >= 50
-                          ? const Color(0xFFF59E0B)
-                          : const Color(0xFFEF4444);
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFFEF4444);
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Card(
@@ -587,8 +584,9 @@ class _ScriptDetailDialog extends ConsumerWidget {
                                       vertical: 1,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: colorScheme.muted
-                                          .withValues(alpha: 0.3),
+                                      color: colorScheme.muted.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       borderRadius: BorderRadius.circular(3),
                                     ),
                                     child: Text(
@@ -660,9 +658,8 @@ class LxServerLocalSourceSection extends ConsumerWidget {
     final configs = ref.watch(musicServerConfigsProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    final lxServerConfigs = configs.value
-            ?.whereType<LxServerConfig>()
-            .toList() ??
+    final lxServerConfigs =
+        configs.value?.whereType<LxServerConfig>().toList() ??
         const <LxServerConfig>[];
 
     return Column(
@@ -733,8 +730,7 @@ class LxServerLocalSourceSection extends ConsumerWidget {
                       },
                     ),
                   ),
-                  if (i < lxServerConfigs.length - 1)
-                    const Divider(height: 1),
+                  if (i < lxServerConfigs.length - 1) const Divider(height: 1),
                 ],
               ],
             ),
@@ -808,9 +804,7 @@ void openAudioSourceSettings(BuildContext context) {
   Rx.action(
     context,
     mobile: () => Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const AudioSourceSettingsPage(),
-      ),
+      MaterialPageRoute<void>(builder: (_) => const AudioSourceSettingsPage()),
     ),
     tablet: () => showDialog(
       context: context,

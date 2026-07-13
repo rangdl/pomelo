@@ -9,14 +9,16 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 /// 统一响应式打开「曲目更多操作」菜单。
 ///
 /// 移动端：openSheet 从底部滑出
-/// 桌面端：showDropdown 在当前上下文弹出下拉菜单
+/// 桌面端：showDropdown 在指定位置弹出下拉菜单
 ///
 /// 提供 [onRemoveFromQueue] 时显示「从列表移除」菜单项。
+/// 传入 [position]（鼠标全局坐标）时，桌面端下拉菜单会在该位置弹出。
 void showTrackMoreActions(
   BuildContext context,
   WidgetRef ref,
   Track track, {
   VoidCallback? onRemoveFromQueue,
+  Offset? position,
 }) {
   Rx.action(
     context,
@@ -31,6 +33,7 @@ void showTrackMoreActions(
     ),
     tablet: () => showDropdown(
       context: context,
+      position: position,
       builder: (_) => DropdownMenu(
         children: buildTrackMoreMenuItems(context, ref, track, onRemoveFromQueue),
       ),

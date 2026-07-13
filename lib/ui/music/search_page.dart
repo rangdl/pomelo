@@ -2,12 +2,15 @@
 ///
 /// 展示根据关键词搜索到的歌曲/歌手/专辑/歌单列表。
 /// 搜索框左侧提供搜索类型下拉菜单，类型来源于当前选中服务支持的搜索类型。
+///
+/// 未输入关键词时展示「搜索历史」与「热搜词」两个区块，点击即触发搜索。
 library;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:pomelo/core/framework/framework.dart';
+import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
@@ -43,6 +46,8 @@ class MusicSearchPage extends HookConsumerWidget {
       keywordState.value = trimmed;
       showSuggestions.value = false;
       focusNode.unfocus();
+      // 记录到搜索历史
+      ref.read(userPreferenceProvider.notifier).addSearchKeyword(trimmed);
     }
 
     useEffect(() {
@@ -85,9 +90,9 @@ class MusicSearchPage extends HookConsumerWidget {
       child: Stack(
         children: [
           keywordState.value.isEmpty
-              ? const Center(child: Text('输入关键词搜索'))
+              ? _SearchLanding(onSearch: doSearch)
               : _SearchResults(keyword: keywordState.value),
-          // 搜索提示浮层
+          // 搜索提示浮层 — 仅在有结果时由组件内部渲染
           if (showSuggestions.value && inputText.value.trim().isNotEmpty)
             Positioned.fill(
               top: 0,
@@ -97,9 +102,256 @@ class MusicSearchPage extends HookConsumerWidget {
                   searchController.text = suggestion;
                   doSearch(suggestion);
                 },
+                onDismiss: () => showSuggestions.value = false,
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// 搜索落地页 — 未输入关键词时展示热搜词与搜索历史
+class _SearchLanding extends HookConsumerWidget {
+  final void Function(String keyword) onSearch;
+
+  const _SearchLanding({required this.onSearch});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final searchKeywords = ref.watch(
+      userPreferenceProvider.select((p) => p.searchKeywords),
+    );
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 搜索历史
+          if (searchKeywords.isNotEmpty) ...[
+            Row(
+              children: [
+                Icon(
+                  Icons.history,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.mutedForeground,
+                ),
+                const Gap(6),
+                Text(
+                  '搜索历史',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.foreground,
+                  ),
+                ),
+                const Spacer(),
+                GhostButton(
+                  density: ButtonDensity.compact,
+                  size: ButtonSize.small,
+                  onPressed: () => ref
+                      .read(userPreferenceProvider.notifier)
+                      .clearSearchKeywords(),
+                  child: const Icon(Icons.delete_sweep_outlined, size: 16),
+                ),
+              ],
+            ),
+            const Gap(8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final kw in searchKeywords)
+                  _HistoryChip(
+                    text: kw,
+                    onTap: () => onSearch(kw),
+                    onRemove: () => ref
+                        .read(userPreferenceProvider.notifier)
+                        .removeSearchKeyword(kw),
+                  ),
+              ],
+            ),
+            const Gap(24),
+          ],
+          // 热搜词
+          _HotSearchSection(onSearch: onSearch),
+        ],
+      ),
+    );
+  }
+}
+
+/// 搜索历史单项 chip（带删除按钮）
+class _HistoryChip extends HookConsumerWidget {
+  final String text;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+
+  const _HistoryChip({
+    required this.text,
+    required this.onTap,
+    required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isHovered = useState(false);
+    final colorScheme = Theme.of(context).colorScheme;
+    return MouseRegion(
+      onEnter: (_) => isHovered.value = true,
+      onExit: (_) => isHovered.value = false,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isHovered.value
+                ? colorScheme.muted.withValues(alpha: 0.6)
+                : colorScheme.muted.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                text,
+                style: TextStyle(fontSize: 12, color: colorScheme.foreground),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const Gap(4),
+              GestureDetector(
+                onTap: onRemove,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 2),
+                  child: Icon(
+                    Icons.close,
+                    size: 12,
+                    color: colorScheme.mutedForeground,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 热搜词区块
+class _HotSearchSection extends HookConsumerWidget {
+  final void Function(String keyword) onSearch;
+
+  const _HotSearchSection({required this.onSearch});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hotSearchAsync = ref.watch(hotSearchProvider);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return hotSearchAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
+      data: (hotWords) {
+        if (hotWords.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.local_fire_department,
+                  size: 16,
+                  color: colorScheme.primary,
+                ),
+                const Gap(6),
+                Text(
+                  '热门搜索',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.foreground,
+                  ),
+                ),
+              ],
+            ),
+            const Gap(8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (int i = 0; i < hotWords.length; i++)
+                  _HotWordChip(
+                    text: hotWords[i],
+                    index: i + 1,
+                    colorScheme: colorScheme,
+                    onTap: () => onSearch(hotWords[i]),
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// 热搜词单项 chip
+class _HotWordChip extends HookConsumerWidget {
+  final String text;
+  final int index;
+  final ColorScheme colorScheme;
+  final VoidCallback onTap;
+
+  const _HotWordChip({
+    required this.text,
+    required this.index,
+    required this.colorScheme,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isHovered = useState(false);
+    final indexColor = index <= 3
+        ? colorScheme.primary
+        : colorScheme.mutedForeground;
+    return MouseRegion(
+      onEnter: (_) => isHovered.value = true,
+      onExit: (_) => isHovered.value = false,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: isHovered.value
+                ? colorScheme.muted.withValues(alpha: 0.6)
+                : colorScheme.muted.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$index',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: indexColor,
+                ),
+              ),
+              const Gap(6),
+              Text(
+                text,
+                style: TextStyle(fontSize: 12, color: colorScheme.foreground),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -230,11 +482,7 @@ class _SuggestionItem extends HookConsumerWidget {
           ),
           child: Row(
             children: [
-              Icon(
-                Icons.search,
-                size: 16,
-                color: colorScheme.mutedForeground,
-              ),
+              Icon(Icons.search, size: 16, color: colorScheme.mutedForeground),
               const Gap(10),
               Expanded(
                 child: Text(
@@ -256,13 +504,17 @@ class _SuggestionItem extends HookConsumerWidget {
 ///
 /// 监听 [searchTipProvider] 获取联想词列表，点击联想词触发搜索。
 /// 使用半透明背景遮罩 + 顶部对齐的提示卡片。
+///
+/// 仅在获取到非空结果时展示，loading/error/空列表均不渲染浮层。
 class _SearchSuggestions extends HookConsumerWidget {
   final String keyword;
   final void Function(String suggestion) onSelected;
+  final VoidCallback? onDismiss;
 
   const _SearchSuggestions({
     required this.keyword,
     required this.onSelected,
+    this.onDismiss,
   });
 
   @override
@@ -270,25 +522,26 @@ class _SearchSuggestions extends HookConsumerWidget {
     final tipsAsync = ref.watch(searchTipProvider(keyword));
     final colorScheme = Theme.of(context).colorScheme;
 
+    // loading / error / 空列表时不展示浮层
+    final tips = tipsAsync.asData?.value;
+    if (tips == null || tips.isEmpty) return const SizedBox.shrink();
+
     return GestureDetector(
       // 点击空白处关闭提示
-      onTap: () {},
+      onTap: onDismiss,
       behavior: HitTestBehavior.opaque,
       child: Container(
         color: Colors.black.withValues(alpha: 0.3),
         alignment: Alignment.topCenter,
         child: GestureDetector(
-          onTap: () {},
+          onTap: onDismiss,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 640),
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: colorScheme.card,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: colorScheme.border,
-                width: 1,
-              ),
+              border: Border.all(color: colorScheme.border, width: 1),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.1),
@@ -297,78 +550,42 @@ class _SearchSuggestions extends HookConsumerWidget {
                 ),
               ],
             ),
-            child: tipsAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(12),
-                child: Center(
-                  child: SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                ),
-              ),
-              error: (_, _) => Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  '获取提示失败',
-                  style: TextStyle(
-                    color: colorScheme.mutedForeground,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
-              data: (tips) {
-                if (tips.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
                     child: Text(
-                      '暂无搜索提示',
+                      '搜索提示',
                       style: TextStyle(
+                        fontSize: 12,
                         color: colorScheme.mutedForeground,
-                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  );
-                }
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '搜索提示',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: colorScheme.mutedForeground,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                  ),
+                ),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
                     ),
-                    Flexible(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        itemCount: tips.length,
-                        itemBuilder: (context, index) {
-                          final tip = tips[index];
-                          return _SuggestionItem(
-                            text: tip,
-                            colorScheme: colorScheme,
-                            onTap: () => onSelected(tip),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                );
-              },
+                    itemCount: tips.length,
+                    itemBuilder: (context, index) {
+                      final tip = tips[index];
+                      return _SuggestionItem(
+                        text: tip,
+                        colorScheme: colorScheme,
+                        onTap: () => onSelected(tip),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -416,17 +633,15 @@ class _SearchResults extends HookConsumerWidget {
         );
 
         // 结果列表组件 — 根据搜索类型选择
-        final resultsList = Expanded(
-          child: _SearchResultsContainer(
-            key: ValueKey('${tabSourceId.value}_${selectedType}_$keyword'),
-            keyword: keyword,
-            sourceId: tabSourceId.value,
-            libraryId: tabSourceId.value == selection.sourceId
-                ? selection.libraryId
-                : null,
-            services: filtered,
-            searchType: selectedType,
-          ),
+        final resultsContent = _SearchResultsContainer(
+          key: ValueKey('${tabSourceId.value}_${selectedType}_$keyword'),
+          keyword: keyword,
+          sourceId: tabSourceId.value,
+          libraryId: tabSourceId.value == selection.sourceId
+              ? selection.libraryId
+              : null,
+          services: filtered,
+          searchType: selectedType,
         );
 
         return Rx.layout(
@@ -435,7 +650,7 @@ class _SearchResults extends HookConsumerWidget {
             children: [
               SizedBox(height: 44, child: sourceChips),
               const Divider(),
-              resultsList,
+              Expanded(child: resultsContent),
             ],
           ),
           tablet: () => Row(
@@ -464,7 +679,7 @@ class _SearchResults extends HookConsumerWidget {
                 ),
               ),
               const VerticalDivider(width: 1),
-              Expanded(child: resultsList),
+              Expanded(child: resultsContent),
             ],
           ),
         );
@@ -502,11 +717,7 @@ class _SearchResultsContainer extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.source,
-              size: 48,
-              color: colorScheme.mutedForeground,
-            ),
+            Icon(Icons.source, size: 48, color: colorScheme.mutedForeground),
             const Gap(12),
             Text(
               '请先在上方选择具体的音乐来源',
@@ -717,8 +928,7 @@ class _SongResultsList extends ConsumerWidget {
                           final merged = tracks[index];
                           return PlayableTrackTile(
                             track: merged.primary,
-                            playlist:
-                                tracks.map((m) => m.primary).toList(),
+                            playlist: tracks.map((m) => m.primary).toList(),
                             playlistIndex: index,
                             trailingExtra: Text(
                               merged.displaySources,
@@ -811,8 +1021,7 @@ class _ArtistResultsList extends ConsumerWidget {
                   }
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
-                    gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
@@ -841,11 +1050,9 @@ class _ArtistResultsList extends ConsumerWidget {
                                 child: SizedBox(
                                   width: double.infinity,
                                   child: CoverImage(
-                                    coverArt:
-                                        a.coverArt ?? a.artistImageUrl,
+                                    coverArt: a.coverArt ?? a.artistImageUrl,
                                     colorScheme: colorScheme,
-                                    borderRadius:
-                                        const BorderRadius.vertical(
+                                    borderRadius: const BorderRadius.vertical(
                                       top: Radius.circular(8),
                                     ),
                                   ),
@@ -911,11 +1118,7 @@ class _AlbumResultsList extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.album,
-                  size: 48,
-                  color: colorScheme.mutedForeground,
-                ),
+                Icon(Icons.album, size: 48, color: colorScheme.mutedForeground),
                 const Gap(12),
                 Text(
                   '未找到与"$keyword"相关的专辑',
@@ -952,8 +1155,7 @@ class _AlbumResultsList extends ConsumerWidget {
                   }
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
-                    gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
@@ -986,16 +1188,14 @@ class _AlbumResultsList extends ConsumerWidget {
                                   child: CoverImage(
                                     coverArt: a.coverArt,
                                     colorScheme: colorScheme,
-                                    borderRadius:
-                                        const BorderRadius.vertical(
+                                    borderRadius: const BorderRadius.vertical(
                                       top: Radius.circular(8),
                                     ),
                                   ),
                                 ),
                               ),
                               Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(8, 8, 8, 2),
+                                padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
                                 child: Text(
                                   a.name,
                                   maxLines: 2,
@@ -1008,16 +1208,19 @@ class _AlbumResultsList extends ConsumerWidget {
                               ),
                               if ((a.artist ?? '').isNotEmpty)
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                  padding: const EdgeInsets.fromLTRB(
+                                    8,
+                                    0,
+                                    8,
+                                    8,
+                                  ),
                                   child: Text(
                                     a.artist ?? '',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color:
-                                          colorScheme.mutedForeground,
+                                      color: colorScheme.mutedForeground,
                                     ),
                                   ),
                                 ),
@@ -1110,8 +1313,7 @@ class _PlaylistResultsList extends ConsumerWidget {
                   }
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
-                    gridDelegate:
-                        SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
@@ -1130,16 +1332,14 @@ class _PlaylistResultsList extends ConsumerWidget {
                                 child: CoverImage(
                                   coverArt: p.coverArt,
                                   colorScheme: colorScheme,
-                                  borderRadius:
-                                      const BorderRadius.vertical(
+                                  borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(8),
                                   ),
                                 ),
                               ),
                             ),
                             Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(8, 8, 8, 2),
+                              padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
                               child: Text(
                                 p.name,
                                 maxLines: 2,
@@ -1152,16 +1352,14 @@ class _PlaylistResultsList extends ConsumerWidget {
                             ),
                             if ((p.owner ?? '').isNotEmpty)
                               Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                                 child: Text(
                                   p.owner ?? '',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color:
-                                        colorScheme.mutedForeground,
+                                    color: colorScheme.mutedForeground,
                                   ),
                                 ),
                               ),

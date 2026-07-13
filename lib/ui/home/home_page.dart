@@ -49,7 +49,9 @@ class HomePage extends HookConsumerWidget {
       final shouldEnable = isHomeActive && hasInlineNav;
       Future.microtask(() {
         ref.read(rootCanPopProvider.notifier).set(shouldEnable);
-        ref.read(rootPopCallbackProvider.notifier).set(
+        ref
+            .read(rootPopCallbackProvider.notifier)
+            .set(
               shouldEnable
                   ? () => ref.read(homeNavProvider.notifier).showNormal()
                   : null,
@@ -81,7 +83,9 @@ class HomePage extends HookConsumerWidget {
         coverUrl: a.coverUrl,
         albumCount: a.albumCount,
         onClose: () => ref.read(homeNavProvider.notifier).showNormal(),
-        onOpenAlbum: (album) => ref.read(homeNavProvider.notifier).showAlbum(
+        onOpenAlbum: (album) => ref
+            .read(homeNavProvider.notifier)
+            .showAlbum(
               AlbumRef(
                 albumId: album.id,
                 sourceId: a.sourceId,
@@ -148,11 +152,6 @@ class HomePage extends HookConsumerWidget {
         children: [
           // 移动端顶部快捷入口卡片
           if (isMobile) const _MobileQuickCard(),
-          // 热搜词卡片 — 点击跳转搜索结果
-          _HotSearchCard(
-            onSearch: (keyword) =>
-                context.pushRoute(MusicSearchRoute(keyword: keyword)),
-          ),
           // 顶部 Tab 切换栏
           _HomeTabBar(tabIndex: tabIndex),
           const Divider(height: 1),
@@ -515,7 +514,8 @@ class _PlaylistContent extends HookConsumerWidget {
             .toList();
         if (parentCategories.isEmpty) return const _EmptyHint(text: '暂无歌单分类');
 
-        final activeParentId = (selectedParentId != null &&
+        final activeParentId =
+            (selectedParentId != null &&
                 parentCategories.any((c) => c.id == selectedParentId))
             ? selectedParentId
             : parentCategories.first.id;
@@ -893,10 +893,7 @@ class _PlaylistGrid extends StatelessWidget {
   final List<Playlist> playlists;
   final void Function(PlaylistRef) onOpenPlaylist;
 
-  const _PlaylistGrid({
-    required this.playlists,
-    required this.onOpenPlaylist,
-  });
+  const _PlaylistGrid({required this.playlists, required this.onOpenPlaylist});
 
   @override
   Widget build(BuildContext context) {
@@ -937,23 +934,22 @@ class _PlaylistCard extends StatelessWidget {
   final Playlist playlist;
   final void Function(PlaylistRef) onOpenPlaylist;
 
-  const _PlaylistCard({
-    required this.playlist,
-    required this.onOpenPlaylist,
-  });
+  const _PlaylistCard({required this.playlist, required this.onOpenPlaylist});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: () => onOpenPlaylist(PlaylistRef(
-        playlistId: (playlist.meta?['id'] as String?) ?? playlist.id,
-        sourceId: playlist.source?.id ?? '',
-        playlistName: playlist.name,
-        coverUrl: playlist.coverArt,
-        creator: playlist.owner ?? '',
-      )),
+      onTap: () => onOpenPlaylist(
+        PlaylistRef(
+          playlistId: (playlist.meta?['id'] as String?) ?? playlist.id,
+          sourceId: playlist.source?.id ?? '',
+          playlistName: playlist.name,
+          coverUrl: playlist.coverArt,
+          creator: playlist.owner ?? '',
+        ),
+      ),
       child: Card(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1067,148 +1063,7 @@ class _MobileQuickCard extends HookConsumerWidget {
   }
 }
 
-// ======================== 热搜词卡片 ========================
-
-/// 热搜词卡片
-///
-/// 监听 [hotSearchProvider] 获取热搜词列表，横向滚动展示。
-/// 点击热搜词调用 [onSearch] 跳转到搜索结果页。
-class _HotSearchCard extends HookConsumerWidget {
-  final void Function(String keyword) onSearch;
-
-  const _HotSearchCard({required this.onSearch});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final hotSearchAsync = ref.watch(hotSearchProvider);
-    final colorScheme = Theme.of(context).colorScheme;
-    final isMobile =
-        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
-
-    return hotSearchAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (hotWords) {
-        if (hotWords.isEmpty) return const SizedBox.shrink();
-
-        return Padding(
-          padding: EdgeInsets.fromLTRB(12, isMobile ? 4 : 12, 12, 4),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.local_fire_department,
-                        size: 16,
-                        color: colorScheme.primary,
-                      ),
-                      const Gap(6),
-                      Text(
-                        '热搜',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: colorScheme.foreground,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Gap(8),
-                  SizedBox(
-                    height: 32,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: hotWords.length,
-                      separatorBuilder: (_, _) => const Gap(6),
-                      itemBuilder: (context, index) {
-                        final word = hotWords[index];
-                        return _HotSearchChip(
-                          text: word,
-                          index: index + 1,
-                          colorScheme: colorScheme,
-                          onTap: () => onSearch(word),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// 热搜词单项 — 显示序号 + 关键词，点击触发搜索
-class _HotSearchChip extends HookConsumerWidget {
-  final String text;
-  final int index;
-  final ColorScheme colorScheme;
-  final VoidCallback onTap;
-
-  const _HotSearchChip({
-    required this.text,
-    required this.index,
-    required this.colorScheme,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isHovered = useState(false);
-    // 前 3 名标红，突出显示
-    final indexColor = index <= 3
-        ? colorScheme.primary
-        : colorScheme.mutedForeground;
-
-    return MouseRegion(
-      onEnter: (_) => isHovered.value = true,
-      onExit: (_) => isHovered.value = false,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: isHovered.value
-                ? colorScheme.muted.withValues(alpha: 0.6)
-                : colorScheme.muted.withValues(alpha: 0.3),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$index',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: indexColor,
-                ),
-              ),
-              const Gap(6),
-              Text(
-                text,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: colorScheme.foreground,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+// ======================== 快捷入口单项 ========================
 
 /// 快捷入口单项
 class _QuickItem extends StatelessWidget {
@@ -1236,10 +1091,7 @@ class _QuickItem extends StatelessWidget {
           const Gap(4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: colorScheme.mutedForeground,
-            ),
+            style: TextStyle(fontSize: 12, color: colorScheme.mutedForeground),
           ),
         ],
       ),
@@ -1307,13 +1159,15 @@ class _UserPlaylistsSheet extends HookConsumerWidget {
                   subtitle: p.owner != null && p.owner!.isNotEmpty
                       ? Text(p.owner ?? '')
                       : null,
-                  onTap: () => onSelected(PlaylistRef(
-                    playlistId: (p.meta?['id'] as String?) ?? p.id,
-                    sourceId: p.source?.id ?? '',
-                    playlistName: p.name,
-                    coverUrl: p.coverArt,
-                    creator: p.owner ?? '',
-                  )),
+                  onTap: () => onSelected(
+                    PlaylistRef(
+                      playlistId: (p.meta?['id'] as String?) ?? p.id,
+                      sourceId: p.source?.id ?? '',
+                      playlistName: p.name,
+                      coverUrl: p.coverArt,
+                      creator: p.owner ?? '',
+                    ),
+                  ),
                 ),
               );
             },
@@ -1347,7 +1201,8 @@ class _DefaultListView extends HookConsumerWidget {
           leading: [
             if (isMobile)
               GhostButton(
-                onPressed: onClose ??
+                onPressed:
+                    onClose ??
                     () => ref.read(homeNavProvider.notifier).showNormal(),
                 child: const Icon(Icons.arrow_back, size: 20),
               ),
@@ -1406,16 +1261,14 @@ class _DefaultListView extends HookConsumerWidget {
                 child: isMobile
                     ? ListView(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        children: tracks.asMap().entries.map(
-                          (e) {
-                            return PlayableTrackTile(
-                              track: e.value,
-                              index: e.key + 1,
-                              playlist: tracks,
-                              playlistIndex: e.key,
-                            );
-                          },
-                        ).toList(),
+                        children: tracks.asMap().entries.map((e) {
+                          return PlayableTrackTile(
+                            track: e.value,
+                            index: e.key + 1,
+                            playlist: tracks,
+                            playlistIndex: e.key,
+                          );
+                        }).toList(),
                       )
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 8),

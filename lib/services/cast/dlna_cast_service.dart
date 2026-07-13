@@ -22,36 +22,61 @@ import 'package:pomelo/services/logger/logger.dart';
 /// 投屏进度信息
 typedef CastPositionInfo = ({Duration position, Duration duration});
 
+/// 投屏服务抽象接口
+///
+/// 统一 [DlnaCastService]（dlna_dart）和 [RustyDlnaService]（rusty_dlna）的 API。
+abstract class DlnaCastServiceInterface {
+  DlnaDevice? get currentDevice;
+  bool get isConnected;
+
+  Future<List<DlnaDevice>> discover({
+    Duration timeout = const Duration(seconds: 5),
+    void Function(DlnaDevice device)? onDeviceFound,
+  });
+
+  void connect(DlnaDevice device);
+  Future<void> castTrack(String url, {String title = ''});
+  Future<void> play();
+  Future<void> pause();
+  Future<void> stop();
+  Future<void> seek(Duration position);
+  Future<CastPositionInfo> getPositionInfo();
+  Future<String> getTransportState();
+  Future<int> getVolume();
+  Future<void> setVolume(int volume);
+  Future<bool> ping();
+  Future<void> disconnect();
+  void dispose();
+}
+
 /// DLNA 投屏门面服务
-class DlnaCastService {
+class DlnaCastService implements DlnaCastServiceInterface {
   final DlnaDiscovery _discovery;
   DlnaControl? _control;
   DlnaDevice? _currentDevice;
 
   DlnaCastService({DlnaDiscovery? discovery})
-      : _discovery = discovery ?? DlnaDiscovery();
+    : _discovery = discovery ?? DlnaDiscovery();
 
-  /// 当前已连接的设备（未连接时为 null）
+  @override
   DlnaDevice? get currentDevice => _currentDevice;
 
-  /// 是否已连接
+  @override
   bool get isConnected => _control != null && _currentDevice != null;
 
-  /// 发现设备
+  @override
   Future<List<DlnaDevice>> discover({
     Duration timeout = const Duration(seconds: 5),
     void Function(DlnaDevice device)? onDeviceFound,
   }) {
-    return _discovery.discover(
-      timeout: timeout,
-      onDeviceFound: onDeviceFound,
-    );
+    return _discovery.discover(timeout: timeout, onDeviceFound: onDeviceFound);
   }
 
   /// 连接到目标设备
   ///
   /// 通过 [DlnaDiscovery.deviceManager] 取回底层 `DLNADevice` 用于 SOAP 控制。
   /// 如果设备未提供 AVTransport 服务，将无法投屏。
+  @override
   void connect(DlnaDevice device) {
     _currentDevice = device;
     final dlnaDevice = _discovery.deviceManager?.deviceList[device.id];
@@ -68,6 +93,7 @@ class DlnaCastService {
   /// 中间间隔 300ms 让设备有时间加载 URI（实测某些电视需要这个间隔）。
   ///
   /// [title]：曲目标题，会写入 DIDL-Lite 元数据展示在设备端。
+  @override
   Future<void> castTrack(String url, {String title = ''}) async {
     final control = _control;
     if (control == null) {
@@ -80,21 +106,25 @@ class DlnaCastService {
   }
 
   /// 播放
+  @override
   Future<void> play() async {
     await _control?.play();
   }
 
   /// 暂停
+  @override
   Future<void> pause() async {
     await _control?.pause();
   }
 
   /// 停止（不取消 URI，仅停止播放）
+  @override
   Future<void> stop() async {
     await _control?.stop();
   }
 
   /// 跳转进度
+  @override
   Future<void> seek(Duration position) async {
     await _control?.seek(position);
   }
@@ -102,6 +132,7 @@ class DlnaCastService {
   /// 获取进度信息
   ///
   /// 未连接或调用失败时返回 0/0。
+  @override
   Future<CastPositionInfo> getPositionInfo() async {
     try {
       final info = await _control?.getPositionInfo();
@@ -117,6 +148,7 @@ class DlnaCastService {
   /// 获取传输状态（'PLAYING' / 'PAUSED_PLAYBACK' / 'STOPPED' 等）
   ///
   /// 未连接或调用失败时返回空字符串。
+  @override
   Future<String> getTransportState() async {
     try {
       return await _control?.getTransportState() ?? '';
@@ -126,6 +158,7 @@ class DlnaCastService {
   }
 
   /// 获取音量（0-100）
+  @override
   Future<int> getVolume() async {
     try {
       return await _control?.getVolume() ?? 0;
@@ -139,6 +172,7 @@ class DlnaCastService {
   /// 调用一个轻量 SOAP action（GetTransportInfo）判断设备是否可达。
   /// 调用方据此判断连接是否中断，触发重连逻辑。
   /// 未连接时返回 false。
+  @override
   Future<bool> ping() async {
     if (_control == null) return false;
     try {
@@ -150,6 +184,7 @@ class DlnaCastService {
   }
 
   /// 设置音量（0-100）
+  @override
   Future<void> setVolume(int volume) async {
     try {
       await _control?.setVolume(volume);
@@ -161,6 +196,7 @@ class DlnaCastService {
   /// 断开当前设备
   ///
   /// 优先调用 Stop 让设备停止播放，然后清空内部状态。
+  @override
   Future<void> disconnect() async {
     try {
       await _control?.stop();
@@ -172,6 +208,7 @@ class DlnaCastService {
   }
 
   /// 关闭服务，释放资源
+  @override
   void dispose() {
     _control = null;
     _currentDevice = null;

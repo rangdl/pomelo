@@ -6,7 +6,6 @@ import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
-import 'package:pomelo/ui/music/widgets/track_more_actions_button.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -114,9 +113,7 @@ class PlayQueueContent extends HookConsumerWidget {
                 onTap: () async {
                   if (isActive) {
                     // 活跃曲目：切换暂停/恢复
-                    state.playing
-                        ? audioPlayer.pause()
-                        : audioPlayer.resume();
+                    state.playing ? audioPlayer.pause() : audioPlayer.resume();
                     return;
                   }
                   // 本地曲目：校验文件存在

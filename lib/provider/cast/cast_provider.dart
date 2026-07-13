@@ -31,7 +31,23 @@ import 'package:pomelo/services/audio_player/audio_player.dart' as svc;
 import 'package:pomelo/services/audio_player/media.dart';
 import 'package:pomelo/services/cast/dlna_cast_service.dart';
 import 'package:pomelo/services/cast/dlna_device.dart';
+import 'package:pomelo/services/cast/rusty_dlna_service.dart';
 import 'package:pomelo/services/logger/logger.dart';
+
+/// 投屏后端选择 Provider
+///
+/// false = dlna_dart（默认），true = rusty_dlna（Rust 实现）
+final castBackendProvider = NotifierProvider<CastBackendNotifier, bool>(
+  CastBackendNotifier.new,
+);
+
+class CastBackendNotifier extends Notifier<bool> {
+  @override
+  bool build() => false; // 默认使用 dlna_dart
+
+  void toggle() => state = !state;
+  void set(bool useRustyDlna) => state = useRustyDlna;
+}
 
 /// 投屏连接状态
 enum CastConnectionState {
@@ -125,7 +141,7 @@ final castProvider = NotifierProvider<CastNotifier, CastState>(
 
 /// 投屏状态管理 Notifier
 class CastNotifier extends Notifier<CastState> {
-  final DlnaCastService _service = DlnaCastService();
+  late DlnaCastServiceInterface _service;
   Timer? _positionTimer;
 
   /// 进度轮询间隔
@@ -148,15 +164,19 @@ class CastNotifier extends Notifier<CastState> {
 
   @override
   CastState build() {
+    // 监听后端切换，切换时重建并清理旧服务
+    final useRustyDlna = ref.watch(castBackendProvider);
+    _service = useRustyDlna ? RustyDlnaService() : DlnaCastService();
+
     // 监听当前曲目 ID 变化，自动重投新曲目
-    ref.listen<String?>(
-      audioPlayerProvider.select((s) => s.activeTrack?.id),
-      (previous, next) {
-        if (state.isCasting && previous != next) {
-          _castCurrentTrack();
-        }
-      },
-    );
+    ref.listen<String?>(audioPlayerProvider.select((s) => s.activeTrack?.id), (
+      previous,
+      next,
+    ) {
+      if (state.isCasting && previous != next) {
+        _castCurrentTrack();
+      }
+    });
 
     ref.onDispose(() {
       _positionTimer?.cancel();
@@ -170,9 +190,7 @@ class CastNotifier extends Notifier<CastState> {
   ///
   /// 重置已发现设备列表，开始一次新的搜索。
   /// 在 [timeout] 后停止搜索，最终结果通过 state.discoveredDevices 暴露。
-  Future<void> discover({
-    Duration timeout = const Duration(seconds: 5),
-  }) async {
+  Future<void> discover({Duration timeout = const Duration(seconds: 5)}) async {
     if (!ref.mounted) return;
     state = const CastState(
       connectionState: CastConnectionState.discovering,
@@ -286,8 +304,9 @@ class CastNotifier extends Notifier<CastState> {
 
   /// 解析投屏 URL
   Future<String?> _resolveCastUrl(Track track) async {
-    final useProxy =
-        ref.read(userPreferenceProvider.select((p) => p.castLocalProxy));
+    final useProxy = ref.read(
+      userPreferenceProvider.select((p) => p.castLocalProxy),
+    );
 
     // 在线音源且未启用本地代理：直接使用原始 URL
     if (!useProxy && track.isOnline && track.src != null) {
@@ -346,7 +365,8 @@ class CastNotifier extends Notifier<CastState> {
           _consecutiveFailures++;
           if (ref.mounted) {
             state = state.copyWith(
-              errorMessage: '与设备通信失败 ($_consecutiveFailures/$_failureThreshold)',
+              errorMessage:
+                  '与设备通信失败 ($_consecutiveFailures/$_failureThreshold)',
             );
           }
           if (_consecutiveFailures >= _failureThreshold) {
@@ -453,7 +473,9 @@ class CastNotifier extends Notifier<CastState> {
   Future<void> pause() async {
     try {
       await _service.pause();
-      if (ref.mounted) state = state.copyWith(transportState: 'PAUSED_PLAYBACK');
+      if (ref.mounted) {
+        state = state.copyWith(transportState: 'PAUSED_PLAYBACK');
+      }
     } catch (e, stack) {
       AppLogger.reportError(e, stack, '[Cast] 暂停失败');
     }
@@ -512,9 +534,7 @@ class CastNotifier extends Notifier<CastState> {
     _reconnecting = false;
     await _service.disconnect();
     if (ref.mounted) {
-      state = CastState(
-        discoveredDevices: state.discoveredDevices,
-      );
+      state = CastState(discoveredDevices: state.discoveredDevices);
     }
   }
 }

@@ -69,6 +69,10 @@ class UserPreference {
   /// - false：在线音源直接投送其原始 URL；本地文件仍需通过本地服务器代理。
   final bool castLocalProxy;
 
+  // === 搜索历史 ===
+  /// 搜索关键词历史记录（最近在前的顺序，最多保留 20 条，去重）。
+  final List<String> searchKeywords;
+
   const UserPreference({
     this.themeMode = 'system',
     this.lyricFontSize = 14,
@@ -83,6 +87,7 @@ class UserPreference {
     this.overwritePlaylistOnPlay = false,
     this.localAudioSourceEnabled = false,
     this.castLocalProxy = true,
+    this.searchKeywords = const [],
   });
 
   /// 从 JSON 构造（缺字段容忍）
@@ -99,33 +104,40 @@ class UserPreference {
         orElse: () => LogLevel.warning,
       ),
       cacheDirectory: json['cacheDirectory'] as String?,
-      cacheSizeLimitGB:
-          (((json['cacheSizeLimitGB'] as num?)?.toInt() ?? 1).clamp(1, 5)),
+      cacheSizeLimitGB: (((json['cacheSizeLimitGB'] as num?)?.toInt() ?? 1)
+          .clamp(1, 5)),
       lxServerQuality: LxServerQuality.fromIdOrDefault(
         json['lxServerQuality'] as String?,
       ),
-      overwritePlaylistOnPlay: json['overwritePlaylistOnPlay'] as bool? ?? false,
+      overwritePlaylistOnPlay:
+          json['overwritePlaylistOnPlay'] as bool? ?? false,
       localAudioSourceEnabled:
           json['localAudioSourceEnabled'] as bool? ?? false,
       castLocalProxy: json['castLocalProxy'] as bool? ?? true,
+      searchKeywords:
+          (json['searchKeywords'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'themeMode': themeMode,
-        'lyricFontSize': lyricFontSize,
-        'autoPlay': autoPlay,
-        'updateProxy': updateProxy,
-        'selectedSourceId': selectedSourceId,
-        'selectedLibraryId': selectedLibraryId,
-        'logStorageLevel': logStorageLevel.name,
-        'cacheDirectory': cacheDirectory,
-        'cacheSizeLimitGB': cacheSizeLimitGB,
-        'lxServerQuality': lxServerQuality.id,
-        'overwritePlaylistOnPlay': overwritePlaylistOnPlay,
-        'localAudioSourceEnabled': localAudioSourceEnabled,
-        'castLocalProxy': castLocalProxy,
-      };
+    'themeMode': themeMode,
+    'lyricFontSize': lyricFontSize,
+    'autoPlay': autoPlay,
+    'updateProxy': updateProxy,
+    'selectedSourceId': selectedSourceId,
+    'selectedLibraryId': selectedLibraryId,
+    'logStorageLevel': logStorageLevel.name,
+    'cacheDirectory': cacheDirectory,
+    'cacheSizeLimitGB': cacheSizeLimitGB,
+    'lxServerQuality': lxServerQuality.id,
+    'overwritePlaylistOnPlay': overwritePlaylistOnPlay,
+    'localAudioSourceEnabled': localAudioSourceEnabled,
+    'castLocalProxy': castLocalProxy,
+    'searchKeywords': searchKeywords,
+  };
 
   /// 从 JSON 字符串构造
   static UserPreference? fromJsonString(String? json) {
@@ -160,13 +172,15 @@ class UserPreference {
     bool? overwritePlaylistOnPlay,
     bool? localAudioSourceEnabled,
     bool? castLocalProxy,
+    List<String>? searchKeywords,
   }) {
     return UserPreference(
       themeMode: themeMode ?? this.themeMode,
       lyricFontSize: lyricFontSize ?? this.lyricFontSize,
       autoPlay: autoPlay ?? this.autoPlay,
-      updateProxy:
-          updateProxy == _unset ? this.updateProxy : updateProxy as String?,
+      updateProxy: updateProxy == _unset
+          ? this.updateProxy
+          : updateProxy as String?,
       selectedSourceId: selectedSourceId == _unset
           ? this.selectedSourceId
           : selectedSourceId as String?,
@@ -184,6 +198,7 @@ class UserPreference {
       localAudioSourceEnabled:
           localAudioSourceEnabled ?? this.localAudioSourceEnabled,
       castLocalProxy: castLocalProxy ?? this.castLocalProxy,
+      searchKeywords: searchKeywords ?? this.searchKeywords,
     );
   }
 

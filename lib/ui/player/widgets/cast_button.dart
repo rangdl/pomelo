@@ -86,10 +86,31 @@ class _CastDeviceDropdown extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final castState = ref.watch(castProvider);
+    final useRustyDlna = ref.watch(castBackendProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     final children = <MenuItem>[
       const MenuLabel(child: Text('投屏到设备')),
+      MenuButton(
+        leading: Icon(
+          useRustyDlna ? Icons.memory : Icons.dns,
+          size: 18,
+          color: useRustyDlna ? colorScheme.primary : null,
+        ),
+        trailing: useRustyDlna
+            ? Icon(Icons.check, size: 14, color: colorScheme.primary)
+            : null,
+        onPressed: (_) {
+          ref.read(castBackendProvider.notifier).toggle();
+          context.toast.info(
+            useRustyDlna ? '已切换到 dlna_dart' : '已切换到 rusty_dlna',
+          );
+          Future.microtask(() {
+            ref.read(castProvider.notifier).discover();
+          });
+        },
+        child: Text(useRustyDlna ? 'Rust 引擎 (rusty_dlna)' : 'Dart 引擎 (dlna_dart)'),
+      ),
       const MenuDivider(),
     ];
 
@@ -146,10 +167,7 @@ class _CastDeviceDropdown extends HookConsumerWidget {
             size: 18,
             color: colorScheme.destructive,
           ),
-          child: Text(
-            '断开投屏',
-            style: TextStyle(color: colorScheme.destructive),
-          ),
+          child: Text('断开投屏', style: TextStyle(color: colorScheme.destructive)),
           onPressed: (_) {
             ref.read(castProvider.notifier).disconnect();
             closeOverlay(context);
@@ -169,9 +187,37 @@ class _CastDeviceSheetContent extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final castState = ref.watch(castProvider);
+    final useRustyDlna = ref.watch(castBackendProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
     final widgets = <Widget>[];
+
+    // 引擎切换按钮
+    widgets.add(
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: GhostButton(
+          leading: Icon(
+            useRustyDlna ? Icons.memory : Icons.dns,
+            size: 16,
+            color: useRustyDlna ? colorScheme.primary : null,
+          ),
+          child: Text(
+            useRustyDlna ? 'Rust 引擎 (rusty_dlna)' : 'Dart 引擎 (dlna_dart)',
+            style: const TextStyle(fontSize: 12),
+          ),
+          onPressed: () {
+            ref.read(castBackendProvider.notifier).toggle();
+            context.toast.info(
+              useRustyDlna ? '已切换到 dlna_dart' : '已切换到 rusty_dlna',
+            );
+            Future.microtask(() {
+              ref.read(castProvider.notifier).discover();
+            });
+          },
+        ),
+      ),
+    );
 
     // 标题
     widgets.add(
@@ -286,10 +332,7 @@ class _CastDeviceSheetContent extends HookConsumerWidget {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: widgets,
-      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: widgets),
     );
   }
 

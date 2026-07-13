@@ -298,20 +298,20 @@ class _FavoriteArtistsTab extends HookConsumerWidget {
             final width = constraints.maxWidth;
             int crossAxisCount;
             if (width < ResponsiveBreakpoints.mobile) {
-              crossAxisCount = 2;
-            } else if (width < ResponsiveBreakpoints.tablet) {
               crossAxisCount = 3;
-            } else if (width < ResponsiveBreakpoints.desktop) {
+            } else if (width < ResponsiveBreakpoints.tablet) {
               crossAxisCount = 4;
-            } else {
+            } else if (width < ResponsiveBreakpoints.desktop) {
               crossAxisCount = 5;
+            } else {
+              crossAxisCount = 6;
             }
             return GridView.builder(
               padding: const EdgeInsets.all(12),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
                 childAspectRatio: 0.85,
               ),
               itemCount: artists.length,
@@ -336,13 +336,17 @@ class _ArtistCard extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: () => ref.read(homeNavProvider.notifier).showArtist(ArtistRef(
-            artistId: artist.id,
-            sourceId: artist.source?.id ?? '',
-            artistName: artist.name,
-            coverUrl: artist.coverArt ?? artist.artistImageUrl,
-            albumCount: artist.albumCount,
-          )),
+      onTap: () => ref
+          .read(homeNavProvider.notifier)
+          .showArtist(
+            ArtistRef(
+              artistId: artist.id,
+              sourceId: artist.source?.id ?? '',
+              artistName: artist.name,
+              coverUrl: artist.coverArt ?? artist.artistImageUrl,
+              albumCount: artist.albumCount,
+            ),
+          ),
       child: Card(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,20 +422,20 @@ class _FavoriteAlbumsTab extends HookConsumerWidget {
             final width = constraints.maxWidth;
             int crossAxisCount;
             if (width < ResponsiveBreakpoints.mobile) {
-              crossAxisCount = 2;
-            } else if (width < ResponsiveBreakpoints.tablet) {
               crossAxisCount = 3;
-            } else if (width < ResponsiveBreakpoints.desktop) {
+            } else if (width < ResponsiveBreakpoints.tablet) {
               crossAxisCount = 4;
-            } else {
+            } else if (width < ResponsiveBreakpoints.desktop) {
               crossAxisCount = 5;
+            } else {
+              crossAxisCount = 6;
             }
             return GridView.builder(
               padding: const EdgeInsets.all(12),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
                 childAspectRatio: 0.85,
               ),
               itemCount: albums.length,
@@ -455,15 +459,19 @@ class _AlbumCard extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
-      onTap: () => ref.read(homeNavProvider.notifier).showAlbum(AlbumRef(
-            albumId: album.id,
-            sourceId: album.source?.id ?? '',
-            albumName: album.name,
-            coverUrl: album.coverArt,
-            artist: album.artist,
-            year: album.year,
-            songCount: album.songCount,
-          )),
+      onTap: () => ref
+          .read(homeNavProvider.notifier)
+          .showAlbum(
+            AlbumRef(
+              albumId: album.id,
+              sourceId: album.source?.id ?? '',
+              albumName: album.name,
+              coverUrl: album.coverArt,
+              artist: album.artist,
+              year: album.year,
+              songCount: album.songCount,
+            ),
+          ),
       child: Card(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
