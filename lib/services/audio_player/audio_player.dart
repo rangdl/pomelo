@@ -315,7 +315,7 @@ mixin PomeloAudioPlayerStreams on AudioPlayerInterface {
   // int? _lastPositionBucket;
   Stream<Duration> get positionStream {
     // if (mkSupportedPlatform) {
-    return _mkPlayer.stream.position;
+    return _mkPlayer.stream.position.distinct();
     // return _mkPlayer.stream.position.where((pos) {
     //   final bucket = pos.inMilliseconds ~/ 500; // 每 500ms 一个桶
     //   if (_lastPositionBucket != bucket) {
