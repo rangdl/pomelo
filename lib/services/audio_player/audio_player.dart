@@ -14,6 +14,7 @@ import 'package:pomelo/services/audio_player/media.dart';
 import 'package:pomelo/services/audio_player/custom_player.dart';
 import 'package:pomelo/services/audio_player/playback_state.dart';
 import 'package:pomelo/core/models/metadata/track.dart' show Track;
+import 'package:rxdart/rxdart.dart';
 
 /// 音频播放器服务实例
 final audioPlayer = PomeloAudioPlayer();
@@ -315,7 +316,10 @@ mixin PomeloAudioPlayerStreams on AudioPlayerInterface {
   // int? _lastPositionBucket;
   Stream<Duration> get positionStream {
     // if (mkSupportedPlatform) {
-    return _mkPlayer.stream.position.distinct();
+    // 使用throttleTime节流到最多每 200ms 触发一次
+    return _mkPlayer.stream.position.throttleTime(
+      const Duration(milliseconds: 200),
+    );
     // return _mkPlayer.stream.position.where((pos) {
     //   final bucket = pos.inMilliseconds ~/ 500; // 每 500ms 一个桶
     //   if (_lastPositionBucket != bucket) {

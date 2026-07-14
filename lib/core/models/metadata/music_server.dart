@@ -46,7 +46,7 @@ abstract class MusicServer {
   /// 同类型服务的最大注册数量
   ///
   /// 用于限制同一 [sourceType] 的服务注册上限。
-  /// 默认 1（如本地音乐、Lx 音乐各只能注册一个），
+  /// 默认 1（如本地音乐只能注册一个），
   /// Subsonic 等支持多账号的模块可覆写为更大的值。
   int get maxServiceCount => 1;
 
