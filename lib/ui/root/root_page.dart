@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/pomelo_icons.dart';
@@ -22,8 +21,8 @@ import 'root_providers.dart';
 /// 导航标签定义
 const _navDestinations = [
   (key: ValueKey(0), icon: Icons.home, label: '首页'),
-  (key: ValueKey(1), icon: Icons.layers, label: '平台'),
-  (key: ValueKey(2), icon: Icons.bar_chart, label: '统计'),
+  (key: ValueKey(1), icon: Icons.search, label: '搜索'),
+  (key: ValueKey(2), icon: Icons.layers, label: '平台'),
   (key: ValueKey(3), icon: Icons.settings, label: '设置'),
 ];
 
@@ -42,10 +41,10 @@ class RootPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AutoTabsRouter.builder(
-      routes: const [
+      routes: [
         HomeRoute(),
+        MusicSearchRoute(),
         ServiceRoute(),
-        StatisticsRoute(),
         SettingsRoute(),
       ],
       builder: (context, children, tabsRouter) {
@@ -782,21 +781,6 @@ class _TopTitleBar extends HookConsumerWidget {
           const LibrarySwitchButton(),
           // 平台切换
           const SourceSwitchButton(),
-          // 搜索入口 — 点击展开浮层搜索框，不直接跳转
-          IconButton.ghost(
-            density: ButtonDensity.icon,
-            icon: const Icon(Icons.search, size: 20),
-            onPressed: () {
-              // 使用 OverlayEntry 直接管理，避免 showDropdown 的键盘焦点冲突
-              final overlay = Overlay.of(context);
-              late OverlayEntry entry;
-              entry = OverlayEntry(
-                builder: (_) =>
-                    _DesktopSearchOverlay(onClose: () => entry.remove()),
-              );
-              overlay.insert(entry);
-            },
-          ),
           const Spacer(),
           // 窗口控制按钮 — 仅 Windows
           if (Helper.isWindows) ...[
@@ -812,232 +796,6 @@ class _TopTitleBar extends HookConsumerWidget {
             ),
           ],
         ],
-      ),
-    );
-  }
-}
-
-/// 桌面端搜索浮层 — 通过 OverlayEntry 展示
-///
-/// 全屏透明遮罩 + 顶部右侧搜索面板，点击遮罩关闭。
-/// 避免使用 showDropdown 以防止键盘焦点冲突。
-class _DesktopSearchOverlay extends HookConsumerWidget {
-  final VoidCallback onClose;
-
-  const _DesktopSearchOverlay({required this.onClose});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          // 透明遮罩 — 点击关闭
-          Positioned.fill(
-            child: GestureDetector(
-              onTap: onClose,
-              behavior: HitTestBehavior.opaque,
-              child: const ColoredBox(color: Color(0x01000000)),
-            ),
-          ),
-          // 搜索面板 — 右上角定位（标题栏下方）
-          Positioned(
-            top: 52,
-            right: 16,
-            child: _DesktopSearchPanel(onClose: onClose),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// 桌面端搜索面板
-///
-/// 包含输入框和搜索提示列表。用户输入时实时获取提示词（防抖 300ms），
-/// 仅在有结果时展示提示列表。按回车确认或点击提示词时跳转到搜索页执行搜索。
-class _DesktopSearchPanel extends HookConsumerWidget {
-  final VoidCallback onClose;
-
-  const _DesktopSearchPanel({required this.onClose});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = useTextEditingController();
-    final focusNode = useFocusNode();
-    final keyword = useState('');
-    final colorScheme = Theme.of(context).colorScheme;
-
-    useEffect(() {
-      focusNode.requestFocus();
-      return null;
-    }, []);
-
-    void navigate(String kw) {
-      final trimmed = kw.trim();
-      if (trimmed.isEmpty) return;
-      onClose();
-      context.pushRoute(MusicSearchRoute(keyword: trimmed));
-    }
-
-    return KeyboardListener(
-      focusNode: focusNode,
-      onKeyEvent: (event) {
-        // Escape 关闭面板
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.escape) {
-          onClose();
-        }
-      },
-      child: Container(
-        width: 320,
-        constraints: const BoxConstraints(maxHeight: 420),
-        decoration: BoxDecoration(
-          color: colorScheme.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: colorScheme.border, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 搜索输入框
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: TextField(
-                controller: controller,
-                focusNode: focusNode,
-                placeholder: const Text('搜索歌曲、歌手、专辑...'),
-                onSubmitted: navigate,
-                onChanged: (v) => keyword.value = v,
-                features: [
-                  InputFeature.leading(const Icon(Icons.search, size: 16)),
-                ],
-              ),
-            ),
-            // 搜索提示列表 — 仅在输入非空时获取并展示
-            if (keyword.value.trim().isNotEmpty)
-              Flexible(
-                child: _DesktopSearchSuggestions(
-                  keyword: keyword.value.trim(),
-                  onSelected: navigate,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// 桌面端搜索提示列表 — 仅在有结果时渲染
-class _DesktopSearchSuggestions extends HookConsumerWidget {
-  final String keyword;
-  final void Function(String suggestion) onSelected;
-
-  const _DesktopSearchSuggestions({
-    required this.keyword,
-    required this.onSelected,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tipsAsync = ref.watch(searchTipProvider(keyword));
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return tipsAsync.when(
-      loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
-      data: (tips) {
-        // 未获取到提示词时不展示
-        if (tips.isEmpty) return const SizedBox.shrink();
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-              child: Text(
-                '搜索提示',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colorScheme.mutedForeground,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                itemCount: tips.length,
-                itemBuilder: (context, index) {
-                  final tip = tips[index];
-                  return _SuggestionItem(
-                    text: tip,
-                    colorScheme: colorScheme,
-                    onTap: () => onSelected(tip),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// 单条搜索提示项 — 带悬停高亮
-class _SuggestionItem extends HookWidget {
-  final String text;
-  final ColorScheme colorScheme;
-  final VoidCallback onTap;
-
-  const _SuggestionItem({
-    required this.text,
-    required this.colorScheme,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isHovered = useState(false);
-    return MouseRegion(
-      onEnter: (_) => isHovered.value = true,
-      onExit: (_) => isHovered.value = false,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-          decoration: BoxDecoration(
-            color: isHovered.value
-                ? colorScheme.muted.withValues(alpha: 0.5)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.search, size: 14, color: colorScheme.mutedForeground),
-              const Gap(8),
-              Expanded(
-                child: Text(
-                  text,
-                  style: TextStyle(fontSize: 13, color: colorScheme.foreground),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

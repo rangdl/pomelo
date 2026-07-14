@@ -402,8 +402,6 @@ void _showScriptDetail(
   WidgetRef ref,
   LxSourceScript script,
 ) {
-  // 每次打开详情时刷新使用记录，确保展示最新数据
-  ref.invalidate(lxSourceUsagesProvider);
   showDialog(
     context: context,
     builder: (_) => _ScriptDetailDialog(script: script),
@@ -440,16 +438,11 @@ class _ScriptDetailDialog extends ConsumerWidget {
 
     return AlertDialog(
       title: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.description, size: 20, color: colorScheme.primary),
           const Gap(8),
-          Expanded(
-            child: Text(
-              script.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          Text(script.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
       content: SizedBox(

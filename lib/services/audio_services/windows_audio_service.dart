@@ -114,8 +114,10 @@ class WindowsAudioService {
       await smtc.updateMetadata(
         MusicMetadata(
           title: track.title,
-          albumArtist: track.artist,
-          artist: artist,
+          // 此处为更新 albumArtist 字段，用于歌词展示
+          // 更新 artist 不好使需要更新 albumArtist 字段
+          albumArtist: artist ?? track.artist,
+          artist: artist ?? track.artist,
           album: track.album ?? 'Unknown',
           thumbnail: track.coverArt,
         ),

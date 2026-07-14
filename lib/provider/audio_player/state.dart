@@ -6,10 +6,10 @@ part 'state.freezed.dart';
 part 'state.g.dart';
 
 @freezed
-class AudioPlayerState with _$AudioPlayerState {
+sealed class AudioPlayerState with _$AudioPlayerState {
   const AudioPlayerState._();
 
-  factory AudioPlayerState._inner({
+  factory AudioPlayerState({
     required bool playing,
     required PlaylistMode loopMode,
     required bool shuffled,
@@ -17,24 +17,6 @@ class AudioPlayerState with _$AudioPlayerState {
     @Default(0) int currentIndex,
     @Default([]) List<Track> tracks,
   }) = _AudioPlayerState;
-
-  factory AudioPlayerState({
-    required bool playing,
-    required PlaylistMode loopMode,
-    required bool shuffled,
-    required List<String> collections,
-    int currentIndex = 0,
-    List<Track> tracks = const [],
-  }) {
-    return AudioPlayerState._inner(
-      playing: playing,
-      loopMode: loopMode,
-      shuffled: shuffled,
-      currentIndex: currentIndex,
-      tracks: tracks,
-      collections: collections,
-    );
-  }
 
   factory AudioPlayerState.fromJson(Map<String, dynamic> json) =>
       _$AudioPlayerStateFromJson(json);

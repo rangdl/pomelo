@@ -11,6 +11,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
@@ -261,7 +262,7 @@ class SourcedTrack {
           quality: quality,
         );
         if (url.isNotEmpty && url != 'undefined') {
-          AppToast().success('本地音源插件解析成功: ${track.title}');
+          AppToast().success('本地音源解析成功: ${track.title}-$quality');
           return url;
         }
       }
@@ -405,6 +406,47 @@ class SourcedTrackNotifier extends AsyncNotifier<SourcedTrack> {
     return await update((prev) async {
       return await prev.refreshStream();
     });
+  }
+
+  /// 强制刷新 — 清空缓存的播放链接和文件后重新获取
+  ///
+  /// 1. 删除所有已缓存的本地文件
+  /// 2. 清除 DB 持久化记录
+  /// 3. 重新从源获取播放链接
+  Future<void> forceRefresh() async {
+    final current = state.value;
+    if (current == null) return;
+
+    // 1. 删除缓存的文件
+    for (final source in current.sources) {
+      if (source.path.isNotEmpty) {
+        try {
+          final file = File(source.path);
+          if (await file.exists()) await file.delete();
+        } catch (e) {
+          AppLogger.log.w('[SourcedTrack] 删除缓存文件失败: $e');
+        }
+      }
+    }
+
+    // 2. 清除 DB 持久化
+    try {
+      final db = ref.read(databaseProvider);
+      await db.deleteSourcedTrack(track.id);
+    } catch (e) {
+      AppLogger.log.w('[SourcedTrack] 清除持久化失败: $e');
+    }
+
+    // 3. 重新从源获取
+    state = const AsyncValue.loading();
+    try {
+      final fresh = await SourcedTrack.fetchFromTrack(ref: ref, query: track);
+      if (!ref.mounted) return;
+      state = AsyncValue.data(fresh);
+    } catch (e, stack) {
+      if (!ref.mounted) return;
+      state = AsyncValue.error(e, stack);
+    }
   }
 
   Future<SourcedTrack> swapWithQuality() async {

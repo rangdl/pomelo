@@ -313,11 +313,11 @@ final searchResultsProvider =
       SearchListData,
       ({String keyword, String? sourceId, String? libraryId})
     >((ref, params) async {
-      final services = await ref.watch(musicServersProvider.future);
+      final services = await ref.read(musicServersProvider.future);
 
       Iterable<MusicServer> targets = services;
       if (params.sourceId != null) {
-        final s = await ref.watch(
+        final s = await ref.read(
           musicServerByProvider(params.sourceId!).future,
         );
         targets = s != null ? [s] : [];
@@ -385,7 +385,7 @@ final searchArtistsProvider =
       ({String keyword, String? sourceId, String? libraryId})
     >((ref, params) async {
       if (params.sourceId == null) return [];
-      final s = await ref.watch(musicServerByProvider(params.sourceId!).future);
+      final s = await ref.read(musicServerByProvider(params.sourceId!).future);
       if (s == null) return [];
       try {
         final result = await s.searchArtists(
@@ -405,7 +405,7 @@ final searchAlbumsProvider =
       ({String keyword, String? sourceId, String? libraryId})
     >((ref, params) async {
       if (params.sourceId == null) return [];
-      final s = await ref.watch(musicServerByProvider(params.sourceId!).future);
+      final s = await ref.read(musicServerByProvider(params.sourceId!).future);
       if (s == null) return [];
       try {
         final result = await s.searchAlbums(
@@ -425,7 +425,7 @@ final searchPlaylistsProvider =
       ({String keyword, String? sourceId, String? libraryId})
     >((ref, params) async {
       if (params.sourceId == null) return [];
-      final s = await ref.watch(musicServerByProvider(params.sourceId!).future);
+      final s = await ref.read(musicServerByProvider(params.sourceId!).future);
       if (s == null) return [];
       try {
         final result = await s.searchPlaylists(
@@ -467,14 +467,16 @@ final favoriteArtistsProvider = FutureProvider<List<Artist>>((ref) async {
 ///
 /// 整体 try-catch 包裹：即使 [musicServerProvider] 或上游 [musicServersProvider]
 /// 抛出异常，也降级为空列表，避免在搜索提示浮层中显示"获取提示失败"。
-final searchTipProvider =
-    FutureProvider.family<List<String>, String>((ref, keyword) async {
+final searchTipProvider = FutureProvider.family<List<String>, String>((
+  ref,
+  keyword,
+) async {
   final kw = keyword.trim();
   if (kw.isEmpty) return [];
   // 防抖 300ms
   await Future.delayed(const Duration(milliseconds: 300));
   try {
-    final service = await ref.watch(musicServerProvider.future);
+    final service = await ref.read(musicServerProvider.future);
     if (service == null) return [];
     return await service.tipSearch(kw);
   } catch (_) {

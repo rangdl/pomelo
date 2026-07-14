@@ -4,9 +4,11 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/provider/cast/cast_provider.dart';
 import 'package:pomelo/provider/lyric/lyric.dart';
+import 'package:pomelo/provider/server/sourced_track.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -70,6 +72,10 @@ class PlaybackPage extends HookConsumerWidget {
           trailing: [
             const CastButton(),
             IconButton.text(
+              icon: const Icon(Icons.refresh, size: 20),
+              onPressed: () => _refreshStreamingUrl(context, ref, track),
+            ),
+            IconButton.text(
               icon: const Icon(Icons.queue_music, size: 22),
               onPressed: () => _openPlayQueue(context),
             ),
@@ -126,6 +132,31 @@ class PlaybackPage extends HookConsumerWidget {
         builder: (_) => const SizedBox(width: 360, child: PlayQueueContent()),
       ),
     );
+  }
+
+  /// 刷新当前曲目的播放链接
+  ///
+  /// 清空 SourcedTrack 中缓存的播放链接和本地缓存文件后重新获取。
+  /// 仅对有音质类型（meta['types']）的在线曲目有效。
+  Future<void> _refreshStreamingUrl(
+    BuildContext context,
+    WidgetRef ref,
+    Track? track,
+  ) async {
+    if (track == null || track.isLocal) {
+      context.toast.warning('当前曲目不支持刷新');
+      return;
+    }
+
+    context.toast.info('正在刷新播放链接...');
+    try {
+      await ref.read(sourcedTrackProvider(track).notifier).forceRefresh();
+      if (!context.mounted) return;
+      context.toast.success('播放链接已刷新');
+    } catch (e) {
+      if (!context.mounted) return;
+      context.toast.error('刷新失败: $e');
+    }
   }
 }
 
@@ -451,9 +482,7 @@ class _PlaybackBody extends HookConsumerWidget {
           ),
           child: IconButton.text(
             icon: Icon(
-              showPlaying
-                  ? Icons.pause_rounded
-                  : Icons.play_arrow_rounded,
+              showPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
               size: 36,
               color: colorScheme.primaryForeground,
             ),

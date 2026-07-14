@@ -210,7 +210,7 @@ class LxSourceEngine {
           )
           .toList();
       if (matched.isEmpty) {
-        AppLogger.log.e('[LxSourceEngine] 库 $libraryId $quality 未找到对应的音源插件');
+        AppLogger.log.w('[LxSourceEngine] 库 $libraryId $quality 未找到对应的音源插件');
         return '';
       }
       // 构建传递给 JS 端的歌曲信息

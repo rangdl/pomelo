@@ -34,79 +34,31 @@ class MusicSearchPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final searchController = useTextEditingController(text: keyword);
     final keywordState = useState(keyword);
-    // 输入框当前文本，用于触发搜索提示
-    final inputText = useState(keyword);
-    // 是否展示搜索提示浮层
-    final showSuggestions = useState(false);
     final focusNode = useFocusNode();
 
     void doSearch(String kw) {
       final trimmed = kw.trim();
       if (trimmed.isEmpty) return;
       keywordState.value = trimmed;
-      showSuggestions.value = false;
       focusNode.unfocus();
       // 记录到搜索历史
       ref.read(userPreferenceProvider.notifier).addSearchKeyword(trimmed);
     }
 
-    useEffect(() {
-      void onFocusChanged() {
-        // 失焦时延迟关闭，等待点击事件处理
-        if (!focusNode.hasFocus) {
-          Future.delayed(const Duration(milliseconds: 150), () {
-            showSuggestions.value = false;
-          });
-        }
-      }
-
-      focusNode.addListener(onFocusChanged);
-      return () => focusNode.removeListener(onFocusChanged);
-    }, [focusNode]);
-
     return Scaffold(
       headers: [
         AppBar(
-          leading: [
-            GhostButton(
-              onPressed: () => context.router.maybePop(),
-              child: const Icon(Icons.arrow_back, size: 20),
-            ),
-          ],
           title: _SearchInputBar(
             controller: searchController,
             focusNode: focusNode,
             onSearch: doSearch,
-            onChanged: (text) {
-              inputText.value = text;
-              // 输入非空且与当前搜索关键词不同时显示提示
-              showSuggestions.value =
-                  text.trim().isNotEmpty && text.trim() != keywordState.value;
-            },
           ),
         ),
         const Divider(),
       ],
-      child: Stack(
-        children: [
-          keywordState.value.isEmpty
-              ? _SearchLanding(onSearch: doSearch)
-              : _SearchResults(keyword: keywordState.value),
-          // 搜索提示浮层 — 仅在有结果时由组件内部渲染
-          if (showSuggestions.value && inputText.value.trim().isNotEmpty)
-            Positioned.fill(
-              top: 0,
-              child: _SearchSuggestions(
-                keyword: inputText.value.trim(),
-                onSelected: (suggestion) {
-                  searchController.text = suggestion;
-                  doSearch(suggestion);
-                },
-                onDismiss: () => showSuggestions.value = false,
-              ),
-            ),
-        ],
-      ),
+      child: keywordState.value.isEmpty
+          ? _SearchLanding(onSearch: doSearch)
+          : _SearchResults(keyword: keywordState.value),
     );
   }
 }
@@ -362,19 +314,25 @@ class _SearchInputBar extends HookConsumerWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final void Function(String) onSearch;
-  final void Function(String) onChanged;
 
   const _SearchInputBar({
     required this.controller,
     required this.focusNode,
     required this.onSearch,
-    required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final supportedTypesAsync = ref.watch(supportedSearchTypesProvider);
     final selectedType = ref.watch(selectedSearchTypeProvider);
+    final suggestionsState = useState<List<String>>([]);
+
+    // 更新搜索建议 — 使用 ref.read 避免在回调中创建订阅
+    void updateSuggestions(String value) async {
+      final tips = await ref.read(searchTipProvider(value).future);
+      if (!context.mounted) return;
+      suggestionsState.value = tips;
+    }
 
     return Row(
       children: [
@@ -406,22 +364,25 @@ class _SearchInputBar extends HookConsumerWidget {
           const Gap(8),
         // 搜索输入框
         Expanded(
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            autofocus: false,
-            placeholder: Text('搜索${selectedType.label}...'),
-            onSubmitted: onSearch,
-            onChanged: onChanged,
-            features: [
-              InputFeature.trailing(
-                GhostButton(
-                  density: ButtonDensity.icon,
-                  onPressed: () => onSearch(controller.text),
-                  child: const Icon(Icons.search, size: 20),
+          child: AutoComplete(
+            suggestions: suggestionsState.value,
+            child: TextField(
+              controller: controller,
+              focusNode: focusNode,
+              autofocus: false,
+              placeholder: Text('搜索${selectedType.label}...'),
+              onSubmitted: onSearch,
+              onChanged: updateSuggestions,
+              features: [
+                InputFeature.trailing(
+                  GhostButton(
+                    density: ButtonDensity.icon,
+                    onPressed: () => onSearch(controller.text),
+                    child: const Icon(Icons.search, size: 20),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -448,148 +409,6 @@ class _SearchInputBar extends HookConsumerWidget {
           .toList(),
       onSelected: (value) =>
           ref.read(selectedSearchTypeProvider.notifier).select(value),
-    );
-  }
-}
-
-/// 单条搜索提示项 — 带悬停高亮效果
-class _SuggestionItem extends HookConsumerWidget {
-  final String text;
-  final ColorScheme colorScheme;
-  final VoidCallback onTap;
-
-  const _SuggestionItem({
-    required this.text,
-    required this.colorScheme,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final isHovered = useState(false);
-    return MouseRegion(
-      onEnter: (_) => isHovered.value = true,
-      onExit: (_) => isHovered.value = false,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: isHovered.value
-                ? colorScheme.muted.withValues(alpha: 0.5)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.search, size: 16, color: colorScheme.mutedForeground),
-              const Gap(10),
-              Expanded(
-                child: Text(
-                  text,
-                  style: const TextStyle(fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// 搜索提示浮层组件
-///
-/// 监听 [searchTipProvider] 获取联想词列表，点击联想词触发搜索。
-/// 使用半透明背景遮罩 + 顶部对齐的提示卡片。
-///
-/// 仅在获取到非空结果时展示，loading/error/空列表均不渲染浮层。
-class _SearchSuggestions extends HookConsumerWidget {
-  final String keyword;
-  final void Function(String suggestion) onSelected;
-  final VoidCallback? onDismiss;
-
-  const _SearchSuggestions({
-    required this.keyword,
-    required this.onSelected,
-    this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tipsAsync = ref.watch(searchTipProvider(keyword));
-    final colorScheme = Theme.of(context).colorScheme;
-
-    // loading / error / 空列表时不展示浮层
-    final tips = tipsAsync.asData?.value;
-    if (tips == null || tips.isEmpty) return const SizedBox.shrink();
-
-    return GestureDetector(
-      // 点击空白处关闭提示
-      onTap: onDismiss,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.3),
-        alignment: Alignment.topCenter,
-        child: GestureDetector(
-          onTap: onDismiss,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 640),
-            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: colorScheme.card,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colorScheme.border, width: 1),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '搜索提示',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: colorScheme.mutedForeground,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    itemCount: tips.length,
-                    itemBuilder: (context, index) {
-                      final tip = tips[index];
-                      return _SuggestionItem(
-                        text: tip,
-                        colorScheme: colorScheme,
-                        onTap: () => onSelected(tip),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -623,15 +442,6 @@ class _SearchResults extends HookConsumerWidget {
 
         final colorScheme = Theme.of(context).colorScheme;
 
-        // 来源筛选 chips 组件
-        final sourceChips = _SourceChips(
-          services: services,
-          selectedSourceId: selectedSourceId,
-          tabSourceId: tabSourceId,
-          selection: selection,
-          colorScheme: colorScheme,
-        );
-
         // 结果列表组件 — 根据搜索类型选择
         final resultsContent = _SearchResultsContainer(
           key: ValueKey('${tabSourceId.value}_${selectedType}_$keyword'),
@@ -648,7 +458,16 @@ class _SearchResults extends HookConsumerWidget {
           context,
           mobile: () => Column(
             children: [
-              SizedBox(height: 44, child: sourceChips),
+              SizedBox(
+                height: 44,
+                child: _SourceChips(
+                  services: services,
+                  selectedSourceId: selectedSourceId,
+                  tabSourceId: tabSourceId,
+                  selection: selection,
+                  colorScheme: colorScheme,
+                ),
+              ),
               const Divider(),
               Expanded(child: resultsContent),
             ],
@@ -673,7 +492,16 @@ class _SearchResults extends HookConsumerWidget {
                         ),
                       ),
                     ),
-                    Expanded(child: SingleChildScrollView(child: sourceChips)),
+                    Expanded(
+                      child: _SourceChips(
+                        services: services,
+                        selectedSourceId: selectedSourceId,
+                        tabSourceId: tabSourceId,
+                        selection: selection,
+                        colorScheme: colorScheme,
+                        direction: Axis.vertical,
+                      ),
+                    ),
                     const Divider(),
                   ],
                 ),
@@ -765,6 +593,7 @@ class _SourceChips extends ConsumerWidget {
   final ValueNotifier<String?> tabSourceId;
   final ({String? sourceId, String? libraryId}) selection;
   final ColorScheme colorScheme;
+  final Axis direction;
 
   const _SourceChips({
     required this.services,
@@ -772,6 +601,7 @@ class _SourceChips extends ConsumerWidget {
     required this.tabSourceId,
     required this.selection,
     required this.colorScheme,
+    this.direction = Axis.horizontal,
   });
 
   @override
@@ -779,7 +609,7 @@ class _SourceChips extends ConsumerWidget {
     final selectedType = ref.watch(selectedSearchTypeProvider);
 
     return ListView(
-      scrollDirection: Axis.horizontal,
+      scrollDirection: direction,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       children: [
         // 非歌曲搜索时不支持"全部来源"

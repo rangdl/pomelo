@@ -143,7 +143,7 @@ final lxSourceScriptsNotifierProvider =
 /// 从 drift `lx_source_usages` 表加载，用于在音源设置页面展示成功率与耗时。
 /// 调用 [ref.invalidate] 刷新数据。
 final lxSourceUsagesProvider =
-    FutureProvider<List<LxSourceUsageEntity>>((ref) async {
+    FutureProvider.autoDispose<List<LxSourceUsageEntity>>((ref) async {
       final db = ref.watch(databaseProvider);
       return db.getAllLxSourceUsages();
     });

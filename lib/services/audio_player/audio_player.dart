@@ -308,9 +308,22 @@ mixin PomeloAudioPlayerStreams on AudioPlayerInterface {
     // }
   }
 
+  /// 播放进度流（节流到最多每 500ms 触发一次）
+  ///
+  /// media_kit 原始 positionStream 触发频率极高（每帧），
+  /// 在歌词同步和进度条更新场景下无需如此频繁，节流后显著降低 UI 重建开销。
+  // int? _lastPositionBucket;
   Stream<Duration> get positionStream {
     // if (mkSupportedPlatform) {
     return _mkPlayer.stream.position;
+    // return _mkPlayer.stream.position.where((pos) {
+    //   final bucket = pos.inMilliseconds ~/ 500; // 每 500ms 一个桶
+    //   if (_lastPositionBucket != bucket) {
+    //     _lastPositionBucket = bucket;
+    //     return true;
+    //   }
+    //   return false;
+    // });
     // } else {
     //   return _justAudio!.positionStream;
     // }

@@ -6,6 +6,7 @@
 /// 使用方式: `import 'package:pomelo/core/framework/framework.dart';`
 library;
 
+export 'async_value_ext.dart';
 export 'centered_list_view.dart';
 export 'list_tile.dart';
 export 'selection_picker.dart';

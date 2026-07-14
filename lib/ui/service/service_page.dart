@@ -158,33 +158,11 @@ class ServicePage extends HookConsumerWidget {
       }
     }
 
-    // 桌面端双栏：将分区均分到左右两列
-    final half = (sections.length + 1) ~/ 2;
-    final leftSections = sections.sublist(0, half);
-    final rightSections = sections.sublist(half);
-
-    return Rx.layout(
-      context,
-      mobile: () =>
-          ListView(padding: const EdgeInsets.all(16), children: sections),
-      tablet: () => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ListView(padding: EdgeInsets.zero, children: leftSections),
-            ),
-            const Gap(16),
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: rightSections,
-              ),
-            ),
-          ],
-        ),
-      ),
+    // 单列布局：移动端和桌面端统一使用单列 ListView
+    return CenteredListView(
+      maxWidth: 800,
+      padding: const EdgeInsets.all(16),
+      children: sections,
     );
   }
 

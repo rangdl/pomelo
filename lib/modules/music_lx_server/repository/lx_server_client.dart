@@ -156,30 +156,29 @@ class LxServerClient {
       '[LxServer] 搜索: source=$source, keyword=$keyword, page=$page',
     );
     try {
-      final response = await _dio.get<Map<String, dynamic>>(
+      // 接口参数名为name，而不是keyword
+      // 此接口返回的是歌曲列表，不包含总数信息
+      final response = await _dio.get<List<dynamic>>(
         '$serverUrl/api/music/search',
         queryParameters: {
           'source': source,
-          'keyword': keyword,
+          'name': keyword,
           'page': page,
           'limit': limit,
         },
         options: _authOptions,
       );
       final data = response.data!;
-      final list =
-          (data['list'] as List<dynamic>?)
-              ?.map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [];
-      final total = (data['total'] as num?)?.toInt() ?? 0;
-      final respLimit = (data['limit'] as num?)?.toInt() ?? limit;
-      final respPage = (data['page'] as num?)?.toInt() ?? page;
+      final list = data
+          .map((e) => LxServerSong.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final respLimit = limit;
+      final respPage = page;
       AppLogger.log.i(
         '[LxServer] 搜索成功: source=$source, keyword=$keyword, '
-        '返回 ${list.length} 首, 总计 $total 首',
+        '返回 ${list.length} 首',
       );
-      return (list: list, total: total, limit: respLimit, page: respPage);
+      return (list: list, total: list.length, limit: respLimit, page: respPage);
     } catch (e, s) {
       AppLogger.reportError(
         e,
@@ -202,9 +201,10 @@ class LxServerClient {
   }) async {
     await ensureLoggedIn();
     try {
+      // 接口参数名为name，而不是keyword
       final response = await _dio.get(
         '$serverUrl/api/music/tipSearch',
-        queryParameters: {'source': source, 'keyword': keyword},
+        queryParameters: {'source': source, 'name': keyword},
         options: _authOptions,
       );
       final data = response.data;
