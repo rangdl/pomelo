@@ -21,9 +21,8 @@ final playlistTracksProvider =
       ref,
       params,
     ) async {
-      await ref.watch(musicServersProvider.future);
       final service = await ref.watch(
-        musicServerByProvider(params.sourceId).future,
+        musicServerProvider(params.sourceId).future,
       );
       if (service == null) return [];
       return service.getPlaylistTracks(params.playlistId);

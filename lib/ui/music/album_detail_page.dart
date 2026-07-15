@@ -19,9 +19,8 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 final albumTracksProvider =
     FutureProvider.family<List<Track>, ({String sourceId, String albumId})>(
   (ref, params) async {
-    await ref.watch(musicServersProvider.future);
     final service =
-        await ref.watch(musicServerByProvider(params.sourceId).future);
+        await ref.watch(musicServerProvider(params.sourceId).future);
     if (service == null) return [];
     try {
       final result = await service.getAlbumTracks(params.albumId);

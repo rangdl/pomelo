@@ -13,7 +13,8 @@ import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
-import 'package:pomelo/modules/music/providers/music_providers.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
@@ -430,15 +431,15 @@ class _SearchResults extends HookConsumerWidget {
       return null;
     }, const []);
 
-    final servicesAsync = ref.watch(musicServersProvider);
+    final configsAsync = ref.watch(musicServerConfigsProvider);
     final selection = ref.watch(selectedSourceProvider);
     final selectedSourceId = selection.sourceId;
 
-    return servicesAsync.when(
-      data: (services) {
+    return configsAsync.when(
+      data: (configs) {
         final filtered = tabSourceId.value == null
-            ? services
-            : services.where((s) => s.sourceId == tabSourceId.value).toList();
+            ? configs
+            : configs.where((c) => c.id == tabSourceId.value).toList();
 
         final colorScheme = Theme.of(context).colorScheme;
 
@@ -450,7 +451,7 @@ class _SearchResults extends HookConsumerWidget {
           libraryId: tabSourceId.value == selection.sourceId
               ? selection.libraryId
               : null,
-          services: filtered,
+          configs: filtered,
           searchType: selectedType,
         );
 
@@ -461,7 +462,7 @@ class _SearchResults extends HookConsumerWidget {
               SizedBox(
                 height: 44,
                 child: _SourceChips(
-                  services: services,
+                  configs: configs,
                   selectedSourceId: selectedSourceId,
                   tabSourceId: tabSourceId,
                   selection: selection,
@@ -494,7 +495,7 @@ class _SearchResults extends HookConsumerWidget {
                     ),
                     Expanded(
                       child: _SourceChips(
-                        services: services,
+                        configs: configs,
                         selectedSourceId: selectedSourceId,
                         tabSourceId: tabSourceId,
                         selection: selection,
@@ -523,7 +524,7 @@ class _SearchResultsContainer extends ConsumerWidget {
   final String keyword;
   final String? sourceId;
   final String? libraryId;
-  final List<MusicServer> services;
+  final List<MusicServerConfig> configs;
   final SearchType searchType;
 
   const _SearchResultsContainer({
@@ -531,7 +532,7 @@ class _SearchResultsContainer extends ConsumerWidget {
     required this.keyword,
     required this.sourceId,
     required this.libraryId,
-    required this.services,
+    required this.configs,
     required this.searchType,
   });
 
@@ -562,7 +563,7 @@ class _SearchResultsContainer extends ConsumerWidget {
           keyword: keyword,
           sourceId: sourceId,
           libraryId: libraryId,
-          services: services,
+          configs: configs,
         );
       case SearchType.artist:
         return _ArtistResultsList(
@@ -588,7 +589,7 @@ class _SearchResultsContainer extends ConsumerWidget {
 
 /// 来源筛选 chips 组件
 class _SourceChips extends ConsumerWidget {
-  final List<MusicServer> services;
+  final List<MusicServerConfig> configs;
   final String? selectedSourceId;
   final ValueNotifier<String?> tabSourceId;
   final ({String? sourceId, String? libraryId}) selection;
@@ -596,7 +597,7 @@ class _SourceChips extends ConsumerWidget {
   final Axis direction;
 
   const _SourceChips({
-    required this.services,
+    required this.configs,
     required this.selectedSourceId,
     required this.tabSourceId,
     required this.selection,
@@ -626,57 +627,23 @@ class _SourceChips extends ConsumerWidget {
             borderRadius: 8,
             fontSize: 13,
           ),
-        // 扁平展示所有平台，不按类型分组；
-        // 多库服务展开为每个库一个 chip
-        ...services.expand((service) {
-          if (service.libraries.isNotEmpty) {
-            return service.libraries.map(
-              (lib) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: AppChip(
-                  label: lib.name,
-                  isSelected:
-                      tabSourceId.value == service.sourceId &&
-                      service.defaultLibraryId == lib.id,
-                  onTap: () {
-                    tabSourceId.value = service.sourceId;
-                    ref
-                        .read(selectedSourceProvider.notifier)
-                        .select(service.sourceId, libraryId: lib.id);
-                  },
-                  fill: true,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 6,
-                  ),
-                  borderRadius: 8,
-                  fontSize: 13,
-                ),
-              ),
-            );
-          }
-          return [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 3),
-              child: AppChip(
-                label: service.sourceName,
-                isSelected: tabSourceId.value == service.sourceId,
-                onTap: () {
-                  tabSourceId.value = service.sourceId;
-                  ref
-                      .read(selectedSourceProvider.notifier)
-                      .select(service.sourceId);
-                },
-                fill: true,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 6,
-                ),
-                borderRadius: 8,
-                fontSize: 13,
-              ),
+        // 扁平展示所有平台配置，不按类型分组
+        ...configs.map((config) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: AppChip(
+              label: config.name,
+              isSelected: tabSourceId.value == config.id,
+              onTap: () {
+                tabSourceId.value = config.id;
+                ref.read(selectedSourceProvider.notifier).select(config.id);
+              },
+              fill: true,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              borderRadius: 8,
+              fontSize: 13,
             ),
-          ];
+          );
         }),
       ],
     );
@@ -688,13 +655,13 @@ class _SongResultsList extends ConsumerWidget {
   final String keyword;
   final String? sourceId;
   final String? libraryId;
-  final List<MusicServer> services;
+  final List<MusicServerConfig> configs;
 
   const _SongResultsList({
     required this.keyword,
     required this.sourceId,
     required this.libraryId,
-    required this.services,
+    required this.configs,
   });
 
   @override
@@ -712,7 +679,7 @@ class _SongResultsList extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, _) => Center(child: Text('搜索失败: $err')),
       data: (data) {
-        if (services.isEmpty) {
+        if (configs.isEmpty) {
           return const Center(child: Text('无可用来源'));
         }
 

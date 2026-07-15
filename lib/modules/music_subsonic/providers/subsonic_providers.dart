@@ -21,60 +21,68 @@ typedef SubsonicAccountRecord = ({
 /// 去除 serverUrl 末尾的多余斜杠
 String _cleanUrl(String url) => url.replaceAll(RegExp(r'/+$'), '');
 
+/// 按 configId 懒创建单个 SubsonicMusicServer
+///
+/// 从 [musicServerConfigsProvider] 读取指定 id 的 SubsonicConfig，
+/// 创建独立的 [SubsonicClient] + [SubsonicMusicServer]。
+/// 连接失败时返回 null。
+final subsonicServerProvider =
+    FutureProvider.family<SubsonicMusicServer?, String>((ref, configId) async {
+      final configs = await ref.watch(musicServerConfigsProvider.future);
+      final config = configs
+          .whereType<SubsonicConfig>()
+          .where((c) => c.id == configId)
+          .firstOrNull;
+      if (config == null) return null;
+
+      final cleanUrl = _cleanUrl(config.serverUrl);
+      final client = SubsonicClient(
+        serverUrl: cleanUrl,
+        username: config.username,
+        password: config.password,
+        token: config.token,
+        salt: config.salt,
+        version: config.version,
+        pathPrefix: config.pathPrefix,
+      );
+
+      try {
+        await client.ping();
+      } catch (e) {
+        AppLogger.reportError(
+          e,
+          null,
+          '[MusicSubsonic] 账号 ${config.username}@$cleanUrl 连接失败: $e',
+        );
+        client.dispose();
+        return null;
+      }
+
+      final server = SubsonicMusicServer(
+        client: client,
+        serverUrl: cleanUrl,
+        username: config.username,
+        displayName: config.name,
+      );
+      ref.onDispose(() => client.dispose());
+      AppLogger.log.i('[MusicSubsonic] 已连接 ${server.sourceName}');
+      return server;
+    });
+
 /// 所有已配置的 Subsonic 服务列表
 ///
-/// 从 [musicServerConfigsProvider] 读取所有 SubsonicConfig，
-/// 配置变化时自动重建。每个账号创建独立的 [SubsonicClient] + [SubsonicMusicServer]，
-/// 连接失败的账号会被跳过。
+/// 聚合所有 SubsonicConfig 对应的 [subsonicServerProvider] 实例。
+/// 配置变化时自动重建。
 final subsonicServersProvider = FutureProvider<List<SubsonicMusicServer>>((
   ref,
 ) async {
   final configs = await ref.watch(musicServerConfigsProvider.future);
   final subsonicConfigs = configs.whereType<SubsonicConfig>().toList();
-  final clients = <SubsonicClient>[];
   final servers = <SubsonicMusicServer>[];
-
   for (final config in subsonicConfigs) {
-    final cleanUrl = _cleanUrl(config.serverUrl);
-    final client = SubsonicClient(
-      serverUrl: cleanUrl,
-      username: config.username,
-      password: config.password,
-      token: config.token,
-      salt: config.salt,
-      version: config.version,
-      pathPrefix: config.pathPrefix,
-    );
-
-    try {
-      await client.ping();
-    } catch (e) {
-      AppLogger.reportError(
-        e,
-        null,
-        '[MusicSubsonic] 账号 ${config.username}@$cleanUrl 连接失败: $e',
-      );
-      client.dispose();
-      continue;
-    }
-
-    final server = SubsonicMusicServer(
-      client: client,
-      serverUrl: cleanUrl,
-      username: config.username,
-      displayName: config.name,
-    );
-    clients.add(client);
-    servers.add(server);
-    AppLogger.log.i('[MusicSubsonic] 已连接 ${server.sourceName}');
+    final server = await ref.watch(subsonicServerProvider(config.id).future);
+    if (server != null) servers.add(server);
   }
-
-  ref.onDispose(() {
-    for (final client in clients) {
-      client.dispose();
-    }
-  });
-
   return servers;
 });
 
@@ -128,14 +136,7 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
           ),
         );
 
-    final servers = await ref.read(subsonicServersProvider.future);
-    SubsonicMusicServer? server;
-    for (final s in servers) {
-      if (s.sourceId == configId) {
-        server = s;
-        break;
-      }
-    }
+    final server = await ref.read(subsonicServerProvider(configId).future);
     if (server == null) {
       throw StateError('连接成功但 Provider 创建服务失败');
     }

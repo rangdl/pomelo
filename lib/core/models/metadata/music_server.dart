@@ -9,8 +9,9 @@ import 'leaderboard.dart';
 
 /// 音乐服务接口
 ///
-/// 由各音乐平台模块实现，通过 Riverpod Provider 创建并聚合到
-/// [musicServersProvider] 后统一对外提供服务。
+/// 由各音乐平台模块实现，通过 Riverpod Provider 创建。
+/// 单个服务通过 [musicServerProvider] 按 configId 懒创建，
+/// 当前选中的服务通过 [currentMusicServerProvider] 获取。
 /// 每个服务有自己的 [sourceId] 和 [sourceName]，用于标识数据来源。
 /// 可选的 [categoryId] 和 [categoryName] 用于对服务进行二级分类分组。
 abstract class MusicServer {

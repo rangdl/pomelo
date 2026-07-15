@@ -15,6 +15,7 @@ import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
 import 'package:pomelo/core/utils/parser/range_headers.dart';
+import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/provider/server/sourced_track.dart';
@@ -293,8 +294,9 @@ class ServerPlaybackRoutes {
   /// - 封面：优先保留文件已有标签，缺失时从 Track.coverArt 下载
   /// - 其他字段：保留文件已有标签，缺失时用 Track 信息补全
   ///
-  /// 注意：metadata_god 不支持 lyrics/bpm 字段，歌词不再写入文件标签。
-  /// 歌词获取仍在播放器层通过 [MusicServer.getLyric] 提供。
+  /// 注意：metadata_god 不支持 lyrics 字段，歌词不写入音频文件标签。
+  /// 歌词在 [_saveToLocalLibrary] 中通过 [MusicServer.getLyric] 获取，
+  /// 存入 [Track.lyrics] 字段并持久化到 trackJson。
   ///
   /// 写入失败仅记录日志，不影响播放和缓存。
   Future<void> _writeTagsToCacheFile(Track track, String filePath) async {
@@ -417,13 +419,14 @@ class ServerPlaybackRoutes {
   ///
   /// 优先从缓存文件读取标签信息（title/artist/album/封面等），
   /// 弥补在线 API 返回的元数据缺失；读取失败则回退到原始 Track 信息。
+  /// 同步获取歌词并写入 Track.lyrics，持久化到 trackJson。
   Future<void> _saveToLocalLibrary(Track track, String cachePath) async {
     try {
       final database = ref.read(databaseProvider);
       final sourceId = track.source.id;
 
       // 尝试从缓存文件读取标签信息
-      Track enriched = track;
+      Track enriched = track.copyWith(path: cachePath);
       try {
         final meta = await MetadataGod.readMetadata(file: cachePath);
         String? coverArt = track.coverArt;
@@ -433,28 +436,42 @@ class ServerPlaybackRoutes {
           final savedCover = await _saveCoverToCache(track.id, picture.data);
           if (savedCover != null) coverArt = savedCover;
         }
-        enriched = track.copyWith(
+        enriched = enriched.copyWith(
           title: (meta.title != null && meta.title!.isNotEmpty)
               ? meta.title!
-              : track.title,
+              : enriched.title,
           artist: (meta.artist != null && meta.artist!.isNotEmpty)
               ? meta.artist
-              : track.artist,
+              : enriched.artist,
           album: (meta.album != null && meta.album!.isNotEmpty)
               ? meta.album
-              : track.album,
+              : enriched.album,
           coverArt: coverArt,
           duration: (meta.durationMs != null && meta.durationMs! > 0)
               ? meta.durationMs!.toInt()
-              : track.duration,
-          year: meta.year ?? track.year,
-          genre: meta.genre ?? track.genre,
-          track: meta.trackNumber ?? track.track,
-          discNumber: meta.discNumber ?? track.discNumber,
-          path: cachePath,
+              : enriched.duration,
+          year: meta.year ?? enriched.year,
+          genre: meta.genre ?? enriched.genre,
+          track: meta.trackNumber ?? enriched.track,
+          discNumber: meta.discNumber ?? enriched.discNumber,
         );
       } catch (e) {
         AppLogger.log.w('[Playback] 读取缓存文件标签失败: $e');
+      }
+
+      // 获取歌词（若 Track 尚未携带），持久化到 trackJson
+      if (enriched.lyrics == null || enriched.lyrics!.isEmpty) {
+        try {
+          final server = await ref.read(musicServerProvider(sourceId).future);
+          if (server != null) {
+            final lyric = await server.getLyric(enriched);
+            if (lyric != null && lyric.isNotEmpty) {
+              enriched = enriched.copyWith(lyrics: lyric);
+            }
+          }
+        } catch (e) {
+          AppLogger.log.w('[Playback] 获取歌词失败: $e');
+        }
       }
 
       final companion = LocalTrackTableCompanion.insert(

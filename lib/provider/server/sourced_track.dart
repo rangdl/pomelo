@@ -227,9 +227,8 @@ class SourcedTrack {
 
     final sourceId = track.source.id;
 
-    // 等待服务列表加载完成，然后查找对应服务
-    await ref.read(musicServersProvider.future);
-    final service = await ref.read(musicServerByProvider(sourceId).future);
+    // 按 configId 懒获取对应服务
+    final service = await ref.read(musicServerProvider(sourceId).future);
     if (service == null) return track.src ?? track.path ?? '';
     if (service.useLocalAudioSource) {
       final localUrl = await _getMusicUrlLocal(ref, track, quality);

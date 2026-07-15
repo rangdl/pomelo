@@ -2,15 +2,12 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart' show PopupMenuButton, PopupMenuItem;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
-import 'package:pomelo/core/models/metadata/music_server.dart';
 import 'package:pomelo/core/models/metadata/music_source_type.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/toast.dart';
-import 'package:pomelo/modules/music/providers/music_providers.dart';
 import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dart';
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
-import 'package:pomelo/modules/music_subsonic/repository/subsonic_music_server.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/platform/providers/lx_metadata_plugin_paths_provider.dart';
@@ -34,16 +31,15 @@ enum _PlatformType {
 
 /// 平台页面
 ///
-/// 展示所有已注册的音乐服务，按类型分组。
-/// 右上角"+"按钮可添加新平台。
+/// 展示所有已配置的音乐服务（基于 [musicServerConfigsProvider]，不初始化服务实例），
+/// 按类型分组。右上角"+"按钮可添加新平台。
 @RoutePage()
 class ServicePage extends HookConsumerWidget {
   const ServicePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final servicesAsync = ref.watch(musicServersProvider);
-    final subsonicAccounts = ref.watch(subsonicAccountsProvider);
+    final configsAsync = ref.watch(musicServerConfigsProvider);
 
     return Scaffold(
       headers: [
@@ -82,11 +78,10 @@ class ServicePage extends HookConsumerWidget {
           ],
         ),
       ],
-      child: servicesAsync.when(
+      child: configsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('加载失败: $e')),
-        data: (services) =>
-            _buildBody(context, ref, services, subsonicAccounts),
+        data: (configs) => _buildBody(context, ref, configs),
       ),
     );
   }
@@ -94,10 +89,13 @@ class ServicePage extends HookConsumerWidget {
   Widget _buildBody(
     BuildContext context,
     WidgetRef ref,
-    List<MusicServer> services,
-    List<SubsonicMusicServer> subsonicAccounts,
+    List<MusicServerConfig> configs,
   ) {
-    final byType = groupServicesByType(services);
+    // 按类型分组配置
+    final byType = <MusicSourceType, List<MusicServerConfig>>{};
+    for (final c in configs) {
+      byType.putIfAbsent(c.type, () => []).add(c);
+    }
 
     // 定义展示顺序
     const typeOrder = [
@@ -146,15 +144,7 @@ class ServicePage extends HookConsumerWidget {
     final sections = <Widget>[];
     for (final type in typeOrder) {
       if (byType[type] != null && byType[type]!.isNotEmpty) {
-        sections.add(
-          _buildTypeSection(
-            context,
-            ref,
-            type,
-            byType[type]!,
-            subsonicAccounts,
-          ),
-        );
+        sections.add(_buildTypeSection(context, ref, type, byType[type]!));
       }
     }
 
@@ -166,13 +156,12 @@ class ServicePage extends HookConsumerWidget {
     );
   }
 
-  /// 构建某个类型下的服务分组
+  /// 构建某个类型下的配置分组
   Widget _buildTypeSection(
     BuildContext context,
     WidgetRef ref,
     MusicSourceType type,
-    List<MusicServer> services,
-    List<SubsonicMusicServer> subsonicAccounts,
+    List<MusicServerConfig> configs,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +186,7 @@ class ServicePage extends HookConsumerWidget {
               ),
               const Gap(8),
               Text(
-                '${services.length}',
+                '${configs.length}',
                 style: TextStyle(
                   fontSize: 12,
                   color: Theme.of(context).colorScheme.mutedForeground,
@@ -209,9 +198,9 @@ class ServicePage extends HookConsumerWidget {
         Card(
           child: Column(
             children: [
-              for (int i = 0; i < services.length; i++) ...[
+              for (int i = 0; i < configs.length; i++) ...[
                 if (i > 0) const Divider(height: 1),
-                _buildServiceTile(context, ref, services[i], subsonicAccounts),
+                _buildConfigTile(context, ref, configs[i]),
               ],
             ],
           ),
@@ -221,51 +210,50 @@ class ServicePage extends HookConsumerWidget {
     );
   }
 
-  /// 构建单个服务的 ListTile
-  Widget _buildServiceTile(
+  /// 构建单个配置的 ListTile
+  Widget _buildConfigTile(
     BuildContext context,
     WidgetRef ref,
-    MusicServer service,
-    List<SubsonicMusicServer> subsonicAccounts,
+    MusicServerConfig config,
   ) {
-    final libraryCount = service.libraries.length;
-    final subtitle = libraryCount > 0 ? '$libraryCount 个库' : '已加载';
-
-    // 是否允许编辑（本地 + LxServer + Subsonic 可编辑，Lx 插件由文件管理）
+    // 是否允许编辑（本地 + Lxserver + Subsonic 可编辑，Lx 插件由文件管理）
     final canEdit =
-        service.sourceType == MusicSourceType.local ||
-        service.sourceType == MusicSourceType.lxServer ||
-        service.sourceType == MusicSourceType.subsonic ||
-        service.sourceType == MusicSourceType.navidrome ||
-        service.sourceType == MusicSourceType.emby;
+        config.type == MusicSourceType.local ||
+        config.type == MusicSourceType.lxServer ||
+        config.type == MusicSourceType.subsonic ||
+        config.type == MusicSourceType.navidrome ||
+        config.type == MusicSourceType.emby;
 
     return ListTile(
-      leading: Icon(_typeIcon(service.sourceType), size: 20),
-      title: Text(service.sourceName),
-      subtitle: Text(subtitle),
+      leading: Icon(_typeIcon(config.type), size: 20),
+      title: Text(config.name),
+      subtitle: const Text('已配置'),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (canEdit)
             IconButton.text(
               icon: const Icon(Icons.edit_outlined, size: 18),
-              onPressed: () => _editService(context, ref, service),
+              onPressed: () => _editConfig(context, ref, config),
             ),
-          if (_canRemove(service.sourceType))
+          if (_canRemove(config.type))
             IconButton.text(
               icon: const Icon(Icons.delete_outline, size: 18),
-              onPressed: () =>
-                  _removeService(context, ref, service, subsonicAccounts),
+              onPressed: () => _removeConfig(context, ref, config),
             ),
         ],
       ),
     );
   }
 
-  /// 编辑服务配置
-  void _editService(BuildContext context, WidgetRef ref, MusicServer service) {
-    switch (service.sourceType) {
-      case MusicSourceType.local:
+  /// 编辑配置
+  void _editConfig(
+    BuildContext context,
+    WidgetRef ref,
+    MusicServerConfig config,
+  ) {
+    switch (config) {
+      case LocalMusicConfig():
         Rx.action(
           context,
           mobile: () {
@@ -282,9 +270,7 @@ class ServicePage extends HookConsumerWidget {
             );
           },
         );
-      case MusicSourceType.lxServer:
-        final configs = ref.read(musicServerConfigsProvider).value ?? const [];
-        final config = configs.whereType<LxServerConfig>().firstOrNull;
+      case LxServerConfig():
         Rx.action(
           context,
           mobile: () {
@@ -301,12 +287,7 @@ class ServicePage extends HookConsumerWidget {
             );
           },
         );
-      case MusicSourceType.subsonic:
-      case MusicSourceType.navidrome:
-      case MusicSourceType.emby:
-        final config = ref
-            .read(subsonicAccountsProvider.notifier)
-            .getAccount(service.sourceId);
+      case SubsonicConfig():
         Rx.action(
           context,
           mobile: () {
@@ -314,7 +295,7 @@ class ServicePage extends HookConsumerWidget {
               MaterialPageRoute<void>(
                 builder: (_) => AddSubsonicAccountPage(
                   initialConfig: config,
-                  sourceId: service.sourceId,
+                  sourceId: config.id,
                 ),
               ),
             );
@@ -324,12 +305,12 @@ class ServicePage extends HookConsumerWidget {
               context: context,
               builder: (_) => AddSubsonicAccountDialog(
                 initialConfig: config,
-                sourceId: service.sourceId,
+                sourceId: config.id,
               ),
             );
           },
         );
-      default:
+      case LxPluginConfig():
         break;
     }
   }
@@ -402,34 +383,33 @@ class ServicePage extends HookConsumerWidget {
     }
   }
 
-  /// 删除服务
-  Future<void> _removeService(
+  /// 删除配置
+  Future<void> _removeConfig(
     BuildContext context,
     WidgetRef ref,
-    MusicServer service,
-    List<SubsonicMusicServer> subsonicAccounts,
+    MusicServerConfig config,
   ) async {
     try {
-      switch (service.sourceType) {
-        case MusicSourceType.lx:
+      switch (config) {
+        case LxPluginConfig():
           await ref
               .read(lxMetadataPluginPathsProvider.notifier)
               .removePlugin('');
-        case MusicSourceType.lxServer:
+        case LxServerConfig():
           await ref.read(lxServerConnectionProvider.notifier).disconnect();
-        case MusicSourceType.subsonic:
+        case SubsonicConfig():
           await ref
               .read(subsonicAccountsProvider.notifier)
-              .removeAccount(service.sourceId);
-        default:
+              .removeAccount(config.id);
+        case LocalMusicConfig():
           break;
       }
       // 若删除的正是当前选中来源，清除选中态避免 stale sourceId 导致歌单循环切换
       final selection = ref.read(selectedSourceProvider);
-      if (selection.sourceId == service.sourceId) {
+      if (selection.sourceId == config.id) {
         ref.read(selectedSourceProvider.notifier).selectAll();
       }
-      AppToast().success('已移除 ${service.sourceName}');
+      AppToast().success('已移除 ${config.name}');
     } catch (e) {
       AppToast().error('移除失败: $e');
     }

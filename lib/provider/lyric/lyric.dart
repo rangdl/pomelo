@@ -6,13 +6,19 @@ import 'package:pomelo/ui/player/lyric_parser.dart';
 /// 歌词 Provider
 ///
 /// 根据当前播放曲目获取 LRC 歌词文本。
+/// 优先使用 [Track.lyrics] 中已缓存的歌词（缓存曲目时同步获取并持久化）；
+/// 未缓存时通过 [MusicServer.getLyric] 在线获取。
 /// 非在线曲目或服务不支持歌词时返回 null。
 final lyricProvider = FutureProvider.autoDispose.family<String?, Track>((
   ref,
   song,
 ) async {
+  // 优先使用已缓存的歌词
+  if (song.lyrics != null && song.lyrics!.isNotEmpty) {
+    return song.lyrics;
+  }
   if (song.src == null) return null;
-  final service = await ref.watch(musicServerByProvider(song.source.id).future);
+  final service = await ref.watch(musicServerProvider(song.source.id).future);
   if (!ref.mounted) return null;
   if (service == null) return null;
   try {

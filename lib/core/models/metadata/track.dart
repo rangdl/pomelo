@@ -64,6 +64,12 @@ class Track {
   /// 本地曲目文件路径（非空表示本地曲目）
   final String? path;
 
+  /// 歌词文本（LRC 格式）
+  ///
+  /// 缓存在线曲目时同步获取并持久化到本地音乐库（trackJson），
+  /// 避免每次播放都重新请求。为 null 表示未获取或服务不支持歌词。
+  final String? lyrics;
+
   /// 数据来源
   ///
   /// - [id] 服务标识，如 'lx-server'、'lx-default'、'subsonic-xxx'、'local'
@@ -95,6 +101,7 @@ class Track {
     this.created,
     this.src,
     this.path,
+    this.lyrics,
     required this.source,
     this.meta,
   });
@@ -140,6 +147,7 @@ class Track {
       created: tryParseDateTime(json['created'] ?? json['created_at']),
       src: json['src'] as String?,
       path: json['path'] as String?,
+      lyrics: json['lyrics'] as String?,
       source: (
         id: source['id'] as String,
         name: source['name'] as String,
@@ -173,6 +181,7 @@ class Track {
       if (created != null) 'created': created!.toIso8601String(),
       if (src != null) 'src': src,
       if (path != null) 'path': path,
+      if (lyrics != null) 'lyrics': lyrics,
       'source': {
         'id': source.id,
         'name': source.name,
@@ -204,6 +213,7 @@ class Track {
     DateTime? created,
     String? src,
     String? path,
+    String? lyrics,
     ({String id, String name, String? libraryId, String? libraryName})? source,
     Map<String, dynamic>? meta,
     bool clearArtist = false,
@@ -221,6 +231,7 @@ class Track {
     bool clearCreated = false,
     bool clearSrc = false,
     bool clearPath = false,
+    bool clearLyrics = false,
     // bool clearSource = false,
     bool clearMeta = false,
   }) {
@@ -243,6 +254,7 @@ class Track {
       created: clearCreated ? null : (created ?? this.created),
       src: clearSrc ? null : (src ?? this.src),
       path: clearPath ? null : (path ?? this.path),
+      lyrics: clearLyrics ? null : (lyrics ?? this.lyrics),
       source: source ?? this.source,
       meta: clearMeta ? null : (meta ?? this.meta),
     );
@@ -273,7 +285,8 @@ class Track {
           starred == other.starred &&
           created == other.created &&
           src == other.src &&
-          path == other.path;
+          path == other.path &&
+          lyrics == other.lyrics;
 
   @override
   int get hashCode => Object.hash(
@@ -295,5 +308,6 @@ class Track {
     created,
     src,
     path,
+    lyrics,
   );
 }

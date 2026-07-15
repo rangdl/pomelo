@@ -1,7 +1,8 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
-import 'package:pomelo/modules/music/providers/music_providers.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
+import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/track_list.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
@@ -10,31 +11,32 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 /// 音乐平台切换按钮（右上角）
 ///
 /// 仅切换音乐平台（服务），不展示平台提供的库。
+/// 使用 [musicServerConfigsProvider] 获取配置列表（不初始化服务）。
 /// 多库服务（如 LxServer）的库切换由 [LibrarySwitchButton] 负责。
 class SourceSwitchButton extends HookConsumerWidget {
   const SourceSwitchButton({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final servicesAsync = ref.watch(musicServersProvider);
+    final configsAsync = ref.watch(musicServerConfigsProvider);
     final selection = ref.watch(selectedSourceProvider);
     final selectedSourceId = selection.sourceId;
 
-    return servicesAsync.when(
-      data: (services) {
-        // 显示名称：仅显示服务名（不显示库名）
+    return configsAsync.when(
+      data: (configs) {
+        // 显示名称：仅显示配置名（不显示库名）
         final selectedName = selectedSourceId == null
             ? '全部'
-            : services
-                      .where((s) => s.sourceId == selectedSourceId)
+            : configs
+                      .where((c) => c.id == selectedSourceId)
                       .firstOrNull
-                      ?.sourceName ??
+                      ?.name ??
                   '全部';
 
         return GhostButton(
           size: ButtonSize.small,
           onPressed: () =>
-              _showSourcePicker(context, ref, services, selectedSourceId),
+              _showSourcePicker(context, ref, configs, selectedSourceId),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -53,7 +55,7 @@ class SourceSwitchButton extends HookConsumerWidget {
   void _showSourcePicker(
     BuildContext context,
     WidgetRef ref,
-    List<MusicServer> services,
+    List<MusicServerConfig> configs,
     String? selectedSourceId,
   ) {
     showSelectionPicker<String?>(
@@ -65,11 +67,11 @@ class SourceSwitchButton extends HookConsumerWidget {
           label: '全部来源',
           selected: selectedSourceId == null,
         ),
-        ...services.map(
-          (service) => SelectionOption<String?>(
-            value: service.sourceId,
-            label: service.sourceName,
-            selected: service.sourceId == selectedSourceId,
+        ...configs.map(
+          (config) => SelectionOption<String?>(
+            value: config.id,
+            label: config.name,
+            selected: config.id == selectedSourceId,
           ),
         ),
       ],
@@ -87,24 +89,24 @@ class SourceSwitchButton extends HookConsumerWidget {
 /// 库切换按钮（左侧）
 ///
 /// 仅当选中的平台（服务）提供多个库时显示。
+/// 通过 [currentMusicServerProvider] 获取已初始化的服务实例。
 /// 点击弹出库选择对话框，选中后更新 [selectedSourceProvider] 的 libraryId。
 class LibrarySwitchButton extends HookConsumerWidget {
   const LibrarySwitchButton({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final servicesAsync = ref.watch(musicServersProvider);
+    final serverAsync = ref.watch(currentMusicServerProvider);
     final selection = ref.watch(selectedSourceProvider);
 
-    return servicesAsync.when(
-      data: (services) {
+    return serverAsync.when(
+      data: (service) {
         final sourceId = selection.sourceId;
-        if (sourceId == null) return const SizedBox.shrink();
-        final service = services
-            .where((s) => s.sourceId == sourceId)
-            .firstOrNull;
+        if (sourceId == null || service == null) {
+          return const SizedBox.shrink();
+        }
         // 平台未提供库，或仅有一个库，则不显示
-        if (service == null || service.libraries.length <= 1) {
+        if (service.libraries.length <= 1) {
           return const SizedBox.shrink();
         }
 

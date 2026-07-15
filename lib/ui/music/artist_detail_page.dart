@@ -19,42 +19,44 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 ///
 /// 根据 (sourceId, artistId) 获取歌手的专辑列表。
 final artistAlbumsProvider =
-    FutureProvider.family<List<Album>, ({String sourceId, String artistId})>(
-  (ref, params) async {
-    await ref.watch(musicServersProvider.future);
-    final service =
-        await ref.watch(musicServerByProvider(params.sourceId).future);
-    if (service == null) return [];
-    try {
-      return await service.getArtistAlbums(params.artistId);
-    } catch (_) {
-      return [];
-    }
-  },
-);
+    FutureProvider.family<List<Album>, ({String sourceId, String artistId})>((
+      ref,
+      params,
+    ) async {
+      final service = await ref.watch(
+        musicServerProvider(params.sourceId).future,
+      );
+      if (service == null) return [];
+      try {
+        return await service.getArtistAlbums(params.artistId);
+      } catch (_) {
+        return [];
+      }
+    });
 
 /// 歌手歌曲列表 Provider
 ///
 /// 根据 (sourceId, artistId, order) 获取歌手的歌曲列表。
 /// [order] 排序方式：'hot'（热度）或 'time'（时间）。
-final artistSongsProvider = FutureProvider.family<
-    List<Track>, ({String sourceId, String artistId, String order})>(
-  (ref, params) async {
-    await ref.watch(musicServersProvider.future);
-    final service =
-        await ref.watch(musicServerByProvider(params.sourceId).future);
-    if (service == null) return [];
-    try {
-      final result = await service.getArtistSongs(
-        params.artistId,
-        order: params.order,
+final artistSongsProvider =
+    FutureProvider.family<
+      List<Track>,
+      ({String sourceId, String artistId, String order})
+    >((ref, params) async {
+      final service = await ref.watch(
+        musicServerProvider(params.sourceId).future,
       );
-      return result.items;
-    } catch (_) {
-      return [];
-    }
-  },
-);
+      if (service == null) return [];
+      try {
+        final result = await service.getArtistSongs(
+          params.artistId,
+          order: params.order,
+        );
+        return result.items;
+      } catch (_) {
+        return [];
+      }
+    });
 
 /// 歌手详情页面
 @RoutePage()
@@ -119,11 +121,7 @@ class ArtistDetailPage extends HookConsumerWidget {
                 child: const Icon(Icons.arrow_back, size: 20),
               ),
           ],
-          title: Text(
-            artistName,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          title: Text(artistName, maxLines: 1, overflow: TextOverflow.ellipsis),
         ),
         const Divider(),
       ],
@@ -175,10 +173,7 @@ class ArtistDetailPage extends HookConsumerWidget {
             // 移动端：纵向布局（歌手信息在上，Tab + 内容在下）
             mobile: () => Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: header,
-                ),
+                Padding(padding: const EdgeInsets.all(12), child: header),
                 tabRow,
                 const Divider(height: 1),
                 Expanded(child: content),
@@ -214,16 +209,21 @@ class ArtistDetailPage extends HookConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, size: 48, color: colorScheme.destructive),
+              Icon(
+                Icons.error_outline,
+                size: 48,
+                color: colorScheme.destructive,
+              ),
               const Gap(12),
               Text('加载失败: $err'),
               const Gap(12),
               GhostButton(
                 onPressed: () {
                   ref.invalidate(
-                    artistAlbumsProvider(
-                      (sourceId: sourceId, artistId: artistId),
-                    ),
+                    artistAlbumsProvider((
+                      sourceId: sourceId,
+                      artistId: artistId,
+                    )),
                   );
                 },
                 child: const Text('重试'),
@@ -362,10 +362,7 @@ class _AlbumsContent extends StatelessWidget {
         ),
       );
     }
-    return _ArtistAlbumsGrid(
-      albums: albums,
-      onOpenAlbum: onOpenAlbum,
-    );
+    return _ArtistAlbumsGrid(albums: albums, onOpenAlbum: onOpenAlbum);
   }
 }
 
@@ -391,10 +388,7 @@ class _ErrorView extends StatelessWidget {
           const Gap(12),
           Text(message),
           const Gap(12),
-          GhostButton(
-            onPressed: onRetry,
-            child: const Text('重试'),
-          ),
+          GhostButton(onPressed: onRetry, child: const Text('重试')),
         ],
       ),
     );
@@ -469,10 +463,7 @@ class _ArtistAlbumsGrid extends StatelessWidget {
   final List<Album> albums;
   final void Function(Album album)? onOpenAlbum;
 
-  const _ArtistAlbumsGrid({
-    required this.albums,
-    this.onOpenAlbum,
-  });
+  const _ArtistAlbumsGrid({required this.albums, this.onOpenAlbum});
 
   @override
   Widget build(BuildContext context) {
@@ -503,7 +494,9 @@ class _ArtistAlbumsGrid extends StatelessWidget {
           itemBuilder: (context, index) => _AlbumCard(
             album: albums[index],
             colorScheme: colorScheme,
-            onTap: onOpenAlbum != null ? () => onOpenAlbum!(albums[index]) : null,
+            onTap: onOpenAlbum != null
+                ? () => onOpenAlbum!(albums[index])
+                : null,
           ),
         );
       },
