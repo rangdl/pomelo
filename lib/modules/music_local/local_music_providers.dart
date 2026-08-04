@@ -1,4 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';

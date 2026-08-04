@@ -8,7 +8,7 @@
 /// 此 Provider 仅管理用户偏好设置（主题、缓存、音质等）。
 library;
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import 'package:pomelo/provider/database/database_provider.dart';
 import 'package:pomelo/core/models/log_level.dart';

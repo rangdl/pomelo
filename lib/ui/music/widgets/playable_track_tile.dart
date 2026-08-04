@@ -72,12 +72,13 @@ class PlayableTrackTile extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final audioPlayerState = ref.watch(audioPlayerProvider);
+    final isActive = ref.watch(
+      audioPlayerProvider.select((s) => s.activeTrack?.id == track.id),
+    );
     final overwrite = ref.watch(
       userPreferenceProvider.select((p) => p.overwritePlaylistOnPlay),
     );
     final notifier = ref.read(audioPlayerProvider.notifier);
-    final isActive = audioPlayerState.activeTrack?.id == track.id;
     final isMobile =
         MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
 
@@ -108,7 +109,9 @@ class PlayableTrackTile extends HookConsumerWidget {
       showCover: showCover,
       onTap: () async {
         if (isActive) {
-          audioPlayerState.playing ? audioPlayer.pause() : audioPlayer.resume();
+          ref.read(audioPlayerProvider).playing
+              ? audioPlayer.pause()
+              : audioPlayer.resume();
           return;
         }
         // 本地曲目：校验文件存在

@@ -5,6 +5,7 @@ library;
 
 import 'package:auto_route/auto_route.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/framework/async_value_ext.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music/providers/music_providers.dart';
@@ -88,8 +89,8 @@ class AlbumDetailPage extends HookConsumerWidget {
         ),
         const Divider(),
       ],
-      child: tracksAsync.when(
-        data: (tracks) {
+      child: tracksAsync.whenOrDefault(
+        (tracks) {
           // 专辑头部信息
           final header = _AlbumHeader(
             name: albumName,
@@ -140,7 +141,6 @@ class AlbumDetailPage extends HookConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

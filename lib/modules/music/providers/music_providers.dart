@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/models/metadata/music_server.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/modules/music_local/local_music_providers.dart';

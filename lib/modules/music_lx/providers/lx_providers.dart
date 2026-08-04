@@ -7,7 +7,7 @@ library;
 
 import 'dart:io';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/models/lx_source_script.dart';
 import 'package:pomelo/core/models/music_server_config.dart';

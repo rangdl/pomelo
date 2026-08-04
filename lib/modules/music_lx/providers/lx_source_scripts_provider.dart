@@ -8,7 +8,7 @@
 library;
 
 import 'package:drift/drift.dart' show Value;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/lx_source_script.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';

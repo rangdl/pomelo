@@ -1258,31 +1258,19 @@ class _DefaultListView extends HookConsumerWidget {
                 ),
               ),
               Expanded(
-                child: isMobile
-                    ? ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        children: tracks.asMap().entries.map((e) {
-                          return PlayableTrackTile(
-                            track: e.value,
-                            index: e.key + 1,
-                            playlist: tracks,
-                            playlistIndex: e.key,
-                          );
-                        }).toList(),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: tracks.length,
-                        itemBuilder: (context, index) {
-                          final track = tracks[index];
-                          return PlayableTrackTile(
-                            track: track,
-                            index: index + 1,
-                            playlist: tracks,
-                            playlistIndex: index,
-                          );
-                        },
-                      ),
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: tracks.length,
+                  itemBuilder: (context, index) {
+                    final track = tracks[index];
+                    return PlayableTrackTile(
+                      track: track,
+                      index: index + 1,
+                      playlist: tracks,
+                      playlistIndex: index,
+                    );
+                  },
+                ),
               ),
             ],
           );

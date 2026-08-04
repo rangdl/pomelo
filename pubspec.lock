@@ -57,14 +57,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.18.18"
-  audio_service_mpris:
-    dependency: "direct main"
-    description:
-      name: audio_service_mpris
-      sha256: "8cb2ff2237f4cd2fd27f16451ed35b3aedc12df8a384435327c67a9f4d557ef4"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.1"
   audio_service_platform_interface:
     dependency: transitive
     description:
@@ -105,54 +97,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.3.1"
-  bonsoir:
-    dependency: "direct main"
-    description:
-      name: bonsoir
-      sha256: "2e2cf3be580deccad9a48dcaddddf90de092e74b7de2015ef58fb24e11d66496"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.1.11"
-  bonsoir_android:
-    dependency: transitive
-    description:
-      name: bonsoir_android
-      sha256: "9a65b6e50c5718c3f1a7ed6ff57ab9ed8ae990ff9c36d2b1ab3d1b90f28f7d1b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.1.6"
-  bonsoir_darwin:
-    dependency: transitive
-    description:
-      name: bonsoir_darwin
-      sha256: "2d25c70f0d09260be1c2ab583b80dd89cbbfd59997579dadf789c5af00c7b2e4"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.1.3"
-  bonsoir_linux:
-    dependency: transitive
-    description:
-      name: bonsoir_linux
-      sha256: f2639aded6e15943a9822de98a663a1056f37cbfd0a74d72c9eaa941965945c2
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.1.3"
-  bonsoir_platform_interface:
-    dependency: transitive
-    description:
-      name: bonsoir_platform_interface
-      sha256: "08bb8b35d0198168b3bce87dbc718e4e510336cff1d97e43762e030c01636d45"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.1.3"
-  bonsoir_windows:
-    dependency: transitive
-    description:
-      name: bonsoir_windows
-      sha256: d4a0ca479d4f3679487a61f3174fb9fe1651e323c778b02dfa630490366be65d
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.1.5"
   boolean_selector:
     dependency: transitive
     description:
@@ -582,7 +526,7 @@ packages:
     source: hosted
     version: "2.0.34"
   flutter_riverpod:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: flutter_riverpod
       sha256: "9255e1e3ad6e38906a1b4f8287678f95f378744c5b46b1985588543f3f19046e"
@@ -590,7 +534,7 @@ packages:
     source: hosted
     version: "3.3.2"
   flutter_rust_bridge:
-    dependency: "direct main"
+    dependency: "direct overridden"
     description:
       name: flutter_rust_bridge
       sha256: "37ef40bc6f863652e865f0b2563ea07f0d3c58d8efad803cc01933a4b2ee067e"
@@ -784,21 +728,13 @@ packages:
     source: hosted
     version: "1.1.0"
   json_annotation:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: json_annotation
       sha256: "1ce844379ca14835a50d2f019a3099f419082cfdd231cd86a142af94dd5c6bb1"
       url: "https://pub.dev"
     source: hosted
     version: "4.9.0"
-  json_repair_flutter:
-    dependency: "direct main"
-    description:
-      name: json_repair_flutter
-      sha256: "60609b02c0f535d8df7027e0d00ae31fa20f220c1c18d47838d18b2bbcd66630"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.2"
   json_serializable:
     dependency: "direct dev"
     description:
@@ -848,7 +784,7 @@ packages:
     source: hosted
     version: "2.7.0"
   logging:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: logging
       sha256: c8245ada5f1717ed44271ed1c26b8ce85ca3228fd2ffdb75468ab01979309d61
@@ -1159,14 +1095,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.3.2"
-  riverpod_annotation:
-    dependency: "direct main"
-    description:
-      name: riverpod_annotation
-      sha256: "674dbb26e2db3d9253166faf4758c796af14146b8fbcf5e7102bc8a04cd359b8"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.0.3"
   rusty_dlna:
     dependency: "direct main"
     description:
@@ -1349,7 +1277,7 @@ packages:
     source: hosted
     version: "1.10.2"
   sqflite:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: sqflite
       sha256: e2297b1da52f127bc7a3da11439985d9b536f75070f3325e62ada69a5c585d03
@@ -1397,7 +1325,7 @@ packages:
     source: hosted
     version: "2.4.0"
   sqlite3:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: sqlite3
       sha256: "3145bd74dcdb4fd6f5c6dda4d4e4490a8087d7f286a14dee5d37087290f0f8a2"
