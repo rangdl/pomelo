@@ -4,10 +4,11 @@
 
 ## 技术栈
 - fvm 管理，Flutter 3.35.7 / Dart SDK ^3.9.0（`.fvmrc` 锁定）
-- 状态管理：hooks_riverpod + flutter_riverpod 并存（建议只用 hooks_riverpod）
+- 状态管理：hooks_riverpod（已移除重复的 flutter_riverpod 直接依赖；10 文件 import 已统一）
 - 路由：auto_route；数据库：drift（SQLite）；播放器：media_kit；UI：shadcn_flutter
-- 原生桥接：flutter_rust_bridge（metadata_god、rusty_dlna 依赖，需用 dependency_overrides 对齐版本）
-- JS 引擎：flutter_js / jsf（QuickJS，两套存在重复，见 2026-08-04 体检）
+- 原生桥接：flutter_rust_bridge（仅 metadata_god，rusty_dlna 已移除，见 2026-08-04 体检）
+- JS 引擎：jsf（QuickJS，flutter_js 重复实现已移除，见 2026-08-04 体检）
+- 模型序列化：json_serializable + json_annotation（Artist/ArtistWithAlbums 试点，见 2026-08-04 体检；build_runner 生成 .g.dart）
 - 构建 CLI：cli/（dart 脚本，process_run）；CI：.github/workflows/prepare-release.yaml
 
 ## 架构

@@ -73,7 +73,15 @@ class AudioPlayerRepository {
 
   /// 保存播放器状态到数据库
   Future<void> persist(AudioPlayerState state) async {
-    // 保存状态
+    await persistState(state);
+    await persistTracks(state.tracks);
+  }
+
+  /// 仅保存轻量播放状态（playing / loop / shuffle / currentIndex / collections）。
+  ///
+  /// 不涉及曲目表，开销很低，可在每次状态变更时立即调用，
+  /// 避免每次都重写整张曲目表（见 [persistTracks]）。
+  Future<void> persistState(AudioPlayerState state) async {
     await _db.upsertPlayerState(
       PlayerStateTableCompanion(
         playing: Value(state.playing),
@@ -83,9 +91,14 @@ class AudioPlayerRepository {
         collections: Value(jsonEncode(state.collections)),
       ),
     );
+  }
 
-    // 保存播放列表
-    final companions = state.tracks.asMap().entries.map((entry) {
+  /// 仅保存播放列表（曲目表整表替换）。
+  ///
+  /// 开销较高（千首队列 = 数千行写），调用方应自行做防抖合并，
+  /// 例如 [AudioPlayerNotifier] 中的轨迹变更统一走防抖落库。
+  Future<void> persistTracks(List<Track> tracks) async {
+    final companions = tracks.asMap().entries.map((entry) {
       return PlayerTrackTableCompanion.insert(
         orderIndex: entry.key,
         trackId: entry.value.id,

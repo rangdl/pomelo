@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -9,6 +10,7 @@ import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/services/logger/logger.dart';
 
 import '../../services/audio_player/media.dart';
+import '../server/sourced_track.dart';
 import 'state.dart';
 import 'audio_player_repository.dart';
 
@@ -21,6 +23,15 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   /// 此时 media_kit 的 playlistStream 可能发出多次中间事件，
   /// 导致 UI 出现「逐条加入」的视觉效果。通过此标志抑制这些中间事件。
   int _batchDepth = 0;
+
+  /// 曲目表落库防抖定时器。
+  ///
+  /// [persistTracks] 是整表替换（千首队列 = 数千行写），频繁触发代价高，
+  /// 因此轨迹类变更统一走防抖，合并一次连续操作内的多次写。
+  Timer? _tracksPersistTimer;
+
+  /// 已预热（已解析真实播放 URL）的曲目 id，避免重复预热。
+  final Set<String> _preloadedIds = {};
 
   void _assertAllowedTracks(Iterable<Track> tracks) {
     // 扁平化后所有 Track 都合法，无需断言
@@ -86,7 +97,57 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
   }
 
   Future<void> _updatePlayerState(AudioPlayerState companion) async {
-    await ref.read(audioPlayerRepositoryProvider).persist(companion);
+    // 轻量状态（playing/loop/shuffle/index/collections）立即写；
+    // 曲目表（整表替换，开销高）走防抖合并，避免每次状态/轨迹变更
+    // 都重写整张曲目表（千首队列 = 数千行写）。
+    await ref.read(audioPlayerRepositoryProvider).persistState(companion);
+    _scheduleTracksPersist();
+  }
+
+  /// 防抖调度 [AudioPlayerRepository.persistTracks]。
+  ///
+  /// 连续多次轨迹变更（如「播放全部」一次性加入上千首）会被合并为
+  /// 一次整表替换，避免每个动作都重写整张曲目表。
+  void _scheduleTracksPersist() {
+    _tracksPersistTimer?.cancel();
+    _tracksPersistTimer = Timer(
+      const Duration(milliseconds: 600),
+      () async {
+        try {
+          await ref
+              .read(audioPlayerRepositoryProvider)
+              .persistTracks(state.tracks);
+        } catch (e, s) {
+          AppLogger.reportError(e, s, '[audioPlayer] persistTracks 失败');
+        }
+      },
+    );
+  }
+
+  /// 立即落库曲目表（取消挂起的防抖定时器）。
+  Future<void> _flushTracksPersist() async {
+    _tracksPersistTimer?.cancel();
+    _tracksPersistTimer = null;
+    try {
+      await ref.read(audioPlayerRepositoryProvider).persistTracks(state.tracks);
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[audioPlayer] flush persistTracks 失败');
+    }
+  }
+
+  /// 预热曲目：把真实播放 URL 的解析（Subsonic/Lx 的网络 HEAD）提前触发，
+  /// 使其在播放关键路径之外完成。已预热或未需解析（本地/直链）的曲目跳过。
+  void _preloadTrack(Track track) {
+    if (track.path != null) return;
+    final src = track.src;
+    if (src != null && src.isNotEmpty) return;
+    if (_preloadedIds.contains(track.id)) return;
+    _preloadedIds.add(track.id);
+    unawaited(
+      ref
+          .read(sourcedTrackProvider(track).future)
+          .then((_) {}, onError: (_, __) {}),
+    );
   }
 
   @override
@@ -138,15 +199,24 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
           state = state.copyWith(tracks: tracks, currentIndex: playlist.index);
 
-          await _updatePlayerState(
-            state,
-            // AudioPlayerStateTableCompanion(
-            //   currentIndex: Value(state.currentIndex),
-            //   tracks: Value(state.tracks),
-            // ),
-          );
+          // 轻量状态立即写；曲目表（整表替换）由 _updatePlayerState 走防抖
+          await _updatePlayerState(state);
         } catch (e, stack) {
           AppLogger.reportError(e, stack, '[audioPlayerState] ${e.toString()}');
+        }
+      }),
+      // O3：当前曲播放过半时，提前解析随后 1~2 首的真实播放 URL，
+      // 把 Subsonic/Lx 的网络解析移出切歌关键路径，近似无缝切歌。
+      audioPlayer.positionStream.listen((position) {
+        final duration = audioPlayer.duration;
+        if (duration == Duration.zero) return;
+        if (position.inMilliseconds < duration.inMilliseconds * 0.5) return;
+        final nextIndex = state.currentIndex + 1;
+        if (nextIndex >= state.tracks.length) return;
+        for (var i = nextIndex;
+            i < state.tracks.length && i < nextIndex + 2;
+            i++) {
+          _preloadTrack(state.tracks[i]);
         }
       }),
     ];
@@ -157,6 +227,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
       for (final subscription in subscriptions) {
         subscription.cancel();
       }
+      // 退出前尽量把挂起的曲目表落库刷盘
+      unawaited(_flushTracksPersist());
       audioPlayer.stop();
     });
 
@@ -327,16 +399,32 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
     final medias = tracks.asMediaList().unique((a, b) => a.uri == b.uri);
 
-    // Giving the initial track a boost so MediaKit won't skip
-    // because of timeout
-    final intendedActiveTrack = medias.elementAt(initialIndex);
-    if (intendedActiveTrack.track.path == null) {
-      // ref.read(
-      //   sourcedTrackProvider(intendedActiveTrack.track as SongFull).future,
-      // );
-    }
-
     if (medias.isEmpty) return;
+
+    // O1：开播前预解析 active 曲（await），并把随后 1~2 首一并预热（不阻塞），
+    // 把 Subsonic/Lx 的真实播放 URL 网络解析从开播关键路径上移开。
+    // 本地文件 / 直链无需解析，直接跳过。
+    final preloadStart = initialIndex.clamp(0, medias.length - 1);
+    final preloadTracks = medias
+        .skip(preloadStart)
+        .take(3)
+        .map((m) => m.track)
+        .where((t) => t.path == null && (t.src == null || t.src!.isEmpty))
+        .toList();
+    for (var i = 0; i < preloadTracks.length; i++) {
+      final track = preloadTracks[i];
+      _preloadedIds.add(track.id);
+      final future = ref.read(sourcedTrackProvider(track).future);
+      // active 曲 await，确保 media_kit 请求 /stream 时 URL 已就绪；
+      // 其余 fire-and-forget 预热。
+      if (i == 0) {
+        try {
+          await future;
+        } catch (e, s) {
+          AppLogger.reportError(e, s, '[audioPlayer] 预解析 active 曲失败');
+        }
+      }
+    }
 
     state = state.copyWith(
       tracks: medias.map((media) => media.track).toList(),
