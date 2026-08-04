@@ -401,36 +401,43 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
     if (medias.isEmpty) return;
 
-    // O1：开播前预解析 active 曲（await），并把随后 1~2 首一并预热（不阻塞），
-    // 把 Subsonic/Lx 的真实播放 URL 网络解析从开播关键路径上移开。
-    // 本地文件 / 直链无需解析，直接跳过。
-    final preloadStart = initialIndex.clamp(0, medias.length - 1);
-    final preloadTracks = medias
-        .skip(preloadStart)
-        .take(3)
-        .map((m) => m.track)
-        .where((t) => t.path == null && (t.src == null || t.src!.isEmpty))
-        .toList();
-    for (var i = 0; i < preloadTracks.length; i++) {
-      final track = preloadTracks[i];
-      _preloadedIds.add(track.id);
-      final future = ref.read(sourcedTrackProvider(track).future);
-      // active 曲 await，确保 media_kit 请求 /stream 时 URL 已就绪；
-      // 其余 fire-and-forget 预热。
-      if (i == 0) {
-        try {
-          await future;
-        } catch (e, s) {
-          AppLogger.reportError(e, s, '[audioPlayer] 预解析 active 曲失败');
-        }
-      }
-    }
-
+    // O1：先更新 UI 状态，确保点击播放立刻有反馈（正在加载/播放中），
+    // 避免被随后的网络解析 await 阻塞导致「点击无反应」。
     state = state.copyWith(
       tracks: medias.map((media) => media.track).toList(),
       currentIndex: initialIndex,
       collections: [],
     );
+
+    // 随后尽量在开播前预解析 active 曲的真实播放 URL（带超时），
+    // 把 Subsonic/Lx 的网络解析从开播关键路径移开，避免 media_kit 因
+    // 流迟迟不就绪而跳过曲目；超时/失败则退回原始懒解析（/stream 请求时
+    // 再解析），但 UI 已先行响应，不会出现「点击无反应」。
+    // 本地文件 / 直链无需解析，直接跳过。
+    final preloadStart = initialIndex.clamp(0, medias.length - 1);
+    final activeTrack = medias[preloadStart].track;
+    if (activeTrack.path == null &&
+        (activeTrack.src == null || activeTrack.src!.isEmpty)) {
+      _preloadedIds.add(activeTrack.id);
+      try {
+        await ref
+            .read(sourcedTrackProvider(activeTrack).future)
+            .timeout(const Duration(seconds: 3));
+      } catch (e, s) {
+        AppLogger.reportError(
+          e,
+          s,
+          '[audioPlayer] 预解析 active 曲超时/失败，退回懒解析',
+        );
+      }
+    }
+
+    // 预热随后 1~2 首（不阻塞开播），近似无缝切歌（O3）。
+    for (var i = preloadStart + 1;
+        i < medias.length && i < preloadStart + 3;
+        i++) {
+      _preloadTrack(medias[i].track);
+    }
 
     _batchDepth++;
     try {
