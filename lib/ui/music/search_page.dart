@@ -805,17 +805,7 @@ class _ArtistResultsList extends ConsumerWidget {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-                  int crossAxisCount;
-                  if (width < ResponsiveBreakpoints.mobile) {
-                    crossAxisCount = 2;
-                  } else if (width < ResponsiveBreakpoints.tablet) {
-                    crossAxisCount = 3;
-                  } else if (width < ResponsiveBreakpoints.desktop) {
-                    crossAxisCount = 4;
-                  } else {
-                    crossAxisCount = 5;
-                  }
+                  final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -939,17 +929,7 @@ class _AlbumResultsList extends ConsumerWidget {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-                  int crossAxisCount;
-                  if (width < ResponsiveBreakpoints.mobile) {
-                    crossAxisCount = 2;
-                  } else if (width < ResponsiveBreakpoints.tablet) {
-                    crossAxisCount = 3;
-                  } else if (width < ResponsiveBreakpoints.desktop) {
-                    crossAxisCount = 4;
-                  } else {
-                    crossAxisCount = 5;
-                  }
+                  final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1097,17 +1077,7 @@ class _PlaylistResultsList extends ConsumerWidget {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-                  int crossAxisCount;
-                  if (width < ResponsiveBreakpoints.mobile) {
-                    crossAxisCount = 2;
-                  } else if (width < ResponsiveBreakpoints.tablet) {
-                    crossAxisCount = 3;
-                  } else if (width < ResponsiveBreakpoints.desktop) {
-                    crossAxisCount = 4;
-                  } else {
-                    crossAxisCount = 5;
-                  }
+                  final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
                   return GridView.builder(
                     padding: const EdgeInsets.all(12),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(

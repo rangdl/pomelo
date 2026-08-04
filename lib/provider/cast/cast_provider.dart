@@ -31,23 +31,7 @@ import 'package:pomelo/services/audio_player/audio_player.dart' as svc;
 import 'package:pomelo/services/audio_player/media.dart';
 import 'package:pomelo/services/cast/dlna_cast_service.dart';
 import 'package:pomelo/services/cast/dlna_device.dart';
-import 'package:pomelo/services/cast/rusty_dlna_service.dart';
 import 'package:pomelo/services/logger/logger.dart';
-
-/// 投屏后端选择 Provider
-///
-/// false = dlna_dart（默认），true = rusty_dlna（Rust 实现）
-final castBackendProvider = NotifierProvider<CastBackendNotifier, bool>(
-  CastBackendNotifier.new,
-);
-
-class CastBackendNotifier extends Notifier<bool> {
-  @override
-  bool build() => false; // 默认使用 dlna_dart
-
-  void toggle() => state = !state;
-  void set(bool useRustyDlna) => state = useRustyDlna;
-}
 
 /// 投屏连接状态
 enum CastConnectionState {
@@ -164,9 +148,7 @@ class CastNotifier extends Notifier<CastState> {
 
   @override
   CastState build() {
-    // 监听后端切换，切换时重建并清理旧服务
-    final useRustyDlna = ref.watch(castBackendProvider);
-    _service = useRustyDlna ? RustyDlnaService() : DlnaCastService();
+    _service = DlnaCastService();
 
     // 监听当前曲目 ID 变化，自动重投新曲目
     ref.listen<String?>(audioPlayerProvider.select((s) => s.activeTrack?.id), (

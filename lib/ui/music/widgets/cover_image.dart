@@ -58,6 +58,8 @@ class CoverImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+
     final Widget image;
     if (coverArt == null || coverArt!.isEmpty) {
       image = CoverPlaceholder(
@@ -66,41 +68,56 @@ class CoverImage extends StatelessWidget {
         height: size,
       );
     } else if (_isNetworkUrl(coverArt!)) {
-      image = CachedNetworkImage(
-        imageUrl: coverArt!,
-        httpHeaders: _headersFor(coverArt!),
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        placeholder: (_, _) => CoverPlaceholder(
-          colorScheme: colorScheme,
-          width: size,
-          height: size,
-        ),
-        errorWidget: (_, _, _) => CoverPlaceholder(
-          colorScheme: colorScheme,
-          width: size,
-          height: size,
-        ),
-      );
+      image = _networkImage(coverArt!, dpr);
     } else {
       // 本地文件路径（如本地音乐封面、缓存的封面图）
-      image = Image.file(
-        File(coverArt!),
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => CoverPlaceholder(
-          colorScheme: colorScheme,
-          width: size,
-          height: size,
-        ),
-      );
+      image = _localImage(coverArt!, dpr);
     }
 
     if (borderRadius != null) {
       return ClipRRect(borderRadius: borderRadius!, child: image);
     }
     return image;
+  }
+
+  /// 网络封面图（带内存/磁盘解码降采样，避免大图 OOM）
+  Widget _networkImage(String url, double dpr) {
+    final cacheWidth = size != null ? (size! * dpr).round() : null;
+    return CachedNetworkImage(
+      imageUrl: url,
+      httpHeaders: _headersFor(url),
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      memCacheWidth: cacheWidth,
+      maxWidthDiskCache: cacheWidth,
+      placeholder: (_, _) => CoverPlaceholder(
+        colorScheme: colorScheme,
+        width: size,
+        height: size,
+      ),
+      errorWidget: (_, _, _) => CoverPlaceholder(
+        colorScheme: colorScheme,
+        width: size,
+        height: size,
+      ),
+    );
+  }
+
+  /// 本地封面图（带解码降采样）
+  Widget _localImage(String path, double dpr) {
+    final cacheWidth = size != null ? (size! * dpr).round() : null;
+    return Image.file(
+      File(path),
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      cacheWidth: cacheWidth,
+      errorBuilder: (_, _, _) => CoverPlaceholder(
+        colorScheme: colorScheme,
+        width: size,
+        height: size,
+      ),
+    );
   }
 }

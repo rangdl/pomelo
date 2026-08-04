@@ -55,7 +55,6 @@ class AppRouter extends RootStackRouter {
       page: ExListRoute.page,
       children: [
         AutoRoute(path: 'ex1', page: Ex1DetailRoute.page),
-        AutoRoute(path: 'ex3', page: JsEngineTestRoute.page),
       ],
     ),
   ];

@@ -2,7 +2,7 @@ import 'package:pomelo/services/logger/logger.dart';
 import 'package:pomelo/core/pagination/pagination_response.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 
-import 'js_engine.dart';
+import 'package:pomelo/services/js_engine/js_engine.dart';
 
 /// Lx 元数据引擎
 ///
@@ -42,22 +42,19 @@ class LxMetadataEngine {
   /// 脚本需要遵循 musicsdk Registry 协议，自行注册 Searcher/Provider 等。
   ///
   /// 返回是否加载成功。
-  bool loadPlugin(String scriptContent) {
-    final result = jsEngine.jsRuntime.evaluate(scriptContent);
-    if (result.isError) {
-      AppLogger.log.e('[LxMetadataEngine] 元数据插件加载失败: ${result.toString()}');
-      return false;
-    }
-    AppLogger.log.i('[LxMetadataEngine] 元数据插件加载成功');
+  Future<bool> loadPlugin(String scriptContent) async {
+    try {
+      await jsEngine.evalAsync(scriptContent);
+      AppLogger.log.i('[LxMetadataEngine] 元数据插件加载成功');
 
-    // 调用脚本初始化方法
-    final resultSetup = jsEngine.jsRuntime.evaluate('setup()');
-    if (resultSetup.isError) {
-      AppLogger.log.e('[LxMetadataEngine] 元数据插件初始化失败: ${result.toString()}');
+      // 调用脚本初始化方法
+      await jsEngine.evalAsync('setup()');
+      AppLogger.log.i('[LxMetadataEngine] 元数据插件初始化成功');
+      return true;
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[LxMetadataEngine] 元数据插件加载/初始化失败');
       return false;
     }
-    AppLogger.log.i('[LxMetadataEngine] 元数据插件初始化成功');
-    return true;
   }
 
   /// 获取 registry 中已注册的所有库信息
@@ -87,7 +84,7 @@ class LxMetadataEngine {
   Future<List<({String id, String name})>> loadPluginWithLibraries(
     String scriptContent,
   ) async {
-    final success = loadPlugin(scriptContent);
+    final success = await loadPlugin(scriptContent);
     if (!success) return [];
     final after = await getRegisteredLibraries();
     return after;

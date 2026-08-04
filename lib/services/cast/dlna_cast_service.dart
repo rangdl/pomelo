@@ -24,7 +24,7 @@ typedef CastPositionInfo = ({Duration position, Duration duration});
 
 /// 投屏服务抽象接口
 ///
-/// 统一 [DlnaCastService]（dlna_dart）和 [RustyDlnaService]（rusty_dlna）的 API。
+/// 统一 DLNA 投屏服务的 API（当前由 [DlnaCastService]（dlna_dart）实现）。
 abstract class DlnaCastServiceInterface {
   DlnaDevice? get currentDevice;
   bool get isConnected;

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pomelo/core/helper.dart';
+import 'package:pomelo/services/logger/logger.dart';
 
 /// 音乐流缓存目录管理
 ///
@@ -175,7 +176,9 @@ class MusicCacheDir {
           }
         }
       }
-    } catch (_) {}
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[MusicCacheDir] 清空缓存失败');
+    }
   }
 
   /// 获取当前缓存总大小（字节）
@@ -198,7 +201,8 @@ class MusicCacheDir {
         }
       }
       return total;
-    } catch (_) {
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[MusicCacheDir] 读取缓存大小失败');
       return 0;
     }
   }
@@ -245,7 +249,9 @@ class MusicCacheDir {
           totalSize -= entry.size;
         } catch (_) {}
       }
-    } catch (_) {}
+    } catch (e, s) {
+      AppLogger.reportError(e, s, '[MusicCacheDir] 缓存淘汰失败');
+    }
   }
 
   /// 在系统文件管理器中打开缓存目录

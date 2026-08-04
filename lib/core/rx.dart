@@ -97,6 +97,25 @@ class Rx {
     }
   }
 
+  /// 响应式网格列数
+  ///
+  /// 根据 [width] 自动计算网格列数，从 [base] 起步随断点递增：
+  /// - mobile(<600)：base
+  /// - tablet(600~1024)：base + 1
+  /// - desktop(1024~1440)：base + 2
+  /// - tv(>=1440)：base + 3
+  ///
+  /// 用法:
+  /// ```dart
+  /// final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
+  /// ```
+  static int gridColumns(double width, {int base = 2}) {
+    if (width < ResponsiveBreakpoints.mobile) return base;
+    if (width < ResponsiveBreakpoints.tablet) return base + 1;
+    if (width < ResponsiveBreakpoints.desktop) return base + 2;
+    return base + 3;
+  }
+
   static Widget _resolve(
     double width, {
     Widget Function()? mobile,

@@ -34,17 +34,6 @@ class ExListPage extends StatelessWidget {
                 ),
               ),
             ),
-            const Gap(12),
-            Card(
-              child: ListTile(
-                title: const Text('示例3'),
-                subtitle: const Text('JsEngine 引擎 (MD5/SHA256/AES)'),
-                trailing: PrimaryButton(
-                  onPressed: () => context.pushRoute(const JsEngineTestRoute()),
-                  child: const Text('打开'),
-                ),
-              ),
-            ),
           ],
         ),
       ),

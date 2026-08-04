@@ -3,7 +3,6 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  flutter_js
   media_kit_libs_linux
   screen_retriever_linux
   sqlite3_flutter_libs
@@ -15,7 +14,6 @@ list(APPEND FLUTTER_FFI_PLUGIN_LIST
   jni
   jsf
   metadata_god
-  rusty_dlna
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

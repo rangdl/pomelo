@@ -899,17 +899,7 @@ class _PlaylistGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        int crossAxisCount;
-        if (width < ResponsiveBreakpoints.mobile) {
-          crossAxisCount = 2;
-        } else if (width < ResponsiveBreakpoints.tablet) {
-          crossAxisCount = 3;
-        } else if (width < ResponsiveBreakpoints.desktop) {
-          crossAxisCount = 4;
-        } else {
-          crossAxisCount = 5;
-        }
+        final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
         return GridView.builder(
           padding: const EdgeInsets.all(12),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
