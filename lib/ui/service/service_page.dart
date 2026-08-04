@@ -78,10 +78,9 @@ class ServicePage extends HookConsumerWidget {
           ],
         ),
       ],
-      child: configsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+      child: configsAsync.whenOrDefault(
+        (configs) => _buildBody(context, ref, configs),
         error: (e, _) => Center(child: Text('加载失败: $e')),
-        data: (configs) => _buildBody(context, ref, configs),
       ),
     );
   }

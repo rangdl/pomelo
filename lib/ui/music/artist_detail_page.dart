@@ -13,6 +13,7 @@ import 'package:pomelo/ui/music/track_list.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
+import 'package:pomelo/core/framework/async_value_ext.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 歌手专辑列表 Provider
@@ -125,8 +126,8 @@ class ArtistDetailPage extends HookConsumerWidget {
         ),
         const Divider(),
       ],
-      child: albumsAsync.when(
-        data: (albums) {
+      child: albumsAsync.whenOrDefault(
+        (albums) {
           // 歌手头部信息
           final header = _ArtistHeader(
             name: artistName,
@@ -146,10 +147,8 @@ class ArtistDetailPage extends HookConsumerWidget {
 
           // 内容区
           final content = tabIndex.value == 0
-              ? songsAsync.when(
-                  data: (tracks) => _SongsContent(tracks: tracks),
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+              ? songsAsync.whenOrDefault(
+                  (tracks) => _SongsContent(tracks: tracks),
                   error: (e, _) => _ErrorView(
                     message: '加载失败: $e',
                     onRetry: () => ref.invalidate(
@@ -204,7 +203,6 @@ class ArtistDetailPage extends HookConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

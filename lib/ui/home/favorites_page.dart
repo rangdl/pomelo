@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/framework/framework.dart';
 import 'package:pomelo/core/framework/pomelo_icons.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/core/rx.dart';
@@ -164,15 +165,8 @@ class _FavoriteSongsTab extends HookConsumerWidget {
     final listsAsync = ref.watch(userListsProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return listsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(
-        child: Text(
-          '加载失败: $err',
-          style: TextStyle(color: colorScheme.mutedForeground),
-        ),
-      ),
-      data: (data) {
+    return listsAsync.whenOrDefault(
+      (data) {
         final tracks = data.loveTracks;
         if (tracks.isEmpty) {
           return Center(
@@ -251,6 +245,12 @@ class _FavoriteSongsTab extends HookConsumerWidget {
           ),
         );
       },
+      error: (err, _) => Center(
+        child: Text(
+          '加载失败: $err',
+          style: TextStyle(color: colorScheme.mutedForeground),
+        ),
+      ),
     );
   }
 }
@@ -264,15 +264,8 @@ class _FavoriteArtistsTab extends HookConsumerWidget {
     final artistsAsync = ref.watch(favoriteArtistsProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return artistsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(
-        child: Text(
-          '加载失败: $err',
-          style: TextStyle(color: colorScheme.mutedForeground),
-        ),
-      ),
-      data: (artists) {
+    return artistsAsync.whenOrDefault(
+      (artists) {
         if (artists.isEmpty) {
           return Center(
             child: Column(
@@ -311,6 +304,12 @@ class _FavoriteArtistsTab extends HookConsumerWidget {
           },
         );
       },
+      error: (err, _) => Center(
+        child: Text(
+          '加载失败: $err',
+          style: TextStyle(color: colorScheme.mutedForeground),
+        ),
+      ),
     );
   }
 }
@@ -378,15 +377,8 @@ class _FavoriteAlbumsTab extends HookConsumerWidget {
     final albumsAsync = ref.watch(favoriteAlbumsProvider);
     final colorScheme = Theme.of(context).colorScheme;
 
-    return albumsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(
-        child: Text(
-          '加载失败: $err',
-          style: TextStyle(color: colorScheme.mutedForeground),
-        ),
-      ),
-      data: (albums) {
+    return albumsAsync.whenOrDefault(
+      (albums) {
         if (albums.isEmpty) {
           return Center(
             child: Column(
@@ -424,6 +416,12 @@ class _FavoriteAlbumsTab extends HookConsumerWidget {
           },
         );
       },
+      error: (err, _) => Center(
+        child: Text(
+          '加载失败: $err',
+          style: TextStyle(color: colorScheme.mutedForeground),
+        ),
+      ),
     );
   }
 }

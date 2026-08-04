@@ -294,8 +294,8 @@ class _LeaderboardContent extends HookConsumerWidget {
     final leaderboardsAsync = ref.watch(leaderboardsProvider);
     final selectedId = ref.watch(selectedLeaderboardProvider);
 
-    return leaderboardsAsync.when(
-      data: (leaderboards) {
+    return leaderboardsAsync.whenOrDefault(
+      (leaderboards) {
         if (leaderboards.isEmpty) {
           return _EmptyHint(text: '暂无排行榜');
         }
@@ -317,7 +317,6 @@ class _LeaderboardContent extends HookConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => const _EmptyHint(text: '排行榜加载失败'),
     );
   }
@@ -455,8 +454,8 @@ class _LeaderboardSongs extends ConsumerWidget {
     final songsAsync = ref.watch(leaderboardTracksProvider(leaderboardId));
     final colorScheme = Theme.of(context).colorScheme;
 
-    return songsAsync.when(
-      data: (tracks) {
+    return songsAsync.whenOrDefault(
+      (tracks) {
         if (tracks.isEmpty) {
           return Center(
             child: Text(
@@ -480,7 +479,6 @@ class _LeaderboardSongs extends ConsumerWidget {
           },
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, _) => Center(
         child: Text(
           '加载失败: $err',
@@ -505,8 +503,8 @@ class _PlaylistContent extends HookConsumerWidget {
     final selectedParentId = ref.watch(selectedPlaylistParentProvider);
     final selectedChildId = ref.watch(selectedPlaylistCategoryProvider);
 
-    return categoriesAsync.when(
-      data: (allCategories) {
+    return categoriesAsync.whenOrDefault(
+      (allCategories) {
         if (allCategories.isEmpty) return const _EmptyHint(text: '暂无歌单分类');
 
         final parentCategories = allCategories
@@ -563,7 +561,6 @@ class _PlaylistContent extends HookConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
       error: (_, _) => const _EmptyHint(text: '歌单分类加载失败'),
     );
   }
@@ -859,8 +856,8 @@ class _PlaylistGridContent extends HookConsumerWidget {
         ),
         // 歌单网格
         Expanded(
-          child: playlistsAsync.when(
-            data: (data) {
+          child:             playlistsAsync.whenOrDefault(
+              (data) {
               if (data.items.isEmpty) {
                 return Center(
                   child: Text(
@@ -874,7 +871,6 @@ class _PlaylistGridContent extends HookConsumerWidget {
                 onOpenPlaylist: onOpenPlaylist,
               );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
             error: (err, _) => Center(
               child: Text(
                 '加载失败: $err',
@@ -1113,15 +1109,8 @@ class _UserPlaylistsSheet extends HookConsumerWidget {
           ],
         ),
       ],
-      child: listsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Text(
-            '加载失败: $err',
-            style: TextStyle(color: colorScheme.mutedForeground),
-          ),
-        ),
-        data: (data) {
+      child: listsAsync.whenOrDefault(
+        (data) {
           final playlists = data.userPlaylists;
           if (playlists.isEmpty) {
             return Center(
@@ -1163,6 +1152,12 @@ class _UserPlaylistsSheet extends HookConsumerWidget {
             },
           );
         },
+        error: (err, _) => Center(
+          child: Text(
+            '加载失败: $err',
+            style: TextStyle(color: colorScheme.mutedForeground),
+          ),
+        ),
       ),
     );
   }
@@ -1201,15 +1196,8 @@ class _DefaultListView extends HookConsumerWidget {
         ),
         const Divider(),
       ],
-      child: listsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Text(
-            '加载失败: $err',
-            style: TextStyle(color: colorScheme.mutedForeground),
-          ),
-        ),
-        data: (data) {
+      child: listsAsync.whenOrDefault(
+        (data) {
           final tracks = data.defaultTracks;
           if (tracks.isEmpty) {
             return Center(
@@ -1265,6 +1253,12 @@ class _DefaultListView extends HookConsumerWidget {
             ],
           );
         },
+        error: (err, _) => Center(
+          child: Text(
+            '加载失败: $err',
+            style: TextStyle(color: colorScheme.mutedForeground),
+          ),
+        ),
       ),
     );
   }

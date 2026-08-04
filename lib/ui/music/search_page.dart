@@ -435,8 +435,8 @@ class _SearchResults extends HookConsumerWidget {
     final selection = ref.watch(selectedSourceProvider);
     final selectedSourceId = selection.sourceId;
 
-    return configsAsync.when(
-      data: (configs) {
+    return configsAsync.whenOrDefault(
+      (configs) {
         final filtered = tabSourceId.value == null
             ? configs
             : configs.where((c) => c.id == tabSourceId.value).toList();
@@ -513,8 +513,6 @@ class _SearchResults extends HookConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('加载失败: $e')),
     );
   }
 }
@@ -650,6 +648,79 @@ class _SourceChips extends ConsumerWidget {
   }
 }
 
+/// 通用网格结果展示组件
+///
+/// 统一歌手/专辑/歌单搜索结果中结构相同的
+/// 「空状态 + 标题 + 响应式网格」布局，通过 [itemBuilder] 区分各自的卡片内容与点击行为。
+class _SourceGrid<T> extends StatelessWidget {
+  final List<T> items;
+  final IconData emptyIcon;
+  final String emptyText;
+  final String Function(int count) headerText;
+  final Widget Function(BuildContext context, T item) itemBuilder;
+
+  const _SourceGrid({
+    required this.items,
+    required this.emptyIcon,
+    required this.emptyText,
+    required this.headerText,
+    required this.itemBuilder,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    if (items.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(emptyIcon, size: 48, color: colorScheme.mutedForeground),
+            const Gap(12),
+            Text(
+              emptyText,
+              style: TextStyle(color: colorScheme.mutedForeground),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            headerText(items.length),
+            style: TextStyle(color: colorScheme.mutedForeground),
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
+              return GridView.builder(
+                padding: const EdgeInsets.all(12),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 0.85,
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, index) =>
+                    itemBuilder(context, items[index]),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// 歌曲搜索结果列表
 class _SongResultsList extends ConsumerWidget {
   final String keyword;
@@ -673,12 +744,9 @@ class _SongResultsList extends ConsumerWidget {
         libraryId: libraryId,
       )),
     );
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return resultsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('搜索失败: $err')),
-      data: (data) {
+    return resultsAsync.whenOrDefault(
+      (data) {
         if (configs.isEmpty) {
           return const Center(child: Text('无可用来源'));
         }
@@ -697,7 +765,7 @@ class _SongResultsList extends ConsumerWidget {
                       Icon(
                         Icons.search_off,
                         size: 48,
-                        color: colorScheme.mutedForeground,
+                        color: Theme.of(context).colorScheme.mutedForeground,
                       ),
                       const Gap(12),
                       Text('未找到与"$keyword"相关的歌曲'),
@@ -714,7 +782,9 @@ class _SongResultsList extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                       child: Text(
                         '找到 ${tracks.length} 首歌曲',
-                        style: TextStyle(color: colorScheme.mutedForeground),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.mutedForeground,
+                        ),
                       ),
                     ),
                     Expanded(
@@ -741,6 +811,7 @@ class _SongResultsList extends ConsumerWidget {
           ],
         );
       },
+      error: (err, _) => Center(child: Text('搜索失败: $err')),
     );
   }
 }
@@ -766,109 +837,59 @@ class _ArtistResultsList extends ConsumerWidget {
         libraryId: libraryId,
       )),
     );
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return artistsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('搜索失败: $err')),
-      data: (artists) {
-        if (artists.isEmpty) {
-          return Center(
+    return artistsAsync.whenOrDefault(
+      (artists) => _SourceGrid<Artist>(
+        items: artists,
+        emptyIcon: Icons.person_search,
+        emptyText: '未找到与"$keyword"相关的歌手',
+        headerText: (n) => '找到 $n 位歌手',
+        itemBuilder: (context, a) => GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ArtistDetailPage(
+                artistId: a.id,
+                sourceId: a.source?.id ?? sourceId,
+                artistName: a.name,
+                coverUrl: a.coverArt ?? a.artistImageUrl,
+                albumCount: a.albumCount,
+              ),
+            ),
+          ),
+          child: Card(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  Icons.person_search,
-                  size: 48,
-                  color: colorScheme.mutedForeground,
+                Expanded(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: CoverImage(
+                      coverArt: a.coverArt ?? a.artistImageUrl,
+                      colorScheme: Theme.of(context).colorScheme,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(8),
+                      ),
+                    ),
+                  ),
                 ),
-                const Gap(12),
-                Text(
-                  '未找到与"$keyword"相关的歌手',
-                  style: TextStyle(color: colorScheme.mutedForeground),
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    a.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.foreground,
+                    ),
+                  ),
                 ),
               ],
             ),
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                '找到 ${artists.length} 位歌手',
-                style: TextStyle(color: colorScheme.mutedForeground),
-              ),
-            ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(12),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.85,
-                    ),
-                    itemCount: artists.length,
-                    itemBuilder: (context, index) {
-                      final a = artists[index];
-                      return GestureDetector(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ArtistDetailPage(
-                              artistId: a.id,
-                              sourceId: a.source?.id ?? sourceId,
-                              artistName: a.name,
-                              coverUrl: a.coverArt ?? a.artistImageUrl,
-                              albumCount: a.albumCount,
-                            ),
-                          ),
-                        ),
-                        child: Card(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: CoverImage(
-                                    coverArt: a.coverArt ?? a.artistImageUrl,
-                                    colorScheme: colorScheme,
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  a.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: colorScheme.foreground,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ),
+      error: (err, _) => Center(child: Text('搜索失败: $err')),
     );
   }
 }
@@ -894,125 +915,74 @@ class _AlbumResultsList extends ConsumerWidget {
         libraryId: libraryId,
       )),
     );
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return albumsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('搜索失败: $err')),
-      data: (albums) {
-        if (albums.isEmpty) {
-          return Center(
+    return albumsAsync.whenOrDefault(
+      (albums) => _SourceGrid<Album>(
+        items: albums,
+        emptyIcon: Icons.album,
+        emptyText: '未找到与"$keyword"相关的专辑',
+        headerText: (n) => '找到 $n 张专辑',
+        itemBuilder: (context, a) => GestureDetector(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => AlbumDetailPage(
+                albumId: a.id,
+                sourceId: a.source?.id ?? sourceId,
+                albumName: a.name,
+                coverUrl: a.coverArt,
+                artist: a.artist,
+                year: a.year,
+                songCount: a.songCount,
+              ),
+            ),
+          ),
+          child: Card(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.album, size: 48, color: colorScheme.mutedForeground),
-                const Gap(12),
-                Text(
-                  '未找到与"$keyword"相关的专辑',
-                  style: TextStyle(color: colorScheme.mutedForeground),
+                Expanded(
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: CoverImage(
+                      coverArt: a.coverArt,
+                      colorScheme: Theme.of(context).colorScheme,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(8),
+                      ),
+                    ),
+                  ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
+                  child: Text(
+                    a.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.foreground,
+                    ),
+                  ),
+                ),
+                if ((a.artist ?? '').isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Text(
+                      a.artist ?? '',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.mutedForeground,
+                      ),
+                    ),
+                  ),
               ],
             ),
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                '找到 ${albums.length} 张专辑',
-                style: TextStyle(color: colorScheme.mutedForeground),
-              ),
-            ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(12),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.85,
-                    ),
-                    itemCount: albums.length,
-                    itemBuilder: (context, index) {
-                      final a = albums[index];
-                      return GestureDetector(
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => AlbumDetailPage(
-                              albumId: a.id,
-                              sourceId: a.source?.id ?? sourceId,
-                              albumName: a.name,
-                              coverUrl: a.coverArt,
-                              artist: a.artist,
-                              year: a.year,
-                              songCount: a.songCount,
-                            ),
-                          ),
-                        ),
-                        child: Card(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: SizedBox(
-                                  width: double.infinity,
-                                  child: CoverImage(
-                                    coverArt: a.coverArt,
-                                    colorScheme: colorScheme,
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
-                                child: Text(
-                                  a.name,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: colorScheme.foreground,
-                                  ),
-                                ),
-                              ),
-                              if ((a.artist ?? '').isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    8,
-                                    0,
-                                    8,
-                                    8,
-                                  ),
-                                  child: Text(
-                                    a.artist ?? '',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: colorScheme.mutedForeground,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ),
+      error: (err, _) => Center(child: Text('搜索失败: $err')),
     );
   }
 }
@@ -1038,109 +1008,59 @@ class _PlaylistResultsList extends ConsumerWidget {
         libraryId: libraryId,
       )),
     );
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return playlistsAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, _) => Center(child: Text('搜索失败: $err')),
-      data: (playlists) {
-        if (playlists.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.queue_music,
-                  size: 48,
-                  color: colorScheme.mutedForeground,
-                ),
-                const Gap(12),
-                Text(
-                  '未找到与"$keyword"相关的歌单',
-                  style: TextStyle(color: colorScheme.mutedForeground),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                '找到 ${playlists.length} 个歌单',
-                style: TextStyle(color: colorScheme.mutedForeground),
-              ),
-            ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(12),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.85,
+    return playlistsAsync.whenOrDefault(
+      (playlists) => _SourceGrid<Playlist>(
+        items: playlists,
+        emptyIcon: Icons.queue_music,
+        emptyText: '未找到与"$keyword"相关的歌单',
+        headerText: (n) => '找到 $n 个歌单',
+        itemBuilder: (context, p) => Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: CoverImage(
+                    coverArt: p.coverArt,
+                    colorScheme: Theme.of(context).colorScheme,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(8),
                     ),
-                    itemCount: playlists.length,
-                    itemBuilder: (context, index) {
-                      final p = playlists[index];
-                      return Card(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: CoverImage(
-                                  coverArt: p.coverArt,
-                                  colorScheme: colorScheme,
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(8),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
-                              child: Text(
-                                p.name,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: colorScheme.foreground,
-                                ),
-                              ),
-                            ),
-                            if ((p.owner ?? '').isNotEmpty)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                                child: Text(
-                                  p.owner ?? '',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: colorScheme.mutedForeground,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
+                  ),
+                ),
               ),
-            ),
-          ],
-        );
-      },
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 2),
+                child: Text(
+                  p.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.foreground,
+                  ),
+                ),
+              ),
+              if ((p.owner ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                  child: Text(
+                    p.owner ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Theme.of(context).colorScheme.mutedForeground,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      error: (err, _) => Center(child: Text('搜索失败: $err')),
     );
   }
 }
