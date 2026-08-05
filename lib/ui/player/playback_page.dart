@@ -35,24 +35,11 @@ class PlaybackPage extends HookConsumerWidget {
     final state = ref.watch(audioPlayerProvider);
     final track = state.activeTrack;
 
-    // 实时播放进度
-    final position =
-        useStream(
-          audioPlayer.positionStream,
-          initialData: audioPlayer.position,
-        ).data ??
-        Duration.zero;
-    final duration =
-        useStream(
-          audioPlayer.durationStream,
-          initialData: audioPlayer.duration,
-        ).data ??
-        Duration.zero;
-
-    // 歌词获取与解析
+    // 歌词获取与解析（track 为空时传入空 Track 占位避免条件 hook）
     final lyricLinesAsync = track == null
         ? const AsyncValue<List<LyricLine>>.data([])
         : ref.watch(lyricLinesProvider(track));
+    // 仅依赖歌词异步结果，不随播放进度变化 → 本页 build 不会因进度流重建
     final lyricLines = useMemoized(
       () => lyricLinesAsync.value ?? <LyricLine>[],
       [lyricLinesAsync],
@@ -91,8 +78,6 @@ class PlaybackPage extends HookConsumerWidget {
                 isPlaying: state.playing,
                 loopMode: state.loopMode,
                 shuffled: state.shuffled,
-                position: position,
-                duration: duration,
                 lyricLines: lyricLines,
                 onSeek: onSeek,
                 style: _mobileStyle,
@@ -104,8 +89,6 @@ class PlaybackPage extends HookConsumerWidget {
                 isPlaying: state.playing,
                 loopMode: state.loopMode,
                 shuffled: state.shuffled,
-                position: position,
-                duration: duration,
                 lyricLines: lyricLines,
                 onSeek: onSeek,
                 style: _desktopStyle,
@@ -221,8 +204,6 @@ class _PlaybackBody extends HookConsumerWidget {
   final bool isPlaying;
   final PlaylistMode loopMode;
   final bool shuffled;
-  final Duration position;
-  final Duration duration;
   final List<LyricLine> lyricLines;
   final void Function(Duration)? onSeek;
   final _PlaybackStyle style;
@@ -233,8 +214,6 @@ class _PlaybackBody extends HookConsumerWidget {
     required this.isPlaying,
     required this.loopMode,
     required this.shuffled,
-    required this.position,
-    required this.duration,
     required this.lyricLines,
     required this.onSeek,
     required this.style,
@@ -243,6 +222,20 @@ class _PlaybackBody extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 进度/时长流仅在 _PlaybackBody 子树内消费，不驱动外层 PlaybackPage 重建
+    final position =
+        useStream(
+          audioPlayer.positionStream,
+          initialData: audioPlayer.position,
+        ).data ??
+        Duration.zero;
+    final duration =
+        useStream(
+          audioPlayer.durationStream,
+          initialData: audioPlayer.duration,
+        ).data ??
+        Duration.zero;
+
     final coverUrl = track.coverArt;
     final albumName = track.album;
 
@@ -253,12 +246,16 @@ class _PlaybackBody extends HookConsumerWidget {
           ref,
           coverUrl,
           albumName,
+          position,
+          duration,
         ),
         _PlaybackLayout.horizontal => _buildHorizontal(
           context,
           ref,
           coverUrl,
           albumName,
+          position,
+          duration,
         ),
       },
     );
@@ -271,6 +268,8 @@ class _PlaybackBody extends HookConsumerWidget {
     WidgetRef ref,
     String? coverUrl,
     String? albumName,
+    Duration position,
+    Duration duration,
   ) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: style.horizontalPadding),
@@ -301,7 +300,7 @@ class _PlaybackBody extends HookConsumerWidget {
             ),
           ),
           const Gap(8),
-          _buildSeekBar(context, ref),
+          _buildSeekBar(context, ref, position, duration),
           const Gap(16),
           _buildMainControls(context, ref),
           const Gap(8),
@@ -319,6 +318,8 @@ class _PlaybackBody extends HookConsumerWidget {
     WidgetRef ref,
     String? coverUrl,
     String? albumName,
+    Duration position,
+    Duration duration,
   ) {
     return Center(
       child: ConstrainedBox(
@@ -357,7 +358,7 @@ class _PlaybackBody extends HookConsumerWidget {
                       ),
                     ),
                     const Gap(16),
-                    _buildSeekBar(context, ref),
+                    _buildSeekBar(context, ref, position, duration),
                     const Gap(24),
                     _buildMainControls(context, ref),
                     const Gap(8),
@@ -416,7 +417,12 @@ class _PlaybackBody extends HookConsumerWidget {
     );
   }
 
-  Widget _buildSeekBar(BuildContext context, WidgetRef ref) {
+  Widget _buildSeekBar(
+    BuildContext context,
+    WidgetRef ref,
+    Duration position,
+    Duration duration,
+  ) {
     final castState = ref.watch(castProvider);
     // 投屏中：使用投屏设备返回的进度；否则使用本地播放器进度
     final pos = castState.isCasting ? castState.position : position;

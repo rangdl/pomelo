@@ -30,41 +30,17 @@ class MiniPlayer extends HookConsumerWidget {
     final state = ref.watch(audioPlayerProvider);
     final track = state.activeTrack;
 
-    // Hooks 必须无条件调用
-    final position =
-        useStream(
-          audioPlayer.positionStream,
-          initialData: audioPlayer.position,
-        ).data ??
-        Duration.zero;
-    final duration =
-        useStream(
-          audioPlayer.durationStream,
-          initialData: audioPlayer.duration,
-        ).data ??
-        Duration.zero;
-
     // 歌词获取与解析（track 为空时传入空 Track 占位避免条件 hook）
     final lyricLinesAsync = track == null
         ? const AsyncValue<List<LyricLine>>.data([])
         : ref.watch(lyricLinesProvider(track));
+    // 仅依赖歌词异步结果，不随播放进度变化 → 父树不会因进度流重建
     final lyricLines = useMemoized(
       () => lyricLinesAsync.value ?? <LyricLine>[],
       [lyricLinesAsync],
     );
-    final currentLyricIndex = LyricParser.findCurrentIndex(
-      lyricLines,
-      position,
-    );
-    final currentLyric = currentLyricIndex >= 0
-        ? lyricLines[currentLyricIndex].text
-        : null;
 
     if (track == null) return const SizedBox.shrink();
-
-    final progress = duration.inMilliseconds > 0
-        ? position.inMilliseconds / duration.inMilliseconds
-        : 0.0;
 
     final isDesktop =
         MediaQuery.of(context).size.width >= ResponsiveBreakpoints.mobile;
@@ -94,14 +70,12 @@ class MiniPlayer extends HookConsumerWidget {
                 track,
                 state.playing,
                 audioPlayer,
-                position,
-                duration,
                 isDesktop,
-                currentLyric,
+                lyricLines,
               ),
             ),
-            // 底部细进度条
-            _buildProgressBar(context, progress),
+            // 底部细进度条（独立子树，按进度流自行重建，不驱动父树）
+            const _MiniProgressBar(),
           ],
         ),
       ),
@@ -114,10 +88,8 @@ class MiniPlayer extends HookConsumerWidget {
     Track track,
     bool isPlaying,
     dynamic audioPlayer,
-    Duration position,
-    Duration duration,
     bool isDesktop,
-    String? currentLyric,
+    List<LyricLine> lyricLines,
   ) {
     return Row(
       children: [
@@ -146,47 +118,15 @@ class MiniPlayer extends HookConsumerWidget {
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                layoutBuilder: (currentChild, previousChildren) {
-                  return Stack(
-                    alignment: Alignment.centerLeft,
-                    children: <Widget>[...previousChildren, ?currentChild],
-                  );
-                },
-                child: Text(
-                  // 有当前歌词时优先展示歌词，否则回退到歌手名
-                  (currentLyric != null && currentLyric.isNotEmpty)
-                      ? currentLyric
-                      : track.artist ?? '',
-                  key: ValueKey(
-                    (currentLyric != null && currentLyric.isNotEmpty)
-                        ? 'lyric:$currentLyric'
-                        : 'artist:${track.artist}',
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: (currentLyric != null && currentLyric.isNotEmpty)
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.mutedForeground,
-                  ),
-                ),
-              ),
+              // 当前歌词行（独立子树，按进度流自行重建）
+              _MiniCurrentLyric(lyricLines, track: track),
             ],
           ),
         ),
         const Gap(8),
-        // 桌面端显示时间
+        // 桌面端显示时间（独立子树，按进度流自行重建）
         if (isDesktop) ...[
-          Text(
-            formatDuration(position),
-            style: TextStyle(
-              fontSize: 11,
-              color: Theme.of(context).colorScheme.mutedForeground,
-            ),
-          ),
+          const _MiniPositionTime(),
           const Gap(8),
         ],
         // 控制按钮
@@ -194,13 +134,7 @@ class MiniPlayer extends HookConsumerWidget {
         // 桌面端显示总时长
         if (isDesktop) ...[
           const Gap(8),
-          Text(
-            formatDuration(duration),
-            style: TextStyle(
-              fontSize: 11,
-              color: Theme.of(context).colorScheme.mutedForeground,
-            ),
-          ),
+          const _MiniDurationTime(),
         ],
       ],
     );
@@ -244,22 +178,6 @@ class MiniPlayer extends HookConsumerWidget {
     );
   }
 
-  Widget _buildProgressBar(BuildContext context, double progress) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      height: 2,
-      child: Stack(
-        children: [
-          Container(color: colorScheme.muted),
-          FractionallySizedBox(
-            widthFactor: progress.clamp(0.0, 1.0),
-            child: Container(color: colorScheme.primary),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// 打开播放详情页 — 作为底部 Sheet 覆盖整个页面，支持下拉关闭
   void _navigateToPlayback(BuildContext context) {
     openBottomSheet(
@@ -286,6 +204,137 @@ class MiniPlayer extends HookConsumerWidget {
         context: context,
         position: OverlayPosition.right,
         builder: (_) => const SizedBox(width: 360, child: PlayQueueContent()),
+      ),
+    );
+  }
+}
+
+/// 底部细进度条
+///
+/// 独立订阅进度/时长流，避免每帧驱动 [MiniPlayer] 父树重建。
+class _MiniProgressBar extends HookConsumerWidget {
+  const _MiniProgressBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position =
+        useStream(
+          audioPlayer.positionStream,
+          initialData: audioPlayer.position,
+        ).data ??
+        Duration.zero;
+    final duration =
+        useStream(
+          audioPlayer.durationStream,
+          initialData: audioPlayer.duration,
+        ).data ??
+        Duration.zero;
+    final progress = duration.inMilliseconds > 0
+        ? position.inMilliseconds / duration.inMilliseconds
+        : 0.0;
+    final colorScheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: 2,
+      child: Stack(
+        children: [
+          Container(color: colorScheme.muted),
+          FractionallySizedBox(
+            widthFactor: progress.clamp(0.0, 1.0),
+            child: Container(color: colorScheme.primary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 当前歌词行（独立子树）
+///
+/// 自行订阅 [audioPlayer.positionStream] 计算当前歌词，仅此子树随进度重建。
+class _MiniCurrentLyric extends HookConsumerWidget {
+  final List<LyricLine> lyricLines;
+  final Track track;
+
+  const _MiniCurrentLyric(this.lyricLines, {required this.track});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position =
+        useStream(
+          audioPlayer.positionStream,
+          initialData: audioPlayer.position,
+        ).data ??
+        Duration.zero;
+    final currentLyricIndex = LyricParser.findCurrentIndex(lyricLines, position);
+    final currentLyric =
+        currentLyricIndex >= 0 ? lyricLines[currentLyricIndex].text : null;
+    final hasLyric = currentLyric != null && currentLyric.isNotEmpty;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      layoutBuilder: (currentChild, previousChildren) {
+        return Stack(
+          alignment: Alignment.centerLeft,
+          children: <Widget>[...previousChildren, ?currentChild],
+        );
+      },
+      child: Text(
+        // 有当前歌词时优先展示歌词，否则回退到歌手名
+        hasLyric ? currentLyric : track.artist ?? '',
+        key: ValueKey(
+          hasLyric ? 'lyric:$currentLyric' : 'artist:${track.artist}',
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 11,
+          color: hasLyric
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.mutedForeground,
+        ),
+      ),
+    );
+  }
+}
+
+/// 当前播放时间（独立子树）
+class _MiniPositionTime extends HookConsumerWidget {
+  const _MiniPositionTime();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final position =
+        useStream(
+          audioPlayer.positionStream,
+          initialData: audioPlayer.position,
+        ).data ??
+        Duration.zero;
+    return Text(
+      formatDuration(position),
+      style: TextStyle(
+        fontSize: 11,
+        color: Theme.of(context).colorScheme.mutedForeground,
+      ),
+    );
+  }
+}
+
+/// 总时长（独立子树）
+class _MiniDurationTime extends HookConsumerWidget {
+  const _MiniDurationTime();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final duration =
+        useStream(
+          audioPlayer.durationStream,
+          initialData: audioPlayer.duration,
+        ).data ??
+        Duration.zero;
+    return Text(
+      formatDuration(duration),
+      style: TextStyle(
+        fontSize: 11,
+        color: Theme.of(context).colorScheme.mutedForeground,
       ),
     );
   }
