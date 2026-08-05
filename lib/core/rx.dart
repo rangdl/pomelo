@@ -26,6 +26,23 @@ abstract final class ResponsiveBreakpoints {
 class Rx {
   Rx._();
 
+  /// 当前可用宽度
+  ///
+  /// 使用 [MediaQuery.sizeOf] 而非 `MediaQuery.of(context).size`，
+  /// 只订阅 size 这一个切面：键盘弹出（viewInsets）、字体缩放、安全区变化
+  /// 都不会再触发依赖方 rebuild。
+  static double width(BuildContext context) => MediaQuery.sizeOf(context).width;
+
+  /// 是否为移动端布局（宽度 < 600）
+  ///
+  /// 全局唯一的断点判断入口，避免各页面重复写
+  /// `MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile`。
+  static bool isMobile(BuildContext context) =>
+      width(context) < ResponsiveBreakpoints.mobile;
+
+  /// 是否为桌面级宽度（>= 600），即 [isMobile] 的反面
+  static bool isDesktop(BuildContext context) => !isMobile(context);
+
   /// 响应式布局
   ///
   /// 根据屏幕宽度自动选择合适的布局组件。
@@ -85,7 +102,7 @@ class Rx {
     void Function()? desktop,
     void Function()? tv,
   }) {
-    final width = MediaQuery.of(context).size.width;
+    final width = Rx.width(context);
     if (width < ResponsiveBreakpoints.mobile) {
       (mobile ?? tablet ?? desktop ?? tv)?.call();
     } else if (width < ResponsiveBreakpoints.tablet) {

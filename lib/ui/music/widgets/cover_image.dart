@@ -58,7 +58,7 @@ class CoverImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dpr = MediaQuery.of(context).devicePixelRatio;
+    final dpr = MediaQuery.devicePixelRatioOf(context);
 
     final Widget image;
     if (coverArt == null || coverArt!.isEmpty) {

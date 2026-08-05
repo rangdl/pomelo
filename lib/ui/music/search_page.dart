@@ -752,6 +752,10 @@ class _SongResultsList extends ConsumerWidget {
         }
 
         final tracks = data.tracks;
+        // 整表只展开一次：原实现在 itemBuilder 内 map().toList()，
+        // 每渲染一项就重建一份全表副本（O(n²) 分配）
+        final primaryTracks = [for (final m in tracks) m.primary];
+        final isMobile = Rx.isMobile(context);
 
         return Column(
           children: [
@@ -791,12 +795,14 @@ class _SongResultsList extends ConsumerWidget {
                       child: ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         itemCount: tracks.length,
+                        addAutomaticKeepAlives: false,
                         itemBuilder: (context, index) {
                           final merged = tracks[index];
                           return PlayableTrackTile(
                             track: merged.primary,
-                            playlist: tracks.map((m) => m.primary).toList(),
+                            playlist: primaryTracks,
                             playlistIndex: index,
+                            isMobile: isMobile,
                             trailingExtra: Text(
                               merged.displaySources,
                               style: const TextStyle(fontSize: 12),

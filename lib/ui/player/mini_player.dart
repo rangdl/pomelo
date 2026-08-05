@@ -42,8 +42,7 @@ class MiniPlayer extends HookConsumerWidget {
 
     if (track == null) return const SizedBox.shrink();
 
-    final isDesktop =
-        MediaQuery.of(context).size.width >= ResponsiveBreakpoints.mobile;
+    final isDesktop = Rx.isDesktop(context);
 
     return GestureDetector(
       onTap: () => _navigateToPlayback(context),
@@ -183,7 +182,7 @@ class MiniPlayer extends HookConsumerWidget {
     openBottomSheet(
       context: context,
       builder: (_) => SizedBox(
-        height: MediaQuery.of(context).size.height,
+        height: MediaQuery.sizeOf(context).height,
         child: const PlaybackPage(),
       ),
     );

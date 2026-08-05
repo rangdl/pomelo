@@ -1,4 +1,5 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
@@ -90,6 +91,7 @@ class _LeaderboardSongs extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tracksAsync = ref.watch(leaderboardTracksProvider(leaderboardId));
     final colorScheme = Theme.of(context).colorScheme;
+    final isMobile = Rx.isMobile(context);
 
     return tracksAsync.when(
       data: (tracks) {
@@ -111,6 +113,7 @@ class _LeaderboardSongs extends ConsumerWidget {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: displayTracks.length,
+          addAutomaticKeepAlives: false,
           itemBuilder: (context, index) {
             final track = displayTracks[index];
             return PlayableTrackTile(
@@ -119,6 +122,7 @@ class _LeaderboardSongs extends ConsumerWidget {
               showMoreActions: true,
               playlist: displayTracks,
               playlistIndex: index,
+              isMobile: isMobile,
             );
           },
         );

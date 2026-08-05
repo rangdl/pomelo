@@ -57,6 +57,11 @@ class PlayableTrackTile extends HookConsumerWidget {
   /// 不传时默认为 0。
   final int? playlistIndex;
 
+  /// 是否移动端布局。由列表型父级统一算一次后下发，
+  /// 避免每个列表项各自订阅 MediaQuery（长列表下 N 次依赖注册 + N 次 rebuild）。
+  /// 不传则回退为自行通过 [Rx.isMobile] 计算。
+  final bool? isMobile;
+
   const PlayableTrackTile({
     super.key,
     required this.track,
@@ -68,6 +73,7 @@ class PlayableTrackTile extends HookConsumerWidget {
     this.showCover = true,
     this.playlist,
     this.playlistIndex,
+    this.isMobile,
   });
 
   @override
@@ -79,8 +85,8 @@ class PlayableTrackTile extends HookConsumerWidget {
       userPreferenceProvider.select((p) => p.overwritePlaylistOnPlay),
     );
     final notifier = ref.read(audioPlayerProvider.notifier);
-    final isMobile =
-        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+    // 优先使用父级下发的断点结果；未下发时才自行订阅 MediaQuery
+    final isMobile = this.isMobile ?? Rx.isMobile(context);
 
     // 响应式更多操作：
     // - 移动端：trailing 中显示按钮

@@ -33,8 +33,7 @@ class FavoritesPage extends HookConsumerWidget {
     final tabIndex = useState(0);
     final colorScheme = Theme.of(context).colorScheme;
     // 桌面端由 Root 标题栏承载返回按钮，内联页面不再显示
-    final isMobile =
-        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+    final isMobile = Rx.isMobile(context);
 
     return Scaffold(
       headers: [
@@ -164,6 +163,7 @@ class _FavoriteSongsTab extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final listsAsync = ref.watch(userListsProvider);
     final colorScheme = Theme.of(context).colorScheme;
+    final isMobile = Rx.isMobile(context);
 
     return listsAsync.whenOrDefault(
       (data) {
@@ -206,6 +206,7 @@ class _FavoriteSongsTab extends HookConsumerWidget {
                   index: e.key + 1,
                   playlist: tracks,
                   playlistIndex: e.key,
+                  isMobile: isMobile,
                 ),
               ),
             ],
@@ -230,6 +231,7 @@ class _FavoriteSongsTab extends HookConsumerWidget {
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   itemCount: tracks.length,
+                  addAutomaticKeepAlives: false,
                   itemBuilder: (context, index) {
                     final track = tracks[index];
                     return PlayableTrackTile(
@@ -237,6 +239,7 @@ class _FavoriteSongsTab extends HookConsumerWidget {
                       index: index + 1,
                       playlist: tracks,
                       playlistIndex: index,
+                      isMobile: isMobile,
                     );
                   },
                 ),

@@ -98,6 +98,7 @@ class PlayQueueContent extends HookConsumerWidget {
             controller: scrollController,
             padding: const EdgeInsets.symmetric(vertical: 4),
             itemCount: tracks.length,
+            addAutomaticKeepAlives: false,
             itemBuilder: (context, index) {
               final track = tracks[index];
               final isActive = activeTrack?.id == track.id;

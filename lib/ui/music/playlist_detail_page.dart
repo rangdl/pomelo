@@ -61,8 +61,7 @@ class PlaylistDetailPage extends HookConsumerWidget {
     );
     final colorScheme = Theme.of(context).colorScheme;
     // 桌面端由 Root 标题栏承载返回按钮，内联页面不再显示
-    final isMobile =
-        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+    final isMobile = Rx.isMobile(context);
 
     return Scaffold(
       headers: [

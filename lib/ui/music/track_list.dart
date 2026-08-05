@@ -1,6 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
+import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
 
 /// 曲目列表组件
@@ -39,11 +40,15 @@ class TrackList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isStandalone = physics != null;
+    // 断点只在父级算一次后下发，避免每个列表项各自订阅 MediaQuery
+    final isMobile = Rx.isMobile(context);
     return ListView.builder(
       shrinkWrap: !isStandalone,
       physics: physics ?? const NeverScrollableScrollPhysics(),
       padding: isStandalone ? const EdgeInsets.symmetric(horizontal: 8) : null,
       itemCount: tracks.length,
+      // 曲目项无需保活，关闭后滚出视口即可回收 Element
+      addAutomaticKeepAlives: false,
       itemBuilder: (context, index) {
         final track = tracks[index];
         return PlayableTrackTile(
@@ -52,6 +57,7 @@ class TrackList extends ConsumerWidget {
           onRemoveFromQueue: onRemoveFromQueue,
           playlist: tracks,
           playlistIndex: index,
+          isMobile: isMobile,
         );
       },
     );

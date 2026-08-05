@@ -38,8 +38,7 @@ class HomePage extends HookConsumerWidget {
     // 当前激活的 Tab 索引 — 用于判断 Home tab 是否处于前台
     final activeTabIndex = ref.watch(activeTabIndexProvider);
     // 移动端显示自带 AppBar（搜索/切换）；桌面端由 Root 标题栏统一承载
-    final isMobile =
-        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+    final isMobile = Rx.isMobile(context);
 
     // 同步内联导航状态到 Root 标题栏的返回按钮
     // 使用 Future.microtask 延迟到 build 后执行，避免在 build 期间修改 provider
@@ -461,6 +460,7 @@ class _LeaderboardSongs extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final songsAsync = ref.watch(leaderboardTracksProvider(leaderboardId));
     final colorScheme = Theme.of(context).colorScheme;
+    final isMobile = Rx.isMobile(context);
 
     return songsAsync.whenOrDefault(
       (tracks) {
@@ -476,6 +476,7 @@ class _LeaderboardSongs extends ConsumerWidget {
         return ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           itemCount: tracks.length,
+          addAutomaticKeepAlives: false,
           itemBuilder: (context, index) {
             final track = tracks[index];
             return PlayableTrackTile(
@@ -483,6 +484,7 @@ class _LeaderboardSongs extends ConsumerWidget {
               index: index + 1,
               playlist: tracks,
               playlistIndex: index,
+              isMobile: isMobile,
             );
           },
         );
@@ -1185,8 +1187,7 @@ class _DefaultListView extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final listsAsync = ref.watch(userListsProvider);
     final colorScheme = Theme.of(context).colorScheme;
-    final isMobile =
-        MediaQuery.of(context).size.width < ResponsiveBreakpoints.mobile;
+    final isMobile = Rx.isMobile(context);
 
     return Scaffold(
       headers: [
@@ -1247,6 +1248,7 @@ class _DefaultListView extends HookConsumerWidget {
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   itemCount: tracks.length,
+                  addAutomaticKeepAlives: false,
                   itemBuilder: (context, index) {
                     final track = tracks[index];
                     return PlayableTrackTile(
@@ -1254,6 +1256,7 @@ class _DefaultListView extends HookConsumerWidget {
                       index: index + 1,
                       playlist: tracks,
                       playlistIndex: index,
+                      isMobile: isMobile,
                     );
                   },
                 ),

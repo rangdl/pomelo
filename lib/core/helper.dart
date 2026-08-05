@@ -25,7 +25,7 @@ class Helper {
 
   // 深色模式
   static bool isDark(BuildContext context) {
-    return MediaQuery.of(context).platformBrightness == Brightness.dark;
+    return MediaQuery.platformBrightnessOf(context) == Brightness.dark;
   }
 
   static bool get isDebug => kDebugMode;
