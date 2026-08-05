@@ -50,7 +50,11 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>此应用需要在本地网络启动音频代理服务，以便播放在线曲目。</string>
+	<string>此应用需要在本地网络启动音频代理服务，以便播放在线曲目，并发现局域网内的 DLNA 投屏设备。</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

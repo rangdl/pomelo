@@ -36,9 +36,10 @@ final serverProvider = FutureProvider((ref) async {
     // enabledRemoteConnect
     //     ? InternetAddress.anyIPv4
     //     : InternetAddress.loopbackIPv4,
-    Platform.isIOS || Platform.isMacOS
-        ? InternetAddress.loopbackIPv4
-        : InternetAddress.anyIPv4,
+    // 绑定到所有网卡（anyIPv4），DLNA 渲染设备（局域网另一台设备）才能连回
+    // 本机 HTTP 流服务器拉取音频；仅绑 loopback 会导致 iOS/macOS 投屏时设备
+    // 连接被拒、投送失败（"投送就消失"）。
+    InternetAddress.anyIPv4,
     PomeloMedia.serverPort,
   );
 
