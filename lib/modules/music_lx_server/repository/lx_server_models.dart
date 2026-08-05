@@ -40,24 +40,14 @@ class LxServerArtist {
   }
 
   /// 转换为项目统一的 [Artist] 模型
-  Artist toArtist({
-    required String sourceId,
-    required String sourceName,
-    required String libraryId,
-    required String libraryName,
-  }) {
+  Artist toArtist({required MusicSourceRef origin}) {
     return Artist(
       id: id,
       name: name,
       coverArt: picUrl,
       artistImageUrl: picUrl,
       albumCount: albumSize ?? 0,
-      source: (
-        id: sourceId,
-        name: sourceName,
-        libraryId: libraryId,
-        libraryName: libraryName,
-      ),
+      source: origin,
       meta: {
         'id': id,
         'mid': mid,
@@ -104,7 +94,9 @@ class LxServerAlbum {
       name: json['name'] as String? ?? '',
       // 兼容 artistAlbums 返回的 img 字段
       picUrl:
-          json['picUrl'] as String? ?? meta['picUrl'] as String? ?? json['img'] as String?,
+          json['picUrl'] as String? ??
+          meta['picUrl'] as String? ??
+          json['img'] as String?,
       // 兼容 artistAlbums 返回的 singer 字段
       artistName: json['artistName'] as String? ?? json['singer'] as String?,
       artistId: json['artistId']?.toString(),
@@ -115,12 +107,7 @@ class LxServerAlbum {
   }
 
   /// 转换为项目统一的 [Album] 模型
-  Album toAlbum({
-    required String sourceId,
-    required String sourceName,
-    required String libraryId,
-    required String libraryName,
-  }) {
+  Album toAlbum({required MusicSourceRef origin}) {
     return Album(
       id: id,
       name: name,
@@ -128,12 +115,7 @@ class LxServerAlbum {
       artistId: artistId,
       coverArt: picUrl,
       songCount: size ?? 0,
-      source: (
-        id: sourceId,
-        name: sourceName,
-        libraryId: libraryId,
-        libraryName: libraryName,
-      ),
+      source: origin,
       meta: {'id': id, 'mid': mid, 'source': source},
     );
   }
@@ -174,24 +156,14 @@ class LxServerSearchPlaylist {
   }
 
   /// 转换为项目统一的 [Playlist] 模型
-  Playlist toPlaylist({
-    required String sourceId,
-    required String sourceName,
-    required String libraryId,
-    required String libraryName,
-  }) {
+  Playlist toPlaylist({required MusicSourceRef origin}) {
     return Playlist(
       id: id,
       name: name,
       coverArt: picUrl,
       owner: creator,
       songCount: trackCount ?? 0,
-      source: (
-        id: sourceId,
-        name: sourceName,
-        libraryId: libraryId,
-        libraryName: libraryName,
-      ),
+      source: origin,
       meta: {'id': id, 'source': source, 'playCount': playCount},
     );
   }
@@ -230,31 +202,12 @@ class LxServerUserPlaylist {
   }
 
   /// 转换为项目统一的 [Playlist] 模型（含曲目列表）
-  Playlist toPlaylist({
-    required String sourceId,
-    required String sourceName,
-    required String libraryId,
-    required String libraryName,
-  }) {
-    final tracks = list
-        .map(
-          (s) => s.toTrack(
-            sourceId: sourceId,
-            sourceName: sourceName,
-            libraryId: libraryId,
-            libraryName: libraryName,
-          ),
-        )
-        .toList();
+  Playlist toPlaylist({required MusicSourceRef origin}) {
+    final tracks = list.map((s) => s.toTrack(origin: origin)).toList();
     return Playlist(
       id: id,
       name: name,
-      source: (
-        id: sourceId,
-        name: sourceName,
-        libraryId: libraryId,
-        libraryName: libraryName,
-      ),
+      source: origin,
       tracks: tracks,
       songCount: tracks.length,
       meta: {'id': id, 'source': source, 'sourceListId': sourceListId},
@@ -545,15 +498,9 @@ class LxServerSong {
 
   /// 转换为项目统一的 [Track] 模型
   ///
-  /// [sourceId] 为服务标识，[sourceName] 为服务显示名，
-  /// [libraryId] 为来源库（kg/kw 等），[libraryName] 为库显示名。
+  /// [origin] 标明数据来自哪个服务的哪个库，由 LxServerMusicServer 统一构造。
   /// 完整 songInfo 存入 meta，供 [LxServerMusicServer.getMusicUrl] 使用。
-  Track toTrack({
-    required String sourceId,
-    required String sourceName,
-    required String libraryId,
-    required String libraryName,
-  }) {
+  Track toTrack({required MusicSourceRef origin}) {
     return Track(
       id:
           songmid?.toString() ??
@@ -567,12 +514,7 @@ class LxServerSong {
       album: albumName,
       coverArt: img,
       duration: durationSeconds,
-      source: (
-        id: sourceId,
-        name: sourceName,
-        libraryId: libraryId,
-        libraryName: libraryName,
-      ),
+      source: origin,
       meta: toSongInfo(),
       src: '',
     );
@@ -629,24 +571,14 @@ class LxServerPlaylist {
   }
 
   /// 转换为项目统一的 [Playlist] 模型
-  Playlist toPlaylist({
-    required String sourceId,
-    required String sourceName,
-    required String libraryId,
-    required String libraryName,
-  }) {
+  Playlist toPlaylist({required MusicSourceRef origin}) {
     return Playlist(
       id: id,
       name: name,
       coverArt: img,
       owner: author,
       comment: desc,
-      source: (
-        id: sourceId,
-        name: sourceName,
-        libraryId: libraryId,
-        libraryName: libraryName,
-      ),
+      source: origin,
       meta: {'id': id, 'play_count': playCount, 'time': time},
     );
   }

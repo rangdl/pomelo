@@ -115,6 +115,17 @@ class LxServerMusicServer extends MusicServer {
   /// 当前库标识（source 参数）
   String get _currentSource => _defaultLibraryId ?? _allLibraries.first.id;
 
+  /// 构造指定库的来源标识
+  ///
+  /// 本服务下所有模型转换都经由此处取得 source，避免各调用点分别拼装
+  /// 服务标识与库名，导致漏字段或 libraryId / libraryName 对不上。
+  MusicSourceRef _originOf(String libraryId) => (
+    id: _sourceId,
+    name: _sourceName,
+    libraryId: libraryId,
+    libraryName: _libraryName(libraryId),
+  );
+
   // ========== 搜索 ==========
 
   @override
@@ -132,14 +143,7 @@ class LxServerMusicServer extends MusicServer {
       limit: limit,
     );
     final items = result.list
-        .map(
-          (s) => s.toTrack(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: source,
-            libraryName: _libraryName(source),
-          ),
-        )
+        .map((s) => s.toTrack(origin: _originOf(source)))
         .toList();
     return PaginationResponse<Track>.fromTotal(
       page: result.page,
@@ -164,14 +168,7 @@ class LxServerMusicServer extends MusicServer {
       limit: limit,
     );
     final items = result.list
-        .map(
-          (a) => a.toArtist(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: source,
-            libraryName: _libraryName(source),
-          ),
-        )
+        .map((a) => a.toArtist(origin: _originOf(source)))
         .toList();
     return PaginationResponse<Artist>.fromTotal(
       page: result.page,
@@ -196,14 +193,7 @@ class LxServerMusicServer extends MusicServer {
       limit: limit,
     );
     final items = result.list
-        .map(
-          (a) => a.toAlbum(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: source,
-            libraryName: _libraryName(source),
-          ),
-        )
+        .map((a) => a.toAlbum(origin: _originOf(source)))
         .toList();
     return PaginationResponse<Album>.fromTotal(
       page: result.page,
@@ -228,14 +218,7 @@ class LxServerMusicServer extends MusicServer {
       limit: limit,
     );
     final items = result.list
-        .map(
-          (p) => p.toPlaylist(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: source,
-            libraryName: _libraryName(source),
-          ),
-        )
+        .map((p) => p.toPlaylist(origin: _originOf(source)))
         .toList();
     return PaginationResponse<Playlist>.fromTotal(
       page: result.page,
@@ -276,12 +259,7 @@ class LxServerMusicServer extends MusicServer {
         source: _currentSource,
         id: id,
       );
-      return artist.toArtist(
-        sourceId: _sourceId,
-        sourceName: _sourceName,
-        libraryId: _currentSource,
-        libraryName: _libraryName(_currentSource),
-      );
+      return artist.toArtist(origin: _originOf(_currentSource));
     } catch (e) {
       AppLogger.log.w('[LxServer] 获取歌手详情失败: $e');
       return null;
@@ -296,14 +274,7 @@ class LxServerMusicServer extends MusicServer {
         id: artistId,
       );
       return result.list
-          .map(
-            (a) => a.toAlbum(
-              sourceId: _sourceId,
-              sourceName: _sourceName,
-              libraryId: _currentSource,
-              libraryName: _libraryName(_currentSource),
-            ),
-          )
+          .map((a) => a.toAlbum(origin: _originOf(_currentSource)))
           .toList();
     } catch (e) {
       AppLogger.log.w('[LxServer] 获取歌手专辑失败: $e');
@@ -325,14 +296,7 @@ class LxServerMusicServer extends MusicServer {
         order: order ?? 'hot',
       );
       final tracks = songs
-          .map(
-            (s) => s.toTrack(
-              sourceId: _sourceId,
-              sourceName: _sourceName,
-              libraryId: _currentSource,
-              libraryName: _libraryName(_currentSource),
-            ),
-          )
+          .map((s) => s.toTrack(origin: _originOf(_currentSource)))
           .toList();
       // Lx Server 的 artistSongs 不分页，一次返回全部
       return PaginationResponse<Track>.complete(tracks);
@@ -384,14 +348,7 @@ class LxServerMusicServer extends MusicServer {
         id: albumId,
       );
       final tracks = result.list
-          .map(
-            (s) => s.toTrack(
-              sourceId: _sourceId,
-              sourceName: _sourceName,
-              libraryId: _currentSource,
-              libraryName: _libraryName(_currentSource),
-            ),
-          )
+          .map((s) => s.toTrack(origin: _originOf(_currentSource)))
           .toList();
       // Lx Server 的 albumSongs 不分页，一次返回全部
       return PaginationResponse<Track>.complete(tracks);
@@ -453,14 +410,7 @@ class LxServerMusicServer extends MusicServer {
       page: page,
     );
     final items = result.list
-        .map(
-          (p) => p.toPlaylist(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: _currentSource,
-            libraryName: _libraryName(_currentSource),
-          ),
-        )
+        .map((p) => p.toPlaylist(origin: _originOf(_currentSource)))
         .toList();
     return PaginationResponse<Playlist>.fromTotal(
       page: result.page,
@@ -478,14 +428,7 @@ class LxServerMusicServer extends MusicServer {
       id: id,
     );
     final tracks = result.list
-        .map(
-          (s) => s.toTrack(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: _currentSource,
-            libraryName: _libraryName(_currentSource),
-          ),
-        )
+        .map((s) => s.toTrack(origin: _originOf(_currentSource)))
         .toList();
     return Playlist(
       id: id,
@@ -508,14 +451,7 @@ class LxServerMusicServer extends MusicServer {
       id: id,
     );
     return result.list
-        .map(
-          (s) => s.toTrack(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: _currentSource,
-            libraryName: _libraryName(_currentSource),
-          ),
-        )
+        .map((s) => s.toTrack(origin: _originOf(_currentSource)))
         .toList();
   }
 
@@ -530,14 +466,7 @@ class LxServerMusicServer extends MusicServer {
       page: page,
     );
     final items = result.list
-        .map(
-          (p) => p.toPlaylist(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: _currentSource,
-            libraryName: _libraryName(_currentSource),
-          ),
-        )
+        .map((p) => p.toPlaylist(origin: _originOf(_currentSource)))
         .toList();
     return PaginationResponse<Playlist>.fromTotal(
       page: result.page,
@@ -803,14 +732,7 @@ class LxServerMusicServer extends MusicServer {
       bangid: leaderboardId,
     );
     final tracks = result.list
-        .map(
-          (s) => s.toTrack(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: _currentSource,
-            libraryName: _libraryName(_currentSource),
-          ),
-        )
+        .map((s) => s.toTrack(origin: _originOf(_currentSource)))
         .toList();
     AppLogger.log.d(
       '[LxServer] getLeaderboardSongs 完成: source=$_currentSource, bangid=$leaderboardId, '
@@ -827,36 +749,15 @@ class LxServerMusicServer extends MusicServer {
     final response = await client.getUserLists();
 
     final defaultTracks = response.defaultList
-        .map(
-          (s) => s.toTrack(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: s.source,
-            libraryName: _libraryName(s.source),
-          ),
-        )
+        .map((s) => s.toTrack(origin: _originOf(s.source)))
         .toList();
 
     final loveTracks = response.loveList
-        .map(
-          (s) => s.toTrack(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: s.source,
-            libraryName: _libraryName(s.source),
-          ),
-        )
+        .map((s) => s.toTrack(origin: _originOf(s.source)))
         .toList();
 
     final userPlaylists = response.userList
-        .map(
-          (p) => p.toPlaylist(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: p.source,
-            libraryName: _libraryName(p.source),
-          ),
-        )
+        .map((p) => p.toPlaylist(origin: _originOf(p.source)))
         .toList();
 
     return UserListsData(
@@ -870,31 +771,13 @@ class LxServerMusicServer extends MusicServer {
   Future<List<Artist>> getFavoriteArtists() async {
     AppLogger.log.d('[LxServer] getFavoriteArtists');
     final artists = await client.getFavoriteArtists();
-    return artists
-        .map(
-          (a) => a.toArtist(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: a.source,
-            libraryName: _libraryName(a.source),
-          ),
-        )
-        .toList();
+    return artists.map((a) => a.toArtist(origin: _originOf(a.source))).toList();
   }
 
   @override
   Future<List<Album>> getFavoriteAlbums() async {
     AppLogger.log.d('[LxServer] getFavoriteAlbums');
     final albums = await client.getFavoriteAlbums();
-    return albums
-        .map(
-          (a) => a.toAlbum(
-            sourceId: _sourceId,
-            sourceName: _sourceName,
-            libraryId: a.source,
-            libraryName: _libraryName(a.source),
-          ),
-        )
-        .toList();
+    return albums.map((a) => a.toAlbum(origin: _originOf(a.source))).toList();
   }
 }
