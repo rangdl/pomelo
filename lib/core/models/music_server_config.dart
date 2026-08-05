@@ -1,6 +1,6 @@
 /// 音乐服务配置基类与子类
 ///
-/// 统一管理所有音乐源（local/lx/lxServer/subsonic）的配置。
+/// 统一管理所有音乐源（local/lxServer/subsonic/navidrome/emby）的配置。
 /// 基类 [MusicServerConfig] 定义公共字段（id/name/type），
 /// 各子类继承并增加自身特定字段。
 ///
@@ -43,7 +43,6 @@ sealed class MusicServerConfig {
   static MusicServerConfig fromJson(String id, String name, MusicSourceType type, Map<String, dynamic> extra) {
     return switch (type) {
       MusicSourceType.local => LocalMusicConfig.fromJson(id: id, name: name, extra: extra),
-      MusicSourceType.lx => LxPluginConfig.fromJson(id: id, name: name, extra: extra),
       MusicSourceType.lxServer => LxServerConfig.fromJson(id: id, name: name, extra: extra),
       MusicSourceType.subsonic ||
       MusicSourceType.navidrome ||
@@ -84,45 +83,6 @@ class LocalMusicConfig extends MusicServerConfig {
       id: id,
       name: name,
       directories: (extra['directories'] as List?)
-              ?.map((e) => e as String)
-              .toList() ??
-          const [],
-    );
-  }
-}
-
-/// Lx 插件配置（元数据插件 + 音源插件）
-@immutable
-class LxPluginConfig extends MusicServerConfig {
-  /// 元数据插件路径（仅一份）
-  final String metadataPluginPath;
-
-  /// 音源插件路径列表（支持多份）
-  final List<String> sourcePluginPaths;
-
-  const LxPluginConfig({
-    required super.id,
-    required super.name,
-    required this.metadataPluginPath,
-    required this.sourcePluginPaths,
-  }) : super(type: MusicSourceType.lx);
-
-  @override
-  Map<String, dynamic> extraToJson() => {
-        'metadataPluginPath': metadataPluginPath,
-        'sourcePluginPaths': sourcePluginPaths,
-      };
-
-  static LxPluginConfig fromJson({
-    required String id,
-    required String name,
-    required Map<String, dynamic> extra,
-  }) {
-    return LxPluginConfig(
-      id: id,
-      name: name,
-      metadataPluginPath: extra['metadataPluginPath'] as String? ?? '',
-      sourcePluginPaths: (extra['sourcePluginPaths'] as List?)
               ?.map((e) => e as String)
               .toList() ??
           const [],

@@ -38,7 +38,7 @@ class _SourcePluginEntry {
 /// Lx 音源插件引擎
 ///
 /// 负责加载音源插件（source plugin），提供查询音乐播放链接的能力。
-/// 与 [LxMetadataEngine]（负责搜索音乐元数据）不同，本引擎专注于获取歌曲的实际播放 URL。
+/// 与元数据引擎（负责搜索音乐元数据）不同，本引擎专注于获取歌曲的实际播放 URL。
 ///
 /// 支持导入多个音源插件，每个插件使用独立的 [JsEngine] 实例。
 /// 插件加载后会通过 `globalThis.lx.sources` 自动检测其支持的库列表。

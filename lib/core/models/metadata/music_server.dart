@@ -21,7 +21,7 @@ abstract class MusicServer {
   /// 服务显示名称，如 '本地音乐', '网易云音乐'
   String get sourceName;
 
-  /// 来源类型，如 [MusicSourceType.local]、[MusicSourceType.lx]
+  /// 来源类型，如 [MusicSourceType.local]、[MusicSourceType.lxServer]
   ///
   /// 用于按类型对服务进行分组管理。
   MusicSourceType get sourceType;

@@ -10,8 +10,6 @@ import 'package:pomelo/modules/music_lx_server/providers/lx_server_providers.dar
 import 'package:pomelo/modules/music_subsonic/providers/subsonic_providers.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
-import 'package:pomelo/ui/platform/providers/lx_metadata_plugin_paths_provider.dart';
-import 'package:pomelo/ui/platform/widgets/add_lx_script_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/add_lx_server_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/add_subsonic_account_dialog.dart';
 import 'package:pomelo/ui/platform/widgets/edit_local_music_dialog.dart';
@@ -19,7 +17,6 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 支持添加的平台类型
 enum _PlatformType {
-  lx('Lx 音乐插件', Icons.code, '元数据与音源插件管理'),
   lxServer('Lx Server', Icons.dns, '连接 lx-server HTTP API 服务'),
   subsonic('Subsonic', Icons.cloud, '连接 Subsonic 兼容的音乐服务器');
 
@@ -99,7 +96,6 @@ class ServicePage extends HookConsumerWidget {
     // 定义展示顺序
     const typeOrder = [
       MusicSourceType.local,
-      MusicSourceType.lx,
       MusicSourceType.lxServer,
       MusicSourceType.subsonic,
       MusicSourceType.navidrome,
@@ -215,7 +211,7 @@ class ServicePage extends HookConsumerWidget {
     WidgetRef ref,
     MusicServerConfig config,
   ) {
-    // 是否允许编辑（本地 + Lxserver + Subsonic 可编辑，Lx 插件由文件管理）
+    // 是否允许编辑（本地 + LxServer + Subsonic 可编辑）
     final canEdit =
         config.type == MusicSourceType.local ||
         config.type == MusicSourceType.lxServer ||
@@ -309,15 +305,12 @@ class ServicePage extends HookConsumerWidget {
             );
           },
         );
-      case LxPluginConfig():
-        break;
     }
   }
 
   /// 类型对应的图标
-  IconData _typeIcon(MusicSourceType type) => switch (type) {
+    IconData _typeIcon(MusicSourceType type) => switch (type) {
     MusicSourceType.local => Icons.folder,
-    MusicSourceType.lx => Icons.code,
     MusicSourceType.lxServer => Icons.dns,
     MusicSourceType.subsonic => Icons.cloud,
     MusicSourceType.navidrome => Icons.navigation,
@@ -330,21 +323,6 @@ class ServicePage extends HookConsumerWidget {
   /// 显示添加平台页面/对话框
   void _showAddDialog(BuildContext context, _PlatformType type) {
     switch (type) {
-      case _PlatformType.lx:
-        Rx.action(
-          context,
-          mobile: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const LxPluginPage()),
-            );
-          },
-          tablet: () {
-            showDialog(
-              context: context,
-              builder: (_) => const AddLxPluginDialog(),
-            );
-          },
-        );
       case _PlatformType.lxServer:
         Rx.action(
           context,
@@ -390,10 +368,6 @@ class ServicePage extends HookConsumerWidget {
   ) async {
     try {
       switch (config) {
-        case LxPluginConfig():
-          await ref
-              .read(lxMetadataPluginPathsProvider.notifier)
-              .removePlugin('');
         case LxServerConfig():
           await ref.read(lxServerConnectionProvider.notifier).disconnect();
         case SubsonicConfig():

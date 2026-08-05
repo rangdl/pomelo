@@ -96,7 +96,7 @@ lib/
 ├── modules/               # 业务模块层
 │   ├── music/             # 音乐核心（模型、MusicServer 抽象、Provider 聚合）
 │   ├── music_local/       # 本地音乐（LocalMusicServer）
-│   ├── music_lx/          # Lx 音乐（LxMusicServer，JS 插件）
+│   ├── music_lx/          # Lx 音乐（LxSourceEngine 音源脚本引擎）
 │   ├── music_lx_server/   # Lx Server（LxServerMusicServer）
 │   ├── music_subsonic/    # Subsonic（SubsonicMusicServer）
 │   ├── audio_player/      # 播放器（media_kit 封装）
@@ -167,7 +167,6 @@ userPreferenceProvider（统一设置）
         ▼
 ┌───────────────────────────────────────┐
 │ localMusicServerProvider              │
-│ lxMusicServerProvider                 │ → musicServersProvider（聚合）
 │ lxServerMusicServerProvider           │   → musicServerBySourceProvider
 │ subsonicServersProvider               │
 └───────────────────────────────────────┘
