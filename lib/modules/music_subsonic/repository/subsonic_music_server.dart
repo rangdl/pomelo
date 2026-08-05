@@ -59,14 +59,10 @@ class SubsonicMusicServer extends MusicServer {
               serverUrl: _serverUrl,
             ))
         .toList();
-    return PaginationResponse(
+    return PaginationResponse.fromPageSize(
+      items: tracks,
       page: page,
       limit: limit,
-      total: result.songs.length < limit
-          ? (page - 1) * limit + result.songs.length
-          : page * limit + 1,
-      hasMore: result.songs.length == limit,
-      items: tracks,
     );
   }
 
@@ -92,14 +88,10 @@ class SubsonicMusicServer extends MusicServer {
               serverUrl: _serverUrl,
             ))
         .toList();
-    return PaginationResponse(
+    return PaginationResponse.fromPageSize(
+      items: albums,
       page: page,
       limit: limit,
-      total: result.albums.length < limit
-          ? (page - 1) * limit + result.albums.length
-          : page * limit + 1,
-      hasMore: result.albums.length == limit,
-      items: albums,
     );
   }
 
@@ -160,13 +152,7 @@ class SubsonicMusicServer extends MusicServer {
               serverUrl: _serverUrl,
             ))
         .toList();
-    return PaginationResponse(
-      page: page,
-      limit: limit,
-      total: items.length,
-      hasMore: false,
-      items: items,
-    );
+    return PaginationResponse.complete(items, page: page, limit: limit);
   }
 
   // ========== 专辑 ==========
@@ -286,14 +272,10 @@ class SubsonicMusicServer extends MusicServer {
               serverUrl: _serverUrl,
             ))
         .toList();
-    return PaginationResponse(
+    return PaginationResponse.fromPageSize(
+      items: items,
       page: page,
       limit: limit,
-      total: albums.length < limit
-          ? (page - 1) * limit + albums.length
-          : page * limit + 1,
-      hasMore: albums.length == limit,
-      items: items,
     );
   }
 

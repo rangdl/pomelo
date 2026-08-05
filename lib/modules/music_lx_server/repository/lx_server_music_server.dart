@@ -141,11 +141,10 @@ class LxServerMusicServer extends MusicServer {
           ),
         )
         .toList();
-    return PaginationResponse<Track>(
+    return PaginationResponse<Track>.fromTotal(
       page: result.page,
       limit: result.limit,
       total: result.total,
-      hasMore: result.page * result.limit < result.total,
       items: items,
     );
   }
@@ -174,11 +173,10 @@ class LxServerMusicServer extends MusicServer {
           ),
         )
         .toList();
-    return PaginationResponse<Artist>(
+    return PaginationResponse<Artist>.fromTotal(
       page: result.page,
       limit: result.limit,
       total: result.total,
-      hasMore: result.page * result.limit < result.total,
       items: items,
     );
   }
@@ -207,11 +205,10 @@ class LxServerMusicServer extends MusicServer {
           ),
         )
         .toList();
-    return PaginationResponse<Album>(
+    return PaginationResponse<Album>.fromTotal(
       page: result.page,
       limit: result.limit,
       total: result.total,
-      hasMore: result.page * result.limit < result.total,
       items: items,
     );
   }
@@ -240,11 +237,10 @@ class LxServerMusicServer extends MusicServer {
           ),
         )
         .toList();
-    return PaginationResponse<Playlist>(
+    return PaginationResponse<Playlist>.fromTotal(
       page: result.page,
       limit: result.limit,
       total: result.total,
-      hasMore: result.page * result.limit < result.total,
       items: items,
     );
   }
@@ -339,13 +335,7 @@ class LxServerMusicServer extends MusicServer {
           )
           .toList();
       // Lx Server 的 artistSongs 不分页，一次返回全部
-      return PaginationResponse<Track>(
-        page: 1,
-        limit: tracks.length,
-        total: tracks.length,
-        hasMore: false,
-        items: tracks,
-      );
+      return PaginationResponse<Track>.complete(tracks);
     } catch (e) {
       AppLogger.log.w('[LxServer] 获取歌手歌曲失败: $e');
       return PaginationResponse.empty(page: page, limit: limit);
@@ -404,13 +394,7 @@ class LxServerMusicServer extends MusicServer {
           )
           .toList();
       // Lx Server 的 albumSongs 不分页，一次返回全部
-      return PaginationResponse<Track>(
-        page: 1,
-        limit: tracks.length,
-        total: tracks.length,
-        hasMore: false,
-        items: tracks,
-      );
+      return PaginationResponse<Track>.complete(tracks);
     } catch (e) {
       AppLogger.log.w('[LxServer] 获取专辑歌曲失败: $e');
       return PaginationResponse.empty(page: page, limit: limit);
@@ -478,11 +462,10 @@ class LxServerMusicServer extends MusicServer {
           ),
         )
         .toList();
-    return PaginationResponse<Playlist>(
+    return PaginationResponse<Playlist>.fromTotal(
       page: result.page,
       limit: result.limit,
       total: result.total,
-      hasMore: result.page * result.limit < result.total,
       items: items,
     );
   }
@@ -556,11 +539,10 @@ class LxServerMusicServer extends MusicServer {
           ),
         )
         .toList();
-    return PaginationResponse<Playlist>(
+    return PaginationResponse<Playlist>.fromTotal(
       page: result.page,
       limit: result.limit,
       total: result.total,
-      hasMore: result.page * result.limit < result.total,
       items: items,
     );
   }
