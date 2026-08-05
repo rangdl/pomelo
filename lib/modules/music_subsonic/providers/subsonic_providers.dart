@@ -1,5 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/services/logger/logger.dart';
+import 'package:pomelo/core/utils/url.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
 
@@ -18,8 +19,47 @@ typedef SubsonicAccountRecord = ({
   String? pathPrefix,
 });
 
-/// 去除 serverUrl 末尾的多余斜杠
-String _cleanUrl(String url) => url.replaceAll(RegExp(r'/+$'), '');
+extension on SubsonicAccountRecord {
+  /// 用归一化后的 [cleanUrl] 创建客户端
+  ///
+  /// 全模块唯一的 [SubsonicClient] 构造点，避免各处漏传字段。
+  SubsonicClient toClient(String cleanUrl) => SubsonicClient(
+    serverUrl: cleanUrl,
+    username: username,
+    password: password,
+    token: token,
+    salt: salt,
+    version: version,
+    pathPrefix: pathPrefix,
+  );
+
+  /// 转为可持久化的配置，[id] 由调用方决定（新增时生成、更新时沿用）
+  SubsonicConfig toConfig(String id, String cleanUrl) => SubsonicConfig(
+    id: id,
+    name: name,
+    serverUrl: cleanUrl,
+    username: username,
+    password: password,
+    token: token,
+    salt: salt,
+    version: version,
+    pathPrefix: pathPrefix,
+  );
+}
+
+extension on SubsonicConfig {
+  /// 已持久化的配置转回 record，以复用统一的客户端构造
+  SubsonicAccountRecord get asRecord => (
+    serverUrl: serverUrl,
+    username: username,
+    password: password,
+    token: token,
+    salt: salt,
+    name: name,
+    version: version,
+    pathPrefix: pathPrefix,
+  );
+}
 
 /// 按 configId 懒创建单个 SubsonicMusicServer
 ///
@@ -35,16 +75,8 @@ final subsonicServerProvider =
           .firstOrNull;
       if (config == null) return null;
 
-      final cleanUrl = _cleanUrl(config.serverUrl);
-      final client = SubsonicClient(
-        serverUrl: cleanUrl,
-        username: config.username,
-        password: config.password,
-        token: config.token,
-        salt: config.salt,
-        version: config.version,
-        pathPrefix: config.pathPrefix,
-      );
+      final cleanUrl = cleanServerUrl(config.serverUrl);
+      final client = config.asRecord.toClient(cleanUrl);
 
       try {
         await client.ping();
@@ -96,45 +128,33 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
     return ref.watch(subsonicServersProvider).value ?? [];
   }
 
+  /// 用临时 client 验证连接（ping），无论成败都释放该 client
+  ///
+  /// 校验失败时原样抛出，交由调用方（最终是 UI）展示错误。
+  Future<void> _verifyConnection(
+    SubsonicAccountRecord config,
+    String cleanUrl,
+  ) async {
+    final client = config.toClient(cleanUrl);
+    try {
+      await client.ping();
+    } finally {
+      client.dispose();
+    }
+  }
+
   /// 添加账号
   ///
   /// 先用临时 client 验证连接（ping），成功后写入 SubsonicConfig 到配置表，
   /// 由 [subsonicServersProvider] 自动创建服务实例。
   Future<SubsonicMusicServer> addAccount(SubsonicAccountRecord config) async {
-    final cleanUrl = _cleanUrl(config.serverUrl);
-    final client = SubsonicClient(
-      serverUrl: cleanUrl,
-      username: config.username,
-      password: config.password,
-      token: config.token,
-      salt: config.salt,
-      version: config.version,
-      pathPrefix: config.pathPrefix,
-    );
-    try {
-      await client.ping();
-    } catch (e) {
-      client.dispose();
-      rethrow;
-    }
-    client.dispose();
+    final cleanUrl = cleanServerUrl(config.serverUrl);
+    await _verifyConnection(config, cleanUrl);
 
     final configId = 'subsonic-${cleanUrl.hashCode.abs()}-${config.username}';
     await ref
         .read(musicServerConfigsNotifierProvider.notifier)
-        .upsert(
-          SubsonicConfig(
-            id: configId,
-            name: config.name,
-            serverUrl: cleanUrl,
-            username: config.username,
-            password: config.password,
-            token: config.token,
-            salt: config.salt,
-            version: config.version,
-            pathPrefix: config.pathPrefix,
-          ),
-        );
+        .upsert(config.toConfig(configId, cleanUrl));
 
     final server = await ref.read(subsonicServerProvider(configId).future);
     if (server == null) {
@@ -160,39 +180,12 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
     String sourceId,
     SubsonicAccountRecord config,
   ) async {
-    final cleanUrl = _cleanUrl(config.serverUrl);
-    final client = SubsonicClient(
-      serverUrl: cleanUrl,
-      username: config.username,
-      password: config.password,
-      token: config.token,
-      salt: config.salt,
-      version: config.version,
-      pathPrefix: config.pathPrefix,
-    );
-    try {
-      await client.ping();
-    } catch (e) {
-      client.dispose();
-      rethrow;
-    }
-    client.dispose();
+    final cleanUrl = cleanServerUrl(config.serverUrl);
+    await _verifyConnection(config, cleanUrl);
 
     await ref
         .read(musicServerConfigsNotifierProvider.notifier)
-        .upsert(
-          SubsonicConfig(
-            id: sourceId,
-            name: config.name,
-            serverUrl: cleanUrl,
-            username: config.username,
-            password: config.password,
-            token: config.token,
-            salt: config.salt,
-            version: config.version,
-            pathPrefix: config.pathPrefix,
-          ),
-        );
+        .upsert(config.toConfig(sourceId, cleanUrl));
   }
 
   /// 根据 sourceId 获取账号配置

@@ -1,5 +1,6 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/services/logger/logger.dart';
+import 'package:pomelo/core/utils/url.dart';
 import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
@@ -8,9 +9,6 @@ import 'package:pomelo/modules/music_lx/providers/lx_providers.dart';
 
 import '../repository/lx_server_client.dart';
 import '../repository/lx_server_music_server.dart';
-
-/// 去除 serverUrl 末尾的多余斜杠
-String _cleanUrl(String url) => url.replaceAll(RegExp(r'/+$'), '');
 
 /// Lx Server 音乐服务实例
 ///
@@ -34,7 +32,7 @@ final lxServerMusicServerProvider = FutureProvider<LxServerMusicServer?>((
     userPreferenceProvider.select((p) => p.localAudioSourceEnabled),
   );
 
-  final cleanUrl = _cleanUrl(config.serverUrl);
+  final cleanUrl = cleanServerUrl(config.serverUrl);
   final client = LxServerClient(
     serverUrl: cleanUrl,
     username: config.username,
@@ -101,7 +99,7 @@ class LxServerConnectionNotifier extends Notifier<LxServerMusicServer?> {
   /// 先用临时 client 验证登录，成功后写入 LxServerConfig 到配置表，
   /// 由 [lxServerMusicServerProvider] 自动创建服务实例。
   Future<LxServerMusicServer> connect(LxServerConnectionConfig config) async {
-    final cleanUrl = _cleanUrl(config.serverUrl);
+    final cleanUrl = cleanServerUrl(config.serverUrl);
     final client = LxServerClient(
       serverUrl: cleanUrl,
       username: config.username,
