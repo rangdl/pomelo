@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
 import 'package:dio/dio.dart' as dio_lib;
 import 'package:dio/dio.dart' hide Response;
 import 'package:drift/drift.dart' show Value;
@@ -27,7 +26,24 @@ class ServerPlaybackRoutes {
   final Ref ref;
   final Dio dio;
 
-  ServerPlaybackRoutes(this.ref) : dio = Dio();
+  /// id -> Track 索引，避免每次 /stream 请求都线性遍历整个队列（O6）。
+  /// 随 [audioPlayerProvider.tracks] 变化而重建。
+  Map<String, Track> _trackMap = {};
+
+  /// 缓存上限清理节流计数：每完成 N 次缓存落盘才执行一次全目录扫描（O5）。
+  int _cacheEnforceCounter = 0;
+
+  ServerPlaybackRoutes(this.ref) : dio = Dio() {
+    _rebuildTrackMap(ref.read(audioPlayerProvider).tracks);
+    // 队列变化时增量更新索引（O6）
+    ref.listen(audioPlayerProvider.select((s) => s.tracks), (_, next) {
+      _rebuildTrackMap(next);
+    });
+  }
+
+  void _rebuildTrackMap(List<Track> tracks) {
+    _trackMap = {for (final t in tracks) t.id: t};
+  }
 
   /// Hop-by-hop 头部集合
   ///
@@ -67,9 +83,8 @@ class ServerPlaybackRoutes {
     Request request,
     String trackId,
   ) async {
-    // 从底层播放器获取当前曲目信息
-    final playlist = ref.read(audioPlayerProvider);
-    final track = playlist.tracks.firstWhereOrNull((v) => v.id == trackId);
+    // 从底层播放器获取当前曲目信息（O6: O(1) 查找，不线性遍历队列）
+    final track = _trackMap[trackId];
     if (track == null) {
       return null;
     }
@@ -210,18 +225,21 @@ class ServerPlaybackRoutes {
         if (fileLength != contentRange.total) return;
         String filePath = trackCacheFile.path;
         await trackPartialCacheFile.rename(filePath);
-        // 根据 Track 信息写入音乐标签（重点：歌词、封面）
-        await _writeTagsToCacheFile(track.query, filePath);
-        // 持久化缓存文件路径（需有音质信息）
-        // final notifier = ref.read(sourcedTrackProvider(track.query).notifier);
-        // await notifier.saveCachePathToPersistence(track.quality, filePath);
+        // O5：同一文件只读一次元数据，供标签写入与本地库入库共享，
+        // 避免 _writeTagsToCacheFile 与 _saveToLocalLibrary 各解析一次。
+        Metadata? fileMeta;
+        try {
+          fileMeta = await MetadataGod.readMetadata(file: filePath);
+        } catch (_) {
+          fileMeta = null;
+        }
+        await _writeTagsToCacheFile(track.query, filePath, existingMeta: fileMeta);
+        await _saveToLocalLibrary(track.query, filePath, existingMeta: fileMeta);
 
-        // 把曲目信息存入本地音乐库 LocalTrackTable（供离线查询）
-        // 优先读取缓存文件的标签信息，弥补在线元数据缺失
-        await _saveToLocalLibrary(track.query, filePath);
-
-        // 写入完成后按缓存上限清理旧文件
-        await MusicCacheDir.enforceLimit();
+        // 缓存上限清理较重（全目录扫描），节流：每 5 次完成才执行一次（O5）
+        if (++_cacheEnforceCounter % 5 == 0) {
+          await MusicCacheDir.enforceLimit();
+        }
       },
       cancelOnError: true,
     );
@@ -299,14 +317,20 @@ class ServerPlaybackRoutes {
   /// 存入 [Track.lyrics] 字段并持久化到 trackJson。
   ///
   /// 写入失败仅记录日志，不影响播放和缓存。
-  Future<void> _writeTagsToCacheFile(Track track, String filePath) async {
+  Future<void> _writeTagsToCacheFile(
+    Track track,
+    String filePath, {
+    Metadata? existingMeta,
+  }) async {
     try {
-      // 读取文件已有标签
-      Metadata? existing;
-      try {
-        existing = await MetadataGod.readMetadata(file: filePath);
-      } catch (_) {
-        existing = null;
+      // 读取文件已有标签（优先使用调用方已读取的元数据，避免重复解析）
+      Metadata? existing = existingMeta;
+      if (existing == null) {
+        try {
+          existing = await MetadataGod.readMetadata(file: filePath);
+        } catch (_) {
+          existing = null;
+        }
       }
 
       final hasCover =
@@ -420,7 +444,11 @@ class ServerPlaybackRoutes {
   /// 优先从缓存文件读取标签信息（title/artist/album/封面等），
   /// 弥补在线 API 返回的元数据缺失；读取失败则回退到原始 Track 信息。
   /// 同步获取歌词并写入 Track.lyrics，持久化到 trackJson。
-  Future<void> _saveToLocalLibrary(Track track, String cachePath) async {
+  Future<void> _saveToLocalLibrary(
+    Track track,
+    String cachePath, {
+    Metadata? existingMeta,
+  }) async {
     try {
       final database = ref.read(databaseProvider);
       final sourceId = track.source.id;
@@ -428,49 +456,77 @@ class ServerPlaybackRoutes {
       // 尝试从缓存文件读取标签信息
       Track enriched = track.copyWith(path: cachePath);
       try {
-        final meta = await MetadataGod.readMetadata(file: cachePath);
-        String? coverArt = track.coverArt;
-        // 提取封面到本地 covers 目录
-        final picture = meta.picture;
-        if (picture != null && picture.data.isNotEmpty) {
-          final savedCover = await _saveCoverToCache(track.id, picture.data);
-          if (savedCover != null) coverArt = savedCover;
+        final meta = existingMeta ??
+            (await MetadataGod.readMetadata(file: cachePath).then(
+              (m) => m,
+              onError: (_, __) => null,
+            ));
+        if (meta != null) {
+          String? coverArt = track.coverArt;
+          // 提取封面到本地 covers 目录
+          final picture = meta.picture;
+          if (picture != null && picture.data.isNotEmpty) {
+            final savedCover = await _saveCoverToCache(track.id, picture.data);
+            if (savedCover != null) coverArt = savedCover;
+          }
+          enriched = enriched.copyWith(
+            title: (meta.title != null && meta.title!.isNotEmpty)
+                ? meta.title!
+                : enriched.title,
+            artist: (meta.artist != null && meta.artist!.isNotEmpty)
+                ? meta.artist
+                : enriched.artist,
+            album: (meta.album != null && meta.album!.isNotEmpty)
+                ? meta.album
+                : enriched.album,
+            coverArt: coverArt,
+            duration: (meta.durationMs != null && meta.durationMs! > 0)
+                ? meta.durationMs!.toInt()
+                : enriched.duration,
+            year: meta.year ?? enriched.year,
+            genre: meta.genre ?? enriched.genre,
+            track: meta.trackNumber ?? enriched.track,
+            discNumber: meta.discNumber ?? enriched.discNumber,
+          );
         }
-        enriched = enriched.copyWith(
-          title: (meta.title != null && meta.title!.isNotEmpty)
-              ? meta.title!
-              : enriched.title,
-          artist: (meta.artist != null && meta.artist!.isNotEmpty)
-              ? meta.artist
-              : enriched.artist,
-          album: (meta.album != null && meta.album!.isNotEmpty)
-              ? meta.album
-              : enriched.album,
-          coverArt: coverArt,
-          duration: (meta.durationMs != null && meta.durationMs! > 0)
-              ? meta.durationMs!.toInt()
-              : enriched.duration,
-          year: meta.year ?? enriched.year,
-          genre: meta.genre ?? enriched.genre,
-          track: meta.trackNumber ?? enriched.track,
-          discNumber: meta.discNumber ?? enriched.discNumber,
-        );
       } catch (e) {
         AppLogger.log.w('[Playback] 读取缓存文件标签失败: $e');
       }
 
       // 获取歌词（若 Track 尚未携带），持久化到 trackJson
       if (enriched.lyrics == null || enriched.lyrics!.isEmpty) {
+        // O5：先查本地库已存的歌词（trackJson 内），已有时不再拉网络
+        String? dbLyrics;
         try {
-          final server = await ref.read(musicServerProvider(sourceId).future);
-          if (server != null) {
-            final lyric = await server.getLyric(enriched);
-            if (lyric != null && lyric.isNotEmpty) {
-              enriched = enriched.copyWith(lyrics: lyric);
+          final existing = await database.getLocalTrack(enriched.id);
+          if (existing != null) {
+            final existingTrack = Track.fromJson(
+              jsonDecode(existing.trackJson) as Map<String, dynamic>,
+            );
+            if (existingTrack.lyrics != null &&
+                existingTrack.lyrics!.isNotEmpty) {
+              dbLyrics = existingTrack.lyrics;
             }
           }
-        } catch (e) {
-          AppLogger.log.w('[Playback] 获取歌词失败: $e');
+        } catch (_) {
+          dbLyrics = null;
+        }
+        if (dbLyrics != null) {
+          enriched = enriched.copyWith(lyrics: dbLyrics);
+        } else {
+          try {
+            final server = await ref.read(
+              musicServerProvider(sourceId).future,
+            );
+            if (server != null) {
+              final lyric = await server.getLyric(enriched);
+              if (lyric != null && lyric.isNotEmpty) {
+                enriched = enriched.copyWith(lyrics: lyric);
+              }
+            }
+          } catch (e) {
+            AppLogger.log.w('[Playback] 获取歌词失败: $e');
+          }
         }
       }
 

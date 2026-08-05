@@ -131,9 +131,9 @@ class PomeloAudioPlayer extends AudioPlayerInterface
 
   /// 批量追加多个曲目到队列末尾。
   ///
-  /// 通过重建完整播放列表并一次性 [open] 实现，
-  /// 避免逐条 [addTrack] 造成的多次播放列表变更事件。
-  /// 保留当前播放位置与播放状态。
+  /// 纯追加场景逐条 [_mkPlayer.add]，不重建整个播放列表、也不 seek 回原位，
+  /// 避免「播放全部」等大队列加歌时打断当前曲缓冲/进度（O4）。
+  /// 插入到中间位置的场景请使用 [addTracksAt]（需重建播放列表）。
   Future<void> addTracks(List<mk.Media> medias) async {
     if (medias.isEmpty) return;
     final playlist = _mkPlayer.state.playlist;
@@ -141,15 +141,9 @@ class PomeloAudioPlayer extends AudioPlayerInterface
       await _mkPlayer.open(mk.Playlist(medias), play: true);
       return;
     }
-    final allMedias = [...playlist.medias, ...medias];
-    final position = _mkPlayer.state.position;
-    final wasPlaying = _mkPlayer.state.playing;
-    await _mkPlayer.open(
-      mk.Playlist(allMedias, index: playlist.index),
-      play: wasPlaying,
-    );
-    if (position > Duration.zero) {
-      await _mkPlayer.seek(position);
+    // 纯追加：逐条 add，追加过程不打断当前曲播放与进度
+    for (final media in medias) {
+      await _mkPlayer.add(media);
     }
   }
 

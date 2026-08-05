@@ -465,33 +465,23 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
       return;
     }
 
-    final oldState = state;
-    await audioPlayer.stop();
-
-    await load(
-      oldState.tracks,
-      initialIndex: oldState.currentIndex,
-      // 投屏中本地保持暂停，避免与设备双重音频
-      autoPlay: !_isCasting,
-    );
-    state = state.copyWith(
-      collections: oldState.collections,
-      loopMode: oldState.loopMode,
-      playing: oldState.playing,
-      shuffled: false,
-    );
-    await audioPlayer.setLoopMode(oldState.loopMode);
-    await _updatePlayerState(
-      state,
-      // AudioPlayerStateTableCompanion(
-      //   tracks: Value(state.tracks),
-      //   currentIndex: Value(state.currentIndex),
-      //   collections: Value(state.collections),
-      //   loopMode: Value(state.loopMode),
-      //   playing: Value(state.playing),
-      //   shuffled: Value(state.shuffled),
-      // ),
-    );
+    final idx = state.currentIndex;
+    final track = state.tracks[idx];
+    // 仅重载当前曲：移除旧 Media 并在同位置插入新 Media（URL 按当前
+    // track.src 重算），再跳回当前曲，避免 stop + 整列表重建（O9）。
+    // 同时让服务端重新解析该曲的真实播放链接（src 可能已切换）。
+    ref.invalidate(sourcedTrackProvider(track));
+    _batchDepth++;
+    try {
+      await audioPlayer.removeTrack(idx);
+      await audioPlayer.addTrackAt(PomeloMedia(track), idx);
+    } finally {
+      _batchDepth--;
+    }
+    await audioPlayer.jumpTo(idx);
+    // 投屏中本地保持暂停，避免与设备双重音频
+    if (!_isCasting && !audioPlayer.isPlaying) await audioPlayer.resume();
+    await _updatePlayerState(state);
   }
 
   Future<void> jumpToTrack(Track track) async {
