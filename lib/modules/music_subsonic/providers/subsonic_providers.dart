@@ -47,6 +47,14 @@ extension on SubsonicAccountRecord {
   );
 }
 
+/// 生成 Subsonic 配置 id —— 全局唯一的生成点
+///
+/// 该 id 会作为 [SubsonicMusicServer.sourceId] 写入曲目的 `source.id`，
+/// 同时是 `musicServerProvider` 的索引键。更改此处拼法会使已入库的
+/// 曲目反查不到对应服务（表现为无法播放 / 取不到歌词），需谨慎并做数据迁移。
+String _buildConfigId(String cleanUrl, String username) =>
+    'subsonic-${cleanUrl.hashCode.abs()}-$username';
+
 extension on SubsonicConfig {
   /// 已持久化的配置转回 record，以复用统一的客户端构造
   SubsonicAccountRecord get asRecord => (
@@ -92,6 +100,7 @@ final subsonicServerProvider =
 
       final server = SubsonicMusicServer(
         client: client,
+        sourceId: config.id,
         serverUrl: cleanUrl,
         username: config.username,
         displayName: config.name,
@@ -151,7 +160,7 @@ class SubsonicAccountsNotifier extends Notifier<List<SubsonicMusicServer>> {
     final cleanUrl = cleanServerUrl(config.serverUrl);
     await _verifyConnection(config, cleanUrl);
 
-    final configId = 'subsonic-${cleanUrl.hashCode.abs()}-${config.username}';
+    final configId = _buildConfigId(cleanUrl, config.username);
     await ref
         .read(musicServerConfigsNotifierProvider.notifier)
         .upsert(config.toConfig(configId, cleanUrl));

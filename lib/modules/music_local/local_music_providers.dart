@@ -7,8 +7,8 @@ import 'package:pomelo/core/storage/music_cache_dir.dart';
 
 import 'service/local_music_server.dart';
 
-/// 本地音乐配置 ID（固定）
-const _localConfigId = 'local';
+/// 本地音乐配置 ID（固定），与 [LocalMusicServer.sourceId] 同源
+const _localConfigId = LocalMusicConfig.configId;
 
 /// 本地音乐服务实例
 ///

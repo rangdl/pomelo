@@ -11,17 +11,23 @@ import 'subsonic_models.dart';
 class SubsonicMusicServer extends MusicServer {
   final SubsonicClient client;
   final String _serverUrl;
-  final String _username;
+  final String _sourceId;
   final String _displayName;
 
+  /// [sourceId] 必须传入对应 SubsonicConfig 的 id
+  ///
+  /// 曲目的 `source.id` 取自此处，播放与取歌词时会用它反查
+  /// `musicServerProvider(configId)`；该 provider 按 config.id 索引，
+  /// 因此二者必须同源，不能各自拼串。
   SubsonicMusicServer({
     required this.client,
+    required String sourceId,
     required String serverUrl,
     required String username,
     String? displayName,
-  })  : _serverUrl = serverUrl,
-        _username = username,
-        _displayName = displayName ?? username;
+  }) : _sourceId = sourceId,
+       _serverUrl = serverUrl,
+       _displayName = displayName ?? username;
 
   @override
   MusicSourceType get sourceType => MusicSourceType.subsonic;
@@ -30,7 +36,7 @@ class SubsonicMusicServer extends MusicServer {
   int get maxServiceCount => 10;
 
   @override
-  String get sourceId => 'subsonic-${_serverUrl.hashCode.abs()}-$_username';
+  String get sourceId => _sourceId;
 
   @override
   String get sourceName => _displayName;

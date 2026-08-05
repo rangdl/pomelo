@@ -62,6 +62,12 @@ sealed class MusicServerConfig {
 /// 本地音乐配置
 @immutable
 class LocalMusicConfig extends MusicServerConfig {
+  /// 本地音乐库的固定配置 id
+  ///
+  /// 本地库全局唯一，故 id 为常量。它同时是 [LocalMusicServer.sourceId]
+  /// 与 `musicServerProvider` 的索引键，两侧必须引用此常量而非各写字面量。
+  static const configId = 'local';
+
   /// 扫描目录列表
   final List<String> directories;
 

@@ -10,6 +10,7 @@ import 'package:pomelo/core/core.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
 import 'package:pomelo/core/models/database/local_library_table.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
+import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/services/logger/logger.dart';
 
 /// 支持的音频文件扩展名
@@ -48,7 +49,7 @@ class LocalMusicServer extends MusicServer {
   bool _loadedFromDb = false;
 
   @override
-  String get sourceId => 'local';
+  String get sourceId => LocalMusicConfig.configId;
 
   @override
   String get sourceName => _name;
@@ -56,9 +57,9 @@ class LocalMusicServer extends MusicServer {
   @override
   MusicSourceType get sourceType => MusicSourceType.local;
 
-  ({String id, String name, String? libraryId, String? libraryName})
-      get _source =>
-          (id: 'local', name: _name, libraryId: null, libraryName: null);
+  /// 本地库无「库」概念，故 libraryId / libraryName 恒为 null
+  MusicSourceRef get _source =>
+      (id: sourceId, name: _name, libraryId: null, libraryName: null);
 
   /// 内存中的曲目列表
   final List<Track> _tracks = [];
@@ -353,7 +354,7 @@ class LocalMusicServer extends MusicServer {
           duration: Value(track.duration),
           path: Value(track.path),
           src: Value(track.src),
-          sourceId: 'local',
+          sourceId: sourceId,
           isLocal: const Value(true),
           trackJson: jsonEncode(track.toJson()),
         );
