@@ -5,6 +5,7 @@ import 'package:smtc_windows/smtc_windows.dart';
 
 import 'package:pomelo/services/audio_player/playback_state.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
+import 'package:pomelo/provider/cast/cast_provider.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/core/models/metadata/track.dart' show Track;
 
@@ -23,22 +24,41 @@ class WindowsAudioService {
     : smtc = SMTCWindows(enabled: false) {
     smtc.setPlaybackStatus(PlaybackStatus.stopped);
     final buttonStream = smtc.buttonPressStream.listen((event) {
+      final casting = ref.read(castProvider).isCasting;
       switch (event) {
         case PressedButton.play:
-          audioPlayer.resume();
-          break;
+          if (casting) {
+            ref.read(castProvider.notifier).resume();
+          } else {
+            audioPlayer.resume();
+          }
         case PressedButton.pause:
-          audioPlayer.pause();
-          break;
+          if (casting) {
+            ref.read(castProvider.notifier).pause();
+          } else {
+            audioPlayer.pause();
+          }
         case PressedButton.next:
-          audioPlayer.skipToNext();
-          break;
+          if (casting) {
+            // 切本地队列索引触发 cast 自动重投，并保持本地暂停避免双重音频
+            audioPlayer.skipToNext();
+            if (ref.read(castProvider).isCasting) audioPlayer.pause();
+          } else {
+            audioPlayer.skipToNext();
+          }
         case PressedButton.previous:
-          audioPlayer.skipToPrevious();
-          break;
+          if (casting) {
+            audioPlayer.skipToPrevious();
+            if (ref.read(castProvider).isCasting) audioPlayer.pause();
+          } else {
+            audioPlayer.skipToPrevious();
+          }
         case PressedButton.stop:
-          audioPlayerNotifier.stop();
-          break;
+          if (casting) {
+            ref.read(castProvider.notifier).stop();
+          } else {
+            audioPlayerNotifier.stop();
+          }
         default:
           break;
       }
@@ -47,6 +67,8 @@ class WindowsAudioService {
     final playerStateStream = audioPlayer.playerStateStream.listen((
       state,
     ) async {
+      // 投屏中 SMTC 状态由 cast 监听驱动，避免覆盖设备状态
+      if (ref.read(castProvider).isCasting) return;
       switch (state) {
         case AudioPlaybackState.playing:
           await smtc.setPlaybackStatus(PlaybackStatus.playing);
@@ -66,6 +88,7 @@ class WindowsAudioService {
     });
 
     final positionStream = audioPlayer.positionStream.listen((pos) async {
+      if (ref.read(castProvider).isCasting) return;
       await smtc.setPosition(pos);
     });
 
@@ -79,6 +102,25 @@ class WindowsAudioService {
       positionStream,
       durationStream,
     ]);
+
+    // 投屏中：SMTC 的播放状态与进度随 DLNA 设备刷新
+    ref.listen<CastState>(castProvider, (_, next) {
+      _updateSmtcFromCast(next);
+    });
+  }
+
+  /// 把投屏设备状态同步到 Windows SMTC
+  void _updateSmtcFromCast(CastState cast) {
+    if (_disposed) return;
+    try {
+      smtc.setPlaybackStatus(
+        cast.isPlaying ? PlaybackStatus.playing : PlaybackStatus.paused,
+      );
+      smtc.setPosition(cast.position);
+      smtc.setEndTime(cast.duration);
+    } catch (_) {
+      // smtc 可能已释放或未初始化，忽略
+    }
   }
 
   Future<void> addTrack(Track track) async {

@@ -34,7 +34,7 @@ class AudioServices with WidgetsBindingObserver {
 
     final mobile = isMobile || isMacOS || isLinux
         ? await AudioService.init(
-            builder: () => MobileAudioService(playback),
+            builder: () => MobileAudioService(ref, playback),
             config: AudioServiceConfig(
               androidNotificationChannelId: switch (isLinux) {
                 (true) => "pomelo",
