@@ -168,11 +168,26 @@ class CastNotifier extends Notifier<CastState> {
     return const CastState();
   }
 
+  /// 将设备按 id 去重并入已发现列表（保留最新描述版本）
+  void _upsertDevice(DlnaDevice device) {
+    if (!ref.mounted) return;
+    final devices = List<DlnaDevice>.from(state.discoveredDevices);
+    final idx = devices.indexWhere((d) => d.id == device.id);
+    if (idx == -1) {
+      devices.add(device);
+    } else {
+      devices[idx] = device;
+    }
+    state = state.copyWith(discoveredDevices: devices, clearError: true);
+  }
+
   /// 发现设备
   ///
-  /// 重置已发现设备列表，开始一次新的搜索。
-  /// 在 [timeout] 后停止搜索，最终结果通过 state.discoveredDevices 暴露。
-  Future<void> discover({Duration timeout = const Duration(seconds: 5)}) async {
+  /// 开始持续监听（投屏页打开期间设备列表实时刷新）。
+  /// 底层 SSDP 监听持续运行，不再 5s 后自动停止；用户选定设备 [connect]
+  /// 或关闭投屏页（[disconnect] / [build] 的 onDispose）时释放监听。
+  /// 监听启动失败时回退到一次性发现。
+  Future<void> discover() async {
     if (!ref.mounted) return;
     state = const CastState(
       connectionState: CastConnectionState.discovering,
@@ -180,37 +195,27 @@ class CastNotifier extends Notifier<CastState> {
     );
 
     try {
-      final devices = <DlnaDevice>[];
-      final result = await _service.discover(
-        timeout: timeout,
-        onDeviceFound: (device) {
-          // 实时更新设备列表（按 id 去重，保留最新描述版本）
-          final idx = devices.indexWhere((d) => d.id == device.id);
-          if (idx == -1) {
-            devices.add(device);
-          } else {
-            devices[idx] = device;
-          }
-          if (ref.mounted) {
-            state = state.copyWith(discoveredDevices: List.of(devices));
-          }
-        },
-      );
-
-      if (!ref.mounted) return;
-      // 用最终结果替换（包含所有发现的设备）
-      state = state.copyWith(
-        connectionState: CastConnectionState.disconnected,
-        discoveredDevices: result,
-        clearError: true,
-      );
+      await _service.startDiscovery(onDeviceFound: _upsertDevice);
+      // 持续监听：保持在 discovering 状态，不自动停止。
     } catch (e, stack) {
-      AppLogger.reportError(e, stack, '[Cast] 发现设备失败');
+      AppLogger.reportError(e, stack, '[Cast] 持续发现启动失败，回退一次性发现');
       if (!ref.mounted) return;
-      state = state.copyWith(
-        connectionState: CastConnectionState.disconnected,
-        errorMessage: '搜索设备失败: $e',
-      );
+      try {
+        final result = await _service.discover(onDeviceFound: _upsertDevice);
+        if (!ref.mounted) return;
+        state = state.copyWith(
+          connectionState: CastConnectionState.disconnected,
+          discoveredDevices: result,
+          clearError: true,
+        );
+      } catch (e2, stack2) {
+        AppLogger.reportError(e2, stack2, '[Cast] 发现设备失败');
+        if (!ref.mounted) return;
+        state = state.copyWith(
+          connectionState: CastConnectionState.disconnected,
+          errorMessage: '搜索设备失败: $e2',
+        );
+      }
     }
   }
 
@@ -245,6 +250,9 @@ class CastNotifier extends Notifier<CastState> {
         connectionState: CastConnectionState.connected,
         currentDevice: device,
       );
+      // 已连接设备，停止持续监听以释放 UDP 端口
+      // （deviceManager 仍保留，供后续自动重连取底层设备）
+      unawaited(_service.stopDiscovery());
       _startPositionPolling();
     } catch (e, stack) {
       AppLogger.reportError(e, stack, '[Cast] 连接设备失败');
@@ -310,24 +318,45 @@ class CastNotifier extends Notifier<CastState> {
 
   /// 获取本机局域网 IPv4 地址
   ///
-  /// 优先返回第一个非 loopback 的 IPv4 地址。多网卡时取第一个。
-  /// 获取失败时返回 null。
+  /// 优先返回处于私有网段（192.168.* / 172.16-31.* / 10.*）且非链路本地
+  /// （169.254.*）、非 CGNAT（100.*）的地址，多网卡 / 连 VPN 时更可能命中
+  /// 真正的局域网网卡；无匹配时兜底取第一个非回环地址。获取失败返回 null。
   Future<String?> _getLanIp() async {
     try {
       final interfaces = await NetworkInterface.list(
         type: InternetAddressType.IPv4,
       );
+      String? fallback;
+      String? preferred;
       for (final iface in interfaces) {
         for (final addr in iface.addresses) {
-          if (!addr.isLoopback) {
-            return addr.address;
+          if (addr.isLoopback) continue;
+          final ip = addr.address;
+          fallback ??= ip;
+          if (preferred == null && _isPreferredLanIp(ip)) {
+            preferred = ip;
           }
         }
       }
+      return preferred ?? fallback;
     } catch (e, stack) {
       AppLogger.reportError(e, stack, '[Cast] 获取 LAN IP 失败');
     }
     return null;
+  }
+
+  /// 是否优先选用的局域网地址：私有网段且非链路本地 / CGNAT
+  static bool _isPreferredLanIp(String ip) {
+    if (ip.startsWith('169.254.')) return false; // 链路本地 APIPA，多为无 DHCP / VPN 占位
+    if (ip.startsWith('100.')) return false; // CGNAT（运营商大内网 / 部分 VPN）
+    if (ip.startsWith('192.168.')) return true;
+    if (ip.startsWith('10.')) return true;
+    if (ip.startsWith('172.')) {
+      final parts = ip.split('.');
+      final seg = parts.length > 1 ? int.tryParse(parts[1]) : null;
+      if (seg != null && seg >= 16 && seg <= 31) return true;
+    }
+    return false;
   }
 
   /// 启动进度轮询
@@ -515,6 +544,7 @@ class CastNotifier extends Notifier<CastState> {
     _reconnectAttempts = 0;
     _reconnecting = false;
     await _service.disconnect();
+    await _service.stopDiscovery();
     if (ref.mounted) {
       state = CastState(discoveredDevices: state.discoveredDevices);
     }

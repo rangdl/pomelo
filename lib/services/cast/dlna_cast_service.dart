@@ -34,6 +34,14 @@ abstract class DlnaCastServiceInterface {
     void Function(DlnaDevice device)? onDeviceFound,
   });
 
+  /// 开始持续监听设备（投屏页打开期间，设备列表实时刷新）
+  Future<void> startDiscovery({
+    void Function(DlnaDevice device)? onDeviceFound,
+  });
+
+  /// 停止监听并释放 UDP 资源（连接设备成功或断开投屏时调用）
+  Future<void> stopDiscovery();
+
   void connect(DlnaDevice device);
   Future<void> castTrack(String url, {String title = ''});
   Future<void> play();
@@ -70,6 +78,18 @@ class DlnaCastService implements DlnaCastServiceInterface {
     void Function(DlnaDevice device)? onDeviceFound,
   }) {
     return _discovery.discover(timeout: timeout, onDeviceFound: onDeviceFound);
+  }
+
+  @override
+  Future<void> startDiscovery({
+    void Function(DlnaDevice device)? onDeviceFound,
+  }) {
+    return _discovery.start(onDeviceFound: onDeviceFound);
+  }
+
+  @override
+  Future<void> stopDiscovery() {
+    return _discovery.stop();
   }
 
   /// 连接到目标设备

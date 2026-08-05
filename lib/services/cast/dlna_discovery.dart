@@ -25,55 +25,50 @@ class DlnaDiscovery {
   DLNAManager? _manager;
   DeviceManager? _deviceManager;
   StreamSubscription<Map<String, DLNADevice>>? _subscription;
-  bool _stopped = false;
+  bool _listening = false;
 
   /// 当前 DeviceManager（供 DlnaCastService 取底层 DLNADevice）
   DeviceManager? get deviceManager => _deviceManager;
 
-  /// 发现设备
+  /// 是否正在监听
+  bool get isListening => _listening;
+
+  /// 开始持续监听设备（投屏页打开期间调用）
   ///
-  /// 启动 SSDP 搜索，在 [timeout] 后停止并返回最终设备列表。
-  /// 每次设备列表变化时回调 [onDeviceFound]（按 id 去重由调用方处理）。
-  Future<List<DlnaDevice>> discover({
-    Duration timeout = const Duration(seconds: 5),
+  /// 启动 SSDP 多播监听，[DLNAManager] 内部每 2s 自动重发 M-SEARCH，
+  /// 设备列表会持续刷新（在线设备保持、新设备自动加入、离线设备按
+  /// 120s 不活跃被清理）。重复调用安全：已在监听则直接返回。
+  /// 调用 [stop] 释放 UDP 资源。
+  Future<void> start({
     void Function(DlnaDevice device)? onDeviceFound,
   }) async {
-    _stopped = false;
-    final found = <String, DlnaDevice>{};
-
+    if (_listening) return;
+    _listening = true;
     try {
       _manager = DLNAManager();
       _deviceManager = await _manager!.start();
-
       _subscription = _deviceManager!.devices.stream.listen((deviceList) {
-        if (_stopped) return;
+        if (!_listening) return;
         for (final entry in deviceList.entries) {
-          final dlnaDevice = _mapToDevice(entry.key, entry.value);
-          // 仅对新设备回调，已存在的不重复回调
-          if (!found.containsKey(dlnaDevice.id)) {
-            found[dlnaDevice.id] = dlnaDevice;
-            onDeviceFound?.call(dlnaDevice);
-          } else {
-            // 已存在设备，更新为最新描述（friendlyName 等可能变化）
-            found[dlnaDevice.id] = dlnaDevice;
-          }
+          // 调用方（discover / cast_provider）按 id 去重
+          onDeviceFound?.call(_mapToDevice(entry.key, entry.value));
         }
       });
-
-      await Future.delayed(timeout);
-      await _stop();
     } catch (e, stack) {
-      AppLogger.reportError(e, stack, '[DlnaDiscovery] discover');
-      await _stop();
+      AppLogger.reportError(e, stack, '[DlnaDiscovery] start');
+      _listening = false;
+      await stop();
     }
-
-    AppLogger.log.i('[DlnaDiscovery] 发现 ${found.length} 个设备');
-    return found.values.toList();
   }
 
-  /// 停止搜索并释放资源
-  Future<void> _stop() async {
-    _stopped = true;
+  /// 停止监听并释放 UDP 端口
+  ///
+  /// 注意：保留 [_deviceManager] 引用。因为 [DeviceManager.dispose] 仅关闭
+  /// 流控制器、不清空 [DeviceManager.deviceList]，后续 [DlnaCastService.connect]
+  /// 仍可取回底层 `DLNADevice` 用于 SOAP 控制（含自动重连场景）。
+  Future<void> stop() async {
+    if (!_listening && _manager == null) return;
+    _listening = false;
     try {
       await _subscription?.cancel();
     } catch (_) {}
@@ -84,8 +79,30 @@ class DlnaDiscovery {
       AppLogger.log.w('[DlnaDiscovery] stop 失败: $e');
     }
     _manager = null;
-    // 注意：deviceManager 保留引用，供 DlnaCastService.connect 查找底层设备
-    // 但下次 discover 会覆盖；调用方应在 connect 完成前不要再次 discover
+    // _deviceManager 保留引用，供 connect / 重连取底层设备
+  }
+
+  /// 一次性发现（向后兼容）：监听 [timeout] 后自动停止并返回最终列表
+  Future<List<DlnaDevice>> discover({
+    Duration timeout = const Duration(seconds: 5),
+    void Function(DlnaDevice device)? onDeviceFound,
+  }) async {
+    final found = <String, DlnaDevice>{};
+    await start(
+      onDeviceFound: (device) {
+        if (!found.containsKey(device.id)) {
+          found[device.id] = device;
+          onDeviceFound?.call(device);
+        } else {
+          // 已存在设备，更新为最新描述（friendlyName 等可能变化）
+          found[device.id] = device;
+        }
+      },
+    );
+    await Future.delayed(timeout);
+    await stop();
+    AppLogger.log.i('[DlnaDiscovery] 发现 ${found.length} 个设备');
+    return found.values.toList();
   }
 
   /// 将 dlna_dart 的 DLNADevice 映射为项目内部 DlnaDevice
@@ -116,7 +133,7 @@ class DlnaDiscovery {
 
   /// 关闭并释放所有资源
   void dispose() {
-    _stopped = true;
+    _listening = false;
     _subscription?.cancel();
     _subscription = null;
     _manager?.stop();
