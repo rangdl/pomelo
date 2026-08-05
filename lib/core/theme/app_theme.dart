@@ -51,6 +51,32 @@ abstract final class AppStatusColors {
   static const info = Color(0xFF3B82F6);
 }
 
+/// 布局尺寸常量 — 集中管理 shell 级魔法数字（侧边栏、标题栏）
+///
+/// 把宽度写死在多个布局 widget 里难以统一调整，故收拢到此处。
+abstract final class AppLayout {
+  /// 展开态侧边栏宽度（desktop / TV）
+  static const double sidebarExpandedWidth = 180;
+
+  /// 收起态侧边栏宽度（tablet）
+  static const double sidebarCollapsedWidth = 80;
+
+  /// 顶部标题栏高度
+  static const double topBarHeight = 48;
+}
+
+/// 侧边栏字号 — 收起态在图标下方显示小标签，展开态显示标签文本
+abstract final class AppSidebarText {
+  /// 应用名
+  static const double appTitle = 16;
+
+  /// 展开态导航 / 条目标签
+  static const double label = 13;
+
+  /// 收起态图标下方小标签
+  static const double collapsedLabel = 11;
+}
+
 /// 跨平台系统字体
 String get _fontFamilyPlatform {
   if (Platform.isIOS || Platform.isMacOS) {

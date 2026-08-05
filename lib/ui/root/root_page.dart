@@ -5,6 +5,7 @@ import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/framework/pomelo_icons.dart';
 import 'package:pomelo/core/helper.dart';
+import 'package:pomelo/core/theme/app_theme.dart';
 import 'package:pomelo/core/routers/app_router.gr.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/ui/home/home_providers.dart';
@@ -250,9 +251,11 @@ class _Sidebar extends HookConsumerWidget {
     final libraryViewActive =
         tabsRouter.activeIndex == 0 && homeNav is! HomeNavNormal;
 
-    // 固定侧边栏宽度：desktop 180 / tablet 80
+    // 固定侧边栏宽度
     return SizedBox(
-      width: extended ? 180 : 80,
+      width: extended
+          ? AppLayout.sidebarExpandedWidth
+          : AppLayout.sidebarCollapsedWidth,
       child: Column(
         children: [
           // 应用图标和名称
@@ -314,7 +317,7 @@ class _AppHeader extends StatelessWidget {
                 Text(
                   appNameDisplay,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: AppSidebarText.appTitle,
                     fontWeight: FontWeight.bold,
                     color: colorScheme.foreground,
                   ),
@@ -380,7 +383,10 @@ class _NavButton extends StatelessWidget {
                   Expanded(
                     child: Text(
                       label,
-                      style: TextStyle(fontSize: 13, color: color),
+                      style: TextStyle(
+                        fontSize: AppSidebarText.label,
+                        color: color,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -394,7 +400,10 @@ class _NavButton extends StatelessWidget {
                   const Gap(4),
                   Text(
                     label,
-                    style: TextStyle(fontSize: 11, color: color),
+                    style: TextStyle(
+                      fontSize: AppSidebarText.collapsedLabel,
+                      color: color,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -560,7 +569,10 @@ class _SidebarEntry extends StatelessWidget {
                   Expanded(
                     child: Text(
                       label,
-                      style: TextStyle(fontSize: 13, color: color),
+                      style: TextStyle(
+                        fontSize: AppSidebarText.label,
+                        color: color,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -575,7 +587,10 @@ class _SidebarEntry extends StatelessWidget {
                   const Gap(4),
                   Text(
                     label,
-                    style: TextStyle(fontSize: 11, color: color),
+                    style: TextStyle(
+                      fontSize: AppSidebarText.collapsedLabel,
+                      color: color,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -761,7 +776,7 @@ class _TopTitleBar extends HookConsumerWidget {
     final popCallback = ref.watch(rootPopCallbackProvider);
 
     return Container(
-      height: 48,
+      height: AppLayout.topBarHeight,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(color: colorScheme.card),
       child: Row(
