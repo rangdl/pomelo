@@ -1,4 +1,5 @@
 import 'package:pomelo/core/core.dart';
+import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
 import 'package:pomelo/modules/music_lx/model/lx_source_engine.dart';
 import 'package:pomelo/services/logger/logger.dart';
@@ -780,21 +781,20 @@ class LxServerMusicServer extends MusicServer {
     Map<String, dynamic> typesMap, {
     String? preferredQuality,
   }) {
-    const priority = ['flac24bit', 'flac', '320k', '128k'];
     final startIndex = preferredQuality == null
         ? 0
-        : priority.indexOf(preferredQuality);
+        : kQualityLadder.indexOf(preferredQuality);
     // 偏好不在已知列表中，从最高优先级开始
     final effectiveStart = startIndex < 0 ? 0 : startIndex;
 
-    for (int i = effectiveStart; i < priority.length; i++) {
-      if (typesMap.containsKey(priority[i])) return priority[i];
+    // 仅向下降级：从偏好音质开始向后找第一个可用音质，绝不向上升级
+    for (int i = effectiveStart; i < kQualityLadder.length; i++) {
+      if (typesMap.containsKey(kQualityLadder[i])) return kQualityLadder[i];
     }
-    // 用户偏好过高且全部不可用，向前回退（理论上不会走到，因为 128k 通常在列表末尾）
-    for (int i = effectiveStart - 1; i >= 0; i--) {
-      if (typesMap.containsKey(priority[i])) return priority[i];
+    // 偏好音质及其以下均不可用：兜底返回阶梯中最高可用音质，确保仍能播放
+    for (final quality in kQualityLadder) {
+      if (typesMap.containsKey(quality)) return quality;
     }
-    if (typesMap.isNotEmpty) return typesMap.keys.first;
     return '128k';
   }
 

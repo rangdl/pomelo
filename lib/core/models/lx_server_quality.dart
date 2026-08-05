@@ -6,6 +6,12 @@
 /// 应用到各 MusicServer.getMusicUrl 时若不可用则按 [priority] 降级。
 library;
 
+/// 音质降级阶梯（高 → 低），全局唯一来源
+///
+/// [sourced_track.dart] 的降级遍历与 [LxServerMusicServer._selectQuality]
+/// 都必须引用此常量，避免两处硬编码的阶梯数组漂移后行为不一致。
+const List<String> kQualityLadder = ['flac24bit', 'flac', '320k', '128k'];
+
 /// 音质等级
 enum LxServerQuality {
   /// 无损 Hi-Res（24bit/192kHz）

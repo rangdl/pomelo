@@ -19,6 +19,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
+import 'package:pomelo/core/models/lx_server_quality.dart';
 import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/storage/music_cache_dir.dart';
@@ -115,7 +116,7 @@ class SourcedTrack {
         TrackSource(url: url, type: '', size: query.duration.toString()),
       );
     } else {
-      const qualitys = ['flac24bit', 'flac', '320k', '128k'];
+      const qualitys = kQualityLadder;
       // 读取用户偏好音质
       targetQuality = ref.read(userPreferenceProvider).lxServerQuality.id;
       List<TrackSource> sources = _resolveSources(ref, query);
