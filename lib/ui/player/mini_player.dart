@@ -4,7 +4,6 @@ import 'package:pomelo/core/models/metadata/track.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/provider/lyric/lyric.dart';
-import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_image.dart';
@@ -28,6 +27,7 @@ class MiniPlayer extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(audioPlayerProvider);
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final track = state.activeTrack;
 
     // 歌词获取与解析（track 为空时传入空 Track 占位避免条件 hook）
@@ -68,7 +68,7 @@ class MiniPlayer extends HookConsumerWidget {
                 ref,
                 track,
                 state.playing,
-                audioPlayer,
+                notifier,
                 isDesktop,
                 lyricLines,
               ),
@@ -86,7 +86,7 @@ class MiniPlayer extends HookConsumerWidget {
     WidgetRef ref,
     Track track,
     bool isPlaying,
-    dynamic audioPlayer,
+    AudioPlayerNotifier notifier,
     bool isDesktop,
     List<LyricLine> lyricLines,
   ) {
@@ -129,7 +129,7 @@ class MiniPlayer extends HookConsumerWidget {
           const Gap(8),
         ],
         // 控制按钮
-        _buildControls(context, audioPlayer, isPlaying, isDesktop),
+        _buildControls(context, notifier, isPlaying, isDesktop),
         // 桌面端显示总时长
         if (isDesktop) ...[
           const Gap(8),
@@ -149,7 +149,7 @@ class MiniPlayer extends HookConsumerWidget {
 
   Widget _buildControls(
     BuildContext context,
-    dynamic audioPlayer,
+    AudioPlayerNotifier notifier,
     bool isPlaying,
     bool isDesktop,
   ) {
@@ -158,7 +158,7 @@ class MiniPlayer extends HookConsumerWidget {
       children: [
         IconButton.text(
           icon: const Icon(Icons.skip_previous, size: 22),
-          onPressed: () => audioPlayer.skipToPrevious(),
+          onPressed: () => notifier.skipToPrevious(),
         ),
         IconButton.text(
           icon: Icon(
@@ -166,12 +166,12 @@ class MiniPlayer extends HookConsumerWidget {
             size: 26,
           ),
           onPressed: () {
-            isPlaying ? audioPlayer.pause() : audioPlayer.resume();
+            isPlaying ? notifier.pause() : notifier.resume();
           },
         ),
         IconButton.text(
           icon: const Icon(Icons.skip_next, size: 22),
-          onPressed: () => audioPlayer.skipToNext(),
+          onPressed: () => notifier.skipToNext(),
         ),
       ],
     );
@@ -216,16 +216,17 @@ class _MiniProgressBar extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final position =
         useStream(
-          audioPlayer.positionStream,
-          initialData: audioPlayer.position,
+          notifier.positionStream,
+          initialData: notifier.position,
         ).data ??
         Duration.zero;
     final duration =
         useStream(
-          audioPlayer.durationStream,
-          initialData: audioPlayer.duration,
+          notifier.durationStream,
+          initialData: notifier.duration,
         ).data ??
         Duration.zero;
     final progress = duration.inMilliseconds > 0
@@ -249,7 +250,7 @@ class _MiniProgressBar extends HookConsumerWidget {
 
 /// 当前歌词行（独立子树）
 ///
-/// 自行订阅 [audioPlayer.positionStream] 计算当前歌词，仅此子树随进度重建。
+/// 自行订阅 [AudioPlayerNotifier.positionStream] 计算当前歌词，仅此子树随进度重建。
 class _MiniCurrentLyric extends HookConsumerWidget {
   final List<LyricLine> lyricLines;
   final Track track;
@@ -258,10 +259,11 @@ class _MiniCurrentLyric extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final position =
         useStream(
-          audioPlayer.positionStream,
-          initialData: audioPlayer.position,
+          notifier.positionStream,
+          initialData: notifier.position,
         ).data ??
         Duration.zero;
     final currentLyricIndex = LyricParser.findCurrentIndex(lyricLines, position);
@@ -301,10 +303,11 @@ class _MiniPositionTime extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final position =
         useStream(
-          audioPlayer.positionStream,
-          initialData: audioPlayer.position,
+          notifier.positionStream,
+          initialData: notifier.position,
         ).data ??
         Duration.zero;
     return Text(
@@ -323,10 +326,11 @@ class _MiniDurationTime extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final duration =
         useStream(
-          audioPlayer.durationStream,
-          initialData: audioPlayer.duration,
+          notifier.durationStream,
+          initialData: notifier.duration,
         ).data ??
         Duration.zero;
     return Text(

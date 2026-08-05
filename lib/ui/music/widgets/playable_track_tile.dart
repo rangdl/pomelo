@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'package:pomelo/core/models/metadata/metadata.dart';
@@ -120,13 +118,11 @@ class PlayableTrackTile extends HookConsumerWidget {
               : audioPlayer.resume();
           return;
         }
-        // 本地曲目：校验文件存在
-        if (track.isLocal && track.path != null) {
-          if (!await File(track.path!).exists()) {
-            if (!context.mounted) return;
-            context.toast.error('文件不存在：${track.path}');
-            return;
-          }
+        // 本地曲目：校验文件存在（文件 IO 收口到 provider 层）
+        if (!await notifier.localTrackFileExists(track)) {
+          if (!context.mounted) return;
+          context.toast.error('文件不存在：${track.path}');
+          return;
         }
         if (overwrite) {
           // 覆盖模式：优先使用当前展示列表整体覆盖，降级为单曲覆盖

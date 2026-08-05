@@ -26,8 +26,6 @@ import 'package:pomelo/modules/music_lx/providers/lx_source_scripts_provider.dar
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'dart:io';
-
 /// 本地音源区块
 ///
 /// 包含全局开关与本地音源脚本管理：
@@ -61,10 +59,9 @@ class LocalAudioSourceSection extends HookConsumerWidget {
 
       isLoading.value = true;
       try {
-        final content = await File(pickedFile.path!).readAsString();
         final libs = await ref
             .read(lxSourceScriptsNotifierProvider.notifier)
-            .addScript(content);
+            .addScriptFromFile(pickedFile.path!);
         if (!context.mounted) return;
         if (libs == null) {
           AppToast().error('脚本加载失败，未注册任何库');

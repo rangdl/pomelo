@@ -9,7 +9,6 @@ import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/provider/cast/cast_provider.dart';
 import 'package:pomelo/provider/lyric/lyric.dart';
 import 'package:pomelo/provider/server/sourced_track.dart';
-import 'package:pomelo/services/audio_player/audio_player.dart';
 import 'package:pomelo/ui/player/widgets/playback_mode_buttons.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -34,6 +33,7 @@ class PlaybackPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(audioPlayerProvider);
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final track = state.activeTrack;
 
     // 歌词获取与解析（track 为空时传入空 Track 占位避免条件 hook）
@@ -45,7 +45,7 @@ class PlaybackPage extends HookConsumerWidget {
       () => lyricLinesAsync.value ?? <LyricLine>[],
       [lyricLinesAsync],
     );
-    void onSeek(Duration d) => audioPlayer.seek(d);
+    void onSeek(Duration d) => notifier.seek(d);
 
     return Scaffold(
       headers: [
@@ -223,17 +223,18 @@ class _PlaybackBody extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(audioPlayerProvider.notifier);
     // 进度/时长流仅在 _PlaybackBody 子树内消费，不驱动外层 PlaybackPage 重建
     final position =
         useStream(
-          audioPlayer.positionStream,
-          initialData: audioPlayer.position,
+          notifier.positionStream,
+          initialData: notifier.position,
         ).data ??
         Duration.zero;
     final duration =
         useStream(
-          audioPlayer.durationStream,
-          initialData: audioPlayer.duration,
+          notifier.durationStream,
+          initialData: notifier.duration,
         ).data ??
         Duration.zero;
 
@@ -424,6 +425,7 @@ class _PlaybackBody extends HookConsumerWidget {
     Duration position,
     Duration duration,
   ) {
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final castState = ref.watch(castProvider);
     // 投屏中：使用投屏设备返回的进度；否则使用本地播放器进度
     final pos = castState.isCasting ? castState.position : position;
@@ -444,7 +446,7 @@ class _PlaybackBody extends HookConsumerWidget {
                   if (castState.isCasting) {
                     ref.read(castProvider.notifier).seek(target);
                   } else {
-                    audioPlayer.seek(target);
+                    notifier.seek(target);
                   }
                 }
               : null,
@@ -470,6 +472,7 @@ class _PlaybackBody extends HookConsumerWidget {
   }
 
   Widget _buildMainControls(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final colorScheme = Theme.of(context).colorScheme;
     final castState = ref.watch(castProvider);
 
@@ -483,7 +486,7 @@ class _PlaybackBody extends HookConsumerWidget {
       children: [
         IconButton.text(
           icon: const Icon(Icons.skip_previous, size: 36),
-          onPressed: () => audioPlayer.skipToPrevious(),
+          onPressed: () => notifier.skipToPrevious(),
         ),
         Gap(style.mainControlGap),
         Container(
@@ -503,7 +506,7 @@ class _PlaybackBody extends HookConsumerWidget {
                     ? ref.read(castProvider.notifier).pause()
                     : ref.read(castProvider.notifier).resume();
               } else {
-                isPlaying ? audioPlayer.pause() : audioPlayer.resume();
+                isPlaying ? notifier.pause() : notifier.resume();
               }
             },
           ),
@@ -511,7 +514,7 @@ class _PlaybackBody extends HookConsumerWidget {
         Gap(style.mainControlGap),
         IconButton.text(
           icon: const Icon(Icons.skip_next, size: 36),
-          onPressed: () => audioPlayer.skipToNext(),
+          onPressed: () => notifier.skipToNext(),
         ),
       ],
     );
@@ -519,10 +522,11 @@ class _PlaybackBody extends HookConsumerWidget {
 
   /// 音量控制：投屏中控制 DLNA 设备音量，否则控制本地播放器
   Widget _buildVolumeControl(BuildContext context, WidgetRef ref) {
+    final notifier = ref.read(audioPlayerProvider.notifier);
     final castState = ref.watch(castProvider);
     final isCasting = castState.isCasting;
     // 本地音量记忆（0~1），避免无音量流时滑块跳变
-    final localVolume = useState(audioPlayer.volume);
+    final localVolume = useState(notifier.volume);
     final deviceVolume = castState.volume != null
         ? castState.volume! / 100
         : localVolume.value;
@@ -549,7 +553,7 @@ class _PlaybackBody extends HookConsumerWidget {
                     .read(castProvider.notifier)
                     .setVolume((target * 100).round());
               } else {
-                audioPlayer.setVolume(target);
+                notifier.setVolume(target);
               }
             },
           ),
@@ -564,7 +568,7 @@ class _PlaybackBody extends HookConsumerWidget {
                       .read(castProvider.notifier)
                       .setVolume((vol * 100).round());
                 } else {
-                  audioPlayer.setVolume(vol);
+                  notifier.setVolume(vol);
                 }
               },
             ),

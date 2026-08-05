@@ -7,6 +7,8 @@
 /// 依赖此 Provider 的 [lxSourceEngineProvider] 会在脚本列表变化时自动重建。
 library;
 
+import 'dart:io';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/models/database/app_database.dart';
@@ -112,6 +114,15 @@ class LxSourceScriptsNotifier extends Notifier<List<LxSourceScript>> {
       '[LxSourceScripts] 脚本已保存 id=$id, 库: ${libraries.map((l) => l.id).join(", ")}',
     );
     return libraries;
+  }
+
+  /// 从脚本文件添加音源脚本。
+  ///
+  /// 把 `File(...).readAsString()` 这层文件 IO 收口到 provider 层，
+  /// UI 只负责挑选文件并交来路径。内部读取内容后复用 [addScript]。
+  Future<List<LxSourceLibrary>?> addScriptFromFile(String path) async {
+    final content = await File(path).readAsString();
+    return addScript(content);
   }
 
   /// 删除脚本

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -540,6 +541,55 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
     await audioPlayer.moveTrack(oldIndex, newIndex);
   }
+
+  /// 校验本地曲目文件是否仍存在。
+  ///
+  /// 把 `File(...).exists()` 这层文件 IO 从 UI 回调收口到 provider 层，
+  /// UI 仅根据返回结果提示或继续播放，不再直接触达文件系统。
+  Future<bool> localTrackFileExists(Track track) async {
+    if (!track.isLocal || track.path == null) return true;
+    return File(track.path!).exists();
+  }
+
+  // ---- 透传底层播放器能力 ----
+  // UI 通过这些成员访问，而非直接持有全局 `audioPlayer` 单例，
+  // 让播放控制统一收敛在 provider 层（3.7 UI 越界整改）。
+
+  /// 当前播放进度流
+  Stream<Duration> get positionStream => audioPlayer.positionStream;
+
+  /// 当前播放进度
+  Duration get position => audioPlayer.position;
+
+  /// 总时长流
+  Stream<Duration> get durationStream => audioPlayer.durationStream;
+
+  /// 总时长
+  Duration get duration => audioPlayer.duration;
+
+  /// 当前音量（0~1）
+  double get volume => audioPlayer.volume;
+
+  /// 是否正在播放
+  bool get isPlaying => audioPlayer.isPlaying;
+
+  /// 暂停
+  Future<void> pause() => audioPlayer.pause();
+
+  /// 恢复播放
+  Future<void> resume() => audioPlayer.resume();
+
+  /// 跳转到指定进度
+  Future<void> seek(Duration position) => audioPlayer.seek(position);
+
+  /// 上一首
+  Future<void> skipToPrevious() => audioPlayer.skipToPrevious();
+
+  /// 下一首
+  Future<void> skipToNext() => audioPlayer.skipToNext();
+
+  /// 设置音量（0~1）
+  Future<void> setVolume(double volume) => audioPlayer.setVolume(volume);
 
   Future<void> stop() async {
     state = state.copyWith(
