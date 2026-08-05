@@ -2,10 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:media_kit/media_kit.dart' hide Track;
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/provider/audio_player/audio_player.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
+import 'package:pomelo/ui/player/widgets/playback_mode_buttons.dart';
+import 'package:pomelo/ui/music/widgets/empty_hint.dart';
 import 'package:pomelo/ui/music/widgets/track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -53,40 +54,13 @@ class PlayQueueContent extends HookConsumerWidget {
     }, const []);
 
     if (tracks.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.queue_music,
-              size: 48,
-              color: colorScheme.mutedForeground,
-            ),
-            const Gap(12),
-            Text(
-              '播放队列为空',
-              style: TextStyle(color: colorScheme.mutedForeground),
-            ),
-          ],
-        ),
-      );
+      return const EmptyHint(text: '播放队列为空', icon: Icons.queue_music);
     }
 
     return Column(
       children: [
         _QueueHeader(
           songCount: tracks.length,
-          loopMode: state.loopMode,
-          shuffled: state.shuffled,
-          onToggleShuffle: () => audioPlayer.setShuffle(!state.shuffled),
-          onCycleLoop: () {
-            final next = switch (state.loopMode) {
-              PlaylistMode.none => PlaylistMode.loop,
-              PlaylistMode.loop => PlaylistMode.single,
-              PlaylistMode.single => PlaylistMode.none,
-            };
-            audioPlayer.setLoopMode(next);
-          },
           onClear: () {
             notifier.stop();
             context.toast.success('已清空播放队列');
@@ -142,20 +116,9 @@ class PlayQueueContent extends HookConsumerWidget {
 /// 队列顶部工具栏
 class _QueueHeader extends StatelessWidget {
   final int songCount;
-  final PlaylistMode loopMode;
-  final bool shuffled;
-  final VoidCallback onToggleShuffle;
-  final VoidCallback onCycleLoop;
   final VoidCallback onClear;
 
-  const _QueueHeader({
-    required this.songCount,
-    required this.loopMode,
-    required this.shuffled,
-    required this.onToggleShuffle,
-    required this.onCycleLoop,
-    required this.onClear,
-  });
+  const _QueueHeader({required this.songCount, required this.onClear});
 
   @override
   Widget build(BuildContext context) {
@@ -173,26 +136,8 @@ class _QueueHeader extends StatelessWidget {
               ),
             ),
           ),
-          IconButton.ghost(
-            icon: Icon(
-              Icons.shuffle,
-              size: 18,
-              color: shuffled ? colorScheme.primary : null,
-            ),
-            onPressed: onToggleShuffle,
-          ),
-          IconButton.ghost(
-            icon: Icon(
-              loopMode == PlaylistMode.loop
-                  ? Icons.repeat
-                  : loopMode == PlaylistMode.single
-                  ? Icons.repeat_one
-                  : Icons.repeat,
-              size: 18,
-              color: loopMode != PlaylistMode.none ? colorScheme.primary : null,
-            ),
-            onPressed: onCycleLoop,
-          ),
+          const ShuffleToggleButton(size: 18),
+          const LoopModeButton(size: 18),
           IconButton.ghost(
             icon: Icon(
               Icons.delete_sweep_outlined,

@@ -1,6 +1,7 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
+import 'package:pomelo/ui/music/widgets/empty_hint.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -23,8 +24,8 @@ class LeaderboardSection extends HookConsumerWidget {
         if (leaderboards.isEmpty) return const SizedBox.shrink();
 
         // 如果没有选中或选中的不在列表中，默认选中第一个
-        final effectiveId = (selectedId == null ||
-                !leaderboards.any((l) => l.id == selectedId))
+        final effectiveId =
+            (selectedId == null || !leaderboards.any((l) => l.id == selectedId))
             ? leaderboards.first.id
             : selectedId;
 
@@ -59,7 +60,10 @@ class LeaderboardSection extends HookConsumerWidget {
                         .read(selectedLeaderboardProvider.notifier)
                         .select(lb.id),
                     fill: true,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 6,
+                    ),
                     borderRadius: 18,
                     fontSize: 13,
                   );
@@ -90,7 +94,6 @@ class _LeaderboardSongs extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final tracksAsync = ref.watch(leaderboardTracksProvider(leaderboardId));
-    final colorScheme = Theme.of(context).colorScheme;
     final isMobile = Rx.isMobile(context);
 
     return tracksAsync.when(
@@ -98,12 +101,7 @@ class _LeaderboardSongs extends ConsumerWidget {
         if (tracks.isEmpty) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: Text(
-                '暂无歌曲',
-                style: TextStyle(color: colorScheme.mutedForeground),
-              ),
-            ),
+            child: const EmptyHint(text: '暂无歌曲'),
           );
         }
 
@@ -133,12 +131,7 @@ class _LeaderboardSongs extends ConsumerWidget {
       ),
       error: (err, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Center(
-          child: Text(
-            '加载失败: $err',
-            style: TextStyle(color: colorScheme.mutedForeground),
-          ),
-        ),
+        child: EmptyHint.error(err),
       ),
     );
   }

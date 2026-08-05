@@ -15,8 +15,10 @@ import 'package:pomelo/ui/music/playlist_detail_page.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
+import 'package:pomelo/ui/music/widgets/empty_hint.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
+import 'package:pomelo/ui/music/widgets/segment_tab_item.dart';
 import 'package:pomelo/ui/root/root_providers.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
@@ -184,7 +186,7 @@ class _HomeTabBar extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          _TabItem(
+          SegmentTabItem(
             label: '排行榜',
             icon: Icons.leaderboard,
             isSelected: tabIndex.value == 0,
@@ -192,7 +194,7 @@ class _HomeTabBar extends ConsumerWidget {
             onTap: () => tabIndex.value = 0,
           ),
           const Gap(8),
-          _TabItem(
+          SegmentTabItem(
             label: '歌单',
             icon: Icons.queue_music,
             isSelected: tabIndex.value == 1,
@@ -206,7 +208,6 @@ class _HomeTabBar extends ConsumerWidget {
       ),
     );
   }
-
 }
 
 /// 排行榜「播放全部」按钮（独立子树）
@@ -233,63 +234,6 @@ class _LeaderboardPlayAllButton extends ConsumerWidget {
   }
 }
 
-/// Tab 项
-class _TabItem extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final ColorScheme colorScheme;
-  final VoidCallback onTap;
-
-  const _TabItem({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.colorScheme,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primary
-              : colorScheme.muted.withAlpha(30),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected
-                  ? colorScheme.primaryForeground
-                  : colorScheme.mutedForeground,
-            ),
-            const Gap(6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected
-                    ? colorScheme.primaryForeground
-                    : colorScheme.mutedForeground,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ======================== 排行榜内容 ========================
 
 /// 排行榜内容容器 — 响应式布局
@@ -301,31 +245,28 @@ class _LeaderboardContent extends HookConsumerWidget {
     final leaderboardsAsync = ref.watch(leaderboardsProvider);
     final selectedId = ref.watch(selectedLeaderboardProvider);
 
-    return leaderboardsAsync.whenOrDefault(
-      (leaderboards) {
-        if (leaderboards.isEmpty) {
-          return _EmptyHint(text: '暂无排行榜');
-        }
+    return leaderboardsAsync.whenOrDefault((leaderboards) {
+      if (leaderboards.isEmpty) {
+        return EmptyHint(text: '暂无排行榜');
+      }
 
-        final effectiveId =
-            (selectedId == null || !leaderboards.any((l) => l.id == selectedId))
-            ? leaderboards.first.id
-            : selectedId;
+      final effectiveId =
+          (selectedId == null || !leaderboards.any((l) => l.id == selectedId))
+          ? leaderboards.first.id
+          : selectedId;
 
-        return Rx.layout(
-          context,
-          mobile: () => _LeaderboardMobile(
-            leaderboards: leaderboards,
-            selectedId: effectiveId,
-          ),
-          tablet: () => _LeaderboardDesktop(
-            leaderboards: leaderboards,
-            selectedId: effectiveId,
-          ),
-        );
-      },
-      error: (_, _) => const _EmptyHint(text: '排行榜加载失败'),
-    );
+      return Rx.layout(
+        context,
+        mobile: () => _LeaderboardMobile(
+          leaderboards: leaderboards,
+          selectedId: effectiveId,
+        ),
+        tablet: () => _LeaderboardDesktop(
+          leaderboards: leaderboards,
+          selectedId: effectiveId,
+        ),
+      );
+    }, error: (_, _) => const EmptyHint(text: '排行榜加载失败'));
   }
 }
 
@@ -459,43 +400,29 @@ class _LeaderboardSongs extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final songsAsync = ref.watch(leaderboardTracksProvider(leaderboardId));
-    final colorScheme = Theme.of(context).colorScheme;
     final isMobile = Rx.isMobile(context);
 
-    return songsAsync.whenOrDefault(
-      (tracks) {
-        if (tracks.isEmpty) {
-          return Center(
-            child: Text(
-              '暂无歌曲',
-              style: TextStyle(color: colorScheme.mutedForeground),
-            ),
-          );
-        }
+    return songsAsync.whenOrDefault((tracks) {
+      if (tracks.isEmpty) {
+        return const EmptyHint(text: '暂无歌曲');
+      }
 
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          itemCount: tracks.length,
-          addAutomaticKeepAlives: false,
-          itemBuilder: (context, index) {
-            final track = tracks[index];
-            return PlayableTrackTile(
-              track: track,
-              index: index + 1,
-              playlist: tracks,
-              playlistIndex: index,
-              isMobile: isMobile,
-            );
-          },
-        );
-      },
-      error: (err, _) => Center(
-        child: Text(
-          '加载失败: $err',
-          style: TextStyle(color: colorScheme.mutedForeground),
-        ),
-      ),
-    );
+      return ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        itemCount: tracks.length,
+        addAutomaticKeepAlives: false,
+        itemBuilder: (context, index) {
+          final track = tracks[index];
+          return PlayableTrackTile(
+            track: track,
+            index: index + 1,
+            playlist: tracks,
+            playlistIndex: index,
+            isMobile: isMobile,
+          );
+        },
+      );
+    }, error: (err, _) => EmptyHint.error(err));
   }
 }
 
@@ -513,66 +440,63 @@ class _PlaylistContent extends HookConsumerWidget {
     final selectedParentId = ref.watch(selectedPlaylistParentProvider);
     final selectedChildId = ref.watch(selectedPlaylistCategoryProvider);
 
-    return categoriesAsync.whenOrDefault(
-      (allCategories) {
-        if (allCategories.isEmpty) return const _EmptyHint(text: '暂无歌单分类');
+    return categoriesAsync.whenOrDefault((allCategories) {
+      if (allCategories.isEmpty) return const EmptyHint(text: '暂无歌单分类');
 
-        final parentCategories = allCategories
-            .where((c) => c.parentId == null)
-            .toList();
-        if (parentCategories.isEmpty) return const _EmptyHint(text: '暂无歌单分类');
+      final parentCategories = allCategories
+          .where((c) => c.parentId == null)
+          .toList();
+      if (parentCategories.isEmpty) return const EmptyHint(text: '暂无歌单分类');
 
-        final activeParentId =
-            (selectedParentId != null &&
-                parentCategories.any((c) => c.id == selectedParentId))
-            ? selectedParentId
-            : parentCategories.first.id;
-        final childCategories = allCategories
-            .where((c) => c.parentId == activeParentId)
-            .toList();
-        final effectiveChildId =
-            selectedChildId ??
-            (childCategories.isNotEmpty ? childCategories.first.id : null);
+      final activeParentId =
+          (selectedParentId != null &&
+              parentCategories.any((c) => c.id == selectedParentId))
+          ? selectedParentId
+          : parentCategories.first.id;
+      final childCategories = allCategories
+          .where((c) => c.parentId == activeParentId)
+          .toList();
+      final effectiveChildId =
+          selectedChildId ??
+          (childCategories.isNotEmpty ? childCategories.first.id : null);
 
-        // 自动选中第一个子分类
-        useEffect(() {
-          // 检查当前选中的子分类是否属于当前一级分类
-          final isChildInCurrentParent = childCategories.any(
-            (c) => c.id == selectedChildId,
-          );
-
-          // 如果没有选中任何子分类，或者选中的子分类不属于当前一级分类
-          if ((selectedChildId == null || !isChildInCurrentParent) &&
-              childCategories.isNotEmpty) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ref
-                  .read(selectedPlaylistCategoryProvider.notifier)
-                  .select(childCategories.first.id);
-            });
-          }
-          return null;
-        }, [activeParentId, selectedChildId, childCategories.length]);
-
-        return Rx.layout(
-          context,
-          mobile: () => _PlaylistMobile(
-            parentCategories: parentCategories,
-            childCategories: childCategories,
-            activeParentId: activeParentId,
-            effectiveChildId: effectiveChildId,
-            onOpenPlaylist: onOpenPlaylist,
-          ),
-          tablet: () => _PlaylistDesktop(
-            allCategories: allCategories,
-            parentCategories: parentCategories,
-            activeParentId: activeParentId,
-            effectiveChildId: effectiveChildId,
-            onOpenPlaylist: onOpenPlaylist,
-          ),
+      // 自动选中第一个子分类
+      useEffect(() {
+        // 检查当前选中的子分类是否属于当前一级分类
+        final isChildInCurrentParent = childCategories.any(
+          (c) => c.id == selectedChildId,
         );
-      },
-      error: (_, _) => const _EmptyHint(text: '歌单分类加载失败'),
-    );
+
+        // 如果没有选中任何子分类，或者选中的子分类不属于当前一级分类
+        if ((selectedChildId == null || !isChildInCurrentParent) &&
+            childCategories.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            ref
+                .read(selectedPlaylistCategoryProvider.notifier)
+                .select(childCategories.first.id);
+          });
+        }
+        return null;
+      }, [activeParentId, selectedChildId, childCategories.length]);
+
+      return Rx.layout(
+        context,
+        mobile: () => _PlaylistMobile(
+          parentCategories: parentCategories,
+          childCategories: childCategories,
+          activeParentId: activeParentId,
+          effectiveChildId: effectiveChildId,
+          onOpenPlaylist: onOpenPlaylist,
+        ),
+        tablet: () => _PlaylistDesktop(
+          allCategories: allCategories,
+          parentCategories: parentCategories,
+          activeParentId: activeParentId,
+          effectiveChildId: effectiveChildId,
+          onOpenPlaylist: onOpenPlaylist,
+        ),
+      );
+    }, error: (_, _) => const EmptyHint(text: '歌单分类加载失败'));
   }
 }
 
@@ -813,12 +737,7 @@ class _PlaylistGridContent extends HookConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     if (childCategoryId == null) {
-      return Center(
-        child: Text(
-          '请选择一个子分类',
-          style: TextStyle(color: colorScheme.mutedForeground),
-        ),
-      );
+      return const EmptyHint(text: '请选择一个子分类');
     }
 
     return Column(
@@ -866,28 +785,15 @@ class _PlaylistGridContent extends HookConsumerWidget {
         ),
         // 歌单网格
         Expanded(
-          child:             playlistsAsync.whenOrDefault(
-              (data) {
-              if (data.items.isEmpty) {
-                return Center(
-                  child: Text(
-                    '暂无歌单',
-                    style: TextStyle(color: colorScheme.mutedForeground),
-                  ),
-                );
-              }
-              return _PlaylistGrid(
-                playlists: data.items,
-                onOpenPlaylist: onOpenPlaylist,
-              );
-            },
-            error: (err, _) => Center(
-              child: Text(
-                '加载失败: $err',
-                style: TextStyle(color: colorScheme.mutedForeground),
-              ),
-            ),
-          ),
+          child: playlistsAsync.whenOrDefault((data) {
+            if (data.items.isEmpty) {
+              return const EmptyHint(text: '暂无歌单');
+            }
+            return _PlaylistGrid(
+              playlists: data.items,
+              onOpenPlaylist: onOpenPlaylist,
+            );
+          }, error: (err, _) => EmptyHint.error(err)),
         ),
       ],
     );
@@ -1119,56 +1025,43 @@ class _UserPlaylistsSheet extends HookConsumerWidget {
           ],
         ),
       ],
-      child: listsAsync.whenOrDefault(
-        (data) {
-          final playlists = data.userPlaylists;
-          if (playlists.isEmpty) {
-            return Center(
-              child: Text(
-                '暂无歌单',
-                style: TextStyle(color: colorScheme.mutedForeground),
-              ),
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(8),
-            itemCount: playlists.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              final p = playlists[index];
-              return Card(
-                child: ListTile(
-                  leading: CoverImage(
-                    coverArt: p.coverArt,
-                    colorScheme: colorScheme,
-                    size: 48,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  title: Text(p.name),
-                  subtitle: p.owner != null && p.owner!.isNotEmpty
-                      ? Text(p.owner ?? '')
-                      : null,
-                  onTap: () => onSelected(
-                    PlaylistRef(
-                      playlistId: (p.meta?['id'] as String?) ?? p.id,
-                      sourceId: p.source?.id ?? '',
-                      playlistName: p.name,
-                      coverUrl: p.coverArt,
-                      creator: p.owner ?? '',
-                    ),
+      child: listsAsync.whenOrDefault((data) {
+        final playlists = data.userPlaylists;
+        if (playlists.isEmpty) {
+          return const EmptyHint(text: '暂无歌单');
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(8),
+          itemCount: playlists.length,
+          separatorBuilder: (_, _) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final p = playlists[index];
+            return Card(
+              child: ListTile(
+                leading: CoverImage(
+                  coverArt: p.coverArt,
+                  colorScheme: colorScheme,
+                  size: 48,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                title: Text(p.name),
+                subtitle: p.owner != null && p.owner!.isNotEmpty
+                    ? Text(p.owner ?? '')
+                    : null,
+                onTap: () => onSelected(
+                  PlaylistRef(
+                    playlistId: (p.meta?['id'] as String?) ?? p.id,
+                    sourceId: p.source?.id ?? '',
+                    playlistName: p.name,
+                    coverUrl: p.coverArt,
+                    creator: p.owner ?? '',
                   ),
                 ),
-              );
-            },
-          );
-        },
-        error: (err, _) => Center(
-          child: Text(
-            '加载失败: $err',
-            style: TextStyle(color: colorScheme.mutedForeground),
-          ),
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      }, error: (err, _) => EmptyHint.error(err)),
     );
   }
 }
@@ -1205,91 +1098,48 @@ class _DefaultListView extends HookConsumerWidget {
         ),
         const Divider(),
       ],
-      child: listsAsync.whenOrDefault(
-        (data) {
-          final tracks = data.defaultTracks;
-          if (tracks.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+      child: listsAsync.whenOrDefault((data) {
+        final tracks = data.defaultTracks;
+        if (tracks.isEmpty) {
+          return const EmptyHint(text: '暂无歌曲', icon: PomeloIcons.music);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
                 children: [
-                  Icon(
-                    PomeloIcons.music,
-                    size: 48,
-                    color: colorScheme.mutedForeground,
-                  ),
-                  const Gap(12),
                   Text(
-                    '暂无歌曲',
+                    '共 ${tracks.length} 首',
                     style: TextStyle(color: colorScheme.mutedForeground),
                   ),
+                  const Gap(12),
+                  PlayAllButton(tracks: tracks),
                 ],
               ),
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  children: [
-                    Text(
-                      '共 ${tracks.length} 首',
-                      style: TextStyle(color: colorScheme.mutedForeground),
-                    ),
-                    const Gap(12),
-                    PlayAllButton(tracks: tracks),
-                  ],
-                ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: tracks.length,
+                addAutomaticKeepAlives: false,
+                itemBuilder: (context, index) {
+                  final track = tracks[index];
+                  return PlayableTrackTile(
+                    track: track,
+                    index: index + 1,
+                    playlist: tracks,
+                    playlistIndex: index,
+                    isMobile: isMobile,
+                  );
+                },
               ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: tracks.length,
-                  addAutomaticKeepAlives: false,
-                  itemBuilder: (context, index) {
-                    final track = tracks[index];
-                    return PlayableTrackTile(
-                      track: track,
-                      index: index + 1,
-                      playlist: tracks,
-                      playlistIndex: index,
-                      isMobile: isMobile,
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        },
-        error: (err, _) => Center(
-          child: Text(
-            '加载失败: $err',
-            style: TextStyle(color: colorScheme.mutedForeground),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ======================== 通用组件 ========================
-
-/// 空状态提示
-class _EmptyHint extends StatelessWidget {
-  final String text;
-
-  const _EmptyHint({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        text,
-        style: TextStyle(color: Theme.of(context).colorScheme.mutedForeground),
-      ),
+            ),
+          ],
+        );
+      }, error: (err, _) => EmptyHint.error(err)),
     );
   }
 }

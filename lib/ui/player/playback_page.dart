@@ -10,6 +10,7 @@ import 'package:pomelo/provider/cast/cast_provider.dart';
 import 'package:pomelo/provider/lyric/lyric.dart';
 import 'package:pomelo/provider/server/sourced_track.dart';
 import 'package:pomelo/services/audio_player/audio_player.dart';
+import 'package:pomelo/ui/player/widgets/playback_mode_buttons.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import '../music/widgets/cover_image.dart';
@@ -522,8 +523,9 @@ class _PlaybackBody extends HookConsumerWidget {
     final isCasting = castState.isCasting;
     // 本地音量记忆（0~1），避免无音量流时滑块跳变
     final localVolume = useState(audioPlayer.volume);
-    final deviceVolume =
-        castState.volume != null ? castState.volume! / 100 : localVolume.value;
+    final deviceVolume = castState.volume != null
+        ? castState.volume! / 100
+        : localVolume.value;
     final displayVolume = isCasting ? deviceVolume : localVolume.value;
 
     return Padding(
@@ -535,8 +537,8 @@ class _PlaybackBody extends HookConsumerWidget {
               displayVolume <= 0.001
                   ? Icons.volume_off
                   : displayVolume < 0.5
-                      ? Icons.volume_down
-                      : Icons.volume_up,
+                  ? Icons.volume_down
+                  : Icons.volume_up,
               size: 18,
             ),
             onPressed: () {
@@ -573,38 +575,9 @@ class _PlaybackBody extends HookConsumerWidget {
   }
 
   Widget _buildSecondaryControls(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Row(
+    return const Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        IconButton.ghost(
-          icon: Icon(
-            Icons.shuffle,
-            size: 20,
-            color: shuffled ? colorScheme.primary : null,
-          ),
-          onPressed: () => audioPlayer.setShuffle(!shuffled),
-        ),
-        IconButton.ghost(
-          icon: Icon(
-            loopMode == PlaylistMode.loop
-                ? Icons.repeat
-                : loopMode == PlaylistMode.single
-                ? Icons.repeat_one
-                : Icons.repeat,
-            size: 20,
-            color: loopMode != PlaylistMode.none ? colorScheme.primary : null,
-          ),
-          onPressed: () {
-            final next = switch (loopMode) {
-              PlaylistMode.none => PlaylistMode.loop,
-              PlaylistMode.loop => PlaylistMode.single,
-              PlaylistMode.single => PlaylistMode.none,
-            };
-            audioPlayer.setLoopMode(next);
-          },
-        ),
-      ],
+      children: [ShuffleToggleButton(), LoopModeButton()],
     );
   }
 }

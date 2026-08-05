@@ -15,8 +15,10 @@ import 'package:pomelo/core/rx.dart';
 import 'package:pomelo/ui/home/home_providers.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
+import 'package:pomelo/ui/music/widgets/empty_hint.dart';
 import 'package:pomelo/ui/music/widgets/play_all_button.dart';
 import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
+import 'package:pomelo/ui/music/widgets/segment_tab_item.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 /// 我的收藏页面（内联渲染）
@@ -58,7 +60,7 @@ class FavoritesPage extends HookConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
-                _FavoritesTabItem(
+                SegmentTabItem(
                   label: '歌曲',
                   icon: PomeloIcons.music,
                   isSelected: tabIndex.value == 0,
@@ -66,7 +68,7 @@ class FavoritesPage extends HookConsumerWidget {
                   onTap: () => tabIndex.value = 0,
                 ),
                 const Gap(8),
-                _FavoritesTabItem(
+                SegmentTabItem(
                   label: '歌手',
                   icon: PomeloIcons.artist,
                   isSelected: tabIndex.value == 1,
@@ -74,7 +76,7 @@ class FavoritesPage extends HookConsumerWidget {
                   onTap: () => tabIndex.value = 1,
                 ),
                 const Gap(8),
-                _FavoritesTabItem(
+                SegmentTabItem(
                   label: '专辑',
                   icon: PomeloIcons.album,
                   isSelected: tabIndex.value == 2,
@@ -98,63 +100,6 @@ class FavoritesPage extends HookConsumerWidget {
   }
 }
 
-/// Tab 项
-class _FavoritesTabItem extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final ColorScheme colorScheme;
-  final VoidCallback onTap;
-
-  const _FavoritesTabItem({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.colorScheme,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primary
-              : colorScheme.muted.withAlpha(30),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected
-                  ? colorScheme.primaryForeground
-                  : colorScheme.mutedForeground,
-            ),
-            const Gap(6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected
-                    ? colorScheme.primaryForeground
-                    : colorScheme.mutedForeground,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// 收藏歌曲 Tab
 class _FavoriteSongsTab extends HookConsumerWidget {
   const _FavoriteSongsTab();
@@ -165,96 +110,72 @@ class _FavoriteSongsTab extends HookConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isMobile = Rx.isMobile(context);
 
-    return listsAsync.whenOrDefault(
-      (data) {
-        final tracks = data.loveTracks;
-        if (tracks.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  PomeloIcons.heart,
-                  size: 48,
-                  color: colorScheme.mutedForeground,
-                ),
-                const Gap(12),
-                Text(
-                  '暂无收藏歌曲',
-                  style: TextStyle(color: colorScheme.mutedForeground),
-                ),
-              ],
-            ),
-          );
-        }
+    return listsAsync.whenOrDefault((data) {
+      final tracks = data.loveTracks;
+      if (tracks.isEmpty) {
+        return const EmptyHint(text: '暂无收藏歌曲', icon: PomeloIcons.heart);
+      }
 
-        return Rx.layout(
-          context,
-          mobile: () => ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: PlayAllButton(tracks: tracks),
-                ),
+      return Rx.layout(
+        context,
+        mobile: () => ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: PlayAllButton(tracks: tracks),
               ),
-              ...tracks.asMap().entries.map(
-                (e) => PlayableTrackTile(
-                  track: e.value,
-                  index: e.key + 1,
-                  playlist: tracks,
-                  playlistIndex: e.key,
-                  isMobile: isMobile,
-                ),
+            ),
+            ...tracks.asMap().entries.map(
+              (e) => PlayableTrackTile(
+                track: e.value,
+                index: e.key + 1,
+                playlist: tracks,
+                playlistIndex: e.key,
+                isMobile: isMobile,
               ),
-            ],
-          ),
-          tablet: () => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  children: [
-                    Text(
-                      '共 ${tracks.length} 首',
-                      style: TextStyle(color: colorScheme.mutedForeground),
-                    ),
-                    const Gap(12),
-                    PlayAllButton(tracks: tracks),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: tracks.length,
-                  addAutomaticKeepAlives: false,
-                  itemBuilder: (context, index) {
-                    final track = tracks[index];
-                    return PlayableTrackTile(
-                      track: track,
-                      index: index + 1,
-                      playlist: tracks,
-                      playlistIndex: index,
-                      isMobile: isMobile,
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-      error: (err, _) => Center(
-        child: Text(
-          '加载失败: $err',
-          style: TextStyle(color: colorScheme.mutedForeground),
+            ),
+          ],
         ),
-      ),
-    );
+        tablet: () => Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Text(
+                    '共 ${tracks.length} 首',
+                    style: TextStyle(color: colorScheme.mutedForeground),
+                  ),
+                  const Gap(12),
+                  PlayAllButton(tracks: tracks),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                itemCount: tracks.length,
+                addAutomaticKeepAlives: false,
+                itemBuilder: (context, index) {
+                  final track = tracks[index];
+                  return PlayableTrackTile(
+                    track: track,
+                    index: index + 1,
+                    playlist: tracks,
+                    playlistIndex: index,
+                    isMobile: isMobile,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }, error: (err, _) => EmptyHint.error(err));
   }
 }
 
@@ -265,55 +186,30 @@ class _FavoriteArtistsTab extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final artistsAsync = ref.watch(favoriteArtistsProvider);
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return artistsAsync.whenOrDefault(
-      (artists) {
-        if (artists.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  PomeloIcons.artist,
-                  size: 48,
-                  color: colorScheme.mutedForeground,
-                ),
-                const Gap(12),
-                Text(
-                  '暂无收藏歌手',
-                  style: TextStyle(color: colorScheme.mutedForeground),
-                ),
-              ],
+    return artistsAsync.whenOrDefault((artists) {
+      if (artists.isEmpty) {
+        return const EmptyHint(text: '暂无收藏歌手', icon: PomeloIcons.artist);
+      }
+
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 3);
+          return GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.85,
             ),
+            itemCount: artists.length,
+            itemBuilder: (context, index) =>
+                _ArtistCard(artist: artists[index]),
           );
-        }
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 3);
-            return GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.85,
-              ),
-              itemCount: artists.length,
-              itemBuilder: (context, index) =>
-                  _ArtistCard(artist: artists[index]),
-            );
-          },
-        );
-      },
-      error: (err, _) => Center(
-        child: Text(
-          '加载失败: $err',
-          style: TextStyle(color: colorScheme.mutedForeground),
-        ),
-      ),
-    );
+        },
+      );
+    }, error: (err, _) => EmptyHint.error(err));
   }
 }
 
@@ -378,54 +274,29 @@ class _FavoriteAlbumsTab extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final albumsAsync = ref.watch(favoriteAlbumsProvider);
-    final colorScheme = Theme.of(context).colorScheme;
 
-    return albumsAsync.whenOrDefault(
-      (albums) {
-        if (albums.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  PomeloIcons.album,
-                  size: 48,
-                  color: colorScheme.mutedForeground,
-                ),
-                const Gap(12),
-                Text(
-                  '暂无收藏专辑',
-                  style: TextStyle(color: colorScheme.mutedForeground),
-                ),
-              ],
+    return albumsAsync.whenOrDefault((albums) {
+      if (albums.isEmpty) {
+        return const EmptyHint(text: '暂无收藏专辑', icon: PomeloIcons.album);
+      }
+
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 3);
+          return GridView.builder(
+            padding: const EdgeInsets.all(12),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.85,
             ),
+            itemCount: albums.length,
+            itemBuilder: (context, index) => _AlbumCard(album: albums[index]),
           );
-        }
-
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 3);
-            return GridView.builder(
-              padding: const EdgeInsets.all(12),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 0.85,
-              ),
-              itemCount: albums.length,
-              itemBuilder: (context, index) => _AlbumCard(album: albums[index]),
-            );
-          },
-        );
-      },
-      error: (err, _) => Center(
-        child: Text(
-          '加载失败: $err',
-          style: TextStyle(color: colorScheme.mutedForeground),
-        ),
-      ),
-    );
+        },
+      );
+    }, error: (err, _) => EmptyHint.error(err));
   }
 }
 

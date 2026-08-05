@@ -17,6 +17,7 @@ import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
 import 'package:pomelo/ui/music/providers/music_ui_providers.dart';
 import 'package:pomelo/ui/music/widgets/app_chip.dart';
+import 'package:pomelo/ui/music/widgets/empty_hint.dart';
 import 'package:pomelo/ui/music/widgets/cover_image.dart';
 import 'package:pomelo/ui/music/widgets/playable_track_tile.dart';
 import 'package:pomelo/ui/music/widgets/provider_error_banner.dart';
@@ -435,85 +436,83 @@ class _SearchResults extends HookConsumerWidget {
     final selection = ref.watch(selectedSourceProvider);
     final selectedSourceId = selection.sourceId;
 
-    return configsAsync.whenOrDefault(
-      (configs) {
-        final filtered = tabSourceId.value == null
-            ? configs
-            : configs.where((c) => c.id == tabSourceId.value).toList();
+    return configsAsync.whenOrDefault((configs) {
+      final filtered = tabSourceId.value == null
+          ? configs
+          : configs.where((c) => c.id == tabSourceId.value).toList();
 
-        final colorScheme = Theme.of(context).colorScheme;
+      final colorScheme = Theme.of(context).colorScheme;
 
-        // 结果列表组件 — 根据搜索类型选择
-        final resultsContent = _SearchResultsContainer(
-          key: ValueKey('${tabSourceId.value}_${selectedType}_$keyword'),
-          keyword: keyword,
-          sourceId: tabSourceId.value,
-          libraryId: tabSourceId.value == selection.sourceId
-              ? selection.libraryId
-              : null,
-          configs: filtered,
-          searchType: selectedType,
-        );
+      // 结果列表组件 — 根据搜索类型选择
+      final resultsContent = _SearchResultsContainer(
+        key: ValueKey('${tabSourceId.value}_${selectedType}_$keyword'),
+        keyword: keyword,
+        sourceId: tabSourceId.value,
+        libraryId: tabSourceId.value == selection.sourceId
+            ? selection.libraryId
+            : null,
+        configs: filtered,
+        searchType: selectedType,
+      );
 
-        return Rx.layout(
-          context,
-          mobile: () => Column(
-            children: [
-              SizedBox(
-                height: 44,
-                child: _SourceChips(
-                  configs: configs,
-                  selectedSourceId: selectedSourceId,
-                  tabSourceId: tabSourceId,
-                  selection: selection,
-                  colorScheme: colorScheme,
-                ),
+      return Rx.layout(
+        context,
+        mobile: () => Column(
+          children: [
+            SizedBox(
+              height: 44,
+              child: _SourceChips(
+                configs: configs,
+                selectedSourceId: selectedSourceId,
+                tabSourceId: tabSourceId,
+                selection: selection,
+                colorScheme: colorScheme,
               ),
-              const Divider(),
-              Expanded(child: resultsContent),
-            ],
-          ),
-          tablet: () => Row(
-            children: [
-              SizedBox(
-                width: 220,
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '来源',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: colorScheme.mutedForeground,
-                          ),
+            ),
+            const Divider(),
+            Expanded(child: resultsContent),
+          ],
+        ),
+        tablet: () => Row(
+          children: [
+            SizedBox(
+              width: 220,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '来源',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.mutedForeground,
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: _SourceChips(
-                        configs: configs,
-                        selectedSourceId: selectedSourceId,
-                        tabSourceId: tabSourceId,
-                        selection: selection,
-                        colorScheme: colorScheme,
-                        direction: Axis.vertical,
-                      ),
+                  ),
+                  Expanded(
+                    child: _SourceChips(
+                      configs: configs,
+                      selectedSourceId: selectedSourceId,
+                      tabSourceId: tabSourceId,
+                      selection: selection,
+                      colorScheme: colorScheme,
+                      direction: Axis.vertical,
                     ),
-                    const Divider(),
-                  ],
-                ),
+                  ),
+                  const Divider(),
+                ],
               ),
-              const VerticalDivider(width: 1),
-              Expanded(child: resultsContent),
-            ],
-          ),
-        );
-      },
-    );
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(child: resultsContent),
+          ],
+        ),
+      );
+    });
   }
 }
 
@@ -536,23 +535,9 @@ class _SearchResultsContainer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     // 非歌曲搜索需要指定具体来源
     if (searchType != SearchType.song && sourceId == null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.source, size: 48, color: colorScheme.mutedForeground),
-            const Gap(12),
-            Text(
-              '请先在上方选择具体的音乐来源',
-              style: TextStyle(color: colorScheme.mutedForeground),
-            ),
-          ],
-        ),
-      );
+      return const EmptyHint(text: '请先在上方选择具体的音乐来源', icon: Icons.source);
     }
 
     switch (searchType) {
@@ -700,7 +685,10 @@ class _SourceGrid<T> extends StatelessWidget {
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final crossAxisCount = Rx.gridColumns(constraints.maxWidth, base: 2);
+              final crossAxisCount = Rx.gridColumns(
+                constraints.maxWidth,
+                base: 2,
+              );
               return GridView.builder(
                 padding: const EdgeInsets.all(12),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -745,80 +733,77 @@ class _SongResultsList extends ConsumerWidget {
       )),
     );
 
-    return resultsAsync.whenOrDefault(
-      (data) {
-        if (configs.isEmpty) {
-          return const Center(child: Text('无可用来源'));
-        }
+    return resultsAsync.whenOrDefault((data) {
+      if (configs.isEmpty) {
+        return const Center(child: Text('无可用来源'));
+      }
 
-        final tracks = data.tracks;
-        // 整表只展开一次：原实现在 itemBuilder 内 map().toList()，
-        // 每渲染一项就重建一份全表副本（O(n²) 分配）
-        final primaryTracks = [for (final m in tracks) m.primary];
-        final isMobile = Rx.isMobile(context);
+      final tracks = data.tracks;
+      // 整表只展开一次：原实现在 itemBuilder 内 map().toList()，
+      // 每渲染一项就重建一份全表副本（O(n²) 分配）
+      final primaryTracks = [for (final m in tracks) m.primary];
+      final isMobile = Rx.isMobile(context);
 
-        return Column(
-          children: [
-            ProviderErrorBanner(errors: data.errors),
-            if (tracks.isEmpty)
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.search_off,
-                        size: 48,
-                        color: Theme.of(context).colorScheme.mutedForeground,
-                      ),
-                      const Gap(12),
-                      Text('未找到与"$keyword"相关的歌曲'),
-                    ],
-                  ),
-                ),
-              )
-            else
-              Expanded(
+      return Column(
+        children: [
+          ProviderErrorBanner(errors: data.errors),
+          if (tracks.isEmpty)
+            Expanded(
+              child: Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                      child: Text(
-                        '找到 ${tracks.length} 首歌曲',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.mutedForeground,
-                        ),
-                      ),
+                    Icon(
+                      Icons.search_off,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.mutedForeground,
                     ),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        itemCount: tracks.length,
-                        addAutomaticKeepAlives: false,
-                        itemBuilder: (context, index) {
-                          final merged = tracks[index];
-                          return PlayableTrackTile(
-                            track: merged.primary,
-                            playlist: primaryTracks,
-                            playlistIndex: index,
-                            isMobile: isMobile,
-                            trailingExtra: Text(
-                              merged.displaySources,
-                              style: const TextStyle(fontSize: 12),
-                            ).muted,
-                          );
-                        },
-                      ),
-                    ),
+                    const Gap(12),
+                    Text('未找到与"$keyword"相关的歌曲'),
                   ],
                 ),
               ),
-          ],
-        );
-      },
-      error: (err, _) => Center(child: Text('搜索失败: $err')),
-    );
+            )
+          else
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                    child: Text(
+                      '找到 ${tracks.length} 首歌曲',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.mutedForeground,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: tracks.length,
+                      addAutomaticKeepAlives: false,
+                      itemBuilder: (context, index) {
+                        final merged = tracks[index];
+                        return PlayableTrackTile(
+                          track: merged.primary,
+                          playlist: primaryTracks,
+                          playlistIndex: index,
+                          isMobile: isMobile,
+                          trailingExtra: Text(
+                            merged.displaySources,
+                            style: const TextStyle(fontSize: 12),
+                          ).muted,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }, error: (err, _) => Center(child: Text('搜索失败: $err')));
   }
 }
 
