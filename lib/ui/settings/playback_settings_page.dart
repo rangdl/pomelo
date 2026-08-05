@@ -368,7 +368,7 @@ class CacheSettingsSection extends HookConsumerWidget {
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: i <= cacheSizeLimitGB
-                                          ? Colors.white
+                                          ? colorScheme.primaryForeground
                                           : colorScheme.mutedForeground,
                                     ),
                                   ),

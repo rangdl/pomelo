@@ -1,5 +1,7 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import 'theme/app_theme.dart';
+
 /// 全局 Navigator Key，用于在非 UI 上下文中获取 [BuildContext] 显示 Toast。
 ///
 /// 在 [ShadcnApp.router] 的 `navigatorKey` 参数中传入此 key，
@@ -8,10 +10,10 @@ final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Toast 类型
 enum AppToastType {
-  success(Color(0xFF22C55E), Icons.check_circle),
-  error(Color(0xFFEF4444), Icons.error),
-  warning(Color(0xFFF59E0B), Icons.warning),
-  info(Color(0xFF3B82F6), Icons.info);
+  success(AppStatusColors.success, Icons.check_circle),
+  error(AppStatusColors.error, Icons.error),
+  warning(AppStatusColors.warning, Icons.warning),
+  info(AppStatusColors.info, Icons.info);
 
   final Color color;
   final IconData icon;

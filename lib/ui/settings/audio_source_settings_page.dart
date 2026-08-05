@@ -20,6 +20,7 @@ import 'package:pomelo/core/models/lx_source_script.dart';
 import 'package:pomelo/core/models/music_server_config.dart';
 import 'package:pomelo/core/preferences/user_preference_provider.dart';
 import 'package:pomelo/core/rx.dart';
+import 'package:pomelo/core/theme/app_theme.dart';
 import 'package:pomelo/core/toast.dart';
 import 'package:pomelo/modules/music_lx/providers/lx_source_scripts_provider.dart';
 import 'package:pomelo/provider/music/music_server_config_provider.dart';
@@ -524,10 +525,10 @@ class _ScriptDetailDialog extends ConsumerWidget {
                   );
                   final rate = _successRate(usage);
                   final rateColor = rate >= 80
-                      ? const Color(0xFF22C55E)
+                      ? AppStatusColors.success
                       : rate >= 50
-                      ? const Color(0xFFF59E0B)
-                      : const Color(0xFFEF4444);
+                      ? AppStatusColors.warning
+                      : AppStatusColors.error;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Card(

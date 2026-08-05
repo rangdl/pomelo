@@ -62,9 +62,9 @@ class AboutPage extends HookConsumerWidget {
                 color: colorScheme.primary,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.music_note_rounded,
-                color: Colors.white,
+                color: colorScheme.primaryForeground,
                 size: 48,
               ),
             ),
