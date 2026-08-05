@@ -11,6 +11,7 @@ import 'package:pomelo/services/logger/logger.dart';
 
 import '../../services/audio_player/media.dart';
 import '../server/sourced_track.dart';
+import '../cast/cast_provider.dart';
 import 'state.dart';
 import 'audio_player_repository.dart';
 
@@ -32,6 +33,9 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
 
   /// 已预热（已解析真实播放 URL）的曲目 id，避免重复预热。
   final Set<String> _preloadedIds = {};
+
+  /// 是否正在投屏（本地播放应让位给 DLNA 设备，避免双重音频）
+  bool get _isCasting => ref.read(castProvider).isCasting;
 
   void _assertAllowedTracks(Iterable<Track> tracks) {
     // 扁平化后所有 Track 都合法，无需断言
@@ -439,12 +443,15 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
       _preloadTrack(medias[i].track);
     }
 
+    // 投屏中不开本地播放（本地保持暂停），改由 cast 监听 activeTrack
+    // 变化后自动重投，避免本地与设备同时出声（双重音频）。
+    final actuallyPlay = autoPlay && !_isCasting;
     _batchDepth++;
     try {
       await audioPlayer.openPlaylist(
         medias,
         initialIndex: initialIndex,
-        autoPlay: autoPlay,
+        autoPlay: actuallyPlay,
       );
     } finally {
       _batchDepth--;
@@ -464,7 +471,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     await load(
       oldState.tracks,
       initialIndex: oldState.currentIndex,
-      autoPlay: true,
+      // 投屏中本地保持暂停，避免与设备双重音频
+      autoPlay: !_isCasting,
     );
     state = state.copyWith(
       collections: oldState.collections,
@@ -507,7 +515,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     }
     if (index == -1) return;
     await audioPlayer.jumpTo(index);
-    if (!audioPlayer.isPlaying) await audioPlayer.resume();
+    // 投屏中不要恢复本地播放，避免双重音频
+    if (!_isCasting && !audioPlayer.isPlaying) await audioPlayer.resume();
   }
 
   /// 播放曲目列表：批量添加到当前播放列表末尾（不覆盖）并跳转到 [initialIndex] 播放。
@@ -526,7 +535,8 @@ class AudioPlayerNotifier extends Notifier<AudioPlayerState> {
     var targetIndex = state.tracks.indexWhere((t) => t.id == target.id);
     if (targetIndex == -1) return;
     await audioPlayer.jumpTo(targetIndex);
-    if (!audioPlayer.isPlaying) await audioPlayer.resume();
+    // 投屏中不要恢复本地播放，避免双重音频
+    if (!_isCasting && !audioPlayer.isPlaying) await audioPlayer.resume();
   }
 
   Future<void> moveTrack(int oldIndex, int newIndex) async {

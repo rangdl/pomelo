@@ -160,6 +160,15 @@ class CastNotifier extends Notifier<CastState> {
       }
     });
 
+    // 双重音频兜底：投屏中若本地播放器被意外恢复播放（如个别路径仍调用
+    // resume / openPlaylist(autoPlay:true)），立即暂停，确保声音只来自
+    // DLNA 设备。
+    ref.listen<bool>(audioPlayerProvider.select((s) => s.playing), (_, next) {
+      if (state.isCasting && next) {
+        unawaited(svc.audioPlayer.pause());
+      }
+    });
+
     ref.onDispose(() {
       _positionTimer?.cancel();
       _service.dispose();

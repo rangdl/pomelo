@@ -304,7 +304,9 @@ class _PlaybackBody extends HookConsumerWidget {
           _buildSeekBar(context, ref),
           const Gap(16),
           _buildMainControls(context, ref),
-          const Gap(20),
+          const Gap(8),
+          _buildVolumeControl(context, ref),
+          const Gap(12),
           _buildSecondaryControls(context),
           const Gap(24),
         ],
@@ -358,7 +360,9 @@ class _PlaybackBody extends HookConsumerWidget {
                     _buildSeekBar(context, ref),
                     const Gap(24),
                     _buildMainControls(context, ref),
-                    const Gap(20),
+                    const Gap(8),
+                    _buildVolumeControl(context, ref),
+                    const Gap(12),
                     _buildSecondaryControls(context),
                   ],
                 ),
@@ -503,6 +507,62 @@ class _PlaybackBody extends HookConsumerWidget {
           onPressed: () => audioPlayer.skipToNext(),
         ),
       ],
+    );
+  }
+
+  /// 音量控制：投屏中控制 DLNA 设备音量，否则控制本地播放器
+  Widget _buildVolumeControl(BuildContext context, WidgetRef ref) {
+    final castState = ref.watch(castProvider);
+    final isCasting = castState.isCasting;
+    // 本地音量记忆（0~1），避免无音量流时滑块跳变
+    final localVolume = useState(audioPlayer.volume);
+    final deviceVolume =
+        castState.volume != null ? castState.volume! / 100 : localVolume.value;
+    final displayVolume = isCasting ? deviceVolume : localVolume.value;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        children: [
+          IconButton.ghost(
+            icon: Icon(
+              displayVolume <= 0.001
+                  ? Icons.volume_off
+                  : displayVolume < 0.5
+                      ? Icons.volume_down
+                      : Icons.volume_up,
+              size: 18,
+            ),
+            onPressed: () {
+              final target = displayVolume <= 0.001 ? 1.0 : 0.0;
+              localVolume.value = target;
+              if (isCasting) {
+                ref
+                    .read(castProvider.notifier)
+                    .setVolume((target * 100).round());
+              } else {
+                audioPlayer.setVolume(target);
+              }
+            },
+          ),
+          Expanded(
+            child: Slider(
+              value: SliderValue.single(displayVolume.clamp(0.0, 1.0)),
+              onChanged: (v) {
+                final vol = v.value.clamp(0.0, 1.0);
+                localVolume.value = vol;
+                if (isCasting) {
+                  ref
+                      .read(castProvider.notifier)
+                      .setVolume((vol * 100).round());
+                } else {
+                  audioPlayer.setVolume(vol);
+                }
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 
