@@ -139,16 +139,12 @@ class SubsonicMusicServer extends MusicServer {
 
   @override
   Future<Track?> getTrack(String id) async {
-    try {
-      final song = await client.getSong(id);
-      return song.toTrack(
-        sourceId: sourceId,
-        sourceName: sourceName,
-        serverUrl: _serverUrl,
-      );
-    } on SubsonicException {
-      return null;
-    }
+    final song = await client.getSong(id);
+    return song.toTrack(
+      sourceId: sourceId,
+      sourceName: sourceName,
+      serverUrl: _serverUrl,
+    );
   }
 
   @override
@@ -156,41 +152,33 @@ class SubsonicMusicServer extends MusicServer {
     int page = 1,
     int limit = 20,
   }) async {
-    try {
-      final songs = await client.getRandomSongs(size: limit);
-      final items = songs
-          .map((s) => s.toTrack(
-                sourceId: sourceId,
-                sourceName: sourceName,
-                serverUrl: _serverUrl,
-              ))
-          .toList();
-      return PaginationResponse(
-        page: page,
-        limit: limit,
-        total: items.length,
-        hasMore: false,
-        items: items,
-      );
-    } on SubsonicException {
-      return PaginationResponse.empty(page: page, limit: limit);
-    }
+    final songs = await client.getRandomSongs(size: limit);
+    final items = songs
+        .map((s) => s.toTrack(
+              sourceId: sourceId,
+              sourceName: sourceName,
+              serverUrl: _serverUrl,
+            ))
+        .toList();
+    return PaginationResponse(
+      page: page,
+      limit: limit,
+      total: items.length,
+      hasMore: false,
+      items: items,
+    );
   }
 
   // ========== 专辑 ==========
 
   @override
   Future<Album?> getAlbum(String id) async {
-    try {
-      final album = await client.getAlbum(id);
-      return album.toAlbum(
-        sourceId: sourceId,
-        sourceName: sourceName,
-        serverUrl: _serverUrl,
-      );
-    } on SubsonicException {
-      return null;
-    }
+    final album = await client.getAlbum(id);
+    return album.toAlbum(
+      sourceId: sourceId,
+      sourceName: sourceName,
+      serverUrl: _serverUrl,
+    );
   }
 
   @override
@@ -199,67 +187,51 @@ class SubsonicMusicServer extends MusicServer {
     int page = 1,
     int limit = 20,
   }) async {
-    try {
-      final album = await client.getAlbum(albumId);
-      final tracks = album.songs
-          .map((s) => s.toTrack(
-                sourceId: sourceId,
-                sourceName: sourceName,
-                serverUrl: _serverUrl,
-              ))
-          .toList();
-      return PaginationResponse.fromList(tracks, page: page, limit: limit);
-    } on SubsonicException {
-      return PaginationResponse.empty(page: page, limit: limit);
-    }
+    final album = await client.getAlbum(albumId);
+    final tracks = album.songs
+        .map((s) => s.toTrack(
+              sourceId: sourceId,
+              sourceName: sourceName,
+              serverUrl: _serverUrl,
+            ))
+        .toList();
+    return PaginationResponse.fromList(tracks, page: page, limit: limit);
   }
 
   // ========== 歌手 ==========
 
   @override
   Future<Artist?> getArtist(String id) async {
-    try {
-      final result = await client.getArtist(id);
-      return result.artist.toArtist(
-        sourceId: sourceId,
-        sourceName: sourceName,
-        serverUrl: _serverUrl,
-      );
-    } on SubsonicException {
-      return null;
-    }
+    final result = await client.getArtist(id);
+    return result.artist.toArtist(
+      sourceId: sourceId,
+      sourceName: sourceName,
+      serverUrl: _serverUrl,
+    );
   }
 
   @override
   Future<List<Album>> getArtistAlbums(String artistId) async {
-    try {
-      final result = await client.getArtist(artistId);
-      return result.albums
-          .map((a) => a.toAlbum(
-                sourceId: sourceId,
-                sourceName: sourceName,
-                serverUrl: _serverUrl,
-              ))
-          .toList();
-    } on SubsonicException {
-      return [];
-    }
+    final result = await client.getArtist(artistId);
+    return result.albums
+        .map((a) => a.toAlbum(
+              sourceId: sourceId,
+              sourceName: sourceName,
+              serverUrl: _serverUrl,
+            ))
+        .toList();
   }
 
   // ========== 歌单 ==========
 
   @override
   Future<Playlist?> getPlaylist(String id) async {
-    try {
-      final playlist = await client.getPlaylist(id);
-      return playlist.toPlaylist(
-        sourceId: sourceId,
-        sourceName: sourceName,
-        serverUrl: _serverUrl,
-      );
-    } on SubsonicException {
-      return null;
-    }
+    final playlist = await client.getPlaylist(id);
+    return playlist.toPlaylist(
+      sourceId: sourceId,
+      sourceName: sourceName,
+      serverUrl: _serverUrl,
+    );
   }
 
   @override
@@ -267,19 +239,15 @@ class SubsonicMusicServer extends MusicServer {
     int page = 1,
     int limit = 20,
   }) async {
-    try {
-      final playlists = await client.getPlaylists();
-      final items = playlists
-          .map((p) => p.toPlaylist(
-                sourceId: sourceId,
-                sourceName: sourceName,
-                serverUrl: _serverUrl,
-              ))
-          .toList();
-      return PaginationResponse.fromList(items, page: page, limit: limit);
-    } on SubsonicException {
-      return PaginationResponse.empty(page: page, limit: limit);
-    }
+    final playlists = await client.getPlaylists();
+    final items = playlists
+        .map((p) => p.toPlaylist(
+              sourceId: sourceId,
+              sourceName: sourceName,
+              serverUrl: _serverUrl,
+            ))
+        .toList();
+    return PaginationResponse.fromList(items, page: page, limit: limit);
   }
 
   // ========== 播放链接 ==========
@@ -306,31 +274,27 @@ class SubsonicMusicServer extends MusicServer {
     int page = 1,
     int limit = 20,
   }) async {
-    try {
-      final albums = await client.getAlbumList2(
-        type: type,
-        size: limit,
-        offset: (page - 1) * limit,
-      );
-      final items = albums
-          .map((a) => a.toAlbum(
-                sourceId: sourceId,
-                sourceName: sourceName,
-                serverUrl: _serverUrl,
-              ))
-          .toList();
-      return PaginationResponse(
-        page: page,
-        limit: limit,
-        total: albums.length < limit
-            ? (page - 1) * limit + albums.length
-            : page * limit + 1,
-        hasMore: albums.length == limit,
-        items: items,
-      );
-    } on SubsonicException {
-      return PaginationResponse.empty(page: page, limit: limit);
-    }
+    final albums = await client.getAlbumList2(
+      type: type,
+      size: limit,
+      offset: (page - 1) * limit,
+    );
+    final items = albums
+        .map((a) => a.toAlbum(
+              sourceId: sourceId,
+              sourceName: sourceName,
+              serverUrl: _serverUrl,
+            ))
+        .toList();
+    return PaginationResponse(
+      page: page,
+      limit: limit,
+      total: albums.length < limit
+          ? (page - 1) * limit + albums.length
+          : page * limit + 1,
+      hasMore: albums.length == limit,
+      items: items,
+    );
   }
 
   /// 获取所有艺术家列表
