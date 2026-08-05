@@ -181,9 +181,6 @@ class _HomeTabBar extends ConsumerWidget {
     final colorScheme = Theme.of(context).colorScheme;
     final isLeaderboard = tabIndex.value == 0;
 
-    // 仅在排行榜 Tab 下获取曲目列表
-    final tracks = isLeaderboard ? _watchLeaderboardTracks(ref) : <Track>[];
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -204,17 +201,26 @@ class _HomeTabBar extends ConsumerWidget {
             onTap: () => tabIndex.value = 1,
           ),
           const Spacer(),
-          // 播放全部按钮 — 仅排行榜 Tab 下生效
-          if (isLeaderboard) PlayAllButton(tracks: tracks),
+          // 播放全部按钮（独立子树，自行监听排行榜曲目，不驱动 TabBar 重建）
+          if (isLeaderboard) const _LeaderboardPlayAllButton(),
         ],
       ),
     );
   }
 
-  /// 获取当前选中排行榜的曲目列表
-  List<Track> _watchLeaderboardTracks(WidgetRef ref) {
+}
+
+/// 排行榜「播放全部」按钮（独立子树）
+///
+/// 自行监听 [leaderboardTracksProvider]，仅在按钮自身重建，
+/// 不驱动外层 [_HomeTabBar] 随整张曲目列表重建。
+class _LeaderboardPlayAllButton extends ConsumerWidget {
+  const _LeaderboardPlayAllButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final leaderboards = ref.watch(leaderboardsProvider).value ?? [];
-    if (leaderboards.isEmpty) return [];
+    if (leaderboards.isEmpty) return const SizedBox.shrink();
 
     final selectedId = ref.watch(selectedLeaderboardProvider);
     final effectiveId =
@@ -222,7 +228,9 @@ class _HomeTabBar extends ConsumerWidget {
         ? leaderboards.first.id
         : selectedId;
 
-    return ref.watch(leaderboardTracksProvider(effectiveId)).value ?? [];
+    final tracks =
+        ref.watch(leaderboardTracksProvider(effectiveId)).value ?? [];
+    return PlayAllButton(tracks: tracks);
   }
 }
 
