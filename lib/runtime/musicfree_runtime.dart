@@ -125,5 +125,54 @@ var __pluginEnv = {
     throw StateError('调用 $method 超时');
   }
 
+  /// 求值并解析 JSON 结果（返回 null 表示 JS 侧给出 null/undefined）。
+  Map<String, dynamic>? evaluateJson(String code) {
+    final r = _js.evaluate('JSON.stringify($code)');
+    if (r.isError) throw StateError('求值失败: ${r.stringResult}');
+    final text = r.stringResult;
+    if (text == 'undefined' || text == 'null') return null;
+    // evaluate 可能把字符串结果再包一层引号，先解包一次
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is String) {
+        final inner = jsonDecode(decoded);
+        return inner is Map<String, dynamic> ? inner : null;
+      }
+      return decoded is Map<String, dynamic> ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 搜索。返回 `{isEnd, data}`。
+  Future<Map<String, dynamic>> search(
+    String query, {
+    int page = 1,
+    String type = 'music',
+  }) async {
+    final result = await invoke('search', [query, page, type]);
+    if (result is Map<String, dynamic>) {
+      final data = result['data'];
+      return {
+        'isEnd': result['isEnd'] ?? true,
+        'data': data is List ? data : const [],
+      };
+    }
+    return {'isEnd': true, 'data': const []};
+  }
+
+  /// 获取播放地址。返回 `{url, headers?}`；插件未实现时返回 null。
+  Future<Map<String, dynamic>?> getMediaSource(
+    Map<String, dynamic> musicItem,
+    String quality,
+  ) async {
+    final result = await invoke('getMediaSource', [musicItem, quality]);
+    if (result is Map<String, dynamic> && result['url'] is String) {
+      return result;
+    }
+    if (result is String) return {'url': result};
+    return null;
+  }
+
   void dispose() => _js.dispose();
 }
