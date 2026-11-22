@@ -297,5 +297,42 @@ function __lx_rsa_encrypt(buf, key) {
   /// `lx.utils.crypto.md5()`。若要支持，需要给原生桥加同步调用，或把纯 JS 版
   /// 的 crypto 实现打成资源随引擎预加载。当前 LX 脚本若只用 musicUrl 的
   /// 常见实现（多数不需要 md5）可以正常工作。
+  /// 求值一个表达式并取字符串结果。
+  String? evaluateString(String code) {
+    final r = _js.evaluate('JSON.stringify($code)');
+    if (r.isError) return null;
+    final text = r.stringResult;
+    if (text == 'undefined' || text == 'null') return null;
+    try {
+      final v = jsonDecode(text);
+      return v?.toString();
+    } catch (_) {
+      return text;
+    }
+  }
+
+  /// 取播放链接：调用脚本的 request(musicUrl) 并归一化结果。
+  ///
+  /// [source] 必须是脚本 `lx.send('inited', ...)` 里声明过的源。
+  Future<String> resolveMusicUrl({
+    required String source,
+    required Map<String, dynamic> musicInfo,
+    String quality = '320k',
+  }) async {
+    if (!sources.containsKey(source)) {
+      throw StateError('该脚本未声明源 "$source"，可用: ${sources.keys.join(", ")}');
+    }
+    final raw = await request(
+      source: source,
+      action: 'musicUrl',
+      info: {'type': quality, 'musicInfo': musicInfo},
+    );
+    final url = raw is String ? raw : (raw is Map ? raw['url'] : null);
+    if (url is! String || url.isEmpty) {
+      throw StateError('脚本未返回有效播放链接');
+    }
+    return url;
+  }
+
   void dispose() => _js.dispose();
 }

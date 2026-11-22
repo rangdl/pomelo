@@ -1,35 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'screens/home_screen.dart';
-import 'state/app_state.dart';
+import 'providers/router_provider.dart';
 
-class PomeloApp extends StatefulWidget {
+class PomeloApp extends ConsumerWidget {
   const PomeloApp({super.key});
 
   @override
-  State<PomeloApp> createState() => _PomeloAppState();
-}
-
-class _PomeloAppState extends State<PomeloApp> {
-  final app = AppState();
-
-  @override
-  void initState() {
-    super.initState();
-    app.init();
-  }
-
-  @override
-  void dispose() {
-    app.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: 'Pomelo',
-      debugShowCheckedModeBanner: true,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFFFF7A45),
         useMaterial3: true,
@@ -39,7 +19,7 @@ class _PomeloAppState extends State<PomeloApp> {
         brightness: Brightness.dark,
         useMaterial3: true,
       ),
-      home: HomeScreen(app: app),
+      routerConfig: ref.watch(appRouterProvider),
     );
   }
 }
