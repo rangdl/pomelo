@@ -5,13 +5,15 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:quickjs_engine/extensions/xhr.dart';
 import 'package:quickjs_engine/quickjs_engine.dart';
 
-/// LX Music UserApi 脚本运行时（辅助协议）。
+import 'lx_crypto.dart';
+
+/// LX Music UserApi 脚本运行时（辅助协议：按平台解析播放链接）。
 ///
 /// 与 MusicFree 主协议的分工：
-///   - MusicFree 负责搜索、歌单、专辑、作者等**内容发现**
-///   - LX 负责按平台解析**播放链接**（musicUrl）
+///   - MusicFree 负责搜索、歌单、专辑等**内容发现**
+///   - LX 负责按平台把歌曲解析成**播放直链**（musicUrl）
 ///
-/// LX 脚本协议（来自 lx-music-mobile / LX-Y-Music 实现）：
+/// 脚本协议（与 lx-music-mobile 一致）：
 ///   lx.on('request', async ({source, action, info}) => ...)
 ///   lx.send('inited', {status: true, sources: {...}})
 ///   lx.request(url, options, callback)
@@ -21,7 +23,14 @@ class LxUserApiRuntime {
 
   final JavascriptRuntime _js;
 
-  /// 创建实例（与 MusicFreeRuntime 相同，需等待 fetch polyfill 注入完成）。
+  /// 脚本声明的源：kw / kg / tx / wy / mg / xm / local
+  final Map<String, dynamic> sources = {};
+
+  bool initialized = false;
+  String? initError;
+
+  JavascriptRuntime get js => _js;
+
   static Future<LxUserApiRuntime> create({int stackSize = 1024 * 1024}) async {
     final js = QuickJsRuntime2(stackSize: stackSize);
     js.onMessage('lxLog', (dynamic args) {
@@ -33,22 +42,31 @@ class LxUserApiRuntime {
     );
     js.evaluate(polyfill);
     js.enableHandlePromises();
-    return LxUserApiRuntime._(js);
+    final rt = LxUserApiRuntime._(js);
+    rt.installNativeCrypto();
+    return rt;
   }
-
-  /// 脚本内声明的源：kw / kg / tx / wy / mg / xm / local
-  final Map<String, dynamic> sources = {};
-
-  /// 脚本是否成功 inited
-  bool initialized = false;
-
-  String? initError;
-
-  JavascriptRuntime get js => _js;
 
   /// 注入 LX 沙箱全局对象并执行脚本。
   void loadScript(String source, {required String id, required String name}) {
-    _js.evaluate('''
+    _js.evaluate(_prelude(id: id, name: name));
+    _js.evaluate(_bridgeCode);
+    final r = _js.evaluate(
+      'try { $source\n } catch (e) { globalThis.__lx_loadError = String(e && e.message || e); }',
+      sourceUrl: '$id.user-api.js',
+    );
+    if (r.isError) {
+      throw StateError('LX 脚本加载失败: ${r.stringResult}');
+    }
+    final err = _js.evaluate(
+      'typeof globalThis.__lx_loadError === "string" ? globalThis.__lx_loadError : ""',
+    );
+    if (err.stringResult != '""' && err.stringResult != '') {
+      throw StateError('LX 脚本异常: ${err.stringResult}');
+    }
+  }
+
+  String _prelude({required String id, required String name}) => '''
 var __lx_console = {
   log: function() { __lx_send_log('log', arguments); },
   info: function() { __lx_send_log('info', arguments); },
@@ -65,7 +83,6 @@ function __lx_send_log(level, args) {
 }
 
 var __lx_requestHandler = null;
-var __lx_pendingInit = false;
 
 var __lx = {
   version: '2.0.0',
@@ -74,11 +91,7 @@ var __lx = {
   currentScriptInfo: {
     name: ${jsonEncode(name)},
     id: ${jsonEncode(id)},
-    description: '',
-    version: '0.0.0',
-    author: '',
-    homepage: '',
-    rawScript: ''
+    description: '', version: '0.0.0', author: '', homepage: '', rawScript: ''
   },
   on: function(eventName, handler) {
     if (eventName !== 'request') {
@@ -89,7 +102,6 @@ var __lx = {
   },
   send: function(eventName, data) {
     if (eventName === 'inited') {
-      __lx_pendingInit = true;
       globalThis.__lx_initPayload = data || null;
       return Promise.resolve();
     }
@@ -103,31 +115,95 @@ var __lx = {
     __lx_do_request(url, options || {}, callback);
     return function() {};
   },
-  utils: {
-    crypto: {
-      md5: function(str) { return __lx_md5(String(str)); },
-      aesEncrypt: function(buf, mode, key, iv) { return __lx_aes_encrypt(buf, mode, key, iv || ''); },
-      rsaEncrypt: function(buf, key) { return __lx_rsa_encrypt(buf, key); },
-      randomBytes: function(size) {
-        var out = new Uint8Array(size);
-        for (var i = 0; i < size; i++) out[i] = Math.floor(Math.random() * 256);
-        return out;
-      }
+  utils: null  // 在 __lx_bridge 中填充
+};
+
+globalThis.lx = __lx;
+globalThis.console = __lx_console;
+''';
+
+  /// 同步桥 + crypto/buffer 实现。
+  ///
+  /// `sendMessage(channel, payload)` 在 quickjs_engine 中是**同步**的：
+  /// Dart 侧注册的回调直接把返回值转成 JS 值返回给脚本。
+  /// 所以脚本里 `sendMessage('lxMd5', s)` 能立刻拿到字符串。
+  static const String _bridgeCode = r'''
+function __lx_b64_to_bytes(b64) {
+  var bin = atob(b64);
+  var out = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function __lx_bytes_to_b64(bytes) {
+  var s = '';
+  for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function __lx_to_bytes(input, encoding) {
+  if (typeof input === 'string') {
+    if (encoding === 'base64') return __lx_b64_to_bytes(input);
+    if (encoding === 'hex') {
+      var arr = [];
+      for (var i = 0; i < input.length; i += 2) arr.push(parseInt(input.substr(i, 2), 16));
+      return new Uint8Array(arr);
+    }
+    var utf8 = unescape(encodeURIComponent(input));
+    var bytes = new Uint8Array(utf8.length);
+    for (var j = 0; j < utf8.length; j++) bytes[j] = utf8.charCodeAt(j);
+    return bytes;
+  }
+  return input instanceof Uint8Array ? input : new Uint8Array(input);
+}
+
+__lx.utils = {
+  crypto: {
+    md5: function(input) {
+      return sendMessage('lxMd5', JSON.stringify([String(input)]));
     },
-    buffer: {
-      from: function(input, encoding) { return __lx_buffer_from(input, encoding); },
-      bufToString: function(buf, format) { return __lx_buf_to_string(buf, format); }
+    aesEncrypt: function(input, mode, key, iv) {
+      // 输入与 key/iv 一律按 base64 字符串传输，Dart 侧解码后加密。
+      var payload = {
+        data: __lx_bytes_to_b64(__lx_to_bytes(input)),
+        mode: mode,
+        key: __lx_bytes_to_b64(__lx_to_bytes(key)),
+        iv: __lx_bytes_to_b64(__lx_to_bytes(iv || new Uint8Array(0)))
+      };
+      var outB64 = sendMessage('lxAesEncrypt', JSON.stringify(payload));
+      return __lx_b64_to_bytes(outB64);
+    },
+    rsaEncrypt: function(input, key) {
+      var payload = {
+        data: __lx_bytes_to_b64(__lx_to_bytes(input)),
+        key: String(key)
+      };
+      var outB64 = sendMessage('lxRsaEncrypt', JSON.stringify(payload));
+      return __lx_b64_to_bytes(outB64);
+    },
+    randomBytes: function(size) {
+      var out = new Uint8Array(size);
+      for (var i = 0; i < size; i++) out[i] = Math.floor(Math.random() * 256);
+      return out;
+    }
+  },
+  buffer: {
+    from: function(input, encoding) { return __lx_to_bytes(input, encoding); },
+    bufToString: function(buf, format) {
+      var bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+      if (format === 'base64') return __lx_bytes_to_b64(bytes);
+      if (format === 'hex') {
+        var h = '';
+        for (var i = 0; i < bytes.length; i++) {
+          h += ('0' + bytes[i].toString(16)).slice(-2);
+        }
+        return h;
+      }
+      var out = '';
+      for (var k = 0; k < bytes.length; k++) out += String.fromCharCode(bytes[k]);
+      try { return decodeURIComponent(escape(out)); } catch (e) { return out; }
     }
   }
 };
 
-// 脚本可见的沙箱全局
-globalThis.lx = __lx;
-globalThis.console = __lx_console;
-''');
-
-    // fetch 负责 lx.request 的底部实现（不需要额外的 Dart 桥）
-    _js.evaluate('''
 function __lx_do_request(url, options, callback) {
   fetch(url, {
     method: (options.method || 'get').toUpperCase(),
@@ -139,73 +215,54 @@ function __lx_do_request(url, options, callback) {
       if (resp.headers && resp.headers.entries) {
         resp.headers.entries().forEach(function(e) { headers[e[0]] = e[1]; });
       }
-      callback(null, { statusCode: resp.status, statusMessage: resp.statusText, headers: headers, body: body }, body);
+      callback(null, {
+        statusCode: resp.status, statusMessage: resp.statusText,
+        headers: headers, body: body
+      }, body);
     });
   }).catch(function(err) { callback(err, null, null); });
 }
-function __lx_buffer_from(input, encoding) {
-  if (typeof input === 'string') {
-    if (encoding === 'base64') return __b64_to_bytes(input);
-    if (encoding === 'hex') {
-      var arr = [];
-      for (var i = 0; i < input.length; i += 2) arr.push(parseInt(input.substr(i, 2), 16));
-      return new Uint8Array(arr);
-    }
-    var utf8 = unescape(encodeURIComponent(input));
-    var bytes = new Uint8Array(utf8.length);
-    for (var j = 0; j < utf8.length; j++) bytes[j] = utf8.charCodeAt(j);
-    return bytes;
-  }
-  return new Uint8Array(input);
-}
-function __b64_to_bytes(b64) {
-  var binary = atob(b64);
-  var bytes = new Uint8Array(binary.length);
-  for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-function __lx_buf_to_string(buf, format) {
-  var bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
-  if (format === 'base64') {
-    var s = '';
-    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-    return btoa(s);
-  }
-  var out = '';
-  for (var k = 0; k < bytes.length; k++) out += String.fromCharCode(bytes[k]);
-  try { return decodeURIComponent(escape(out)); } catch (e) { return out; }
-}
-function __lx_md5(str) {
-  // 占位：由 Dart 侧注入真正的 MD5（见 setMd5Provider）
-  if (globalThis.__lx_md5_impl) return globalThis.__lx_md5_impl(str);
-  throw new Error('md5 is not available');
-}
-function __lx_aes_encrypt(buf, mode, key, iv) {
-  if (globalThis.__lx_aes_impl) return globalThis.__lx_aes_impl(buf, mode, key, iv);
-  throw new Error('aesEncrypt is not available');
-}
-function __lx_rsa_encrypt(buf, key) {
-  if (globalThis.__lx_rsa_impl) return globalThis.__lx_rsa_impl(buf, key);
-  throw new Error('rsaEncrypt is not available');
-}
-''');
+''';
 
-    final r = _js.evaluate(
-      'try { $source\n } catch (e) { globalThis.__lx_loadError = String(e && e.message || e); }',
-      sourceUrl: '$id.user-api.js',
-    );
-    if (r.isError) {
-      throw StateError('LX 脚本加载失败: ${r.stringResult}');
-    }
-    final err = _js.evaluate(
-      'typeof globalThis.__lx_loadError === "string" ? globalThis.__lx_loadError : ""',
-    );
-    if (err.stringResult != '""' && err.stringResult != '') {
-      throw StateError('LX 脚本异常: ${err.stringResult}');
-    }
+  /// 注册同步桥接通道。
+  ///
+  /// quickjs_engine 的 `sendMessage` 是同步的：Dart 回调的返回值会被直接
+  /// 转成 JS 值回传给脚本，因此脚本里可以写成同步调用。
+  ///
+  /// 必须在 `loadScript` **之前**调用。
+  void installNativeCrypto() {
+    _js.onMessage('lxMd5', (dynamic args) {
+      final input = (args is List && args.isNotEmpty) ? '${args.first}' : '$args';
+      return LxCrypto.md5Hex(input);
+    });
+
+    _js.onMessage('lxAesEncrypt', (dynamic args) {
+      final payload = _asMap(args);
+      return LxCrypto.aesEncryptBase64(
+        dataB64: '${payload['data'] ?? ''}',
+        mode: '${payload['mode'] ?? 'aes-128-cbc'}',
+        keyB64: '${payload['key'] ?? ''}',
+        ivB64: '${payload['iv'] ?? ''}',
+      );
+    });
+
+    _js.onMessage('lxRsaEncrypt', (dynamic args) {
+      final payload = _asMap(args);
+      return LxCrypto.rsaEncryptBase64(
+        dataB64: '${payload['data'] ?? ''}',
+        key: '${payload['key'] ?? ''}',
+      );
+    });
   }
 
-  /// 等待脚本调用 `lx.send('inited', ...)`。
+  Map<String, dynamic> _asMap(dynamic args) {
+    if (args is Map) return args.cast<String, dynamic>();
+    if (args is List && args.isNotEmpty && args.first is Map) {
+      return (args.first as Map).cast<String, dynamic>();
+    }
+    return const {};
+  }
+
   Future<bool> waitForInit({Duration timeout = const Duration(seconds: 10)}) async {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
@@ -242,9 +299,6 @@ function __lx_rsa_encrypt(buf, key) {
     return false;
   }
 
-  /// 请求播放链接等资源。返回插件给出的原始响应。
-  ///
-  /// [source] 例如 `kw` / `tx`；[action] 例如 `musicUrl`；[info] 是歌曲信息。
   Future<dynamic> request({
     required String source,
     required String action,
@@ -291,29 +345,21 @@ function __lx_rsa_encrypt(buf, key) {
     throw StateError('LX 请求超时');
   }
 
-  /// 预留：Dart 侧加密注入。
-  ///
-  /// 注意：QuickJS 的 sendMessage 是异步的，无法支撑脚本里**同步**调用的
-  /// `lx.utils.crypto.md5()`。若要支持，需要给原生桥加同步调用，或把纯 JS 版
-  /// 的 crypto 实现打成资源随引擎预加载。当前 LX 脚本若只用 musicUrl 的
-  /// 常见实现（多数不需要 md5）可以正常工作。
-  /// 求值一个表达式并取字符串结果。
   String? evaluateString(String code) {
     final r = _js.evaluate('JSON.stringify($code)');
     if (r.isError) return null;
     final text = r.stringResult;
     if (text == 'undefined' || text == 'null') return null;
     try {
-      final v = jsonDecode(text);
-      return v?.toString();
+      return jsonDecode(text)?.toString();
     } catch (_) {
       return text;
     }
   }
 
-  /// 取播放链接：调用脚本的 request(musicUrl) 并归一化结果。
+  /// 取播放直链。
   ///
-  /// [source] 必须是脚本 `lx.send('inited', ...)` 里声明过的源。
+  /// [source] 必须是脚本在 `lx.send('inited', ...)` 里声明过的源。
   Future<String> resolveMusicUrl({
     required String source,
     required Map<String, dynamic> musicInfo,

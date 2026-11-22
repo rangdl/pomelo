@@ -21,6 +21,7 @@ class PluginRecord {
     this.supportedMethods = const [],
     this.kind = 'musicfree',
     this.lxSources = const [],
+    this.lxSource,
   });
 
   /// 稳定 id，默认用 platform，重名时加后缀
@@ -46,6 +47,9 @@ class PluginRecord {
   /// LX 脚本声明的源（kw/kg/tx/wy…），仅 LX 类型使用
   List<String> lxSources;
 
+  /// MusicFree 插件声明的默认 LX 平台（结果未单独声明时使用）
+  String? lxSource;
+
   bool get isLx => kind == 'lx';
   bool get isMusicFree => kind == 'musicfree';
 
@@ -61,6 +65,7 @@ class PluginRecord {
         'supportedMethods': supportedMethods,
         'kind': kind,
         'lxSources': lxSources,
+        'lxSource': lxSource,
       };
 
   static PluginRecord fromJson(Map<String, dynamic> json) => PluginRecord(
@@ -76,6 +81,7 @@ class PluginRecord {
             (json['supportedMethods'] as List?)?.cast<String>() ?? const [],
         kind: json['kind'] as String? ?? 'musicfree',
         lxSources: (json['lxSources'] as List?)?.cast<String>() ?? const [],
+        lxSource: json['lxSource'] as String?,
       );
 }
 
@@ -135,6 +141,7 @@ class PluginRepository {
       supportedMethods:
           (meta['supportedMethods'] as List?)?.cast<String>() ?? const [],
       kind: 'musicfree',
+      lxSource: meta['lxSource'] as String?,
     );
 
     if (existing.isNotEmpty) {
@@ -219,6 +226,7 @@ class PluginRepository {
             version: m.version,
             description: m.description,
             author: m.author,
+            lxSource: m.lxSource,
             supportedMethods: Object.keys(m).filter(function(k) {
               return typeof m[k] === 'function';
             })

@@ -123,7 +123,8 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
                           title: Text(p.platform),
                           subtitle: Text(
                             'v${p.version.isEmpty ? '?' : p.version}'
-                            ' · ${p.supportedMethods.length} 个方法',
+                            ' · ${p.supportedMethods.length} 个方法'
+                            '${p.lxSource == null ? '' : ' · LX源 ${p.lxSource}'}',
                           ),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline),

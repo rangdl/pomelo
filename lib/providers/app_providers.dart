@@ -159,7 +159,13 @@ class PlayerActions {
       results.set(AsyncValue.data(
         data
             .map((e) => Map<String, dynamic>.from(e as Map))
-            .map((e) => {...e, '_pluginId': plugin.id})
+            .map((e) => {
+                  ...e,
+                  '_pluginId': plugin.id,
+                  // 结果自身没声明时，用插件级默认值
+                  if (e['lxSource'] == null && plugin.lxSource != null)
+                    'lxSource': plugin.lxSource,
+                })
             .toList(),
       ));
     } catch (e, st) {
@@ -174,11 +180,11 @@ class PlayerActions {
     final ownerId = item['_pluginId'] as String?;
 
     String? url;
-    final lxPlugin = _pickLxPlugin(repo);
+    final lxPlugin = _pickLxPlugin(repo, item);
     if (lxPlugin != null) {
       try {
         final lx = await _ref.read(lxRuntimeProvider(lxPlugin).future);
-        final lxSource = _pickLxSource(lxPlugin, item);
+        final lxSource = item['lxSource'] as String;
         url = await lx.resolveMusicUrl(
           source: lxSource,
           musicInfo: {
@@ -221,30 +227,34 @@ class PlayerActions {
     return source['url'] as String;
   }
 
-  PluginRecord? _pickLxPlugin(PluginRepository repo) {
-    final selectedId = _ref.read(selectedLxPluginProvider);
-    if (selectedId != null) {
-      final chosen = repo.plugins.where((p) => p.id == selectedId).firstOrNull;
-      if (chosen != null && chosen.enabled) return chosen;
-    }
-    return repo.plugins.where((p) => p.isLx && p.enabled).firstOrNull;
-  }
+  /// 选出能处理该歌曲的 LX 插件。
+  ///
+  /// 匹配规则：歌曲带 `lxSource` → 用该源；此时优先选「声明了这个源」的脚本
+  /// （用户手动指定的脚本若无此源，则从其它已启用脚本里找）。
+  PluginRecord? _pickLxPlugin(
+    PluginRepository repo,
+    Map<String, dynamic> item,
+  ) {
+    final source = item['lxSource'];
+    final lxPlugins = repo.plugins.where((p) => p.isLx && p.enabled).toList();
+    if (lxPlugins.isEmpty) return null;
 
-  /// 推断该歌曲属于哪个 LX 源：显式字段优先，其次 id 前缀，最后取脚本声明的第一个源。
-  String _pickLxSource(PluginRecord lxPlugin, Map<String, dynamic> item) {
-    for (final key in ['_lxSource', 'source']) {
-      final v = item[key];
-      if (v is String && lxPlugin.lxSources.contains(v)) return v;
+    if (source is String && source.isNotEmpty) {
+      final selectedId = _ref.read(selectedLxPluginProvider);
+      final selected =
+          lxPlugins.where((p) => p.id == selectedId).firstOrNull;
+      if (selected != null && selected.lxSources.contains(source)) {
+        return selected;
+      }
+      return lxPlugins
+          .where((p) => p.lxSources.contains(source))
+          .firstOrNull;
     }
-    final id = '${item['id'] ?? ''}';
-    if (id.contains(':')) {
-      final prefix = id.split(':').first;
-      if (lxPlugin.lxSources.contains(prefix)) return prefix;
-    }
-    if (lxPlugin.lxSources.isEmpty) {
-      throw StateError('LX 脚本未声明任何源');
-    }
-    return lxPlugin.lxSources.first;
+
+    // 歌曲未声明源：仅在用户显式指定脚本时使用，避免猜错平台。
+    final selectedId = _ref.read(selectedLxPluginProvider);
+    if (selectedId == null) return null;
+    return lxPlugins.where((p) => p.id == selectedId).firstOrNull;
   }
 }
 

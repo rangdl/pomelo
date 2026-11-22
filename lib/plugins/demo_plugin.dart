@@ -8,6 +8,10 @@ module.exports = {
   version: "0.1.0",
   author: "pomelo",
   description: "内置示例插件：固定曲目 + 公开测试音频，用于验证播放链路",
+  // 声明本插件的结果对应哪个 LX 音源平台（kw/tx/kg/wy/mg/xm…）。
+  // 播放时宿主会用它精确匹配 LX 脚本，不再做前缀猜测。
+  lxSource: "kw",
+
   async search(query, page, type) {
     if (type !== 'music') return { isEnd: true, data: [] };
     return {
@@ -20,7 +24,8 @@ module.exports = {
           artist: "pomelo",
           album: "demo",
           artwork: "",
-          url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+          url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+          lxSource: "kw"
         },
         {
           id: "demo-b",
@@ -29,7 +34,8 @@ module.exports = {
           artist: "pomelo",
           album: "demo",
           artwork: "",
-          url: "https://samplelib.com/lib/preview/mp3/sample-6s.mp3"
+          url: "https://samplelib.com/lib/preview/mp3/sample-6s.mp3",
+          lxSource: "tx"
         },
         {
           id: "demo-search",
@@ -39,7 +45,8 @@ module.exports = {
           album: "demo",
           artwork: "",
           // 用 fetch 实测一次网络（也验证插件内 fetch 可用）
-          url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
+          url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+          lxSource: "kw"
         }
       ]
     };
