@@ -89,6 +89,71 @@ class NowPlaying extends Notifier<Map<String, dynamic>?> {
 final nowPlayingProvider =
     NotifierProvider<NowPlaying, Map<String, dynamic>?>(NowPlaying.new);
 
+/// 播放模式。
+enum PlayMode {
+  /// 列表循环
+  listLoop,
+
+  /// 单曲循环
+  singleLoop,
+
+  /// 顺序播放（播完最后一首停止）
+  sequential;
+
+  String get label => switch (this) {
+        PlayMode.listLoop => '列表循环',
+        PlayMode.singleLoop => '单曲循环',
+        PlayMode.sequential => '顺序播放',
+      };
+}
+
+/// 播放队列。
+class PlayQueue extends Notifier<List<Map<String, dynamic>>> {
+  @override
+  List<Map<String, dynamic>> build() => const [];
+
+  /// 替换整个队列并定位到 [index]。
+  void setAll(List<Map<String, dynamic>> items, {int index = 0}) {
+    state = List.unmodifiable(items);
+    _index = index.clamp(0, items.isEmpty ? 0 : items.length - 1);
+  }
+
+  int _index = 0;
+  int get index => _index;
+
+  Map<String, dynamic>? get current =>
+      (state.isEmpty || _index < 0 || _index >= state.length)
+          ? null
+          : state[_index];
+
+  void jumpTo(int index) {
+    if (state.isEmpty) return;
+    _index = index.clamp(0, state.length - 1);
+    // state 引用不变不会触发监听，故复制一份列表
+    state = List.unmodifiable(state);
+  }
+
+  void clear() {
+    state = const [];
+    _index = 0;
+  }
+}
+
+final playQueueProvider =
+    NotifierProvider<PlayQueue, List<Map<String, dynamic>>>(PlayQueue.new);
+
+class PlayModeNotifier extends Notifier<PlayMode> {
+  @override
+  PlayMode build() => PlayMode.listLoop;
+
+  void cycle() {
+    state = PlayMode.values[(state.index + 1) % PlayMode.values.length];
+  }
+}
+
+final playModeProvider =
+    NotifierProvider<PlayModeNotifier, PlayMode>(PlayModeNotifier.new);
+
 // ---------------------------------------------------------------------------
 // 播放器与运行时
 // ---------------------------------------------------------------------------
@@ -173,19 +238,68 @@ class PlayerActions {
     }
   }
 
-  /// 播放：优先用 LX 脚本按平台解析直链，失败则回退到 MusicFree 插件。
+  /// 解析并播放一首歌（不改变队列）。
   Future<void> playItem(Map<String, dynamic> item) async {
     final repo = await _ref.read(pluginRepositoryProvider.future);
     final player = _ref.read(audioPlayerProvider);
+    final url = await _resolveUrl(repo, item);
+
+    _ref.read(nowPlayingProvider.notifier).set(item);
+    await player.open(url);
+  }
+
+  /// 从列表的某一首开始播放：替换队列并定位。
+  Future<void> playFromList(
+    List<Map<String, dynamic>> items,
+    int index,
+  ) async {
+    if (items.isEmpty) return;
+    final queue = _ref.read(playQueueProvider.notifier);
+    queue.setAll(items, index: index);
+    await playItem(items[index.clamp(0, items.length - 1)]);
+  }
+
+  /// 上一首 / 下一首。[auto] 表示由「播放完成」触发，需遵守播放模式。
+  Future<void> skip({required bool next, bool auto = false}) async {
+    final queue = _ref.read(playQueueProvider.notifier);
+    final items = _ref.read(playQueueProvider);
+    if (items.isEmpty) return;
+
+    final mode = _ref.read(playModeProvider);
+    if (auto && mode == PlayMode.singleLoop) {
+      await playItem(items[queue.index]);
+      return;
+    }
+
+    var nextIndex = next ? queue.index + 1 : queue.index - 1;
+    if (nextIndex >= items.length) {
+      // 顺序播放到末尾停止；否则回到开头
+      if (mode == PlayMode.sequential && auto) {
+        await _ref.read(audioPlayerProvider).pause();
+        return;
+      }
+      nextIndex = 0;
+    }
+    if (nextIndex < 0) nextIndex = items.length - 1;
+
+    queue.jumpTo(nextIndex);
+    await playItem(items[nextIndex]);
+  }
+
+  Future<void> _playNextOnComplete() => skip(next: true, auto: true);
+
+  Future<String> _resolveUrl(
+    PluginRepository repo,
+    Map<String, dynamic> item,
+  ) async {
     final ownerId = item['_pluginId'] as String?;
 
-    String? url;
     final lxPlugin = _pickLxPlugin(repo, item);
     if (lxPlugin != null) {
       try {
         final lx = await _ref.read(lxRuntimeProvider(lxPlugin).future);
         final lxSource = item['lxSource'] as String;
-        url = await lx.resolveMusicUrl(
+        final url = await lx.resolveMusicUrl(
           source: lxSource,
           musicInfo: {
             'songmid': '${item['id'] ?? ''}',
@@ -195,18 +309,15 @@ class PlayerActions {
         );
         debugPrint('[pomelo] LX 解析成功 plugin=${lxPlugin.platform} '
             'source=$lxSource url=$url');
+        return url;
       } catch (e) {
         debugPrint('[pomelo] LX 解析失败，回退 MusicFree: $e');
-        url = null; // 回退
       }
     }
-    if (url == null) {
-      url = await _resolveWithMusicFree(repo, ownerId, item);
-      debugPrint('[pomelo] MusicFree 解析 url=$url');
-    }
 
-    _ref.read(nowPlayingProvider.notifier).set(item);
-    await player.open(url);
+    final url = await _resolveWithMusicFree(repo, ownerId, item);
+    debugPrint('[pomelo] MusicFree 解析 url=$url');
+    return url;
   }
 
   Future<String> _resolveWithMusicFree(
@@ -258,4 +369,11 @@ class PlayerActions {
   }
 }
 
-final playerActionsProvider = Provider<PlayerActions>(PlayerActions.new);
+final playerActionsProvider = Provider<PlayerActions>((ref) {
+  final actions = PlayerActions(ref);
+  // 播放完成后按播放模式自动切歌
+  ref.read(audioPlayerProvider).onCompleted(() {
+    actions._playNextOnComplete();
+  });
+  return actions;
+});

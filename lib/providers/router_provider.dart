@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../screens/home_screen.dart';
 import '../screens/lx_manager_screen.dart';
+import '../screens/player_screen.dart';
 import '../screens/plugin_manager_screen.dart';
 
 /// 应用路由器。必须在 `ProviderScope` 内部创建：
@@ -18,6 +19,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/plugins',
         builder: (context, state) => const PluginManagerScreen(),
+      ),
+      GoRoute(
+        path: '/player',
+        builder: (context, state) => const PlayerScreen(),
       ),
       GoRoute(
         path: '/lx',

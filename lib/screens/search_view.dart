@@ -115,7 +115,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
                         title: Text('${item['title'] ?? '未知'}'),
                         subtitle: Text('${item['artist'] ?? ''}'),
                         trailing: const Icon(Icons.play_circle_outline),
-                        onTap: () => _play(item),
+                        onTap: () => _play(items, i),
                       );
                     },
                   ),
@@ -125,13 +125,14 @@ class _SearchViewState extends ConsumerState<SearchView> {
     );
   }
 
-  Future<void> _play(Map<String, dynamic> item) async {
+  /// 从搜索结果第 [index] 首开始播放，整个结果列表成为播放队列。
+  Future<void> _play(List<Map<String, dynamic>> items, int index) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
       messenger.showSnackBar(
-        SnackBar(content: Text('解析中: ${item['title']}')),
+        SnackBar(content: Text('解析中: ${items[index]['title']}')),
       );
-      await ref.read(playerActionsProvider).playItem(item);
+      await ref.read(playerActionsProvider).playFromList(items, index);
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('播放失败: $e')));
     }
