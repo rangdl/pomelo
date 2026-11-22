@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../plugins/demo_plugin.dart';
+import '../plugins/plugin_repository.dart';
 import '../providers/app_providers.dart';
 
 class PluginManagerScreen extends ConsumerStatefulWidget {
@@ -83,7 +84,10 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
   @override
   Widget build(BuildContext context) {
     final listAsync = ref.watch(pluginListProvider);
-    final list = listAsync.value ?? const [];
+    // 本页只展示 MusicFree 插件；LX 脚本在独立页面管理
+    final list = (listAsync.value ?? const <PluginRecord>[])
+        .where((p) => p.isMusicFree)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(

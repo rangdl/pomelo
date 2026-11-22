@@ -6,7 +6,21 @@ import 'package:pointycastle/asn1.dart';
 import 'package:pointycastle/export.dart';
 
 /// LX 脚本可用的加密原语。全部为**同步**实现，供 JS 同步桥调用。
+///
+/// 注意：同步桥会阻塞 UI 线程，因此对单次数据量设上限。LX 音源脚本的
+/// 典型用途（URL 签名、参数摘要）都在几百字节内，上限设得足够宽松。
 class LxCrypto {
+  /// 单次加密允许的最大明文长度（字节）。
+  static const int maxPlainBytes = 64 * 1024;
+
+  static void _checkSize(int length, String what) {
+    if (length > maxPlainBytes) {
+      throw ArgumentError(
+        '$what 过大（$length 字节），同步加密上限为 $maxPlainBytes 字节；'
+        '大文件请改用异步方案',
+      );
+    }
+  }
   /// MD5 十六进制小写。
   static String md5Hex(String input) {
     return c.md5.convert(utf8.encode(input)).toString();
@@ -23,6 +37,7 @@ class LxCrypto {
     required String ivB64,
   }) {
     final data = base64.decode(dataB64);
+    _checkSize(data.length, 'AES 明文');
     final key = base64.decode(keyB64);
     final iv = ivB64.isEmpty ? Uint8List(0) : base64.decode(ivB64);
 
@@ -34,43 +49,52 @@ class LxCrypto {
       throw ArgumentError('仅支持 AES-128（16 字节 key），实际 ${key.length}');
     }
 
-    final cipher = PaddedBlockCipherImpl(
-      noPadding
-          ? _NoPadding()
-          : PKCS7Padding(),
-      CBCBlockCipher(AESEngine()),
-    );
     final effectiveIv = isCbc
         ? (iv.length == 16 ? iv : Uint8List(16))
         : Uint8List(16);
+    final params = ParametersWithIV<KeyParameter>(KeyParameter(key), effectiveIv);
 
-    cipher.init(
-      true,
-      PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
-        ParametersWithIV<KeyParameter>(KeyParameter(key), effectiveIv),
-        null,
-      ),
-    );
-    final out = cipher.process(data);
-    return base64.encode(out);
+    if (noPadding) {
+      // NoPadding 必须整块对齐，且不能用 PaddedBlockCipherImpl
+      // ——它会无条件多补一块。直接用底层分组密码。
+      if (data.length % 16 != 0) {
+        throw ArgumentError(
+          'NoPadding 模式要求明文长度为 16 的整数倍，实际 ${data.length} 字节',
+        );
+      }
+      // ECB 模式不接受 IV，只传 KeyParameter
+      final cipher = isCbc
+          ? (CBCBlockCipher(AESEngine())..init(true, params))
+          : (ECBBlockCipher(AESEngine())..init(true, KeyParameter(key)));
+      final out = Uint8List(data.length);
+      for (var offset = 0; offset < data.length; offset += 16) {
+        cipher.processBlock(data, offset, out, offset);
+      }
+      return base64.encode(out);
+    }
+
+    final cipher = PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
+      ..init(
+        true,
+        PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
+          params,
+          null,
+        ),
+      );
+    return base64.encode(cipher.process(data));
   }
 
   /// RSA 加密（PKCS#1 v1.5），返回 base64。
   ///
-  /// [keyB64OrPem] 可以是带 BEGIN/END 的 PEM，也可以是纯 base64 的 DER。
+  /// [key] 支持两种常见公钥格式：
+  ///   1. X.509 SubjectPublicKeyInfo（`BEGIN PUBLIC KEY`，lx-music 默认）
+  ///   2. 裸 PKCS#1 RSAPublicKey（`BEGIN RSA PUBLIC KEY`）
   static String rsaEncryptBase64({
     required String dataB64,
     required String key,
   }) {
     final der = _pemToDer(key);
-    final sequence = ASN1Parser(der).nextObject() as ASN1Sequence;
-    final elements = sequence.elements;
-    if (elements == null || elements.length < 2) {
-      throw ArgumentError('无效的 RSA 公钥（DER 结构异常）');
-    }
-    final modulus = elements[0] as ASN1Integer;
-    final exponent = elements[1] as ASN1Integer;
-    final publicKey = RSAPublicKey(modulus.integer!, exponent.integer!);
+    final publicKey = _parseRsaPublicKey(der);
 
     final engine = PKCS1Encoding(RSAEngine())
       ..init(
@@ -78,9 +102,56 @@ class LxCrypto {
         PublicKeyParameter<RSAPublicKey>(publicKey),
       );
     final data = base64.decode(dataB64);
+    _checkSize(data.length, 'RSA 明文');
     // PKCS1 填充要求数据长度不超过 key 长度 - 11
+    if (data.length > (engine.inputBlockSize - 11)) {
+      throw ArgumentError(
+        'RSA 明文 ${data.length} 字节超出单块上限 ${engine.inputBlockSize - 11} 字节',
+      );
+    }
     final out = engine.process(data);
     return base64.encode(out);
+  }
+
+  /// 解析 DER 公钥，自动区分 X.509 包装与裸 PKCS#1。
+  static RSAPublicKey _parseRsaPublicKey(Uint8List der) {
+    final top = ASN1Parser(der).nextObject() as ASN1Sequence;
+    final elements = top.elements;
+    if (elements == null || elements.isEmpty) {
+      throw ArgumentError('无效的 RSA 公钥（DER 为空）');
+    }
+
+    // 裸 PKCS#1：SEQUENCE { INTEGER modulus, INTEGER exponent }
+    if (elements.first is ASN1Integer) {
+      return _rsaKeyFrom(elements);
+    }
+
+    // X.509：SEQUENCE { AlgorithmIdentifier, BIT STRING <PKCS#1 DER> }
+    if (elements.length >= 2 && elements[1] is ASN1BitString) {
+      final bits = (elements[1] as ASN1BitString).stringValues;
+      if (bits == null || bits.isEmpty) {
+        throw ArgumentError('无效的 RSA 公钥（BIT STRING 为空）');
+      }
+      final inner = ASN1Parser(Uint8List.fromList(bits)).nextObject() as ASN1Sequence;
+      final innerElements = inner.elements;
+      if (innerElements == null || innerElements.length < 2) {
+        throw ArgumentError('无效的 RSA 公钥（内层结构异常）');
+      }
+      return _rsaKeyFrom(innerElements);
+    }
+
+    throw ArgumentError('无法识别的 RSA 公钥格式');
+  }
+
+  static RSAPublicKey _rsaKeyFrom(List<ASN1Object> elements) {
+    if (elements.length < 2 ||
+        elements[0] is! ASN1Integer ||
+        elements[1] is! ASN1Integer) {
+      throw ArgumentError('无效的 RSA 公钥（缺少 modulus/exponent）');
+    }
+    final modulus = elements[0] as ASN1Integer;
+    final exponent = elements[1] as ASN1Integer;
+    return RSAPublicKey(modulus.integer!, exponent.integer!);
   }
 
   static Uint8List _pemToDer(String key) {
@@ -89,22 +160,4 @@ class LxCrypto {
         .replaceAll(RegExp(r'\s'), '');
     return base64.decode(cleaned);
   }
-}
-
-/// 不做填充，用于服务端要求 NoPadding 的场景。
-class _NoPadding implements Padding {
-  @override
-  String get algorithmName => 'None';
-
-  @override
-  void init([CipherParameters? params]) {}
-
-  @override
-  Uint8List process(bool pad, Uint8List data) => data;
-
-  @override
-  int addPadding(Uint8List data, int offset) => 0;
-
-  @override
-  int padCount(Uint8List data) => 0;
 }
