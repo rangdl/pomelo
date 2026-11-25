@@ -76,7 +76,7 @@ class NowPlayingBar extends ConsumerWidget {
                       iconSize: 24,
                       visualDensity: VisualDensity.compact,
                       onPressed: () =>
-                          playing ? player.pause() : player.play(),
+                          ref.read(playerActionsProvider).togglePlay(),
                       icon: Icon(
                         playing
                             ? Icons.pause_rounded

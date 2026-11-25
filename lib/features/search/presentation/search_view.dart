@@ -18,6 +18,9 @@ class SearchView extends ConsumerStatefulWidget {
 
 class _SearchViewState extends ConsumerState<SearchView> {
   final _controller = TextEditingController();
+  String _query = '';
+  int _page = 1;
+  bool _loadingMore = false;
 
   @override
   void dispose() {
@@ -36,7 +39,29 @@ class _SearchViewState extends ConsumerState<SearchView> {
       orElse: () => plugins.first,
     );
     FocusScope.of(context).unfocus();
-    await ref.read(playerActionsProvider).search(plugin, q);
+    _query = q;
+    _page = 1;
+    await ref.read(playerActionsProvider).search(plugin, q, page: 1);
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || _query.isEmpty) return;
+    final plugins = ref.read(searchablePluginsProvider);
+    if (plugins.isEmpty) return;
+    final selectedId = ref.read(selectedSearchPluginProvider);
+    final plugin = plugins.firstWhere(
+      (p) => p.id == selectedId,
+      orElse: () => plugins.first,
+    );
+    setState(() => _loadingMore = true);
+    final next = _page + 1;
+    await ref.read(playerActionsProvider).search(plugin, _query, page: next);
+    if (mounted) {
+      setState(() {
+        _page = next;
+        _loadingMore = false;
+      });
+    }
   }
 
   @override
@@ -133,6 +158,25 @@ class _SearchViewState extends ConsumerState<SearchView> {
                                 onTap: () => _play(items, i),
                               ),
                           ],
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        // 还有更多结果时提供「加载更多」。
+                        Center(
+                          child: ref.read(playerActionsProvider).searchHasMore
+                              ? TextButton.icon(
+                                  onPressed: _loadingMore ? null : _loadMore,
+                                  icon: _loadingMore
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(Icons.expand_more_rounded),
+                                  label: Text(_loadingMore ? '加载中…' : '加载更多'),
+                                )
+                              : const SizedBox.shrink(),
                         ),
                       ],
                     ),

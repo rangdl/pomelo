@@ -7,6 +7,8 @@ environment:
   sdk: ^3.13.7
 
 dependencies:
+  audio_service: ^0.18.19
+  audio_session: ^0.2.4
   crypto: ^3.0.8
   cupertino_icons: ^2.0.0
   flutter:
@@ -26,9 +28,16 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
   riverpod_generator: ^4.0.10
   build_runner: ^2.17.1
+  http: ^1.6.0
 
 flutter:
   uses-material-design: true
+  # 真机集成测试需要读取这两个真实音源脚本（设备上无源码目录，须随包打进 assets）。
+  assets:
+    - scripts/xinghai-music-source-qs-v1.3.0.js
+    - scripts/xinghai-music-sourcev2.3.19.js

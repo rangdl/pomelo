@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/player_actions.dart';
+import '../data/lrc_parser.dart';
 import '../domain/play_mode.dart';
 import 'playback_providers.dart';
 
@@ -57,7 +58,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  const Spacer(),
+                  const SizedBox(height: 8),
+                  // 歌词区(占据中间,随进度高亮当前行并居中滚动)
+                  Expanded(
+                    child: _LyricView(
+                      positionStream: player.positionStream,
+                    ),
+                  ),
                   // 主控制面板:深色半透明,两种主题下都浮在封面上
                   Material(
                     color: const Color(0xB3000000),
@@ -126,9 +133,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                   return IconButton(
                                     iconSize: 44,
                                     color: Colors.white,
-                                    onPressed: () => playing
-                                        ? player.pause()
-                                        : player.play(),
+                                    onPressed: () => ref
+                                        .read(playerActionsProvider)
+                                        .togglePlay(),
                                     icon: Icon(
                                       playing
                                           ? Icons.pause_circle_filled_rounded
@@ -152,11 +159,51 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 4),
+                          // 音量条
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.volume_down_rounded,
+                                size: 18,
+                                color: Colors.white70,
+                              ),
+                              Expanded(
+                                child: StreamBuilder<double>(
+                                  stream: player.volumeStream,
+                                  initialData: player.volume,
+                                  builder: (context, snap) {
+                                    final vol =
+                                        (snap.data ?? 100.0).clamp(0.0, 100.0).toDouble();
+                                    return SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(
+                                        thumbColor: Colors.white,
+                                        activeTrackColor: Colors.white70,
+                                        inactiveTrackColor: Colors.white24,
+                                        overlayColor: Colors.white24,
+                                        trackHeight: 2,
+                                      ),
+                                      child: Slider(
+                                        value: vol,
+                                        max: 100,
+                                        onChanged: (v) => player.setVolume(v),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const Icon(
+                                Icons.volume_up_rounded,
+                                size: 18,
+                                color: Colors.white70,
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -205,6 +252,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           ref.read(playQueueProvider.notifier).jumpTo(i);
                           ref.read(playerActionsProvider).playItem(it);
                         },
+                        trailing: IconButton(
+                          tooltip: '从队列移除',
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          onPressed: () {
+                            final wasCurrent = i == index;
+                            final newIndex = ref
+                                .read(playQueueProvider.notifier)
+                                .removeAt(i);
+                            final updated = ref.read(playQueueProvider);
+                            if (updated.isEmpty) {
+                              Navigator.pop(ctx);
+                              ref.read(audioPlayerProvider).stop();
+                              return;
+                            }
+                            if (wasCurrent) {
+                              // 删除的是当前曲：切到修正后的当前曲播放。
+                              Navigator.pop(ctx);
+                              ref
+                                  .read(playerActionsProvider)
+                                  .playItem(updated[newIndex]);
+                            }
+                          },
+                        ),
                       );
                     },
                   ),
@@ -212,6 +282,103 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// 歌词视图:随播放进度自动高亮当前行并居中滚动。
+class _LyricView extends ConsumerStatefulWidget {
+  const _LyricView({required this.positionStream});
+
+  final Stream<Duration> positionStream;
+
+  @override
+  ConsumerState<_LyricView> createState() => _LyricViewState();
+}
+
+class _LyricViewState extends ConsumerState<_LyricView> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asyncLyrics = ref.watch(lyricLinesProvider);
+    return asyncLyrics.when(
+      loading: () => const Center(
+        child: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white54),
+        ),
+      ),
+      error: (err, stack) => const SizedBox.shrink(),
+      data: (lines) {
+        if (lines.isEmpty) {
+          return const Center(
+            child: Text('暂无歌词', style: TextStyle(color: Colors.white38)),
+          );
+        }
+        return StreamBuilder<Duration>(
+          stream: widget.positionStream,
+          builder: (context, snap) {
+            final pos = snap.data ?? Duration.zero;
+            final active = LrcParser.activeIndex(lines, pos);
+            // 用固定行高 + 视口居中计算滚动偏移。
+            const lineHeight = 34.0;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!_scroll.hasClients) return;
+              final target = (active * lineHeight) -
+                  (_scroll.position.viewportDimension / 2) +
+                  lineHeight / 2;
+              _scroll.animateTo(
+                target.clamp(
+                  _scroll.position.minScrollExtent,
+                  _scroll.position.maxScrollExtent,
+                ),
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOut,
+              );
+            });
+            return ShaderMask(
+              shaderCallback: (rect) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+                stops: [0.0, 0.15, 0.85, 1.0],
+              ).createShader(rect),
+              blendMode: BlendMode.dstIn,
+              child: ListView.builder(
+                controller: _scroll,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 140),
+                itemCount: lines.length,
+                itemBuilder: (context, i) {
+                  final isActive = i == active;
+                  return SizedBox(
+                    height: lineHeight,
+                    child: Center(
+                      child: Text(
+                        lines[i].text.isEmpty ? '♪' : lines[i].text,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: isActive ? 17 : 15,
+                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+                          color: isActive ? Colors.white : Colors.white54,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

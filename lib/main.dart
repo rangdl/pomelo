@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -10,6 +11,9 @@ import 'package:path_provider/path_provider.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
+import 'features/playback/data/audio_player_service.dart';
+import 'features/playback/data/playback_store.dart';
+import 'features/playback/presentation/playback_providers.dart';
 import 'shared/settings/theme_mode.dart';
 
 const _defaultWindowSize = Size(1280, 720);
@@ -25,11 +29,27 @@ Future<void> main() async {
   // 预加载 shader 字节码，避免首帧卡顿（移动端底部导航栏仍用玻璃）
   await LiquidGlassWidgets.initialize();
   final initialThemeMode = await loadThemeModeOption();
+  final playbackSnapshot = await loadPlaybackSnapshot();
+
+  // 播放下沉到前台 Service：切后台 / 锁屏也能继续播放并可被系统控制。
+  final audioHandler = await AudioService.init<AudioPlayerService>(
+    builder: () => AudioPlayerService(),
+    config: const AudioServiceConfig(
+      androidNotificationChannelId: 'com.pomelo.pomelo.audio',
+      androidNotificationChannelName: 'Pomelo 播放',
+      androidNotificationOngoing: true,
+      androidStopForegroundOnPause: true,
+    ),
+  );
 
   runApp(
     ProviderScope(
       overrides: [
         themeModeInitializerProvider.overrideWithValue(initialThemeMode),
+        playbackSnapshotInitializerProvider.overrideWithValue(
+          playbackSnapshot,
+        ),
+        audioPlayerProvider.overrideWithValue(audioHandler),
       ],
       child: LiquidGlassWidgets.wrap(
         // 让玻璃组件的亮暗跟随应用主题，而不是系统
