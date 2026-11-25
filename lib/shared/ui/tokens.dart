@@ -45,8 +45,8 @@ abstract final class AppRadius {
 
 /// 设置行等"语义图标"的徽章底色/前景(参照 uzn 的蓝色图标块)。
 abstract final class AppIconBadge {
-  static const double size = 34;
-  static const double glyphSize = 20;
+  static const double size = 28;
+  static const double glyphSize = 16;
 
   static Color background(Brightness b) => b == Brightness.dark
       ? const Color(0xFF2C3B52)
@@ -60,14 +60,14 @@ abstract final class AppIconBadge {
 /// 字号令牌(字重在使用处声明:w600 用于行标题/选中态)。
 abstract final class AppText {
   /// 分组标题。
-  static const double sectionHeader = 13;
+  static const double sectionHeader = 12;
 
   /// 列表行主标题。
-  static const double rowTitle = 15;
+  static const double rowTitle = 14;
 
   /// 列表行副标题。
-  static const double rowSubtitle = 12.5;
+  static const double rowSubtitle = 11.5;
 
   /// 紧凑文字:时间、角标、底栏标签。
-  static const double compact = 11;
+  static const double compact = 10.5;
 }

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
+import '../../playback/presentation/player_sheet.dart';
 import '../domain/plugin_record.dart';
 import 'plugin_providers.dart';
 import 'toplists_providers.dart';
@@ -165,7 +165,7 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
   Future<void> _play(List<Map<String, dynamic>> songs, int index) async {
     try {
       await ref.read(playerActionsProvider).playFromList(songs, index);
-      if (mounted) context.push('/player');
+      if (mounted) showPlayerSheet(context);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

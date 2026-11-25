@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/settings/theme_mode.dart';
+import '../../../shared/ui/tokens.dart';
 import '../../plugins/presentation/library_providers.dart';
 import '../application/player_actions.dart';
 import '../data/audio_player_service.dart';
@@ -48,68 +49,74 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 背景:封面的模糊暗化版,营造沉浸感(不抢前景)。
-          _BlurredBackdrop(artwork: artwork),
-          SafeArea(
-            child: Column(
-              children: [
-                // 顶部:下箭头收起。
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    tooltip: '收起',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
-                ),
-                // 上部:封面主图(受约束,不铺满、不过高)。
-                Expanded(
-                  flex: 5,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(40, 4, 40, 12),
-                    child: Center(
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: _CoverArt(artwork: artwork),
+      body: ClipRRect(
+        // 顶部圆角:贴合从底部弹出的 sheet 观感。
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(AppRadius.sheet),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // 背景:封面的模糊暗化版,营造沉浸感(不抢前景)。
+            _BlurredBackdrop(artwork: artwork),
+            SafeArea(
+              child: Column(
+                children: [
+                  // 顶部:下箭头收起(sheet 也可下滑关闭)。缩小顶部留白。
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      tooltip: '收起',
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white,
+                        size: 30,
                       ),
                     ),
                   ),
-                ),
-                // 中部:歌词三行(当前行大、上下行小)。
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: _LyricThreeLines(
-                      positionStream: player.positionStream,
+                  // 上部:封面主图(调大)。
+                  Expanded(
+                    flex: 6,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(32, 0, 32, 8),
+                      child: Center(
+                        child: AspectRatio(
+                          aspectRatio: 1,
+                          child: _CoverArt(artwork: artwork),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                // 下部:歌名-歌手 / 收藏·歌词·队列 / 进度 / 控制。
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 4, 24, 8),
-                  child: _buildControls(
-                    item,
-                    player,
-                    mode,
-                    queue,
-                    queueIndex,
-                    title,
-                    artist,
-                    quality,
+                  // 中部:歌词三行(当前行大、上下行小,间距紧凑)。
+                  Expanded(
+                    flex: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: _LyricThreeLines(
+                        positionStream: player.positionStream,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  // 下部:歌名-歌手 / 收藏·队列 / 进度 / 控制(整体上移)。
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                    child: _buildControls(
+                      item,
+                      player,
+                      mode,
+                      queue,
+                      queueIndex,
+                      title,
+                      artist,
+                      quality,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -496,9 +503,9 @@ class _LyricThreeLines extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 _lyricLine(textAt(active - 1), false, 15),
-                const SizedBox(height: 8),
+                const SizedBox(height: 2),
                 _lyricLine(textAt(active), true, 20),
-                const SizedBox(height: 8),
+                const SizedBox(height: 2),
                 _lyricLine(textAt(active + 1), false, 15),
               ],
             );
@@ -510,7 +517,7 @@ class _LyricThreeLines extends ConsumerWidget {
 
   Widget _lyricLine(String text, bool active, double size) {
     return SizedBox(
-      height: 30,
+      height: 24,
       child: Center(
         child: Text(
           text.isEmpty ? '♪' : text,

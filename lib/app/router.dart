@@ -6,7 +6,6 @@ import '../features/plugins/presentation/library_screen.dart';
 import '../features/plugins/presentation/lx_manager_screen.dart';
 import '../features/plugins/presentation/plugin_manager_screen.dart';
 import '../features/plugins/presentation/toplists_screen.dart';
-import '../features/playback/presentation/player_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../shared/layout/adaptive_app_shell.dart';
 
@@ -47,11 +46,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      // 设置页内的二级页与播放页都留在壳外,全屏覆盖。
+      // 设置页内的二级页留在壳外,全屏覆盖。播放页改为底部 sheet(见 player_sheet.dart)。
       GoRoute(path: '/plugins', builder: (context, state) => const PluginManagerScreen()),
       GoRoute(path: '/lx', builder: (context, state) => const LxManagerScreen()),
       GoRoute(path: '/toplists', builder: (context, state) => const TopListsScreen()),
-      GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
     ],
   );
 });

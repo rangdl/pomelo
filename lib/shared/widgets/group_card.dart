@@ -14,8 +14,10 @@ class GroupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Material(
-      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      // 卡片底色跟随主题 cardTheme:浅色纯白、深色深卡片,与灰/黑底分清层。
+      color: theme.cardTheme.color ?? theme.colorScheme.surfaceContainerHigh,
       borderRadius: AppRadius.cardBorder,
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -26,7 +28,7 @@ class GroupCard extends StatelessWidget {
               Divider(
                 height: 1,
                 indent: dividerIndent,
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
+                color: theme.dividerColor.withValues(alpha: 0.5),
               ),
             child,
           ],

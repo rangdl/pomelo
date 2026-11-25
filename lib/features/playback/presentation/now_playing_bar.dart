@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../application/player_actions.dart';
 import 'playback_providers.dart';
+import 'player_sheet.dart';
 
 /// 底部迷你播放条:点击进入全屏播放页。
 class NowPlayingBar extends ConsumerWidget {
@@ -22,7 +22,7 @@ class NowPlayingBar extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () => context.push('/player'),
+          onTap: () => showPlayerSheet(context),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             child: Row(

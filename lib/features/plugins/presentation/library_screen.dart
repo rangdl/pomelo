@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
+import '../../playback/presentation/player_sheet.dart';
 import 'library_providers.dart';
 
 /// 我的：收藏与播放历史。
@@ -104,7 +104,7 @@ class _SongList extends ConsumerWidget {
                           await ref
                               .read(playerActionsProvider)
                               .playFromList(items, i);
-                          if (context.mounted) context.push('/player');
+                          if (context.mounted) showPlayerSheet(context);
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(

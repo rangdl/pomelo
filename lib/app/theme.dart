@@ -9,13 +9,36 @@ const Color pomeloBrandColor = Color(0xFFFF7A45);
 /// 背景走 iOS 分组列表风格(浅灰底 + 卡片 / 深灰底 + 深卡片),
 /// 组件样式集中在这里统一,页面不写样式覆盖。
 ThemeData _buildTheme(Brightness brightness) {
-  final scheme = ColorScheme.fromSeed(
+  final base = ColorScheme.fromSeed(
     seedColor: pomeloBrandColor,
     brightness: brightness,
   );
-  final scaffoldBg = brightness == Brightness.dark
-      ? const Color(0xFF1C1C1E)
-      : const Color(0xFFF2F2F7);
+  final isDark = brightness == Brightness.dark;
+  final scaffoldBg = isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7);
+  // 列表/卡片底色:浅色下纯白,与灰底形成清爽分层(参照 iOS 设置分组)。
+  final cardColor = isDark ? const Color(0xFF2C2C2E) : Colors.white;
+  // 中性色 surface 家族:seed 派生会带上橙色调,这里统一压成中性灰/白,
+  // 让全应用背景、卡片、输入框、浮动条都走同一套干净底色(只在一处定义)。
+  final neutralSurface = isDark ? const Color(0xFF2C2C2E) : Colors.white;
+  final neutralSurfaceLow = isDark
+      ? const Color(0xFF232325)
+      : const Color(0xFFF7F7FA);
+  final neutralSurfaceHigh = isDark
+      ? const Color(0xFF333336)
+      : const Color(0xFFEFEFF4);
+  final scheme = base.copyWith(
+    surface: neutralSurface,
+    surfaceContainerLowest: isDark ? const Color(0xFF141416) : Colors.white,
+    surfaceContainerLow: neutralSurfaceLow,
+    surfaceContainer: isDark ? const Color(0xFF282829) : const Color(0xFFF7F7FA),
+    surfaceContainerHigh: neutralSurfaceHigh,
+    surfaceContainerHighest: isDark
+        ? const Color(0xFF3A3A3D)
+        : const Color(0xFFE8E8EE),
+    onSurface: isDark ? const Color(0xFFEDEDED) : const Color(0xFF1C1C1E),
+    onSurfaceVariant:
+        isDark ? const Color(0xFFA8A8AD) : const Color(0xFF8A8A8E),
+  );
   final buttonShape = RoundedRectangleBorder(borderRadius: AppRadius.cardBorder);
 
   return ThemeData(
@@ -23,19 +46,25 @@ ThemeData _buildTheme(Brightness brightness) {
     colorScheme: scheme,
     scaffoldBackgroundColor: scaffoldBg,
 
-    // 顶栏:与页面背景融为一体,无分层阴影(iOS 大标题感的收敛版)。
+    // 顶栏:与页面背景融为一体,标题字号收敛(参照图二「设置」的小标题)。
     appBarTheme: AppBarTheme(
       centerTitle: true,
       elevation: 0,
       scrolledUnderElevation: 0,
       backgroundColor: scaffoldBg,
       surfaceTintColor: Colors.transparent,
+      toolbarHeight: 44,
+      titleTextStyle: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: scheme.onSurface,
+      ),
     ),
 
-    // 卡片:无阴影,圆角 12,分层只靠色块差。
+    // 卡片:无阴影,圆角 12,白底(深色为深卡片),分层只靠色块差。
     cardTheme: CardThemeData(
       elevation: 0,
-      color: scheme.surfaceContainerHigh,
+      color: cardColor,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
     ),
@@ -47,11 +76,16 @@ ThemeData _buildTheme(Brightness brightness) {
       backgroundColor: scheme.surfaceContainerLow,
     ),
 
+    // 列表行:紧凑化(iOS 分组列表的精致密度),全局一处定义。
     listTileTheme: const ListTileThemeData(
       contentPadding: EdgeInsets.symmetric(
         horizontal: AppSpacing.page,
-        vertical: AppSpacing.xs,
+        vertical: 0,
       ),
+      minVerticalPadding: 10,
+      dense: true,
+      horizontalTitleGap: 10,
+      minLeadingWidth: AppIconBadge.size,
     ),
 
     // 输入框:iOS 搜索框风格,填充色圆角无边框。
