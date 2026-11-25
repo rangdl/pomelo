@@ -66,7 +66,10 @@ var __pluginConsole = {
 var __pluginEnv = {
   appVersion: '0.1.0',
   userVariables: {},
-  os: 'android'
+  os: 'android',
+  // MusicFree 标准环境提供 env.getUserVariables()，插件常用它读取用户变量
+  // （如音乐源选择、token 等）。这里返回占位对象，用户变量支持接入后替换其内容。
+  getUserVariables: function() { return __pluginEnv.userVariables || {}; }
 };
 ''';
 
