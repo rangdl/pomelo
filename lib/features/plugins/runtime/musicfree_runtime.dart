@@ -110,25 +110,32 @@ var __pluginEnv = {
       })();
     ''');
 
-    // 驱动 JS 事件循环（Promise 微任务 + 我们注入的异步任务）
+    // 驱动 JS 事件循环（Promise 微任务 + 我们注入的异步任务）。
+    //
+    // 注意：轮询**只查轻量标志位**，不要每轮都 JSON.stringify 整个结果——
+    // 搜索结果/榜单可能几十上百条，反复序列化大 JSON 会占满主 isolate，
+    // 在真机上表现为应用无响应（ANR）。完成后再取一次完整结果即可。
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       _js.executePendingJob();
       final done = _js.evaluate(
-        'JSON.stringify({r: globalThis.__lastResult, e: globalThis.__lastError, '
-        'finished: globalThis.__lastResult !== undefined || globalThis.__lastError !== undefined})',
+        '(globalThis.__lastResult !== undefined || '
+        'globalThis.__lastError !== undefined) ? "1" : "0"',
       );
-      final state = jsonDecode(done.stringResult) as Map<String, dynamic>;
-      if (state['finished'] == true) {
-        if (state['e'] != null) throw StateError('插件方法异常: ${state['e']}');
-        final r = state['r'];
+      if (done.stringResult.contains('1')) {
+        final state = _js.evaluate(
+          'JSON.stringify({r: globalThis.__lastResult, e: globalThis.__lastError})',
+        );
+        final m = jsonDecode(state.stringResult) as Map<String, dynamic>;
+        if (m['e'] != null) throw StateError('插件方法异常: ${m['e']}');
+        final r = m['r'];
         if (r is Map && r['__unsupported'] == true) {
           throw UnsupportedError('插件未实现 $method');
         }
         return r;
       }
-      // fetch 的回调在 Dart 事件队列里，让出一下
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+      // fetch 的回调在 Dart 事件队列里，让出一下（15ms：够让出又不至于空转）。
+      await Future<void>.delayed(const Duration(milliseconds: 15));
     }
     throw StateError('调用 $method 超时');
   }

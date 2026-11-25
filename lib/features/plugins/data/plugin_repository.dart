@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../domain/plugin_record.dart';
 import '../runtime/lx_runtime.dart';
 import '../runtime/musicfree_runtime.dart';
+import 'lx_source_map.dart';
 
 /// 基于文件系统的插件仓库（持久化 plugins.json）：`<appSupport>/plugins/plugins.json`。
 class PluginRepository {
@@ -36,6 +37,19 @@ class PluginRepository {
         ..addAll(
           list.map((e) => PluginRecord.fromJson(e as Map<String, dynamic>)),
         );
+      // 迁移：旧数据里 MusicFree 插件可能没有 lxSource，按 platform 补推断值，
+      // 以便取链失败时能用同平台 LX 脚本兜底。
+      var changed = false;
+      for (final p in _plugins) {
+        if (p.isMusicFree && (p.lxSource == null || p.lxSource!.isEmpty)) {
+          final inferred = inferLxSourceFromPlatform(p.platform);
+          if (inferred != null) {
+            p.lxSource = inferred;
+            changed = true;
+          }
+        }
+      }
+      if (changed) await _save();
     } catch (e) {
       if (kDebugMode) debugPrint('读取插件列表失败: $e');
     }
@@ -66,7 +80,10 @@ class PluginRepository {
       supportedMethods:
           (meta['supportedMethods'] as List?)?.cast<String>() ?? const [],
       kind: 'musicfree',
-      lxSource: meta['lxSource'] as String?,
+      // 插件自声明优先；未声明则由 platform 名推断对应的 LX 源（用于取链兜底）。
+      lxSource: (meta['lxSource'] as String?)?.trim().isNotEmpty == true
+          ? meta['lxSource'] as String
+          : inferLxSourceFromPlatform(platform),
     );
 
     if (existing.isNotEmpty) {

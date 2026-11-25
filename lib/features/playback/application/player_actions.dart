@@ -317,6 +317,10 @@ class PlayerActions {
     );
   }
 
+  /// 解析播放地址。顺序：**先插件自带直链 → 失败再用同平台 LX 脚本兜底**。
+  ///
+  /// 很多第三方 MusicFree 插件的取链中转已失效（能搜不能播），但只要该平台有
+  /// 可用的 LX 脚本（kw/tx/wy/kg/mg…），就能用 LX 兜底拿到直链，用户无需换源。
   Future<ResolvedSource> _resolveUrl(
     PluginRepository repo,
     Map<String, dynamic> item,
@@ -324,33 +328,50 @@ class PlayerActions {
     final ownerId = item['_pluginId'] as String?;
     final quality = _ref.read(audioQualityProvider);
 
+    // 1) 插件自带取链。
+    Object? primaryError;
+    try {
+      final source = await _resolveWithMusicFree(repo, ownerId, item, quality);
+      debugPrint(
+        '[pomelo] 插件解析成功 quality=${quality.musicFreeValue} url=${source.url}',
+      );
+      return source;
+    } catch (e) {
+      primaryError = e;
+      debugPrint('[pomelo] 插件解析失败，尝试 LX 兜底: $e');
+    }
+
+    // 2) LX 兜底：按歌曲所属平台找对应源。
     final lxPlugin = _pickLxPlugin(repo, item);
     if (lxPlugin != null) {
+      final lxSource = '${item['lxSource'] ?? ''}';
       try {
         final lx = await _ref.read(lxRuntimeProvider(lxPlugin).future);
-        final lxSource = item['lxSource'] as String;
         final url = await lx.resolveMusicUrl(
           source: lxSource,
           musicInfo: {
+            // 不同源的取链键不同：酷狗用 hash、多数平台用 songmid。这里都填上，
+            // 尽量兼容各 LX 脚本的字段读取（值都取插件结果的 id）。
             'songmid': '${item['id'] ?? ''}',
+            'hash': '${item['hash'] ?? item['id'] ?? ''}',
             'name': '${item['title'] ?? ''}',
             'singer': '${item['artist'] ?? ''}',
+            'albumName': '${item['album'] ?? ''}',
           },
           quality: quality.lxValue,
         );
         debugPrint(
-          '[pomelo] LX 解析成功 plugin=${lxPlugin.platform} '
+          '[pomelo] LX 兜底成功 plugin=${lxPlugin.platform} '
           'source=$lxSource quality=${quality.lxValue} url=$url',
         );
         return ResolvedSource(url);
       } catch (e) {
-        debugPrint('[pomelo] LX 解析失败，回退 MusicFree: $e');
+        debugPrint('[pomelo] LX 兜底也失败: $e');
       }
     }
 
-    final source = await _resolveWithMusicFree(repo, ownerId, item, quality);
-    debugPrint('[pomelo] MusicFree 解析 quality=${quality.musicFreeValue} url=${source.url}');
-    return source;
+    // 3) 都失败：抛出插件侧原始错误（更贴近用户直接遇到的场景）。
+    throw StateError('$primaryError');
   }
 
   Future<ResolvedSource> _resolveWithMusicFree(
@@ -369,7 +390,11 @@ class PlayerActions {
     if (source == null || source['url'] is! String) {
       throw StateError('插件未返回可播放地址');
     }
-    final url = source['url'] as String;
+    final url = (source['url'] as String).trim();
+    // 插件可能"成功"返回空串（上游临时无链），同样视为失败以便走 LX 兜底。
+    if (url.isEmpty) {
+      throw StateError('插件返回空播放地址');
+    }
     final headers =
         (source['headers'] as Map?)?.map((k, v) => MapEntry('$k', '$v'))
             .cast<String, String>();
@@ -384,9 +409,18 @@ class PlayerActions {
     PluginRepository repo,
     Map<String, dynamic> item,
   ) {
-    final source = item['lxSource'];
     final lxPlugins = repo.plugins.where((p) => p.isLx && p.enabled).toList();
     if (lxPlugins.isEmpty) return null;
+
+    // 歌曲的源：自身声明优先；否则回退到其来源插件配置的 lxSource
+    // （榜单/历史/收藏等非搜索路径不会经过 search 的注入逻辑）。
+    var source = item['lxSource'];
+    if (source is! String || source.isEmpty) {
+      final ownerId = item['_pluginId'] as String?;
+      final owner =
+          repo.plugins.where((p) => p.id == ownerId).firstOrNull;
+      source = owner?.lxSource;
+    }
 
     if (source is String && source.isNotEmpty) {
       final selectedId = _ref.read(selectedLxPluginProvider);
@@ -397,7 +431,7 @@ class PlayerActions {
       return lxPlugins.where((p) => p.lxSources.contains(source)).firstOrNull;
     }
 
-    // 歌曲未声明源：仅在用户显式指定脚本时使用，避免猜错平台。
+    // 仍然未知来源：仅在用户显式指定脚本时使用，避免猜错平台。
     final selectedId = _ref.read(selectedLxPluginProvider);
     if (selectedId == null) return null;
     return lxPlugins.where((p) => p.id == selectedId).firstOrNull;
