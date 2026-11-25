@@ -21,7 +21,8 @@ dependencies:
   media_kit_libs_windows_audio: ^1.0.9
   path_provider: ^2.1.6
   pointycastle: ^4.0.0
-  quickjs_engine: ^0.1.7
+  quickjs_engine:
+    path: third_party/quickjs_engine
   riverpod_annotation: ^4.0.8
   window_manager: ^0.5.1
 

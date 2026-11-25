@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/layout/window_class.dart';
+import '../../../shared/settings/audio_quality.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
@@ -14,6 +15,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeOptionProvider);
+    final quality = ref.watch(audioQualityProvider);
 
     // 超宽窗口限行宽,避免列表被拉满整屏。
     return CenteredMaxWidth(
@@ -28,6 +30,12 @@ class SettingsScreen extends ConsumerWidget {
                 title: '主题模式',
                 subtitle: _themeModeLabel(themeMode),
                 onTap: () => _pickThemeMode(context, ref, themeMode),
+              ),
+              SettingsItem(
+                icon: Icons.graphic_eq_rounded,
+                title: '默认音质',
+                subtitle: quality.label,
+                onTap: () => _pickQuality(context, ref, quality),
               ),
             ],
           ),
@@ -76,6 +84,25 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (picked != null) {
       await ref.read(themeModeOptionProvider.notifier).set(picked);
+    }
+  }
+
+  Future<void> _pickQuality(
+    BuildContext context,
+    WidgetRef ref,
+    AudioQuality current,
+  ) async {
+    final picked = await showSelectionSheet<AudioQuality>(
+      context: context,
+      title: '默认音质',
+      current: current,
+      options: [
+        for (final q in AudioQuality.values)
+          SelectionOption(value: q, label: q.label),
+      ],
+    );
+    if (picked != null) {
+      await ref.read(audioQualityProvider.notifier).set(picked);
     }
   }
 }

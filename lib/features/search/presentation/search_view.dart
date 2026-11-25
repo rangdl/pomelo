@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
@@ -121,15 +122,22 @@ class _SearchViewState extends ConsumerState<SearchView> {
               AppSpacing.page,
               AppSpacing.xs,
             ),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _PluginPicker(
-                plugins: plugins,
-                current: current,
-                onSelected: (picked) => ref
-                    .read(selectedSearchPluginProvider.notifier)
-                    .select(picked.id),
-              ),
+            child: Row(
+              children: [
+                _PluginPicker(
+                  plugins: plugins,
+                  current: current,
+                  onSelected: (picked) => ref
+                      .read(selectedSearchPluginProvider.notifier)
+                      .select(picked.id),
+                ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => context.push('/toplists'),
+                  icon: const Icon(Icons.leaderboard_rounded, size: 18),
+                  label: const Text('榜单'),
+                ),
+              ],
             ),
           ),
           Expanded(

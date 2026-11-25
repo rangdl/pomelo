@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/app_keys.dart';
+import '../../../shared/settings/audio_quality.dart';
+import '../../../shared/settings/theme_mode.dart';
 import '../../plugins/data/plugin_repository.dart';
 import '../../plugins/domain/plugin_record.dart';
+import '../../plugins/presentation/library_providers.dart';
 import '../../plugins/presentation/plugin_providers.dart';
 import '../../search/presentation/search_providers.dart';
 import '../data/audio_player_service.dart';
@@ -91,9 +94,20 @@ class PlayerActions {
           duration: _durationOf(item),
         ),
       );
+      // 记录播放历史（异步、失败静默）。
+      _recordHistory(item);
     } catch (e) {
       _reportPlayFailure(item, '$e');
       rethrow;
+    }
+  }
+
+  void _recordHistory(Map<String, dynamic> item) {
+    try {
+      // 延迟读取，避免引入硬循环依赖；失败静默。
+      _ref.read(historyProvider.notifier).record(item);
+    } catch (e) {
+      debugPrint('[pomelo] 记录播放历史失败: $e');
     }
   }
 
@@ -104,9 +118,15 @@ class PlayerActions {
     return Duration(seconds: secs);
   }
 
+  /// 歌词缓存（曲目 id → LRC 文本，null 表示「确认无歌词」避免重复拉取）。
+  final Map<String, String?> _lyricCache = {};
+
   /// 获取歌词原文（LRC 文本）。优先 LX 脚本 lyric action，退回 MusicFree
   /// 插件的 getLyric。拿不到返回 null。
   Future<String?> fetchLyric(Map<String, dynamic> item) async {
+    final cacheKey =
+        '${item['_pluginId'] ?? ''}:${item['id'] ?? item['title'] ?? ''}';
+    if (_lyricCache.containsKey(cacheKey)) return _lyricCache[cacheKey];
     final repo = await _ref.read(pluginRepositoryProvider.future);
 
     // 1) LX 脚本：lyric action（脚本内已缓存取链时的歌词）
@@ -127,13 +147,16 @@ class PlayerActions {
           },
         );
         final lyric = _extractLyric(raw);
-        if (lyric != null && lyric.isNotEmpty) return lyric;
+        if (lyric != null && lyric.isNotEmpty) {
+          _lyricCache[cacheKey] = lyric;
+          return lyric;
+        }
       } catch (e) {
         debugPrint('[pomelo] LX 歌词获取失败: $e');
       }
     }
 
-    // 2) MusicFree 插件 getLyric
+    // 2) MusicFree 插件 getLyric（歌词响应可能较大，给更宽松的超时）
     final ownerId = item['_pluginId'] as String?;
     final plugin = repo.plugins.where((p) => p.id == ownerId).firstOrNull;
     if (plugin != null && plugin.supportedMethods.contains('getLyric')) {
@@ -142,13 +165,18 @@ class PlayerActions {
         final raw = await rt.invoke(
           'getLyric',
           [Map<String, dynamic>.from(item)..remove('_pluginId')],
+          timeout: const Duration(seconds: 30),
         );
         final lyric = _extractLyric(raw);
-        if (lyric != null && lyric.isNotEmpty) return lyric;
+        if (lyric != null && lyric.isNotEmpty) {
+          _lyricCache[cacheKey] = lyric;
+          return lyric;
+        }
       } catch (e) {
         debugPrint('[pomelo] MusicFree 歌词获取失败: $e');
       }
     }
+    _lyricCache[cacheKey] = null; // 确认无歌词，避免重复拉取
     return null;
   }
 
@@ -294,6 +322,7 @@ class PlayerActions {
     Map<String, dynamic> item,
   ) async {
     final ownerId = item['_pluginId'] as String?;
+    final quality = _ref.read(audioQualityProvider);
 
     final lxPlugin = _pickLxPlugin(repo, item);
     if (lxPlugin != null) {
@@ -307,10 +336,11 @@ class PlayerActions {
             'name': '${item['title'] ?? ''}',
             'singer': '${item['artist'] ?? ''}',
           },
+          quality: quality.lxValue,
         );
         debugPrint(
           '[pomelo] LX 解析成功 plugin=${lxPlugin.platform} '
-          'source=$lxSource url=$url',
+          'source=$lxSource quality=${quality.lxValue} url=$url',
         );
         return ResolvedSource(url);
       } catch (e) {
@@ -318,8 +348,8 @@ class PlayerActions {
       }
     }
 
-    final source = await _resolveWithMusicFree(repo, ownerId, item);
-    debugPrint('[pomelo] MusicFree 解析 url=${source.url}');
+    final source = await _resolveWithMusicFree(repo, ownerId, item, quality);
+    debugPrint('[pomelo] MusicFree 解析 quality=${quality.musicFreeValue} url=${source.url}');
     return source;
   }
 
@@ -327,13 +357,14 @@ class PlayerActions {
     PluginRepository repo,
     String? pluginId,
     Map<String, dynamic> item,
+    AudioQuality quality,
   ) async {
     final plugin = repo.plugins.where((p) => p.id == pluginId).firstOrNull;
     if (plugin == null) throw StateError('找不到来源插件');
     final rt = await _ref.read(musicFreeRuntimeProvider(plugin).future);
     final source = await rt.getMediaSource(
       Map<String, dynamic>.from(item)..remove('_pluginId'),
-      'standard',
+      quality.musicFreeValue,
     );
     if (source == null || source['url'] is! String) {
       throw StateError('插件未返回可播放地址');

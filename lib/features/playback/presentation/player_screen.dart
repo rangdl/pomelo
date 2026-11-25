@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../application/player_actions.dart';
 import '../data/lrc_parser.dart';
 import '../domain/play_mode.dart';
+import '../../plugins/presentation/library_providers.dart';
 import 'playback_providers.dart';
 
 /// 全屏播放页:封面做背景,控制层为半透明深色面板。
@@ -41,6 +42,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         backgroundColor: Colors.transparent,
         title: const Text('正在播放'),
         actions: [
+          _FavoriteButton(item: item),
           IconButton(
             tooltip: '播放队列',
             icon: const Icon(Icons.queue_music_rounded),
@@ -282,6 +284,38 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// 收藏按钮：切换当前曲目的收藏状态，实心/空心红心反馈。
+class _FavoriteButton extends ConsumerWidget {
+  const _FavoriteButton({required this.item});
+
+  final Map<String, dynamic> item;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favorites = ref.watch(favoritesProvider);
+    final isFav = favorites.value != null &&
+        ref.read(favoritesProvider.notifier).contains(item);
+    return IconButton(
+      tooltip: isFav ? '取消收藏' : '收藏',
+      icon: Icon(
+        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+        color: isFav ? Colors.redAccent : null,
+      ),
+      onPressed: () async {
+        final nowFav = await ref.read(favoritesProvider.notifier).toggle(item);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(nowFav ? '已收藏' : '已取消收藏'),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+      },
     );
   }
 }

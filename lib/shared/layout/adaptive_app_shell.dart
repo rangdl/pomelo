@@ -19,10 +19,11 @@ class AdaptiveAppShell extends StatelessWidget {
 
   static const List<(IconData, String)> _destinations = [
     (Icons.home_rounded, '首页'),
+    (Icons.favorite_rounded, '我的'),
     (Icons.settings_rounded, '设置'),
   ];
 
-  static const List<String> _titles = ['Pomelo', '设置'];
+  static const List<String> _titles = ['Pomelo', '我的', '设置'];
 
   void _goBranch(int index) => navigationShell.goBranch(index);
 

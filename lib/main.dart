@@ -14,6 +14,7 @@ import 'app/app.dart';
 import 'features/playback/data/audio_player_service.dart';
 import 'features/playback/data/playback_store.dart';
 import 'features/playback/presentation/playback_providers.dart';
+import 'shared/settings/settings_store.dart';
 import 'shared/settings/theme_mode.dart';
 
 const _defaultWindowSize = Size(1280, 720);
@@ -28,7 +29,9 @@ Future<void> main() async {
   }
   // 预加载 shader 字节码，避免首帧卡顿（移动端底部导航栏仍用玻璃）
   await LiquidGlassWidgets.initialize();
-  final initialThemeMode = await loadThemeModeOption();
+  final settingsStore = await SettingsStore.open();
+  final initialThemeMode = await loadThemeModeOption(settingsStore);
+  final initialAudioQuality = await loadAudioQuality(settingsStore);
   final playbackSnapshot = await loadPlaybackSnapshot();
 
   // 播放下沉到前台 Service：切后台 / 锁屏也能继续播放并可被系统控制。
@@ -45,7 +48,9 @@ Future<void> main() async {
   runApp(
     ProviderScope(
       overrides: [
+        settingsStoreProvider.overrideWithValue(settingsStore),
         themeModeInitializerProvider.overrideWithValue(initialThemeMode),
+        audioQualityInitializerProvider.overrideWithValue(initialAudioQuality),
         playbackSnapshotInitializerProvider.overrideWithValue(
           playbackSnapshot,
         ),

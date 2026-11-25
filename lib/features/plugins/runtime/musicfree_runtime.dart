@@ -79,7 +79,13 @@ var __pluginEnv = {
   }
 
   /// 调用插件方法，等待 Promise 结算并返回 JSON 可序列化结果。
-  Future<dynamic> invoke(String method, List<dynamic> args) async {
+  ///
+  /// [timeout] 控制等待上限：歌词等可能拉大响应的接口需要更长时间。
+  Future<dynamic> invoke(
+    String method,
+    List<dynamic> args, {
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
     if (!_loaded) throw StateError('插件尚未加载');
     final argsJson = jsonEncode(args);
     _js.evaluate('''
@@ -102,7 +108,7 @@ var __pluginEnv = {
     ''');
 
     // 驱动 JS 事件循环（Promise 微任务 + 我们注入的异步任务）
-    final deadline = DateTime.now().add(const Duration(seconds: 20));
+    final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       _js.executePendingJob();
       final done = _js.evaluate(
@@ -171,6 +177,46 @@ var __pluginEnv = {
     }
     if (result is String) return {'url': result};
     return null;
+  }
+
+  /// 获取榜单列表。协议返回 `[{title, data: [{id, title, ...}]}]`。
+  /// 插件不支持时返回空列表。
+  Future<List<Map<String, dynamic>>> getTopLists() async {
+    try {
+      final result = await invoke('getTopLists', []);
+      if (result is List) {
+        return result
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList();
+      }
+    } catch (_) {
+      // 插件未实现或出错：静默返回空。
+    }
+    return const [];
+  }
+
+  /// 获取某个榜单详情（歌曲列表）。协议返回 `{isEnd, musicList}`。
+  Future<List<Map<String, dynamic>>> getTopListDetail(
+    Map<String, dynamic> topListItem, {
+    int page = 1,
+  }) async {
+    // 榜单详情接口响应较大（几十到几百 KB），给更宽松的超时。
+    final result = await invoke(
+      'getTopListDetail',
+      [topListItem, page],
+      timeout: const Duration(seconds: 45),
+    );
+    if (result is Map<String, dynamic>) {
+      final list = result['musicList'];
+      if (list is List) {
+        return list
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList();
+      }
+    }
+    return const [];
   }
 
   void dispose() => _js.dispose();

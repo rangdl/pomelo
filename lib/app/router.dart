@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/home/presentation/home_screen.dart';
+import '../features/plugins/presentation/library_screen.dart';
 import '../features/plugins/presentation/lx_manager_screen.dart';
 import '../features/plugins/presentation/plugin_manager_screen.dart';
+import '../features/plugins/presentation/toplists_screen.dart';
 import '../features/playback/presentation/player_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../shared/layout/adaptive_app_shell.dart';
@@ -30,6 +32,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: [
               GoRoute(
+                path: '/library',
+                builder: (context, state) => const LibraryScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
                 path: '/settings',
                 builder: (context, state) => const SettingsScreen(),
               ),
@@ -40,6 +50,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // 设置页内的二级页与播放页都留在壳外,全屏覆盖。
       GoRoute(path: '/plugins', builder: (context, state) => const PluginManagerScreen()),
       GoRoute(path: '/lx', builder: (context, state) => const LxManagerScreen()),
+      GoRoute(path: '/toplists', builder: (context, state) => const TopListsScreen()),
       GoRoute(path: '/player', builder: (context, state) => const PlayerScreen()),
     ],
   );
