@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pomelo/runtime/lx_crypto.dart';
+import 'package:pomelo/features/plugins/runtime/lx_crypto.dart';
 import 'package:pointycastle/export.dart';
 
 void main() {
