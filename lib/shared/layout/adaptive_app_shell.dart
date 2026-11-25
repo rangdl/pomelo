@@ -74,7 +74,10 @@ class AdaptiveAppShell extends StatelessWidget {
   }
 }
 
-/// 移动端底部玻璃导航栏:等距横排玻璃圆钮,选中项用主题色点亮。
+/// 移动端底部玻璃导航栏。
+///
+/// 每个标签是一个「图标 + 文字」一体的玻璃胶囊按钮，宽度随内容自适应，
+/// 选中项整块高亮并带玻璃选中动画（不再是图标单独动、文字在下面堆高度）。
 class _GlassBottomNavigation extends StatelessWidget {
   const _GlassBottomNavigation({
     required this.destinations,
@@ -88,46 +91,103 @@ class _GlassBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    final inactive = Theme.of(context).colorScheme.onSurfaceVariant;
     // SafeArea:全面屏手势机型上玻璃条不能压到手势区。
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-        child: GlassContainer(
-          shape: const LiquidRoundedSuperellipse(borderRadius: AppRadius.glass),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              for (final (i, (icon, label)) in destinations.indexed)
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    GlassIconButton(
-                      size: 40,
-                      iconSize: 19,
-                      icon: Icon(
-                        icon,
-                        color: i == currentIndex ? accent : inactive,
-                      ),
-                      onPressed: () => onTap(i),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: AppText.compact,
-                        color: i == currentIndex ? accent : inactive,
-                      ),
-                    ),
-                  ],
+        padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+        child: Row(
+          children: [
+            for (final (i, (icon, label)) in destinations.indexed)
+              // 每项按内容宽度自适应；间距用 Expanded 均分到两侧。
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: _NavItem(
+                    icon: icon,
+                    label: label,
+                    selected: i == currentIndex,
+                    onTap: () => onTap(i),
+                  ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
   }
 }
+
+/// 单个底部导航项：图标 + 文字一体的玻璃胶囊，选中整块高亮。
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fg = selected ? scheme.primary : scheme.onSurfaceVariant;
+    // 选中项用主题色淡底胶囊强调；未选中透明（融入玻璃栏）。
+    final bg = selected
+        ? scheme.primary.withValues(alpha: 0.16)
+        : Colors.transparent;
+
+    return GlassButton.custom(
+      onTap: onTap,
+      isSelected: selected,
+      style: GlassButtonStyle.transparent,
+      width: null,
+      height: 48,
+      shape: const LiquidRoundedSuperellipse(borderRadius: AppRadius.floating),
+      // 图标与文字内部再套一层动画容器，让选中态的颜色/底/字重平滑过渡。
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(AppRadius.floating),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              scale: selected ? 1.0 : 0.92,
+              child: Icon(icon, size: 20, color: fg),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                style: TextStyle(
+                  fontSize: AppText.compact,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  color: fg,
+                ),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
