@@ -4,6 +4,7 @@ library;
 export 'cover_image.dart';
 export 'empty_state.dart';
 export 'group_card.dart';
+export 'marquee_text.dart';
 export 'media_grid.dart';
 export 'media_row.dart';
 export 'section_header.dart';

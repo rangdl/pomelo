@@ -78,6 +78,103 @@ final audioPlayerProvider = Provider<AudioPlayerService>((ref) {
 });
 
 // ---------------------------------------------------------------------------
+// 取链阶段 / 乐观播放态
+// ---------------------------------------------------------------------------
+
+/// 当前播放所处的阶段，用于在播放控件上展示取链进度。
+enum PlaybackStage {
+  /// 空闲：没有进行中的取链流程。
+  idle,
+
+  /// 正在向来源插件获取播放链接。
+  resolving,
+
+  /// 来源插件取链失败，正在尝试其它插件兜底。
+  fallback,
+
+  /// 取链失败（含兜底），本次播放已放弃。
+  failed,
+}
+
+extension PlaybackStageLabel on PlaybackStage {
+  /// 展示在播放控件上的文案；[idle] 为空，表示不占用该行。
+  String get label => switch (this) {
+    PlaybackStage.idle => '',
+    PlaybackStage.resolving => '获取播放链接…',
+    PlaybackStage.fallback => '走兜底流程…',
+    PlaybackStage.failed => '获取播放链接失败',
+  };
+}
+
+class PlaybackStageNotifier extends Notifier<PlaybackStage> {
+  Timer? _resetTimer;
+
+  @override
+  PlaybackStage build() {
+    ref.onDispose(() => _resetTimer?.cancel());
+    return PlaybackStage.idle;
+  }
+
+  void set(PlaybackStage stage) {
+    _resetTimer?.cancel();
+    state = stage;
+    // 失败文案展示几秒后自动复位，避免长期占着播放控件的信息位。
+    if (stage == PlaybackStage.failed) {
+      _resetTimer = Timer(const Duration(seconds: 4), () {
+        if (ref.mounted && state == PlaybackStage.failed) {
+          state = PlaybackStage.idle;
+        }
+      });
+    }
+  }
+
+  void reset() {
+    _resetTimer?.cancel();
+    state = PlaybackStage.idle;
+  }
+}
+
+final playbackStageProvider =
+    NotifierProvider<PlaybackStageNotifier, PlaybackStage>(
+      PlaybackStageNotifier.new,
+    );
+
+/// 点击播放/暂停时先给出的乐观意图（null 表示以播放器真实状态为准）。
+///
+/// 取链需要时间，图标若等真实播放状态更新才切换会显得「不跟手」：点击瞬间
+/// 先按用户意图显示，等播放器状态追上（或已停止）后自动交还给真实状态。
+class PlaybackIntentNotifier extends Notifier<bool?> {
+  StreamSubscription<bool>? _sub;
+
+  @override
+  bool? build() {
+    final player = ref.read(audioPlayerProvider);
+    _sub = player.playingStream.listen((actual) {
+      final intent = state;
+      if (intent == null) return;
+      // 真实状态已追上意图，交还控制权。
+      if (actual == intent) {
+        state = null;
+        return;
+      }
+      // 切歌途中会短暂出现 playing=false，此时引擎里仍是旧曲，不能误清；
+      // 只有引擎里已无加载媒体（stop）才把乐观态交还。
+      if (!actual && player.loadedId == null) state = null;
+    });
+    ref.onDispose(() => _sub?.cancel());
+    return null;
+  }
+
+  void setOptimistic(bool playing) => state = playing;
+
+  void clear() => state = null;
+}
+
+final playbackIntentProvider = NotifierProvider<PlaybackIntentNotifier, bool?>(
+  PlaybackIntentNotifier.new,
+);
+
+// ---------------------------------------------------------------------------
 // 播放状态持久化
 // ---------------------------------------------------------------------------
 

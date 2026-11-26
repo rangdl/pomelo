@@ -94,6 +94,9 @@ class PlayerActions {
   Future<void> playItem(Map<String, dynamic> item) async {
     // 同步自增，保证「后点的歌」代次更高（不能放在 await 之后）。
     final generation = ++_playGeneration;
+    // 点击即切换图标：取链还没开始就把 UI 先置为「播放中」，避免不跟手。
+    _ref.read(playbackIntentProvider.notifier).setOptimistic(true);
+    _ref.read(playbackStageProvider.notifier).set(PlaybackStage.resolving);
     final repo = await _ref.read(pluginRepositoryProvider.future);
     if (generation != _playGeneration) return;
     final player = _ref.read(audioPlayerProvider);
@@ -101,20 +104,31 @@ class PlayerActions {
     // 同步通知栏的队列位置（高亮当前曲）。
     player.updateQueueIndex(_ref.read(playQueueProvider.notifier).index);
 
+    void reportStage(PlaybackStage stage) {
+      if (generation != _playGeneration) return;
+      _ref.read(playbackStageProvider.notifier).set(stage);
+    }
+
     final cacheKey = _mediaKey(item);
     ResolvedSource source;
     try {
-      source = await _resolveUrl(repo, item);
+      source = await _resolveUrl(repo, item, onStage: reportStage);
     } catch (e) {
       if (generation != _playGeneration) return;
       // 取链失败：可能命中了已失效的缓存链接，淘汰后重试一次。
       MediaLinkCache.instance?.remove(cacheKey);
       try {
-        source = await _resolveUrl(repo, item, forceRefresh: true);
+        source = await _resolveUrl(
+          repo,
+          item,
+          forceRefresh: true,
+          onStage: reportStage,
+        );
       } catch (e2) {
         if (generation != _playGeneration) return;
         // 取链失败说明「这首放不了」，不是播放器的瞬时错误：直接反馈一次，
         // 不进入 3 秒探测 + 自动跳下一首的流程，否则一首失败会连环跳完整队列。
+        _markPlaybackFailed();
         _toast('播放失败: ${item['title'] ?? ''}（$e2）');
         return;
       }
@@ -124,6 +138,7 @@ class PlayerActions {
     try {
       await _openSource(item, source);
       if (generation != _playGeneration) return;
+      _ref.read(playbackStageProvider.notifier).reset();
       _recordHistory(item);
       // 预取下一首的音源，切歌时无需再等取链。
       unawaited(prefetchNext());
@@ -139,10 +154,16 @@ class PlayerActions {
       await MediaProxyServer.instance?.evictAudio(cacheKey);
       if (generation != _playGeneration) return;
       try {
-        final retry = await _resolveUrl(repo, item, forceRefresh: true);
+        final retry = await _resolveUrl(
+          repo,
+          item,
+          forceRefresh: true,
+          onStage: reportStage,
+        );
         if (generation != _playGeneration) return;
         await _openSource(item, retry);
         if (generation != _playGeneration) return;
+        _ref.read(playbackStageProvider.notifier).reset();
         _recordHistory(item);
         unawaited(prefetchNext());
       } catch (e2) {
@@ -528,20 +549,35 @@ class PlayerActions {
     final current = _ref.read(playQueueProvider.notifier).current;
     final fallback = _ref.read(nowPlayingProvider);
     final target = current ?? fallback;
-    final currentId = '${target?['id'] ?? ''}';
-    // 引擎里已加载的就是这首 → 正常播放/暂停切换。
-    if (player.hasLoaded(currentId)) {
-      if (player.playing) {
+    if (target == null) return;
+    final currentId = '${target['id'] ?? ''}';
+
+    // 以「用户看到的状态」为准：点击后图标已乐观切换，不能被播放器尚未
+    // 更新的真实状态误判成同向重复点击。
+    final displayedPlaying =
+        _ref.read(playbackIntentProvider) ?? player.playing;
+
+    // 暂停：图标立即切回，真实暂停在后台完成。
+    if (displayedPlaying) {
+      _ref.read(playbackIntentProvider.notifier).setOptimistic(false);
+      if (player.hasLoaded(currentId)) {
         await player.pause();
       } else {
-        await player.play();
+        // 还在解析 / 未加载：取消这次播放请求即可。
+        _playGeneration++;
+        _ref.read(playbackStageProvider.notifier).reset();
       }
       return;
     }
-    // 尚未加载（如重启后恢复的快照、或点的是队列里另一首）：重新解析并播放。
-    if (target != null) {
-      await safePlay(target);
+
+    // 播放：图标立即切到暂停，取链在后台继续（失败会回滚并提示）。
+    _ref.read(playbackIntentProvider.notifier).setOptimistic(true);
+    if (player.hasLoaded(currentId)) {
+      await player.play();
+      return;
     }
+    // 尚未加载（如重启后恢复的快照、或点的是队列里另一首）：重新解析并播放。
+    await safePlay(target);
   }
 
   /// 上一首 / 下一首。[auto] 表示由「播放完成」触发，需遵守播放模式。
@@ -613,7 +649,14 @@ class PlayerActions {
   }
 
   void _reportPlayFailure(Map<String, dynamic> item, String message) {
+    _markPlaybackFailed();
     _handlePlayError(item, message);
+  }
+
+  /// 本次播放确定失败：回滚乐观播放态，并在控件上展示失败文案。
+  void _markPlaybackFailed() {
+    _ref.read(playbackIntentProvider.notifier).clear();
+    _ref.read(playbackStageProvider.notifier).set(PlaybackStage.failed);
   }
 
   Future<void> safePlay(Map<String, dynamic> item) async {
@@ -639,6 +682,7 @@ class PlayerActions {
     PluginRepository repo,
     Map<String, dynamic> item, {
     bool forceRefresh = false,
+    void Function(PlaybackStage stage)? onStage,
   }) async {
     final ownerId = item['_pluginId'] as String?;
     final quality = _ref.read(audioQualityProvider);
@@ -653,6 +697,7 @@ class PlayerActions {
       return ResolvedSource(cached.url, cached.headers);
     }
 
+    onStage?.call(PlaybackStage.resolving);
     Object? primaryError;
 
     // 1) 来源插件自带取链（用户可对该插件勾选「禁用取链」直接走兜底）。
@@ -677,11 +722,15 @@ class PlayerActions {
 
     // 2) 跨插件兜底：同音源 key 的其它插件。
     final sourceKey = _sourceKeyOf(repo, item);
-    if (sourceKey != null) {
-      for (final candidate in repo.fallbackCandidates(
-        sourceKey,
-        excludeId: ownerId,
-      )) {
+    final candidates = sourceKey == null
+        ? const <PluginRecord>[]
+        : repo
+              .fallbackCandidates(sourceKey, excludeId: ownerId)
+              .toList(growable: false);
+    if (candidates.isNotEmpty) {
+      // 主插件已失败（或被禁用），接下来换插件兜底：同步进度文案。
+      onStage?.call(PlaybackStage.fallback);
+      for (final candidate in candidates) {
         try {
           final source = await _resolveWith(
             candidate,

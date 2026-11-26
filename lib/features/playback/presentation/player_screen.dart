@@ -157,10 +157,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     String artist,
     String quality,
   ) {
+    final label = artist.isEmpty ? title : '$title - $artist';
+    final stage = ref.watch(playbackStageProvider);
+    // 点击后立即按用户意图显示，等播放器真实状态追上再交还。
+    final intent = ref.watch(playbackIntentProvider);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 歌名-歌手 + 收藏/队列。
+        // 歌名-歌手（一行，超长滚动） + 收藏/队列。
         Row(
           children: [
             Expanded(
@@ -173,34 +177,30 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   children: [...previousChildren, ?currentChild],
                 ),
                 child: SizedBox(
-                  key: ValueKey('$title-$artist'),
+                  key: ValueKey(label),
                   width: double.infinity,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      MarqueeText(
+                        label,
                         style: const TextStyle(
                           fontSize: AppText.displayTitle,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                         ),
                       ),
-                      if (artist.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          artist,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: AppText.rowTitle,
-                            color: Colors.white70,
-                          ),
+                      // 原歌手位置：展示取链/兜底进度，空闲时留空。
+                      Text(
+                        stage.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: AppText.rowTitle,
+                          color: Colors.white70,
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
@@ -254,7 +254,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               stream: player.playingStream,
               initialData: player.playing,
               builder: (context, snap) {
-                final playing = snap.data ?? false;
+                final playing = intent ?? (snap.data ?? false);
                 return IconButton(
                   iconSize: 60,
                   color: Colors.white,

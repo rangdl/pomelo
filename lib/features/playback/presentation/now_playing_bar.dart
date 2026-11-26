@@ -49,6 +49,12 @@ class NowPlayingBar extends ConsumerWidget {
     final player = ref.watch(audioPlayerProvider);
     final scheme = Theme.of(context).colorScheme;
     final artwork = trackArtwork(item);
+    final title = '${item['title'] ?? '未知歌曲'}';
+    final artist = '${item['artist'] ?? ''}'.trim();
+    final label = artist.isEmpty ? title : '$title - $artist';
+    final stage = ref.watch(playbackStageProvider);
+    // 点击后立即按用户意图显示，等播放器真实状态追上再交还。
+    final intent = ref.watch(playbackIntentProvider);
 
     return GlassContainer(
       shape: const LiquidRoundedSuperellipse(borderRadius: AppRadius.glass),
@@ -95,17 +101,17 @@ class NowPlayingBar extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              '${item['title'] ?? '未知歌曲'}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            // 歌名 - 歌手放一行，超长时自动滚动。
+                            MarqueeText(
+                              label,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: AppText.rowTitle,
                               ),
                             ),
+                            // 原歌手位置：展示取链/兜底进度，空闲时留空。
                             Text(
-                              '${item['artist'] ?? ''}',
+                              stage.label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -127,7 +133,7 @@ class NowPlayingBar extends ConsumerWidget {
                         stream: player.playingStream,
                         initialData: player.playing,
                         builder: (context, snap) {
-                          final playing = snap.data ?? false;
+                          final playing = intent ?? (snap.data ?? false);
                           return IconButton(
                             iconSize: 24,
                             visualDensity: VisualDensity.compact,
