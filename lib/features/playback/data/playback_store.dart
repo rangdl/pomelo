@@ -21,10 +21,10 @@ class PlaybackSnapshot {
   final PlayMode mode;
 
   Map<String, dynamic> toJson() => {
-        'queue': queue,
-        'index': index,
-        'mode': mode.name,
-      };
+    'queue': queue,
+    'index': index,
+    'mode': mode.name,
+  };
 
   static PlaybackSnapshot? fromJson(Map<String, dynamic> json) {
     final rawQueue = json['queue'];

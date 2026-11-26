@@ -5,11 +5,16 @@ import '../ui/tokens.dart';
 /// 分组卡片:一组行项目装在同一张圆角卡片里,行间以极细分隔线相连
 /// (iOS 分组列表风格)。无阴影,分层只靠卡片色与背景差。
 class GroupCard extends StatelessWidget {
-  const GroupCard({super.key, required this.children, this.dividerIndent = 66});
+  const GroupCard({
+    super.key,
+    required this.children,
+    this.dividerIndent = AppSpacing.dividerIndentSettings,
+  });
 
   final List<Widget> children;
 
-  /// 分隔线左缩进,与行内容文字对齐(图标块 34 + 行内 padding 32)。
+  /// 分隔线左缩进,与行内容文字对齐。
+  /// SettingsItem(28 徽章)= 46;TrackTile(40 封面)= 58。
   final double dividerIndent;
 
   @override

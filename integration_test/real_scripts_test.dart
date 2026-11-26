@@ -1,8 +1,7 @@
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:pomelo/features/plugins/runtime/lx_runtime.dart';
-import 'package:pomelo/features/plugins/runtime/musicfree_runtime.dart';
+import 'package:pomelo/features/plugins/runtime/pomelo_plugin_runtime.dart';
 
 /// 真机集成测试：在 Android 设备上用真实 JS 运行时（APK 内打包的 quickjs 原生库）
 /// + 真实网络，端到端跑通 `scripts/` 下的两个真实音源脚本：
@@ -18,11 +17,11 @@ void main() {
   Future<String> loadScript(String assetPath) => rootBundle.loadString(assetPath);
 
   group('真机 · 星海音乐源-汽水 (MusicFree 插件 qs v1.3.0)', () {
-    late MusicFreeRuntime rt;
+    late PomeloPluginRuntime rt;
 
     setUpAll(() async {
-      rt = await MusicFreeRuntime.create();
-      rt.loadPlugin(
+      rt = await PomeloPluginRuntime.create();
+      await rt.loadPlugin(
         await loadScript('scripts/xinghai-music-source-qs-v1.3.0.js'),
         name: 'xinghai-qs',
       );
@@ -68,13 +67,12 @@ void main() {
   });
 
   group('真机 · 星海音乐源 (LX UserApi v2.3.19)', () {
-    late LxUserApiRuntime rt;
+    late PomeloPluginRuntime rt;
 
     setUpAll(() async {
-      rt = await LxUserApiRuntime.create();
-      rt.loadScript(
+      rt = await PomeloPluginRuntime.create();
+      await rt.loadPlugin(
         await loadScript('scripts/xinghai-music-sourcev2.3.19.js'),
-        id: 'xinghai-lx',
         name: 'XingHaiMusicSource',
       );
     });
@@ -90,9 +88,8 @@ void main() {
     }, timeout: longTimeout);
 
     test('取播放地址（汽水 qs，端到端走后端令牌 + 取链）', () async {
-      final url = await rt.resolveMusicUrl(
-        source: 'qs',
-        musicInfo: {
+      final src = await rt.getMediaSource(
+        {
           'id': '7568318335513184283',
           'songmid': '7568318335513184283',
           'name': '周杰伦新歌',
@@ -100,8 +97,11 @@ void main() {
           'albumName': '周杰伦新歌',
           'interval': '03:27',
         },
-        quality: '320k',
+        'higher',
+        sourceKey: 'qs',
       );
+      expect(src, isNotNull);
+      final url = src!['url'];
       expect(url, startsWith('http'));
       // ignore: avoid_print
       print('[真机] LX 播放直链: $url');

@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/settings/theme_mode.dart';
+import '../../../shared/ui/duration_fmt.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/widgets.dart';
 import '../../plugins/presentation/library_providers.dart';
 import '../application/player_actions.dart';
 import '../data/audio_player_service.dart';
 import '../data/lrc_parser.dart';
+import '../data/media_proxy_server.dart';
 import '../domain/play_mode.dart';
 import 'playback_providers.dart';
 
@@ -42,81 +45,102 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       );
     }
 
-    final artwork = '${item['artwork'] ?? ''}';
+    final artwork = trackArtwork(item);
     final title = '${item['title'] ?? '未知歌曲'}';
     final artist = '${item['artist'] ?? ''}';
     final quality = ref.watch(audioQualityProvider).label;
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: ClipRRect(
-        // 顶部圆角:贴合从底部弹出的 sheet 观感。
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppRadius.sheet),
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            // 背景:封面的模糊暗化版,营造沉浸感(不抢前景)。
-            _BlurredBackdrop(artwork: artwork),
-            SafeArea(
-              child: Column(
-                children: [
-                  // 顶部:下箭头收起(sheet 也可下滑关闭)。缩小顶部留白。
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      tooltip: '收起',
-                      onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                  ),
-                  // 上部:封面主图(调大)。
-                  Expanded(
-                    flex: 6,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(32, 0, 32, 8),
-                      child: Center(
-                        child: AspectRatio(
-                          aspectRatio: 1,
-                          child: _CoverArt(artwork: artwork),
+      // 全屏铺满，不再做顶部圆角（避免顶部左右两个角被裁出缺口）。
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // 背景:封面的模糊暗化版,营造沉浸感(不抢前景)。
+          _BlurredBackdrop(artwork: artwork),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 矮窗口(如桌面小窗)下把空间让给歌词,避免封面把歌词挤没。
+                final short = constraints.maxHeight < 620;
+                final coverFlex = short ? 4 : 6;
+                final lyricFlex = short ? 3 : 2;
+                return Column(
+                  children: [
+                    // 顶部:下箭头收起(sheet 也可下滑关闭)。缩小顶部留白。
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        tooltip: '收起',
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Colors.white,
+                          size: 30,
                         ),
                       ),
                     ),
-                  ),
-                  // 中部:歌词三行(当前行大、上下行小,间距紧凑)。
-                  Expanded(
-                    flex: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _LyricThreeLines(
-                        positionStream: player.positionStream,
+                    // 上部:封面主图(调大)。切歌时交叉淡入淡出过渡。
+                    Expanded(
+                      flex: coverFlex,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.xxl,
+                          0,
+                          AppSpacing.xxl,
+                          AppSpacing.sm,
+                        ),
+                        child: Center(
+                          child: AspectRatio(
+                            aspectRatio: 1,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              child: _CoverArt(
+                                key: ValueKey(artwork),
+                                artwork: artwork,
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  // 下部:歌名-歌手 / 收藏·队列 / 进度 / 控制(整体上移)。
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    child: _buildControls(
-                      item,
-                      player,
-                      mode,
-                      queue,
-                      queueIndex,
-                      title,
-                      artist,
-                      quality,
+                    // 中部:歌词滚动区(当前行居中,整首随播放平滑上移)。
+                    Expanded(
+                      flex: lyricFlex,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xl,
+                        ),
+                        child: _LyricScrollView(
+                          positionStream: player.positionStream,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    // 下部:歌名-歌手 / 收藏·队列 / 进度 / 控制(整体上移)。
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.xl,
+                        0,
+                        AppSpacing.xl,
+                        AppSpacing.xl,
+                      ),
+                      child: _buildControls(
+                        item,
+                        player,
+                        mode,
+                        queue,
+                        queueIndex,
+                        title,
+                        artist,
+                        quality,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -139,33 +163,46 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         Row(
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  if (artist.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      artist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white70,
+              // 切歌时歌名/歌手交叉淡入淡出。
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                // 默认 Stack 居中对齐会把整块文字推到中间,这里改为左对齐。
+                layoutBuilder: (currentChild, previousChildren) => Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [...previousChildren, ?currentChild],
+                ),
+                child: SizedBox(
+                  key: ValueKey('$title-$artist'),
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: AppText.displayTitle,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                  ],
-                ],
+                      if (artist.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: AppText.rowTitle,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
             _FavoriteButton(item: item),
@@ -221,10 +258,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                   iconSize: 60,
                   color: Colors.white,
                   onPressed: () => ref.read(playerActionsProvider).togglePlay(),
-                  icon: Icon(
-                    playing
-                        ? Icons.pause_circle_filled_rounded
-                        : Icons.play_circle_fill_rounded,
+                  // 播放/暂停切换时缩放过渡,替代生硬跳变。
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder: (child, animation) =>
+                        ScaleTransition(scale: animation, child: child),
+                    child: Icon(
+                      playing
+                          ? Icons.pause_circle_filled_rounded
+                          : Icons.play_circle_fill_rounded,
+                      key: ValueKey(playing),
+                    ),
                   ),
                 );
               },
@@ -249,34 +293,39 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   /// 音量底部弹层。
   void _showVolume(Stream<double> volumeStream, AudioPlayerService player) {
+    // 弹层背景走主题(跟随亮/暗模式),不写死深色。
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            0,
+            AppSpacing.lg,
+            AppSpacing.xl,
+          ),
           child: Row(
             children: [
-              const Icon(Icons.volume_down_rounded, color: Colors.white70),
+              const Icon(Icons.volume_down_rounded),
               Expanded(
                 child: StreamBuilder<double>(
                   stream: volumeStream,
                   initialData: player.volume,
                   builder: (context, snap) {
-                    final vol =
-                        (snap.data ?? 100.0).clamp(0.0, 100.0).toDouble();
+                    final vol = (snap.data ?? 100.0)
+                        .clamp(0.0, 100.0)
+                        .toDouble();
                     return Slider(
                       value: vol,
                       max: 100,
-                      activeColor: Colors.white,
-                      inactiveColor: Colors.white24,
                       onChanged: (v) => player.setVolume(v),
                     );
                   },
                 ),
               ),
-              const Icon(Icons.volume_up_rounded, color: Colors.white70),
+              const Icon(Icons.volume_up_rounded),
             ],
           ),
         ),
@@ -287,6 +336,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void _showQueue(List<Map<String, dynamic>> queue, int currentIndex) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       showDragHandle: true,
       builder: (ctx) => LayoutBuilder(
         builder: (ctx, constraints) => Consumer(
@@ -320,7 +370,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                           onTap: () {
                             Navigator.pop(ctx);
                             ref.read(playQueueProvider.notifier).jumpTo(i);
-                            ref.read(playerActionsProvider).playItem(it);
+                            ref.read(playerActionsProvider).safePlay(it);
                           },
                           trailing: IconButton(
                             tooltip: '从队列移除',
@@ -340,7 +390,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                                 Navigator.pop(ctx);
                                 ref
                                     .read(playerActionsProvider)
-                                    .playItem(updated[newIndex]);
+                                    .safePlay(updated[newIndex]);
                               }
                             },
                           ),
@@ -355,21 +405,21 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   }
 }
 
-/// 封面主图:圆角 + 阴影,空封面时用品牌渐变占位。
+/// 封面主图:圆角 + 阴影,空封面时用主题色渐变占位。
 class _CoverArt extends StatelessWidget {
-  const _CoverArt({required this.artwork});
+  const _CoverArt({super.key, required this.artwork});
 
   final String artwork;
 
   @override
   Widget build(BuildContext context) {
-    const radius = BorderRadius.all(Radius.circular(16));
+    final radius = AppRadius.floatingBorder;
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: radius,
         boxShadow: const [
           BoxShadow(
-            color: Color(0x66000000),
+            color: AppOverlay.coverShadow,
             blurRadius: 24,
             offset: Offset(0, 8),
           ),
@@ -378,50 +428,39 @@ class _CoverArt extends StatelessWidget {
       child: ClipRRect(
         borderRadius: radius,
         child: artwork.isEmpty
-            ? const DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF3A2318),
-                      Color(0xFFFF7A45),
-                      Color(0xFF2A1A12),
-                    ],
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.music_note_rounded,
-                    color: Colors.white24,
-                    size: 64,
-                  ),
-                ),
-              )
+            ? const _CoverPlaceholder()
             : Image.network(
-                artwork,
+                cachedArtworkUrl(artwork),
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF3A2318),
-                        Color(0xFFFF7A45),
-                        Color(0xFF2A1A12),
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      Icons.music_note_rounded,
-                      color: Colors.white24,
-                      size: 64,
-                    ),
-                  ),
-                ),
+                errorBuilder: (context, error, stack) =>
+                    const _CoverPlaceholder(),
               ),
+      ),
+    );
+  }
+}
+
+/// 封面占位:主题色渐变(跟随设置里的主题色,不再写死品牌色)。
+class _CoverPlaceholder extends StatelessWidget {
+  const _CoverPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            scheme.primary.withValues(alpha: 0.25),
+            scheme.primary,
+            scheme.primary.withValues(alpha: 0.15),
+          ],
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.music_note_rounded, color: Colors.white24, size: 64),
       ),
     );
   }
@@ -435,16 +474,17 @@ class _BlurredBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Stack(
       fit: StackFit.expand,
       children: [
         if (artwork.isEmpty)
-          const DecoratedBox(
+          DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Color(0xFF2A1A12), Color(0xFF0A0A0A)],
+                colors: [scheme.primary.withValues(alpha: 0.2), Colors.black],
               ),
             ),
           )
@@ -452,26 +492,77 @@ class _BlurredBackdrop extends StatelessWidget {
           ImageFiltered(
             imageFilter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
             child: Image.network(
-              artwork,
+              cachedArtworkUrl(artwork),
               fit: BoxFit.cover,
               errorBuilder: (context, error, stack) =>
-                  const ColoredBox(color: Color(0xFF1A1310)),
+                  const ColoredBox(color: Colors.black),
             ),
           ),
-        const ColoredBox(color: Color(0xB3000000)),
+        const ColoredBox(color: AppOverlay.scrim),
       ],
     );
   }
 }
 
-/// 歌词三行视图:当前行大且高亮,上下相邻行缩小、变淡。
-class _LyricThreeLines extends ConsumerWidget {
-  const _LyricThreeLines({required this.positionStream});
+/// 歌词滚动视图:整首歌词连续滚动,当前行始终停在中间并放大高亮。
+class _LyricScrollView extends ConsumerStatefulWidget {
+  const _LyricScrollView({required this.positionStream});
 
   final Stream<Duration> positionStream;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_LyricScrollView> createState() => _LyricScrollViewState();
+}
+
+class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
+  static const double _lineHeight = 34;
+
+  final ScrollController _controller = ScrollController();
+  int _lastActive = -1;
+
+  /// 用户手动拖动歌词后暂停自动滚动的时间点(4 秒后恢复)。
+  DateTime? _autoPauseUntil;
+
+  bool get _autoPaused =>
+      _autoPauseUntil != null && DateTime.now().isBefore(_autoPauseUntil!);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// 用户拖动时暂停自动回中,避免和手指抢滚动。
+  bool _onScroll(ScrollNotification notification) {
+    if (notification is ScrollStartNotification &&
+        notification.dragDetails != null) {
+      _autoPauseUntil = DateTime.now().add(const Duration(seconds: 4));
+    }
+    return false;
+  }
+
+  /// 让第 [active] 行停在视口中间（列表上下留白 = 半个视口）。
+  void _scrollToActive(int active) {
+    if (active == _lastActive) return;
+    _lastActive = active;
+    if (_autoPaused) return;
+    // 等本次布局完成后再滚动，否则拿不到正确的滚动范围。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_controller.hasClients) return;
+      final target = (active * _lineHeight).clamp(
+        0.0,
+        _controller.position.maxScrollExtent,
+      );
+      _controller.animateTo(
+        target,
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncLyrics = ref.watch(lyricLinesProvider);
     return asyncLyrics.when(
       loading: () => const Center(
@@ -492,45 +583,55 @@ class _LyricThreeLines extends ConsumerWidget {
           );
         }
         return StreamBuilder<Duration>(
-          stream: positionStream,
+          stream: widget.positionStream,
           builder: (context, snap) {
             final pos = snap.data ?? Duration.zero;
             final active = LrcParser.activeIndex(lines, pos);
-            String textAt(int i) =>
-                (i >= 0 && i < lines.length) ? lines[i].text : '';
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                _lyricLine(textAt(active - 1), false, 15),
-                const SizedBox(height: 2),
-                _lyricLine(textAt(active), true, 20),
-                const SizedBox(height: 2),
-                _lyricLine(textAt(active + 1), false, 15),
-              ],
+            _scrollToActive(active);
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final pad = math.max(
+                  0.0,
+                  (constraints.maxHeight - _lineHeight) / 2,
+                );
+                return NotificationListener<ScrollNotification>(
+                  onNotification: _onScroll,
+                  child: ListView.builder(
+                    controller: _controller,
+                    // 允许手动回看;用户拖动后 4 秒内不自动回中。
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.symmetric(vertical: pad),
+                    itemExtent: _lineHeight,
+                    itemCount: lines.length,
+                    itemBuilder: (context, i) {
+                      final isActive = i == active;
+                      return Center(
+                        child: AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          style: TextStyle(
+                            fontSize: isActive ? 20 : 15,
+                            fontWeight: isActive
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                            color: isActive ? Colors.white : Colors.white54,
+                          ),
+                          child: Text(
+                            lines[i].text.isEmpty ? '♪' : lines[i].text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              },
             );
           },
         );
       },
-    );
-  }
-
-  Widget _lyricLine(String text, bool active, double size) {
-    return SizedBox(
-      height: 24,
-      child: Center(
-        child: Text(
-          text.isEmpty ? '♪' : text,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: size,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-            color: active ? Colors.white : Colors.white38,
-          ),
-        ),
-      ),
     );
   }
 }
@@ -544,7 +645,8 @@ class _FavoriteButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final favorites = ref.watch(favoritesProvider);
-    final isFav = favorites.value != null &&
+    final isFav =
+        favorites.value != null &&
         ref.read(favoritesProvider.notifier).contains(item);
     return IconButton(
       tooltip: isFav ? '取消收藏' : '收藏',
@@ -609,10 +711,12 @@ class _ProgressBar extends StatelessWidget {
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape:
-                        const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape:
-                        const RoundSliderOverlayShape(overlayRadius: 14),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 6,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 14,
+                    ),
                     thumbColor: Colors.white,
                     activeTrackColor: Colors.white,
                     inactiveTrackColor: Colors.white24,
@@ -635,9 +739,9 @@ class _ProgressBar extends StatelessWidget {
                   child: Row(
                     children: [
                       Text(
-                        _fmt(current),
+                        formatDuration(current),
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: AppText.compact,
                           color: Colors.white70,
                         ),
                       ),
@@ -646,15 +750,15 @@ class _ProgressBar extends StatelessWidget {
                           centerText ?? '',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.white38,
+                            fontSize: AppText.compact,
+                            color: Colors.white54,
                           ),
                         ),
                       ),
                       Text(
-                        _fmt(duration),
+                        formatDuration(duration),
                         style: const TextStyle(
-                          fontSize: 11,
+                          fontSize: AppText.compact,
                           color: Colors.white70,
                         ),
                       ),
@@ -667,11 +771,5 @@ class _ProgressBar extends StatelessWidget {
         );
       },
     );
-  }
-
-  static String _fmt(Duration d) {
-    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
   }
 }

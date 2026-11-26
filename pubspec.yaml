@@ -11,6 +11,7 @@ dependencies:
   audio_session: ^0.2.4
   crypto: ^3.0.8
   cupertino_icons: ^2.0.0
+  file_selector: ^1.1.0
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.5.0
@@ -24,6 +25,7 @@ dependencies:
   quickjs_engine:
     path: third_party/quickjs_engine
   riverpod_annotation: ^4.0.8
+  url_launcher: ^6.3.3
   window_manager: ^0.5.1
 
 dev_dependencies:

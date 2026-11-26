@@ -33,13 +33,23 @@ class EmptyState extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(height: AppSpacing.md),
-            Text(title, style: const TextStyle(fontSize: 16)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: AppText.heading,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             if (message != null) ...[
               const SizedBox(height: AppSpacing.sm),
               Text(
                 message!,
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: TextStyle(
+                  fontSize: AppText.rowSubtitle,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
             if (actions.isNotEmpty) ...[

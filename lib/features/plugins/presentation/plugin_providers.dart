@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/settings/settings_store.dart';
 import '../data/plugin_repository.dart';
 import '../domain/plugin_record.dart';
-import '../runtime/lx_runtime.dart';
-import '../runtime/musicfree_runtime.dart';
+import '../runtime/pomelo_plugin_runtime.dart';
 
 // ---------------------------------------------------------------------------
 // 仓库与列表
@@ -20,62 +22,66 @@ final pluginListProvider = FutureProvider<List<PluginRecord>>((ref) async {
   return repo.plugins;
 });
 
-/// 可搜索的 MusicFree 插件。
+/// 可搜索的插件。
 final searchablePluginsProvider = Provider<List<PluginRecord>>((ref) {
   final list = ref.watch(pluginListProvider).value ?? const [];
   return list
-      .where(
-        (p) =>
-            p.isMusicFree && p.enabled && p.supportedMethods.contains('search'),
-      )
+      .where((p) => p.enabled && p.supportedMethods.contains('search'))
       .toList();
-});
-
-/// 已启用的 LX 插件。
-final lxPluginsProvider = Provider<List<PluginRecord>>((ref) {
-  final list = ref.watch(pluginListProvider).value ?? const [];
-  return list.where((p) => p.isLx && p.enabled).toList();
 });
 
 // ---------------------------------------------------------------------------
 // 选择状态
 // ---------------------------------------------------------------------------
 
+/// 启动时由 main() 注入上次选中的搜索插件 id。
+final selectedSearchPluginInitializerProvider = Provider<String?>(
+  (ref) => null,
+);
+
 class SelectedSearchPlugin extends Notifier<String?> {
   @override
-  String? build() => null;
+  String? build() => ref.watch(selectedSearchPluginInitializerProvider);
 
-  void select(String? id) => state = id;
+  void select(String? id) {
+    state = id;
+    // 持久化：下次启动仍停留在上次选择的插件（测试未注入 store 时忽略）。
+    try {
+      unawaited(
+        ref.read(settingsStoreProvider).patch({'selectedSearchPluginId': id}),
+      );
+    } catch (_) {
+      // 未注入设置存储（如单测）时仅保留内存状态。
+    }
+  }
 }
 
 final selectedSearchPluginProvider =
     NotifierProvider<SelectedSearchPlugin, String?>(SelectedSearchPlugin.new);
 
-class SelectedLxPlugin extends Notifier<String?> {
-  @override
-  String? build() => null;
-
-  void select(String? id) => state = id;
-}
-
-final selectedLxPluginProvider = NotifierProvider<SelectedLxPlugin, String?>(
-  SelectedLxPlugin.new,
-);
-
 // ---------------------------------------------------------------------------
 // 运行时
 // ---------------------------------------------------------------------------
 
-/// MusicFree 运行时，按插件区分。
+/// 插件运行时，按插件 **id** 缓存。
 ///
-/// 注意不能用 autoDispose：`playItem` 里会先 `ref.read(...future)` 拿实例，
+/// 不能用 autoDispose：`playItem` 里会先 `ref.read(...future)` 拿实例，
 /// 若无其他监听者，provider 会在读取间隙被回收，导致引擎里已加载的
 /// `__pluginModule` 丢失（实测报 "not defined"）。
-final musicFreeRuntimeProvider =
-    FutureProvider.family<MusicFreeRuntime, PluginRecord>((ref, plugin) async {
-      final rt = await MusicFreeRuntime.create();
+///
+/// 用 id 而不是 PluginRecord 对象做 key：插件更新/重装会产生新对象，
+/// 旧对象做 key 会让旧引擎永久驻留。安装/更新/删除后调用方只需
+/// `ref.invalidate(pluginRuntimeProvider(id))`，旧实例即随 provider 销毁。
+final pluginRuntimeProvider =
+    FutureProvider.family<PomeloPluginRuntime, String>((ref, pluginId) async {
+      final repo = await ref.watch(pluginRepositoryProvider.future);
+      final plugin = repo.plugins.where((p) => p.id == pluginId).firstOrNull;
+      if (plugin == null) {
+        throw StateError('插件不存在或已被移除: $pluginId');
+      }
+      final rt = await PomeloPluginRuntime.create();
       try {
-        rt.loadPlugin(plugin.source, name: plugin.platform);
+        await rt.loadPlugin(plugin.source, name: plugin.platform);
       } catch (_) {
         rt.dispose();
         rethrow;
@@ -83,22 +89,3 @@ final musicFreeRuntimeProvider =
       ref.onDispose(rt.dispose);
       return rt;
     });
-
-/// LX 运行时，加载后自动等待脚本 inited。同样不能用 autoDispose。
-final lxRuntimeProvider = FutureProvider.family<LxUserApiRuntime, PluginRecord>(
-  (ref, plugin) async {
-    final rt = await LxUserApiRuntime.create();
-    try {
-      rt.loadScript(plugin.source, id: plugin.id, name: plugin.platform);
-      final ok = await rt.waitForInit();
-      if (!ok) {
-        throw StateError('LX 脚本初始化失败: ${rt.initError ?? "未知原因"}');
-      }
-    } catch (_) {
-      rt.dispose();
-      rethrow;
-    }
-    ref.onDispose(rt.dispose);
-    return rt;
-  },
-);

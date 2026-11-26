@@ -5,9 +5,23 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../domain/plugin_record.dart';
-import '../runtime/lx_runtime.dart';
-import '../runtime/musicfree_runtime.dart';
-import 'lx_source_map.dart';
+import '../runtime/pomelo_plugin_runtime.dart';
+
+/// 检查更新的结果。
+class PluginUpdateResult {
+  const PluginUpdateResult({
+    required this.source,
+    required this.version,
+    this.log,
+  });
+
+  /// 新版本源码
+  final String source;
+  final String version;
+
+  /// 更新说明（LX 脚本可提供）
+  final String? log;
+}
 
 /// 基于文件系统的插件仓库（持久化 plugins.json）：`<appSupport>/plugins/plugins.json`。
 class PluginRepository {
@@ -15,6 +29,9 @@ class PluginRepository {
 
   final File _file;
   final List<PluginRecord> _plugins = [];
+
+  /// 本次启动是否因插件体系升级清空过旧记录（用于提示用户重新导入）。
+  bool clearedLegacy = false;
 
   List<PluginRecord> get plugins => List.unmodifiable(_plugins);
 
@@ -32,24 +49,19 @@ class PluginRepository {
     try {
       final raw = await _file.readAsString();
       final list = jsonDecode(raw) as List;
+      final entries = list.cast<Map<String, dynamic>>();
+      // 插件体系已升级：旧记录（带 kind 字段）不再兼容，清空后要求重新导入。
+      if (entries.any((e) => e.containsKey('kind'))) {
+        _plugins.clear();
+        clearedLegacy = true;
+        await _save();
+        return;
+      }
+      // 先完整解析再替换，避免单条记录损坏时留下半截列表。
+      final parsed = entries.map(PluginRecord.fromJson).toList();
       _plugins
         ..clear()
-        ..addAll(
-          list.map((e) => PluginRecord.fromJson(e as Map<String, dynamic>)),
-        );
-      // 迁移：旧数据里 MusicFree 插件可能没有 lxSource，按 platform 补推断值，
-      // 以便取链失败时能用同平台 LX 脚本兜底。
-      var changed = false;
-      for (final p in _plugins) {
-        if (p.isMusicFree && (p.lxSource == null || p.lxSource!.isEmpty)) {
-          final inferred = inferLxSourceFromPlatform(p.platform);
-          if (inferred != null) {
-            p.lxSource = inferred;
-            changed = true;
-          }
-        }
-      }
-      if (changed) await _save();
+        ..addAll(parsed);
     } catch (e) {
       if (kDebugMode) debugPrint('读取插件列表失败: $e');
     }
@@ -61,34 +73,45 @@ class PluginRepository {
     );
   }
 
-  /// 安装 MusicFree 插件源码。若 platform 重复则替换。
+  /// 安装插件（自有格式与 LX 脚本统一入口，格式自动识别）。
+  ///
+  /// 同 id 视为更新：替换源码与元信息，保留用户的启用状态与兜底开关。
   Future<PluginRecord> install(String source, {String? fallbackName}) async {
-    final meta = await _probe(source);
-    final platform = (meta['platform'] as String?)?.trim().isNotEmpty == true
-        ? meta['platform'] as String
-        : (fallbackName ?? 'unknown');
+    final loaded = await probe(source, name: fallbackName ?? 'plugin');
 
-    final existing = _plugins.where((p) => p.platform == platform).toList();
+    var platform = loaded.platform.trim();
+    if (loaded.isLxCompat && (platform.isEmpty || platform == 'plugin')) {
+      platform = 'LX: ${loaded.sourceKeys.join(", ")}';
+    }
+    if (platform.isEmpty) platform = fallbackName ?? 'unknown';
+
+    final id = loaded.isLxCompat ? 'lx:$platform' : platform;
+    final existingIndex = _plugins.indexWhere((p) => p.id == id);
+    final existing = existingIndex >= 0 ? _plugins[existingIndex] : null;
+
+    final alertLog = loaded.updateAlert?['log'];
     final record = PluginRecord(
-      id: existing.isNotEmpty ? existing.first.id : platform,
+      id: id,
       name: platform,
       platform: platform,
-      version: (meta['version'] as String?) ?? '',
-      description: (meta['description'] as String?) ?? '',
-      author: (meta['author'] as String?) ?? '',
+      version: loaded.version,
+      description: loaded.description,
+      author: loaded.author,
+      enabled: existing?.enabled ?? true,
+      allowFallback: existing?.allowFallback ?? true,
+      disableResolve: existing?.disableResolve ?? false,
       source: source,
-      supportedMethods:
-          (meta['supportedMethods'] as List?)?.cast<String>() ?? const [],
-      kind: 'musicfree',
-      // 插件自声明优先；未声明则由 platform 名推断对应的 LX 源（用于取链兜底）。
-      lxSource: (meta['lxSource'] as String?)?.trim().isNotEmpty == true
-          ? meta['lxSource'] as String
-          : inferLxSourceFromPlatform(platform),
+      supportedMethods: loaded.supportedMethods,
+      sourceKeys: loaded.sourceKeys,
+      qualitys: loaded.qualitys,
+      srcUrl: loaded.srcUrl,
+      updateLog: (alertLog is String && alertLog.trim().isNotEmpty)
+          ? alertLog.trim()
+          : null,
     );
 
-    if (existing.isNotEmpty) {
-      final idx = _plugins.indexOf(existing.first);
-      _plugins[idx] = record;
+    if (existingIndex >= 0) {
+      _plugins[existingIndex] = record;
     } else {
       _plugins.add(record);
     }
@@ -96,94 +119,132 @@ class PluginRepository {
     return record;
   }
 
-  /// 安装 LX 脚本。执行一次初始化拿到它声明的 sources，然后持久化。
-  ///
-  /// LX 脚本没有 platform 字段，用声明的源列表生成名称（如 `LX: kw,kg`）。
-  Future<PluginRecord> installLx(String source, {String? displayName}) async {
-    final runtime = await LxUserApiRuntime.create();
+  /// 从网络地址下载并安装插件（自有格式与 LX 脚本统一识别）。
+  Future<PluginRecord> installFromUrl(String url) async {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || !(uri.isScheme('http') || uri.isScheme('https'))) {
+      throw StateError('请输入 http(s) 开头的脚本地址');
+    }
+    final source = await _download(uri.toString());
+    if (source.trim().isEmpty) throw StateError('下载内容为空');
+
+    final head = source.length > 512 ? source.substring(0, 512) : source;
+    final headLower = head.toLowerCase();
+    if (headLower.contains('<!doctype html') || headLower.contains('<html')) {
+      throw StateError('该地址返回的是网页而非脚本');
+    }
+
+    final last = uri.pathSegments.isEmpty ? 'plugin' : uri.pathSegments.last;
+    final name = last.replaceAll(
+      RegExp(r'\.(js|txt)$', caseSensitive: false),
+      '',
+    );
+    return install(source, fallbackName: name.isEmpty ? 'plugin' : name);
+  }
+
+  /// 用运行时加载插件，反射元信息后立即释放实例。
+  Future<PluginLoadResult> probe(
+    String source, {
+    String name = 'plugin',
+  }) async {
+    final runtime = await PomeloPluginRuntime.create();
     try {
-      final probeId = 'probe-${DateTime.now().millisecondsSinceEpoch}';
-      runtime.loadScript(source, id: probeId, name: displayName ?? probeId);
-      final ok = await runtime.waitForInit();
-      if (!ok) {
-        throw StateError('LX 脚本初始化失败: ${runtime.initError ?? "未知原因"}');
-      }
-      final sourceKeys = runtime.sources.keys.toList()..sort();
-      if (sourceKeys.isEmpty) {
-        throw StateError('LX 脚本未声明任何源');
-      }
-      final platform = displayName ?? 'LX: ${sourceKeys.join(", ")}';
-
-      final existing = _plugins.where((p) => p.isLx && p.platform == platform);
-      final record = PluginRecord(
-        id: existing.isNotEmpty
-            ? existing.first.id
-            : 'lx:$platform:${DateTime.now().millisecondsSinceEpoch}',
-        name: platform,
-        platform: platform,
-        version:
-            runtime.evaluateString(
-              'String((__lx.currentScriptInfo || {}).version || "")',
-            ) ??
-            '',
-        description:
-            runtime.evaluateString(
-              'String((__lx.currentScriptInfo || {}).description || "")',
-            ) ??
-            '',
-        author:
-            runtime.evaluateString(
-              'String((__lx.currentScriptInfo || {}).author || "")',
-            ) ??
-            '',
-        source: source,
-        supportedMethods: const ['musicUrl'],
-        kind: 'lx',
-      );
-      // 把源列表记到 platform 之外的字段里，供 UI 与解析使用
-      record.lxSources = sourceKeys;
-
-      if (existing.isNotEmpty) {
-        _plugins[_plugins.indexOf(existing.first)] = record;
-      } else {
-        _plugins.add(record);
-      }
-      await _save();
-      return record;
+      return await runtime.loadPlugin(source, name: name);
     } finally {
       runtime.dispose();
     }
   }
 
-  /// 用运行时反射插件导出对象的元信息，不保留运行时实例。
-  Future<Map<String, dynamic>> _probe(String source) async {
-    final runtime = await MusicFreeRuntime.create();
-    try {
-      runtime.loadPlugin(source);
-      final meta = runtime.evaluateJson('''
-        (function() {
-          var m = __pluginModule.exports || {};
-          return {
-            platform: m.platform,
-            version: m.version,
-            description: m.description,
-            author: m.author,
-            lxSource: m.lxSource,
-            supportedMethods: Object.keys(m).filter(function(k) {
-              return typeof m[k] === 'function';
-            })
-          };
-        })()
-      ''');
-      return meta ?? {};
-    } finally {
-      runtime.dispose();
+  /// 检查更新：从 `srcUrl` 拉取最新源码并比对版本。
+  ///
+  /// 没有更新地址、或内容与已安装版本一致时返回 null。
+  Future<PluginUpdateResult?> checkUpdate(PluginRecord plugin) async {
+    final url = plugin.srcUrl?.trim();
+    if (url == null || url.isEmpty) return null;
+
+    final source = await _download(url);
+    // 更新地址可能只是发布页/仓库首页：给出明确提示，让用户去浏览器打开。
+    final head = source.length > 512 ? source.substring(0, 512) : source;
+    final headLower = head.toLowerCase();
+    if (headLower.contains('<!doctype html') || headLower.contains('<html')) {
+      throw StateError('该更新地址返回的是网页而非脚本，请使用「在浏览器打开更新地址」');
     }
+
+    final loaded = await probe(source, name: plugin.platform);
+
+    if (loaded.isLxCompat) {
+      // LX 脚本的版本号常不更新，内容变化即视为更新。
+      if (source.trim() == plugin.source.trim()) return null;
+      final alertLog = loaded.updateAlert?['log'];
+      return PluginUpdateResult(
+        source: source,
+        version: loaded.version.isEmpty ? plugin.version : loaded.version,
+        log: (alertLog is String && alertLog.trim().isNotEmpty)
+            ? alertLog.trim()
+            : '检测到脚本内容更新',
+      );
+    }
+
+    if (loaded.version.trim() == plugin.version.trim()) return null;
+    return PluginUpdateResult(
+      source: source,
+      version: loaded.version,
+      log: loaded.description.isEmpty ? null : loaded.description,
+    );
+  }
+
+  Future<String> _download(String url) async {
+    final client = HttpClient();
+    // 更新检查不能无限挂起：连接 15s、读取 30s，最多 5MB。
+    client.connectionTimeout = const Duration(seconds: 15);
+    try {
+      final request = await client.getUrl(Uri.parse(url));
+      request.headers.set(HttpHeaders.userAgentHeader, 'pomelo');
+      final response = await request.close().timeout(
+        const Duration(seconds: 30),
+      );
+      if (response.statusCode != 200) {
+        throw StateError('下载失败: HTTP ${response.statusCode}');
+      }
+      final length = response.contentLength;
+      if (length > 5 * 1024 * 1024) {
+        throw StateError('文件过大（${length ~/ 1024} KB），已取消');
+      }
+      final bytes = await consolidateHttpClientResponseBytes(response)
+          .timeout(const Duration(seconds: 30));
+      if (bytes.length > 5 * 1024 * 1024) {
+        throw StateError('文件过大，已取消');
+      }
+      return utf8.decode(bytes, allowMalformed: true);
+    } finally {
+      client.close();
+    }
+  }
+
+  /// 忽略更新提示（清除 updateLog 角标）。
+  Future<void> clearUpdateLog(String id) async {
+    final p = _plugins.firstWhere((e) => e.id == id);
+    p.updateLog = null;
+    await _save();
   }
 
   Future<void> setEnabled(String id, bool enabled) async {
     final p = _plugins.firstWhere((e) => e.id == id);
     p.enabled = enabled;
+    await _save();
+  }
+
+  /// 是否允许其它插件缺音源时调用本插件。
+  Future<void> setAllowFallback(String id, bool allow) async {
+    final p = _plugins.firstWhere((e) => e.id == id);
+    p.allowFallback = allow;
+    await _save();
+  }
+
+  /// 禁用/恢复本插件自身取链（禁用后直接走同音源兜底）。
+  Future<void> setDisableResolve(String id, bool disabled) async {
+    final p = _plugins.firstWhere((e) => e.id == id);
+    p.disableResolve = disabled;
     await _save();
   }
 
@@ -199,6 +260,32 @@ class PluginRepository {
     await _save();
   }
 
+  /// 以「最终位置」移动插件（newIndex 已完成源位置修正，不再二次调整）。
+  ///
+  /// Flutter 新版 `onReorderItem` 回调给出的 newIndex 已是最终下标，用这个入口
+  /// 避免再次 `newIndex -= 1` 导致往下拖动时错位。
+  Future<void> moveTo(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 || oldIndex >= _plugins.length) return;
+    final item = _plugins.removeAt(oldIndex);
+    _plugins.insert(newIndex.clamp(0, _plugins.length), item);
+    await _save();
+  }
+
   List<PluginRecord> get enabledPlugins =>
       _plugins.where((p) => p.enabled).toList();
+
+  /// 可为指定音源 key 提供播放链接的兜底插件（按安装顺序）。
+  List<PluginRecord> fallbackCandidates(String sourceKey, {String? excludeId}) {
+    return _plugins
+        .where(
+          (p) =>
+              p.enabled &&
+              p.allowFallback &&
+              p.canProvideMediaSource &&
+              !p.disableResolve &&
+              p.id != excludeId &&
+              p.sourceKeys.contains(sourceKey),
+        )
+        .toList();
+  }
 }

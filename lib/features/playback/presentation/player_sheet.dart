@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../shared/ui/tokens.dart';
 import 'player_screen.dart';
 
 /// 以「从底部滑入、可下滑关闭」的全屏层打开播放页。
@@ -12,19 +11,21 @@ Future<void> showPlayerSheet(BuildContext context) {
   // 必须用根 Navigator：底部导航/标题栏属于外层 StatefulShell 壳，普通
   // Navigator.of(context) 会把播放页 push 到壳的子 Navigator 里，只覆盖中间
   // 内容区（顶部 AppBar 与底部导航栏露在外面）。根 Navigator 才能全屏覆盖。
-  return Navigator.of(context, rootNavigator: true).push<void>(
-    _PlayerPageRoute(),
-  );
+  return Navigator.of(
+    context,
+    rootNavigator: true,
+  ).push<void>(_PlayerPageRoute());
 }
 
 class _PlayerPageRoute extends PageRoute<void> {
   _PlayerPageRoute();
 
   @override
-  bool get opaque => true; // 全屏不透明：完全覆盖壳的标题栏与底部导航
+  // 半透明路由：下滑关闭时顶部能透出下层页面，而不是一片黑。
+  bool get opaque => false;
 
   @override
-  Color? get barrierColor => null;
+  Color? get barrierColor => Colors.black.withValues(alpha: 0.28);
 
   @override
   String? get barrierLabel => null;
@@ -85,8 +86,7 @@ class _PlayerSheetBodyState extends State<_PlayerSheetBody> {
         }
       },
       onVerticalDragEnd: (d) {
-        final shouldClose =
-            _dragDy > 120 || (d.primaryVelocity ?? 0) > 700;
+        final shouldClose = _dragDy > 120 || (d.primaryVelocity ?? 0) > 700;
         if (shouldClose) {
           Navigator.of(context).maybePop();
         } else {
@@ -95,12 +95,8 @@ class _PlayerSheetBodyState extends State<_PlayerSheetBody> {
       },
       child: Transform.translate(
         offset: Offset(0, _dragDy.clamp(0, double.infinity)),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(AppRadius.sheet),
-          ),
-          child: const PlayerScreen(),
-        ),
+        // 全屏播放页：铺满整页，顶部左右不留圆角。
+        child: const PlayerScreen(),
       ),
     );
   }

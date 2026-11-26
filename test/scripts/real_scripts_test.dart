@@ -2,8 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:pomelo/features/plugins/runtime/lx_runtime.dart';
-import 'package:pomelo/features/plugins/runtime/musicfree_runtime.dart';
+import 'package:pomelo/features/plugins/runtime/pomelo_plugin_runtime.dart';
 import 'package:quickjs_engine/extensions/xhr.dart';
 
 /// 端到端跑通 `scripts/` 下的两个**真实**音源脚本：
@@ -57,11 +56,11 @@ void main() {
   const longTimeout = Timeout(Duration(minutes: 2));
 
   group('真实脚本 1：星海音乐源-汽水 (MusicFree 插件 qs v1.3.0)', () {
-    late MusicFreeRuntime rt;
+    late PomeloPluginRuntime rt;
 
     setUpAll(() async {
-      rt = await MusicFreeRuntime.create();
-      rt.loadPlugin(
+      rt = await PomeloPluginRuntime.create();
+      await rt.loadPlugin(
         _read('xinghai-music-source-qs-v1.3.0.js'),
         name: 'xinghai-qs',
       );
@@ -110,13 +109,12 @@ void main() {
   });
 
   group('真实脚本 2：星海音乐源 (LX UserApi v2.3.19)', () {
-    late LxUserApiRuntime rt;
+    late PomeloPluginRuntime rt;
 
     setUpAll(() async {
-      rt = await LxUserApiRuntime.create();
-      rt.loadScript(
+      rt = await PomeloPluginRuntime.create();
+      await rt.loadPlugin(
         _read('xinghai-music-sourcev2.3.19.js'),
-        id: 'xinghai-lx',
         name: 'XingHaiMusicSource',
       );
     });
@@ -136,9 +134,8 @@ void main() {
         markTestSkipped('外网不可达，跳过');
         return;
       }
-      final url = await rt.resolveMusicUrl(
-        source: 'qs',
-        musicInfo: {
+      final src = await rt.getMediaSource(
+        {
           'id': '7568318335513184283',
           'songmid': '7568318335513184283',
           'name': '周杰伦新歌',
@@ -146,8 +143,11 @@ void main() {
           'albumName': '周杰伦新歌',
           'interval': '03:27',
         },
-        quality: '320k',
+        'higher',
+        sourceKey: 'qs',
       );
+      expect(src, isNotNull);
+      final url = src!['url'];
       expect(url, startsWith('http'));
       // ignore: avoid_print
       print('LX 播放直链: $url');

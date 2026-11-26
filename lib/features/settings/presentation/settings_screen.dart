@@ -4,18 +4,33 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/settings/audio_quality.dart';
+import '../../../shared/settings/cache_limit.dart';
+import '../../../shared/settings/theme_color.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
+import '../../playback/data/media_proxy_server.dart';
 
 /// 设置页:分组卡片列表(iOS 设置风格),含主题模式切换。
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  /// 正在执行的清理动作(按行控制 loading,不整页闪)。
+  final Set<String> _clearing = {};
+
+  @override
+  Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeOptionProvider);
+    final themeColor = ref.watch(themeColorProvider);
     final quality = ref.watch(audioQualityProvider);
+    final cacheLimit = ref.watch(cacheLimitProvider);
+    final cacheUsage = ref.watch(cacheUsageProvider);
+    final scheme = Theme.of(context).colorScheme;
 
     // 超宽窗口限行宽,避免列表被拉满整屏。
     return CenteredMaxWidth(
@@ -29,13 +44,37 @@ class SettingsScreen extends ConsumerWidget {
                 icon: Icons.dark_mode_rounded,
                 title: '主题模式',
                 subtitle: _themeModeLabel(themeMode),
-                onTap: () => _pickThemeMode(context, ref, themeMode),
+                onTap: () => _pickThemeMode(themeMode),
+              ),
+              SettingsItem(
+                icon: Icons.palette_rounded,
+                title: '主题色',
+                subtitle: themeColor.label,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: themeColor.color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.xs),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ],
+                ),
+                onTap: () => _pickThemeColor(themeColor),
               ),
               SettingsItem(
                 icon: Icons.graphic_eq_rounded,
                 title: '默认音质',
                 subtitle: quality.label,
-                onTap: () => _pickQuality(context, ref, quality),
+                onTap: () => _pickQuality(quality),
               ),
             ],
           ),
@@ -45,15 +84,68 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               SettingsItem(
                 icon: Icons.extension_rounded,
-                title: 'MusicFree 插件',
-                subtitle: '安装与启停 MusicFree 插件',
+                title: '插件管理',
+                subtitle: '安装、启停与更新插件（音源脚本自动兼容）',
                 onTap: () => context.push('/plugins'),
               ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader('存储'),
+          GroupCard(
+            children: [
               SettingsItem(
-                icon: Icons.code_rounded,
-                title: 'LX 音源脚本',
-                subtitle: '安装与启停 LX 音源脚本',
-                onTap: () => context.push('/lx'),
+                icon: Icons.inventory_2_rounded,
+                title: '缓存占用',
+                subtitle: cacheUsage.when(
+                  data: (usage) =>
+                      '音频 ${_formatBytes(usage.audioBytes)} · '
+                      '封面 ${_formatBytes(usage.coverBytes)}',
+                  loading: () => '统计中…',
+                  error: (_, _) => '统计失败',
+                ),
+              ),
+              SettingsItem(
+                icon: Icons.data_usage_rounded,
+                title: '缓存上限',
+                subtitle: cacheLimit.label,
+                onTap: () => _pickCacheLimit(cacheLimit),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader('清理缓存'),
+          GroupCard(
+            children: [
+              _clearItem(
+                key: 'audio',
+                icon: Icons.audio_file_rounded,
+                title: '清除音频缓存',
+                subtitle: '删除边播边存的歌曲文件',
+                label: '音频缓存',
+                action: () async {
+                  await MediaProxyServer.instance?.clearAudioCache();
+                },
+              ),
+              _clearItem(
+                key: 'cover',
+                icon: Icons.image_rounded,
+                title: '清除封面缓存',
+                subtitle: '下次展示时重新下载',
+                label: '封面缓存',
+                action: () async {
+                  await MediaProxyServer.instance?.clearCoverCache();
+                },
+              ),
+              _clearItem(
+                key: 'links',
+                icon: Icons.link_off_rounded,
+                title: '清除播放链接缓存',
+                subtitle: '下次播放时重新向音源取链',
+                label: '播放链接缓存',
+                action: () async {
+                  await MediaLinkCache.instance?.clear();
+                },
               ),
             ],
           ),
@@ -62,17 +154,41 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  static String _themeModeLabel(ThemeModeOption mode) => switch (mode) {
-        ThemeModeOption.system => '跟随系统',
-        ThemeModeOption.light => '浅色模式',
-        ThemeModeOption.dark => '深色模式',
-      };
+  /// 清理行:破坏性操作不带箭头(不跳转),执行中显示行级转圈。
+  Widget _clearItem({
+    required String key,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String label,
+    required Future<void> Function() action,
+  }) {
+    final scheme = Theme.of(context).colorScheme;
+    final busy = _clearing.contains(key);
+    return SettingsItem(
+      icon: icon,
+      title: title,
+      subtitle: subtitle,
+      danger: true,
+      showChevron: false,
+      trailing: busy
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(Icons.delete_outline_rounded, color: scheme.error),
+      onTap: busy ? null : () => _clearCache(key, label, action),
+    );
+  }
 
-  Future<void> _pickThemeMode(
-    BuildContext context,
-    WidgetRef ref,
-    ThemeModeOption current,
-  ) async {
+  static String _themeModeLabel(ThemeModeOption mode) => switch (mode) {
+    ThemeModeOption.system => '跟随系统',
+    ThemeModeOption.light => '浅色模式',
+    ThemeModeOption.dark => '深色模式',
+  };
+
+  Future<void> _pickThemeMode(ThemeModeOption current) async {
     final picked = await showSelectionSheet<ThemeModeOption>(
       context: context,
       title: '主题模式',
@@ -87,11 +203,57 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _pickQuality(
-    BuildContext context,
-    WidgetRef ref,
-    AudioQuality current,
-  ) async {
+  /// 主题色选择弹层:色板网格,选中项打勾。
+  Future<void> _pickThemeColor(AppThemeColor current) async {
+    final picked = await showModalBottomSheet<AppThemeColor>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.xl,
+            0,
+            AppSpacing.xl,
+            AppSpacing.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: AppSpacing.lg),
+                child: Text(
+                  '主题色',
+                  style: TextStyle(
+                    fontSize: AppText.heading,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Wrap(
+                spacing: AppSpacing.xl,
+                runSpacing: AppSpacing.lg,
+                alignment: WrapAlignment.center,
+                children: [
+                  for (final option in AppThemeColor.values)
+                    _ColorSwatch(
+                      color: option,
+                      selected: option == current,
+                      onTap: () => Navigator.pop(context, option),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null) {
+      await ref.read(themeColorProvider.notifier).set(picked);
+    }
+  }
+
+  Future<void> _pickQuality(AudioQuality current) async {
     final picked = await showSelectionSheet<AudioQuality>(
       context: context,
       title: '默认音质',
@@ -104,5 +266,130 @@ class SettingsScreen extends ConsumerWidget {
     if (picked != null) {
       await ref.read(audioQualityProvider.notifier).set(picked);
     }
+  }
+
+  Future<void> _pickCacheLimit(CacheLimitOption current) async {
+    final picked = await showSelectionSheet<CacheLimitOption>(
+      context: context,
+      title: '缓存上限',
+      current: current,
+      options: [
+        for (final option in CacheLimitOption.values)
+          SelectionOption(value: option, label: option.label),
+      ],
+    );
+    if (picked != null) {
+      await ref.read(cacheLimitProvider.notifier).set(picked);
+      ref.invalidate(cacheUsageProvider);
+    }
+  }
+
+  /// 清理缓存:先二次确认,再按行统计 loading。
+  Future<void> _clearCache(
+    String key,
+    String label,
+    Future<void> Function() action,
+  ) async {
+    if (_clearing.contains(key)) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (ctx) => AlertDialog(
+        title: Text('清除$label'),
+        content: const Text('清除后无法恢复，下次使用时会重新下载或向音源取链。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('清除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _clearing.add(key));
+    try {
+      await action();
+      ref.invalidate(cacheUsageProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('已清除$label')));
+      }
+    } finally {
+      if (mounted) setState(() => _clearing.remove(key));
+    }
+  }
+
+  static String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    var value = bytes.toDouble();
+    var unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit++;
+    }
+    final text = unit == 0
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(value >= 100 ? 0 : 1);
+    return '$text ${units[unit]}';
+  }
+}
+
+/// 当前缓存占用（打开设置页时统计一次）。
+final cacheUsageProvider = FutureProvider.autoDispose<MediaCacheUsage>((
+  ref,
+) async {
+  final server = MediaProxyServer.instance;
+  if (server == null) return MediaCacheUsage.empty;
+  return server.usage();
+});
+
+/// 主题色色板圆:44 直径,选中时中心打勾。
+class _ColorSwatch extends StatelessWidget {
+  const _ColorSwatch({
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppThemeColor color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.color,
+              shape: BoxShape.circle,
+            ),
+            child: selected
+                ? const Icon(Icons.check_rounded, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            color.label,
+            style: TextStyle(
+              fontSize: AppText.rowSubtitle,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -239,6 +239,9 @@ class XhrPendingCall {
 
 const XHR_PENDING_CALLS_KEY = "xhrPendingCalls";
 
+/// 单次 XHR 请求的超时上限：避免网络异常（DNS/连接挂起）时请求永久悬挂。
+const Duration _xhrRequestTimeout = Duration(seconds: 30);
+
 http.Client? httpClient;
 
 xhrSetHttpClient(http.Client client) {
@@ -270,80 +273,109 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
 
       // for each pending call, calls the remote http service
       pendingCalls.forEach((element) async {
-        XhrPendingCall pendingCall = element as XhrPendingCall;
-        HttpMethod eMethod = HttpMethod.values.firstWhere((e) =>
-            e.toString().toLowerCase() ==
-            ("HttpMethod.${pendingCall.method}".toLowerCase()));
-        late http.Response response;
-        switch (eMethod) {
-          case HttpMethod.head:
-            response = await httpClient!.head(
-              Uri.parse(pendingCall.url!),
-              headers: pendingCall.headers,
-            );
-            break;
-          case HttpMethod.get:
-            response = await httpClient!.get(
-              Uri.parse(pendingCall.url!),
-              headers: pendingCall.headers,
-            );
-            break;
-          case HttpMethod.post:
-            response = await httpClient!.post(
-              Uri.parse(pendingCall.url!),
-              body: (pendingCall.body is String)
-                  ? pendingCall.body
-                  : jsonEncode(pendingCall.body),
-              headers: pendingCall.headers,
-            );
-            break;
-          case HttpMethod.put:
-            response = await httpClient!.put(
-              Uri.parse(pendingCall.url!),
-              body: (pendingCall.body is String)
-                  ? pendingCall.body
-                  : jsonEncode(pendingCall.body),
-              headers: pendingCall.headers,
-            );
-            break;
-          case HttpMethod.patch:
-            response = await httpClient!.patch(
-              Uri.parse(pendingCall.url!),
-              body: (pendingCall.body is String)
-                  ? pendingCall.body
-                  : jsonEncode(pendingCall.body),
-              headers: pendingCall.headers,
-            );
-            break;
-          case HttpMethod.delete:
-            response = await httpClient!.delete(
-              Uri.parse(pendingCall.url!),
-              headers: pendingCall.headers,
-            );
-            break;
-        }
-        // assuming request was successfully executed
-        String responseText = utf8.decode(response.bodyBytes);
+        final XhrPendingCall pendingCall = element as XhrPendingCall;
         try {
-          responseText = jsonEncode(json.decode(responseText));
-        } on Exception {}
-        final xhrResult = XmlHttpRequestResponse(
-          responseText: responseText,
-          responseInfo:
-              XhtmlHttpResponseInfo(statusCode: 200, statusText: "OK"),
-        );
+          HttpMethod eMethod = HttpMethod.values.firstWhere((e) =>
+              e.toString().toLowerCase() ==
+              ("HttpMethod.${pendingCall.method}".toLowerCase()));
+          late http.Response response;
+          switch (eMethod) {
+            case HttpMethod.head:
+              response = await httpClient!
+                  .head(
+                    Uri.parse(pendingCall.url!),
+                    headers: pendingCall.headers,
+                  )
+                  .timeout(_xhrRequestTimeout);
+              break;
+            case HttpMethod.get:
+              response = await httpClient!
+                  .get(
+                    Uri.parse(pendingCall.url!),
+                    headers: pendingCall.headers,
+                  )
+                  .timeout(_xhrRequestTimeout);
+              break;
+            case HttpMethod.post:
+              response = await httpClient!
+                  .post(
+                    Uri.parse(pendingCall.url!),
+                    body: (pendingCall.body is String)
+                        ? pendingCall.body
+                        : jsonEncode(pendingCall.body),
+                    headers: pendingCall.headers,
+                  )
+                  .timeout(_xhrRequestTimeout);
+              break;
+            case HttpMethod.put:
+              response = await httpClient!
+                  .put(
+                    Uri.parse(pendingCall.url!),
+                    body: (pendingCall.body is String)
+                        ? pendingCall.body
+                        : jsonEncode(pendingCall.body),
+                    headers: pendingCall.headers,
+                  )
+                  .timeout(_xhrRequestTimeout);
+              break;
+            case HttpMethod.patch:
+              response = await httpClient!
+                  .patch(
+                    Uri.parse(pendingCall.url!),
+                    body: (pendingCall.body is String)
+                        ? pendingCall.body
+                        : jsonEncode(pendingCall.body),
+                    headers: pendingCall.headers,
+                  )
+                  .timeout(_xhrRequestTimeout);
+              break;
+            case HttpMethod.delete:
+              response = await httpClient!
+                  .delete(
+                    Uri.parse(pendingCall.url!),
+                    headers: pendingCall.headers,
+                  )
+                  .timeout(_xhrRequestTimeout);
+              break;
+          }
+          String responseText = utf8.decode(response.bodyBytes);
+          try {
+            responseText = jsonEncode(json.decode(responseText));
+          } on Exception {}
+          final xhrResult = XmlHttpRequestResponse(
+            responseText: responseText,
+            responseInfo: XhtmlHttpResponseInfo(
+              statusCode: response.statusCode,
+              statusText: response.reasonPhrase ?? '',
+            ),
+          );
 
-        final responseInfo = jsonEncode(xhrResult.responseInfo);
-        final error = xhrResult.error;
-        // 用车 JSON 编码把响应体变成安全的 JS 字符串字面量再回灌。
-        // 原实现用 `` `$responseText` `` 反引号模板插入：当响应体含 `${...}`
-        // 或反斜杠（真实 API 的 JSON 里极常见）时会被 JS 当表达式求值/破坏转义，
-        // 导致 evaluate 抛错、XHR 回调永不触发、请求挂起到超时。
-        final responseTextLiteral = jsonEncode(xhrResult.responseText ?? '');
-        final errorLiteral = error == null ? 'null' : jsonEncode(error.toString());
-        this.evaluate(
-          "globalThis.xhrRequests[${pendingCall.idRequest}].callback($responseInfo, $responseTextLiteral, $errorLiteral);",
-        );
+          final responseInfo = jsonEncode(xhrResult.responseInfo);
+          final error = xhrResult.error;
+          // 用车 JSON 编码把响应体变成安全的 JS 字符串字面量再回灌。
+          // 原实现用 `` `$responseText` `` 反引号模板插入：当响应体含 `${...}`
+          // 或反斜杠（真实 API 的 JSON 里极常见）时会被 JS 当表达式求值/破坏转义，
+          // 导致 evaluate 抛错、XHR 回调永不触发、请求挂起到超时。
+          final responseTextLiteral = jsonEncode(xhrResult.responseText ?? '');
+          final errorLiteral = error == null
+              ? 'null'
+              : jsonEncode(error.toString());
+          this.evaluate(
+            "globalThis.xhrRequests[${pendingCall.idRequest}].callback($responseInfo, $responseTextLiteral, $errorLiteral);",
+          );
+        } catch (e) {
+          // 网络异常（DNS 失败、连接超时等）不能让 Future 未捕获地抛到 Flutter
+          // 层（否则会刷 Unhandled Exception 并可能拖垮调试会话），交回 JS 侧的
+          // onerror，由插件的 fetch/axios 自行处理失败。
+          try {
+            this.evaluate(
+              "globalThis.xhrRequests[${pendingCall.idRequest}].callback("
+              "{statusCode: 0, statusText: '', responseHeaders: []}, null, ${jsonEncode(e.toString())});",
+            );
+          } catch (_) {
+            // 请求已不存在（插件实例销毁）时忽略。
+          }
+        }
       });
     });
 

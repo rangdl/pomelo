@@ -10,22 +10,17 @@ enum ThemeModeOption { system, light, dark }
 extension ThemeModeOptionX on ThemeModeOption {
   /// 对应 [MaterialApp.themeMode] 的值。
   ThemeMode get themeMode => switch (this) {
-        ThemeModeOption.system => ThemeMode.system,
-        ThemeModeOption.light => ThemeMode.light,
-        ThemeModeOption.dark => ThemeMode.dark,
-      };
+    ThemeModeOption.system => ThemeMode.system,
+    ThemeModeOption.light => ThemeMode.light,
+    ThemeModeOption.dark => ThemeMode.dark,
+  };
 
   String get label => switch (this) {
-        ThemeModeOption.system => '跟随系统',
-        ThemeModeOption.light => '浅色模式',
-        ThemeModeOption.dark => '深色模式',
-      };
+    ThemeModeOption.system => '跟随系统',
+    ThemeModeOption.light => '浅色模式',
+    ThemeModeOption.dark => '深色模式',
+  };
 }
-
-/// 共享的设置存储（由 main() 启动时 open 后注入）。
-final settingsStoreProvider = Provider<SettingsStore>(
-  (ref) => throw UnimplementedError('settingsStoreProvider 需在启动时 override'),
-);
 
 /// 主题模式初值，由 main() 从设置里读出后注入。
 final themeModeInitializerProvider = Provider<ThemeModeOption>(
@@ -71,10 +66,12 @@ class AudioQualityNotifier extends Notifier<AudioQuality> {
 
 /// 启动时读取持久化的主题模式;无记录或损坏时跟随系统。
 Future<ThemeModeOption> loadThemeModeOption(SettingsStore store) =>
-    Future.value(ThemeModeOption.values.firstWhere(
-      (m) => m.name == store.read<String>('themeMode'),
-      orElse: () => ThemeModeOption.system,
-    ));
+    Future.value(
+      ThemeModeOption.values.firstWhere(
+        (m) => m.name == store.read<String>('themeMode'),
+        orElse: () => ThemeModeOption.system,
+      ),
+    );
 
 /// 启动时读取持久化的音质;无记录时默认高品。
 Future<AudioQuality> loadAudioQuality(SettingsStore store) =>

@@ -12,11 +12,24 @@ abstract final class AppSpacing {
   static const double xl = 24;
   static const double xxl = 32;
 
-  /// 页面水平边距。
-  static const double page = lg;
+  /// 页面水平边距(桌面端尽量铺满,左右只留 8)。
+  static const double page = sm;
 
-  /// 分组列表页整体 padding(底部预留浮动条/底栏空间)。
-  static const EdgeInsets pagePadding = EdgeInsets.fromLTRB(page, sm, page, xl);
+  /// 分割线左缩进 = page(8) + leading + horizontalTitleGap(10)，
+  /// 保证分隔线起点与行内文字左边缘重合。
+  static const double dividerIndentSettings = 46; // 8 + 28 徽章 + 10
+  static const double dividerIndentTrack = 58; // 8 + 40 封面 + 10
+
+  /// 浮动迷你播放胶囊占用的高度：列表底部留出这么多，避免最后一行被胶囊遮住。
+  static const double floatingPlayerInset = 88;
+
+  /// 分组列表页整体 padding(底部预留浮动播放胶囊空间)。
+  static const EdgeInsets pagePadding = EdgeInsets.fromLTRB(
+    page,
+    sm,
+    page,
+    floatingPlayerInset,
+  );
 
   /// 封面网格间距。
   static const double gridGap = md;
@@ -43,18 +56,15 @@ abstract final class AppRadius {
   static final BorderRadius floatingBorder = BorderRadius.circular(floating);
 }
 
-/// 设置行等"语义图标"的徽章底色/前景(参照 uzn 的蓝色图标块)。
+/// 设置行等"语义图标"的徽章:底色/前景跟随主题色(全应用只有一个强调色)。
 abstract final class AppIconBadge {
   static const double size = 28;
   static const double glyphSize = 16;
 
-  static Color background(Brightness b) => b == Brightness.dark
-      ? const Color(0xFF2C3B52)
-      : const Color(0xFFE7F0FE);
+  static Color background(ColorScheme scheme) =>
+      scheme.primary.withValues(alpha: 0.12);
 
-  static Color foreground(Brightness b) => b == Brightness.dark
-      ? const Color(0xFF9DBEFF)
-      : const Color(0xFF3B82F6);
+  static Color foreground(ColorScheme scheme) => scheme.primary;
 }
 
 /// 字号令牌(字重在使用处声明:w600 用于行标题/选中态)。
@@ -70,4 +80,25 @@ abstract final class AppText {
 
   /// 紧凑文字:时间、角标、底栏标签。
   static const double compact = 10.5;
+
+  /// 网格卡标题。
+  static const double cardTitle = 13;
+
+  /// 弹层 / 空状态标题。
+  static const double heading = 16;
+
+  /// 详情页头部标题、品牌字。
+  static const double detailTitle = 18;
+
+  /// 播放页歌名等大标题。
+  static const double displayTitle = 22;
+}
+
+/// 覆盖在图片/沉浸页上的一次性颜色(§2 例外表)。
+abstract final class AppOverlay {
+  /// 播放页背景压暗层。
+  static const Color scrim = Color(0xB3000000);
+
+  /// 播放页封面投影。
+  static const Color coverShadow = Color(0x66000000);
 }

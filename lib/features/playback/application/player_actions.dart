@@ -8,10 +8,13 @@ import '../../../shared/settings/audio_quality.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../plugins/data/plugin_repository.dart';
 import '../../plugins/domain/plugin_record.dart';
+import '../../plugins/domain/source_keys.dart';
+import '../../plugins/domain/track_origin.dart';
 import '../../plugins/presentation/library_providers.dart';
 import '../../plugins/presentation/plugin_providers.dart';
 import '../../search/presentation/search_providers.dart';
 import '../data/audio_player_service.dart';
+import '../data/media_proxy_server.dart';
 import '../domain/play_mode.dart';
 import '../presentation/playback_providers.dart';
 
@@ -28,28 +31,30 @@ class PlayerActions {
 
   final Ref _ref;
 
-  Future<void> search(PluginRecord plugin, String query, {int page = 1}) async {
+  Future<void> search(
+    PluginRecord plugin,
+    String query, {
+    int page = 1,
+    String type = 'music',
+  }) async {
     final results = _ref.read(searchResultsProvider.notifier);
     // 第一页显示 loading，加载更多时保留旧结果、追加展示。
     if (page <= 1) {
       results.set(const AsyncValue.loading());
     }
     try {
-      final rt = await _ref.read(musicFreeRuntimeProvider(plugin).future);
-      final result = await rt.search(query, page: page);
+      final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+      final result = await rt.search(query, page: page, type: type);
       final data = (result['data'] as List).cast<dynamic>();
-      final mapped = data
-          .map((e) => Map<String, dynamic>.from(e as Map))
-          .map(
-            (e) => {
-              ...e,
-              '_pluginId': plugin.id,
-              // 结果自身没声明时，用插件级默认值
-              if (e['lxSource'] == null && plugin.lxSource != null)
-                'lxSource': plugin.lxSource,
-            },
-          )
-          .toList();
+      final mapped = [
+        for (final e in data)
+          type == 'music'
+              ? tagTrackOrigin(Map<String, dynamic>.from(e as Map), plugin)
+              : {
+                  ...Map<String, dynamic>.from(e as Map),
+                  '_pluginId': plugin.id,
+                },
+      ];
       // 记录是否还有下一页，供「加载更多」判断。
       _searchHasMore = result['isEnd'] != true && mapped.isNotEmpty;
       if (page <= 1) {
@@ -79,23 +84,42 @@ class PlayerActions {
     _ref.read(nowPlayingProvider.notifier).set(item);
     // 同步通知栏的队列位置（高亮当前曲）。
     player.updateQueueIndex(_ref.read(playQueueProvider.notifier).index);
+    final ResolvedSource source;
     try {
-      final source = await _resolveUrl(repo, item);
+      source = await _resolveUrl(repo, item);
+    } catch (e) {
+      // 取链失败说明「这首放不了」，不是播放器的瞬时错误：直接反馈一次，
+      // 不进入 3 秒探测 + 自动跳下一首的流程，否则一首失败会连环跳完整队列。
+      _toast('播放失败: ${item['title'] ?? ''}（$e）');
+      rethrow;
+    }
+    try {
+      final proxy = _canProxy(source.url) ? MediaProxyServer.instance : null;
+      // 有本地服务就让播放器只连 127.0.0.1：取链、防盗链头、边播边存都在服务端。
+      final streamUrl = proxy == null
+          ? source.url
+          : proxy.streamUrl(_mediaKey(item), source.url, source.headers);
       final art = '${item['artwork'] ?? ''}';
+      final coverUri = art.isEmpty ? null : Uri.tryParse(cachedArtworkUrl(art));
       await player.open(
-        source.url,
-        headers: source.headers,
+        streamUrl,
+        headers: proxy == null ? source.headers : null,
         meta: MediaMeta(
           id: '${item['id'] ?? source.url}',
           title: '${item['title'] ?? '未知歌曲'}',
           artist: '${item['artist'] ?? ''}',
           album: '${item['album'] ?? ''}',
-          artUri: art.isEmpty ? null : Uri.tryParse(art),
+          artUri: coverUri,
           duration: _durationOf(item),
         ),
       );
       // 记录播放历史（异步、失败静默）。
       _recordHistory(item);
+      // 预取下一首的音源，切歌时无需再等取链。
+      unawaited(prefetchNext());
+      if (proxy != null && art.isNotEmpty) {
+        unawaited(proxy.prefetchCover(art));
+      }
     } catch (e) {
       _reportPlayFailure(item, '$e');
       rethrow;
@@ -121,63 +145,220 @@ class PlayerActions {
   /// 歌词缓存（曲目 id → LRC 文本，null 表示「确认无歌词」避免重复拉取）。
   final Map<String, String?> _lyricCache = {};
 
-  /// 获取歌词原文（LRC 文本）。优先 LX 脚本 lyric action，退回 MusicFree
-  /// 插件的 getLyric。拿不到返回 null。
+  /// 获取歌词原文（LRC 文本）。
+  ///
+  /// 先问来源插件，再按音源 key 找其它声明了 `getLyric` 的插件兜底。
+  /// 拿不到返回 null。
   Future<String?> fetchLyric(Map<String, dynamic> item) async {
     final cacheKey =
         '${item['_pluginId'] ?? ''}:${item['id'] ?? item['title'] ?? ''}';
     if (_lyricCache.containsKey(cacheKey)) return _lyricCache[cacheKey];
     final repo = await _ref.read(pluginRepositoryProvider.future);
 
-    // 1) LX 脚本：lyric action（脚本内已缓存取链时的歌词）
-    final lxPlugin = _pickLxPlugin(repo, item);
-    if (lxPlugin != null) {
-      try {
-        final lx = await _ref.read(lxRuntimeProvider(lxPlugin).future);
-        final raw = await lx.request(
-          source: '${item['lxSource'] ?? ''}',
-          action: 'lyric',
-          info: {
-            'musicInfo': {
-              'songmid': '${item['id'] ?? ''}',
-              'name': '${item['title'] ?? ''}',
-              'singer': '${item['artist'] ?? ''}',
-              'hash': '${item['id'] ?? ''}',
-            },
-          },
-        );
-        final lyric = _extractLyric(raw);
-        if (lyric != null && lyric.isNotEmpty) {
-          _lyricCache[cacheKey] = lyric;
-          return lyric;
-        }
-      } catch (e) {
-        debugPrint('[pomelo] LX 歌词获取失败: $e');
+    final ownerId = item['_pluginId'] as String?;
+    final sourceKey = _sourceKeyOf(repo, item);
+    final payload = stripTrackOrigin(item);
+
+    final candidates = <PluginRecord>[];
+    final owner = repo.plugins.where((p) => p.id == ownerId).firstOrNull;
+    if (owner != null &&
+        owner.enabled &&
+        owner.supportedMethods.contains('getLyric')) {
+      candidates.add(owner);
+    }
+    if (sourceKey != null) {
+      for (final p in repo.plugins) {
+        if (p.id == ownerId || !p.enabled) continue;
+        if (!p.supportedMethods.contains('getLyric')) continue;
+        if (!p.sourceKeys.contains(sourceKey)) continue;
+        candidates.add(p);
       }
     }
 
-    // 2) MusicFree 插件 getLyric（歌词响应可能较大，给更宽松的超时）
-    final ownerId = item['_pluginId'] as String?;
-    final plugin = repo.plugins.where((p) => p.id == ownerId).firstOrNull;
-    if (plugin != null && plugin.supportedMethods.contains('getLyric')) {
+    for (final plugin in candidates) {
       try {
-        final rt = await _ref.read(musicFreeRuntimeProvider(plugin).future);
-        final raw = await rt.invoke(
-          'getLyric',
-          [Map<String, dynamic>.from(item)..remove('_pluginId')],
-          timeout: const Duration(seconds: 30),
-        );
+        final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+        final raw = await rt.invoke('getLyric', [
+          payload,
+          sourceKey,
+        ], timeout: const Duration(seconds: 30));
         final lyric = _extractLyric(raw);
         if (lyric != null && lyric.isNotEmpty) {
           _lyricCache[cacheKey] = lyric;
           return lyric;
         }
       } catch (e) {
-        debugPrint('[pomelo] MusicFree 歌词获取失败: $e');
+        debugPrint('[pomelo] 歌词获取失败(${plugin.platform}): $e');
       }
     }
+
     _lyricCache[cacheKey] = null; // 确认无歌词，避免重复拉取
     return null;
+  }
+
+  /// 单曲详情（来源插件实现了 getMusicInfo 才有值）。
+  Future<Map<String, dynamic>?> fetchMusicInfo(
+    Map<String, dynamic> item,
+  ) async {
+    final plugin = await _ownerPlugin(item);
+    if (plugin == null || !plugin.supportedMethods.contains('getMusicInfo')) {
+      return null;
+    }
+    try {
+      final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+      return await rt.getMusicInfo(stripTrackOrigin(item));
+    } catch (e) {
+      debugPrint('[pomelo] 获取歌曲详情失败: $e');
+      return null;
+    }
+  }
+
+  /// 评论列表（来源插件实现了 getMusicComments 才有值）。
+  Future<List<Map<String, dynamic>>> fetchMusicComments(
+    Map<String, dynamic> item, {
+    int page = 1,
+    String sort = 'hot',
+  }) async {
+    final plugin = await _ownerPlugin(item);
+    if (plugin == null ||
+        !plugin.supportedMethods.contains('getMusicComments')) {
+      return const [];
+    }
+    try {
+      final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+      return await rt.getMusicComments(
+        stripTrackOrigin(item),
+        page: page,
+        sort: sort,
+      );
+    } catch (e) {
+      debugPrint('[pomelo] 获取评论失败: $e');
+      return const [];
+    }
+  }
+
+  /// 导入分享链接（歌单/单曲），依次尝试支持导入的插件。
+  ///
+  /// 返回带来源标记的曲目列表；没有插件能处理时返回空列表。
+  Future<List<Map<String, dynamic>>> importShared(String url) async {
+    final repo = await _ref.read(pluginRepositoryProvider.future);
+    for (final plugin in repo.enabledPlugins) {
+      final canSheet = plugin.supportedMethods.contains('importMusicSheet');
+      final canItem = plugin.supportedMethods.contains('importMusicItem');
+      if (!canSheet && !canItem) continue;
+      try {
+        final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+        if (canSheet) {
+          final tracks = await rt.importMusicSheet(url);
+          if (tracks.isNotEmpty) {
+            return tracks.map((t) => tagTrackOrigin(t, plugin)).toList();
+          }
+        }
+        if (canItem) {
+          final track = await rt.importMusicItem(url);
+          if (track != null) {
+            return [tagTrackOrigin(track, plugin)];
+          }
+        }
+      } catch (e) {
+        debugPrint('[pomelo] ${plugin.platform} 导入失败: $e');
+      }
+    }
+    return const [];
+  }
+
+  /// 推荐歌单标签。返回的每个标签都带 `_pluginId`，便于后续按插件拉歌单。
+  Future<List<Map<String, dynamic>>> fetchRecommendSheetTags(
+    PluginRecord plugin,
+  ) async {
+    try {
+      final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+      final tags = await rt.getRecommendSheetTags();
+      return [
+        for (final t in tags) {...t, '_pluginId': plugin.id},
+      ];
+    } catch (e) {
+      debugPrint('[pomelo] 获取推荐歌单标签失败: $e');
+      return const [];
+    }
+  }
+
+  /// 按标签分页获取推荐歌单（[tag] 为标签对象）。
+  Future<({List<Map<String, dynamic>> data, bool isEnd})> fetchRecommendSheets(
+    PluginRecord plugin,
+    Map<String, dynamic> tag, {
+    int page = 1,
+  }) async {
+    final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+    final res = await rt.getRecommendSheetsByTag(
+      stripTrackOrigin(tag),
+      page: page,
+    );
+    return (
+      data: [
+        for (final s in res.data) {...s, '_pluginId': plugin.id},
+      ],
+      isEnd: res.isEnd,
+    );
+  }
+
+  /// 歌单详情（歌曲列表）。
+  Future<({List<Map<String, dynamic>> data, bool isEnd})> fetchSheetSongs(
+    PluginRecord plugin,
+    Map<String, dynamic> sheet, {
+    int page = 1,
+  }) async {
+    final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+    final res = await rt.getMusicSheetInfo(stripTrackOrigin(sheet), page: page);
+    return (
+      data: [for (final s in res.data) tagTrackOrigin(s, plugin)],
+      isEnd: res.isEnd,
+    );
+  }
+
+  /// 歌手作品（单曲 / 专辑）。
+  Future<({List<Map<String, dynamic>> data, bool isEnd})> fetchArtistWorks(
+    PluginRecord plugin,
+    Map<String, dynamic> artist, {
+    int page = 1,
+    String type = 'music',
+  }) async {
+    final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+    final res = await rt.getArtistWorks(
+      stripTrackOrigin(artist),
+      page: page,
+      type: type,
+    );
+    return (
+      data: [
+        for (final s in res.data)
+          type == 'music'
+              ? tagTrackOrigin(s, plugin)
+              : {...s, '_pluginId': plugin.id},
+      ],
+      isEnd: res.isEnd,
+    );
+  }
+
+  /// 专辑详情（歌曲列表）。
+  Future<({List<Map<String, dynamic>> data, bool isEnd})> fetchAlbumSongs(
+    PluginRecord plugin,
+    Map<String, dynamic> album, {
+    int page = 1,
+  }) async {
+    final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
+    final res = await rt.getAlbumInfo(stripTrackOrigin(album), page: page);
+    return (
+      data: [for (final s in res.data) tagTrackOrigin(s, plugin)],
+      isEnd: res.isEnd,
+    );
+  }
+
+  Future<PluginRecord?> _ownerPlugin(Map<String, dynamic> item) async {
+    final repo = await _ref.read(pluginRepositoryProvider.future);
+    final ownerId = item['_pluginId'] as String?;
+    if (ownerId == null) return null;
+    return repo.plugins.where((p) => p.id == ownerId).firstOrNull;
   }
 
   /// 从脚本返回值里提取 LRC 文本。兼容字符串 / {lyric|rawLrc} / {lyric:{lyric|rawLrc}}。
@@ -195,6 +376,50 @@ class PlayerActions {
       }
     }
     return null;
+  }
+
+  /// 只有 http(s) 源才走本地代理；其它协议（如本地文件）保持直连。
+  bool _canProxy(String url) {
+    final uri = Uri.tryParse(url);
+    return uri != null && (uri.isScheme('http') || uri.isScheme('https'));
+  }
+
+  /// 一首歌的稳定缓存键：来源插件 + 曲目 id + 音质。
+  ///
+  /// 播放地址会变（带签名），但同一首歌应复用同一份链接缓存与音频缓存。
+  String _mediaKey(Map<String, dynamic> item, [AudioQuality? quality]) {
+    final AudioQuality q = quality ?? _ref.read(audioQualityProvider);
+    final owner = '${item['_pluginId'] ?? ''}';
+    final id = '${item['id'] ?? item['title'] ?? ''}';
+    final artist = '${item['artist'] ?? ''}';
+    return '$owner:$id:$artist:${q.musicFreeValue}';
+  }
+
+  /// 预取队列里下一首的播放源（静默，不改队列、不发声）。
+  Future<void> prefetchNext() async {
+    final items = _ref.read(playQueueProvider);
+    if (items.length < 2) return;
+    final mode = _ref.read(playModeProvider);
+    if (mode == PlayMode.singleLoop) return;
+    var next = _ref.read(playQueueProvider.notifier).index + 1;
+    if (next >= items.length) {
+      if (mode == PlayMode.sequential) return;
+      next = 0;
+    }
+    final item = items[next];
+    try {
+      final repo = await _ref.read(pluginRepositoryProvider.future);
+      final source = await _resolveUrl(repo, item);
+      // 同时登记到本地服务，切歌时地址已就绪。
+      final proxy = _canProxy(source.url) ? MediaProxyServer.instance : null;
+      proxy?.streamUrl(_mediaKey(item), source.url, source.headers);
+      final art = '${item['artwork'] ?? ''}';
+      if (proxy != null && art.isNotEmpty) {
+        await proxy.prefetchCover(art);
+      }
+    } catch (e) {
+      debugPrint('[pomelo] 预取下一首失败: $e');
+    }
   }
 
   /// 从列表的某一首开始播放：替换队列并定位。
@@ -230,7 +455,7 @@ class PlayerActions {
     }
     // 尚未加载（如重启后恢复的快照、或点的是队列里另一首）：重新解析并播放。
     if (target != null) {
-      await _safePlay(target);
+      await safePlay(target);
     }
   }
 
@@ -242,7 +467,7 @@ class PlayerActions {
 
     final mode = _ref.read(playModeProvider);
     if (auto && mode == PlayMode.singleLoop) {
-      await _safePlay(items[queue.index]);
+      await safePlay(items[queue.index]);
       return;
     }
 
@@ -258,7 +483,7 @@ class PlayerActions {
     if (nextIndex < 0) nextIndex = items.length - 1;
 
     queue.jumpTo(nextIndex);
-    await _safePlay(items[nextIndex]);
+    await safePlay(items[nextIndex]);
   }
 
   Future<void> _playNextOnComplete() => skip(next: true, auto: true);
@@ -304,10 +529,12 @@ class PlayerActions {
     _handlePlayError(item, message);
   }
 
-  Future<void> _safePlay(Map<String, dynamic> item) async {
+  Future<void> safePlay(Map<String, dynamic> item) async {
     try {
       await playItem(item);
-    } catch (_) {}
+    } catch (_) {
+      // 失败提示已在 playItem 内给出，这里只负责不让异常继续外抛。
+    }
   }
 
   void _toast(String message) {
@@ -317,124 +544,131 @@ class PlayerActions {
     );
   }
 
-  /// 解析播放地址。顺序：**先插件自带直链 → 失败再用同平台 LX 脚本兜底**。
+  /// 解析播放地址：**先来源插件自带取链 → 失败再按音源 key 找其它插件兜底**。
   ///
-  /// 很多第三方 MusicFree 插件的取链中转已失效（能搜不能播），但只要该平台有
-  /// 可用的 LX 脚本（kw/tx/wy/kg/mg…），就能用 LX 兜底拿到直链，用户无需换源。
+  /// 兜底只在目标插件开启了「允许被兜底调用」时参与；全部失败统一报
+  /// 「无法获取有效的播放链接」。
   Future<ResolvedSource> _resolveUrl(
     PluginRepository repo,
     Map<String, dynamic> item,
   ) async {
     final ownerId = item['_pluginId'] as String?;
     final quality = _ref.read(audioQualityProvider);
+    final payload = stripTrackOrigin(item);
 
-    // 1) 插件自带取链。
-    Object? primaryError;
-    try {
-      final source = await _resolveWithMusicFree(repo, ownerId, item, quality);
-      debugPrint(
-        '[pomelo] 插件解析成功 quality=${quality.musicFreeValue} url=${source.url}',
-      );
-      return source;
-    } catch (e) {
-      primaryError = e;
-      debugPrint('[pomelo] 插件解析失败，尝试 LX 兜底: $e');
+    // 命中链接缓存（10 分钟内）直接复用，避免每次切歌都请求音源。
+    final cacheKey = _mediaKey(item, quality);
+    final cached = MediaLinkCache.instance?.get(cacheKey);
+    if (cached != null) {
+      debugPrint('[pomelo] 命中播放链接缓存: ${item['title']}');
+      return ResolvedSource(cached.url, cached.headers);
     }
 
-    // 2) LX 兜底：按歌曲所属平台找对应源。
-    final lxPlugin = _pickLxPlugin(repo, item);
-    if (lxPlugin != null) {
-      final lxSource = '${item['lxSource'] ?? ''}';
-      try {
-        final lx = await _ref.read(lxRuntimeProvider(lxPlugin).future);
-        final url = await lx.resolveMusicUrl(
-          source: lxSource,
-          musicInfo: {
-            // 不同源的取链键不同：酷狗用 hash、多数平台用 songmid。这里都填上，
-            // 尽量兼容各 LX 脚本的字段读取（值都取插件结果的 id）。
-            'songmid': '${item['id'] ?? ''}',
-            'hash': '${item['hash'] ?? item['id'] ?? ''}',
-            'name': '${item['title'] ?? ''}',
-            'singer': '${item['artist'] ?? ''}',
-            'albumName': '${item['album'] ?? ''}',
-          },
-          quality: quality.lxValue,
-        );
-        debugPrint(
-          '[pomelo] LX 兜底成功 plugin=${lxPlugin.platform} '
-          'source=$lxSource quality=${quality.lxValue} url=$url',
-        );
-        return ResolvedSource(url);
-      } catch (e) {
-        debugPrint('[pomelo] LX 兜底也失败: $e');
+    Object? primaryError;
+
+    // 1) 来源插件自带取链（用户可对该插件勾选「禁用取链」直接走兜底）。
+    final owner = repo.plugins.where((p) => p.id == ownerId).firstOrNull;
+    if (owner != null && owner.enabled && owner.canProvideMediaSource) {
+      if (owner.disableResolve) {
+        debugPrint('[pomelo] 来源插件已禁用取链，直接走兜底: ${owner.platform}');
+      } else {
+        try {
+          final source = await _resolveWith(owner, payload, quality);
+          debugPrint(
+            '[pomelo] 插件解析成功 quality=${quality.musicFreeValue} url=${source.url}',
+          );
+          _remember(cacheKey, source);
+          return source;
+        } catch (e) {
+          primaryError = e;
+          debugPrint('[pomelo] 插件解析失败，尝试兜底: $e');
+        }
       }
     }
 
-    // 3) 都失败：抛出插件侧原始错误（更贴近用户直接遇到的场景）。
-    throw StateError('$primaryError');
+    // 2) 跨插件兜底：同音源 key 的其它插件。
+    final sourceKey = _sourceKeyOf(repo, item);
+    if (sourceKey != null) {
+      for (final candidate in repo.fallbackCandidates(
+        sourceKey,
+        excludeId: ownerId,
+      )) {
+        try {
+          final source = await _resolveWith(
+            candidate,
+            payload,
+            quality,
+            sourceKey: sourceKey,
+          );
+          debugPrint(
+            '[pomelo] 兜底成功 plugin=${candidate.platform} '
+            'source=$sourceKey url=${source.url}',
+          );
+          _remember(cacheKey, source);
+          return source;
+        } catch (e) {
+          primaryError ??= e;
+          debugPrint('[pomelo] 兜底失败(${candidate.platform}): $e');
+        }
+      }
+    }
+
+    if (primaryError != null) {
+      debugPrint('[pomelo] 全部取链方式失败: $primaryError');
+    }
+    final ownerDisabled = owner != null && owner.disableResolve;
+    throw StateError(ownerDisabled ? '来源插件已禁用取链，且没有可用的兜底插件' : '无法获取有效的播放链接');
   }
 
-  Future<ResolvedSource> _resolveWithMusicFree(
-    PluginRepository repo,
-    String? pluginId,
-    Map<String, dynamic> item,
-    AudioQuality quality,
-  ) async {
-    final plugin = repo.plugins.where((p) => p.id == pluginId).firstOrNull;
-    if (plugin == null) throw StateError('找不到来源插件');
-    final rt = await _ref.read(musicFreeRuntimeProvider(plugin).future);
+  /// 把解析结果写入链接缓存（失败静默）。
+  void _remember(String cacheKey, ResolvedSource source) {
+    MediaLinkCache.instance?.put(cacheKey, source.url, source.headers);
+  }
+
+  /// 条目所属的音源 key：自身标记 → 旧数据的 lxSource → 来源插件推断。
+  String? _sourceKeyOf(PluginRepository repo, Map<String, dynamic> item) {
+    final tagged = item['_sourceKey'];
+    if (tagged is String && tagged.isNotEmpty) return tagged;
+
+    final legacy = item['lxSource'];
+    if (legacy is String && legacy.isNotEmpty) return legacy;
+
+    // 老数据没有 _sourceKey，但条目里可能带平台标识（如 gd 的 source）。
+    final rawSource = item['source'];
+    if (rawSource is String && rawSource.isNotEmpty) {
+      final key = inferSourceKeyFromPlatform(rawSource);
+      if (key != null) return key;
+    }
+
+    final ownerId = item['_pluginId'] as String?;
+    final owner = repo.plugins.where((p) => p.id == ownerId).firstOrNull;
+    return owner == null ? null : primarySourceKey(owner);
+  }
+
+  Future<ResolvedSource> _resolveWith(
+    PluginRecord plugin,
+    Map<String, dynamic> payload,
+    AudioQuality quality, {
+    String? sourceKey,
+  }) async {
+    final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
     final source = await rt.getMediaSource(
-      Map<String, dynamic>.from(item)..remove('_pluginId'),
+      payload,
       quality.musicFreeValue,
+      sourceKey: sourceKey,
     );
     if (source == null || source['url'] is! String) {
       throw StateError('插件未返回可播放地址');
     }
     final url = (source['url'] as String).trim();
-    // 插件可能"成功"返回空串（上游临时无链），同样视为失败以便走 LX 兜底。
+    // 插件可能"成功"返回空串（上游临时无链），同样视为失败。
     if (url.isEmpty) {
       throw StateError('插件返回空播放地址');
     }
-    final headers =
-        (source['headers'] as Map?)?.map((k, v) => MapEntry('$k', '$v'))
-            .cast<String, String>();
+    final headers = (source['headers'] as Map?)
+        ?.map((k, v) => MapEntry('$k', '$v'))
+        .cast<String, String>();
     return ResolvedSource(url, headers);
-  }
-
-  /// 选出能处理该歌曲的 LX 插件。
-  ///
-  /// 匹配规则：歌曲带 `lxSource` → 用该源；此时优先选「声明了这个源」的脚本
-  /// （用户手动指定的脚本若无此源，则从其它已启用脚本里找）。
-  PluginRecord? _pickLxPlugin(
-    PluginRepository repo,
-    Map<String, dynamic> item,
-  ) {
-    final lxPlugins = repo.plugins.where((p) => p.isLx && p.enabled).toList();
-    if (lxPlugins.isEmpty) return null;
-
-    // 歌曲的源：自身声明优先；否则回退到其来源插件配置的 lxSource
-    // （榜单/历史/收藏等非搜索路径不会经过 search 的注入逻辑）。
-    var source = item['lxSource'];
-    if (source is! String || source.isEmpty) {
-      final ownerId = item['_pluginId'] as String?;
-      final owner =
-          repo.plugins.where((p) => p.id == ownerId).firstOrNull;
-      source = owner?.lxSource;
-    }
-
-    if (source is String && source.isNotEmpty) {
-      final selectedId = _ref.read(selectedLxPluginProvider);
-      final selected = lxPlugins.where((p) => p.id == selectedId).firstOrNull;
-      if (selected != null && selected.lxSources.contains(source)) {
-        return selected;
-      }
-      return lxPlugins.where((p) => p.lxSources.contains(source)).firstOrNull;
-    }
-
-    // 仍然未知来源：仅在用户显式指定脚本时使用，避免猜错平台。
-    final selectedId = _ref.read(selectedLxPluginProvider);
-    if (selectedId == null) return null;
-    return lxPlugins.where((p) => p.id == selectedId).firstOrNull;
   }
 }
 

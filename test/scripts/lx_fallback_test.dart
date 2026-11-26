@@ -2,9 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:pomelo/features/plugins/data/lx_source_map.dart';
-import 'package:pomelo/features/plugins/runtime/lx_runtime.dart';
-import 'package:pomelo/features/plugins/runtime/musicfree_runtime.dart';
+import 'package:pomelo/features/plugins/domain/source_keys.dart';
+import 'package:pomelo/features/plugins/runtime/pomelo_plugin_runtime.dart';
 import 'package:quickjs_engine/extensions/xhr.dart';
 
 /// 验证「插件取链失败 → LX 同源兜底」链路的可行性：
@@ -46,15 +45,18 @@ void main() {
 
   group('platform → lxSource 推断', () {
     test('常见平台名映射正确', () {
-      expect(inferLxSourceFromPlatform('风誰·酷狗'), 'kg');
-      expect(inferLxSourceFromPlatform('风誰·酷我'), 'kw');
-      expect(inferLxSourceFromPlatform('风誰·QQ音乐'), 'tx');
-      expect(inferLxSourceFromPlatform('风誰·网易云'), 'wy');
-      expect(inferLxSourceFromPlatform('汽水音乐'), 'qs');
-      expect(inferLxSourceFromPlatform('咪咕音乐'), 'mg');
+      expect(inferSourceKeyFromPlatform('风誰·酷狗'), 'kg');
+      expect(inferSourceKeyFromPlatform('风誰·酷我'), 'kw');
+      expect(inferSourceKeyFromPlatform('风誰·QQ音乐'), 'tx');
+      expect(inferSourceKeyFromPlatform('风誰·网易云'), 'wy');
+      expect(inferSourceKeyFromPlatform('汽水音乐'), 'qs');
+      expect(inferSourceKeyFromPlatform('咪咕音乐'), 'mg');
+      // 独立平台没有对应音源，不参与跨插件兜底。
+      expect(inferSourceKeyFromPlatform('猫耳FM'), isNull);
+      expect(inferSourceKeyFromPlatform('Youtube'), isNull);
       // 无对应 LX 源的平台返回 null（不走兜底）
-      expect(inferLxSourceFromPlatform('猫耳FM'), isNull);
-      expect(inferLxSourceFromPlatform('Youtube'), isNull);
+      expect(inferSourceKeyFromPlatform('猫耳FM'), isNull);
+      expect(inferSourceKeyFromPlatform('Youtube'), isNull);
     });
   });
 
@@ -80,10 +82,10 @@ void main() {
         expect(pluginFile.existsSync(), isTrue, reason: '插件文件应存在: $file');
 
         // 1) 插件搜索拿真实曲目（取链失败无妨，兜底不依赖插件取链）。
-        final rt = await MusicFreeRuntime.create();
+        final rt = await PomeloPluginRuntime.create();
         late Map<String, dynamic> first;
         try {
-          rt.loadPlugin(pluginFile.readAsStringSync(), name: file);
+          await rt.loadPlugin(pluginFile.readAsStringSync(), name: file);
           final res = await rt.search(term);
           final list = res['data'] as List;
           if (list.isEmpty) {
@@ -98,28 +100,28 @@ void main() {
         }
 
         // 2) LX 同源兜底取链。
-        final lx = await LxUserApiRuntime.create();
+        final lx = await PomeloPluginRuntime.create();
         try {
-          lx.loadScript(
+          await lx.loadPlugin(
             File('scripts/xinghai-music-sourcev2.3.19.js').readAsStringSync(),
-            id: 'xh-$lxSource',
             name: 'XingHai',
           );
-          final ok = await lx.waitForInit();
-          expect(ok, isTrue, reason: lx.initError ?? '');
+          expect(lx.initialized, isTrue, reason: lx.initError ?? '');
           expect(lx.sources.keys, contains(lxSource));
 
-          final url = await lx.resolveMusicUrl(
-            source: lxSource,
-            musicInfo: {
+          final src = await lx.getMediaSource(
+            {
               'songmid': '${first['id'] ?? ''}',
               'hash': '${first['hash'] ?? first['id'] ?? ''}',
               'name': '${first['title'] ?? ''}',
               'singer': '${first['artist'] ?? ''}',
             },
-            quality: '320k',
+            'higher',
+            sourceKey: lxSource,
           );
-          expect(url, startsWith('http'));
+          final url = src?['url'];
+          expect(url, isA<String>());
+          expect(url as String, startsWith('http'));
           // ignore: avoid_print
           print('[$file] LX $lxSource 兜底直链: $url');
         } on StateError catch (e) {

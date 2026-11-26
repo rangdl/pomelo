@@ -9,4 +9,5 @@ final GlobalKey<ScaffoldMessengerState> globalScaffoldMessengerKey =
 /// 全局 [NavigatorState] 的 key。
 ///
 /// 播放器等非 Widget 层需要跳转页面（如点击通知栏打开播放页）时使用。
-final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> globalNavigatorKey =
+    GlobalKey<NavigatorState>();

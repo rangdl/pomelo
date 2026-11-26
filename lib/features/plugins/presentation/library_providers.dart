@@ -24,9 +24,26 @@ class FavoritesNotifier extends AsyncNotifier<List<Map<String, dynamic>>> {
 
   bool contains(Map<String, dynamic> item) {
     final list = state.value ?? const [];
-    final key = '${item['_pluginId'] ?? ''}:${item['id'] ?? item['title'] ?? ''}';
-    return list.any((e) =>
-        '${e['_pluginId'] ?? ''}:${e['id'] ?? e['title'] ?? ''}' == key);
+    final key =
+        '${item['_pluginId'] ?? ''}:${item['id'] ?? item['title'] ?? ''}';
+    return list.any(
+      (e) => '${e['_pluginId'] ?? ''}:${e['id'] ?? e['title'] ?? ''}' == key,
+    );
+  }
+
+  Future<void> clear() async {
+    final store = await ref.read(libraryStoreProvider.future);
+    await store.clearFavorites();
+    state = const AsyncData([]);
+  }
+
+  /// 批量收藏，返回新增数量（已收藏的不重复计入）。
+  Future<int> addAll(Iterable<Map<String, dynamic>> items) async {
+    final store = await ref.read(libraryStoreProvider.future);
+    final before = (await store.loadFavorites()).length;
+    final list = await store.addFavorites(items);
+    state = AsyncData(list);
+    return list.length - before;
   }
 }
 

@@ -6,10 +6,13 @@ import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
-import '../../plugins/domain/plugin_record.dart';
 import '../../plugins/presentation/plugin_providers.dart';
+import '../../plugins/presentation/track_more.dart';
 import 'search_providers.dart';
 
+/// 搜索页主体:搜索框 + 类型筛选 + 结果列表。
+///
+/// 插件切换已上移到标题栏左侧(见 `PluginPickerButton`),这里只展示当前音源。
 class SearchView extends ConsumerStatefulWidget {
   const SearchView({super.key});
 
@@ -20,8 +23,19 @@ class SearchView extends ConsumerStatefulWidget {
 class _SearchViewState extends ConsumerState<SearchView> {
   final _controller = TextEditingController();
   String _query = '';
+  String _type = 'music';
   int _page = 1;
   bool _loadingMore = false;
+
+  static const _types = <(String, String)>[
+    ('music', '单曲'),
+    ('sheet', '歌单'),
+    ('artist', '歌手'),
+    ('album', '专辑'),
+  ];
+
+  String get _typeLabel =>
+      _types.firstWhere((t) => t.$1 == _type, orElse: () => _types.first).$2;
 
   @override
   void dispose() {
@@ -40,9 +54,27 @@ class _SearchViewState extends ConsumerState<SearchView> {
       orElse: () => plugins.first,
     );
     FocusScope.of(context).unfocus();
-    _query = q;
-    _page = 1;
-    await ref.read(playerActionsProvider).search(plugin, q, page: 1);
+    setState(() {
+      _query = q;
+      _page = 1;
+    });
+    await ref
+        .read(playerActionsProvider)
+        .search(plugin, q, page: 1, type: _type);
+  }
+
+  /// 切换搜索类型：清空旧结果；已有词则立即按新类型重搜。
+  void _switchType(String type) {
+    if (_type == type) return;
+    setState(() {
+      _type = type;
+      _query = '';
+      _page = 1;
+    });
+    ref
+        .read(searchResultsProvider.notifier)
+        .set(const AsyncValue.data(<Map<String, dynamic>>[]));
+    if (_controller.text.trim().isNotEmpty) _search();
   }
 
   Future<void> _loadMore() async {
@@ -56,13 +88,26 @@ class _SearchViewState extends ConsumerState<SearchView> {
     );
     setState(() => _loadingMore = true);
     final next = _page + 1;
-    await ref.read(playerActionsProvider).search(plugin, _query, page: next);
+    await ref
+        .read(playerActionsProvider)
+        .search(plugin, _query, page: next, type: _type);
     if (mounted) {
       setState(() {
         _page = next;
         _loadingMore = false;
       });
     }
+  }
+
+  void _clearQuery() {
+    _controller.clear();
+    ref
+        .read(searchResultsProvider.notifier)
+        .set(const AsyncValue.data(<Map<String, dynamic>>[]));
+    setState(() {
+      _query = '';
+      _page = 1;
+    });
   }
 
   @override
@@ -72,14 +117,17 @@ class _SearchViewState extends ConsumerState<SearchView> {
     final results = ref.watch(searchResultsProvider);
 
     if (plugins.isEmpty) {
-      return const Center(child: Text('没有支持搜索的 MusicFree 插件'));
+      return const EmptyState(
+        icon: Icons.extension_off_rounded,
+        title: '没有可用的搜索插件',
+        message: '先到「插件管理」安装或启用一个支持搜索的插件。',
+      );
     }
     final current = plugins.firstWhere(
       (p) => p.id == selectedId,
       orElse: () => plugins.first,
     );
 
-    // 宽屏下限行宽,内容不拉满整窗。
     return CenteredMaxWidth(
       child: Column(
         children: [
@@ -93,9 +141,8 @@ class _SearchViewState extends ConsumerState<SearchView> {
             child: TextField(
               controller: _controller,
               decoration: InputDecoration(
-                hintText: '搜索歌曲',
+                hintText: '搜索$_typeLabel',
                 prefixIcon: const Icon(Icons.search_rounded),
-                // 搜索动作收进输入框内部,不再用外置大按钮。
                 suffixIcon: results.isLoading
                     ? const Padding(
                         padding: EdgeInsets.all(AppSpacing.md),
@@ -105,37 +152,54 @@ class _SearchViewState extends ConsumerState<SearchView> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
-                    : IconButton(
-                        tooltip: '搜索',
-                        icon: const Icon(Icons.arrow_forward_rounded),
-                        onPressed: _search,
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_controller.text.isNotEmpty)
+                            IconButton(
+                              tooltip: '清除',
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              onPressed: _clearQuery,
+                            ),
+                          IconButton(
+                            tooltip: '搜索',
+                            icon: const Icon(Icons.arrow_forward_rounded),
+                            onPressed: _search,
+                          ),
+                        ],
                       ),
               ),
               textInputAction: TextInputAction.search,
+              onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _search(),
             ),
           ),
+          // 类型筛选:纯文字横排,选中 primary + w600,无 Chip 容器。
           Padding(
             padding: const EdgeInsets.fromLTRB(
               AppSpacing.page,
-              AppSpacing.sm,
+              AppSpacing.xs,
               AppSpacing.page,
               AppSpacing.xs,
             ),
             child: Row(
               children: [
-                _PluginPicker(
-                  plugins: plugins,
-                  current: current,
-                  onSelected: (picked) => ref
-                      .read(selectedSearchPluginProvider.notifier)
-                      .select(picked.id),
-                ),
+                for (final (value, label) in _types)
+                  Padding(
+                    padding: const EdgeInsets.only(right: AppSpacing.lg),
+                    child: _TypeTab(
+                      label: label,
+                      selected: _type == value,
+                      onTap: () => _switchType(value),
+                    ),
+                  ),
                 const Spacer(),
-                TextButton.icon(
-                  onPressed: () => context.push('/toplists'),
-                  icon: const Icon(Icons.leaderboard_rounded, size: 18),
-                  label: const Text('榜单'),
+                Text(
+                  current.platform,
+                  style: TextStyle(
+                    fontSize: AppText.compact,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -143,54 +207,114 @@ class _SearchViewState extends ConsumerState<SearchView> {
           Expanded(
             child: results.when(
               loading: () => const SizedBox.shrink(),
-              error: (e, _) => Padding(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                child: Text(
-                  '✗ $e',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
+              error: (e, _) => EmptyState(
+                icon: Icons.error_outline_rounded,
+                title: '搜索失败',
+                message: '$e',
+                actions: [
+                  FilledButton.tonalIcon(
+                    onPressed: _search,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('重试'),
+                  ),
+                ],
               ),
-              data: (items) => items.isEmpty
-                  ? const Center(child: Text('输入关键词开始搜索'))
-                  : ListView(
-                      padding: AppSpacing.pagePadding,
-                      children: [
-                        // 结果按分组卡片呈现,与设置页同一套行样式。
-                        GroupCard(
-                          children: [
-                            for (final (i, item) in items.indexed)
-                              SettingsItem(
-                                icon: Icons.music_note_rounded,
-                                title: '${item['title'] ?? '未知'}',
-                                subtitle: '${item['artist'] ?? ''}',
-                                onTap: () => _play(items, i),
-                              ),
+              data: (items) {
+                if (items.isEmpty) {
+                  return _query.isEmpty
+                      ? const EmptyState(
+                          icon: Icons.search_rounded,
+                          title: '开始搜索',
+                          message: '输入关键词，按单曲 / 歌单 / 歌手 / 专辑查看结果。',
+                        )
+                      : EmptyState(
+                          icon: Icons.search_off_rounded,
+                          title: '没有找到相关结果',
+                          message: '试试更短的关键词，或切换到「$_typeLabel」以外的类型。',
+                          actions: [
+                            FilledButton.tonalIcon(
+                              onPressed: _clearQuery,
+                              icon: const Icon(Icons.close_rounded),
+                              label: const Text('清空关键词'),
+                            ),
                           ],
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        // 还有更多结果时提供「加载更多」。
-                        Center(
-                          child: ref.read(playerActionsProvider).searchHasMore
-                              ? TextButton.icon(
-                                  onPressed: _loadingMore ? null : _loadMore,
-                                  icon: _loadingMore
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : const Icon(Icons.expand_more_rounded),
-                                  label: Text(_loadingMore ? '加载中…' : '加载更多'),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                      ],
-                    ),
+                        );
+                }
+                return _type == 'music'
+                    ? _trackResults(items)
+                    : _collectionResults(items);
+              },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 单曲结果：分组卡片 + 点击播放。
+  Widget _trackResults(List<Map<String, dynamic>> items) {
+    return ListView(
+      padding: AppSpacing.pagePadding,
+      children: [
+        GroupCard(
+          dividerIndent: AppSpacing.dividerIndentTrack,
+          children: [
+            for (final (i, item) in items.indexed)
+              TrackTile(
+                item: item,
+                trailing: TrackMoreButton(item: item),
+                onTap: () => _play(items, i),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _loadMoreFooter(),
+      ],
+    );
+  }
+
+  /// 歌单/专辑/歌手结果：带封面的行,点击进入详情页。
+  Widget _collectionResults(List<Map<String, dynamic>> items) {
+    final route = switch (_type) {
+      'sheet' => '/sheet',
+      'album' => '/album',
+      _ => '/artist',
+    };
+    return ListView(
+      padding: AppSpacing.pagePadding,
+      children: [
+        GroupCard(
+          dividerIndent: AppSpacing.dividerIndentTrack,
+          children: [
+            for (final item in items)
+              CollectionRow(
+                item: item,
+                fallbackTitle: _typeLabel,
+                onTap: () => context.push(route, extra: item),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        _loadMoreFooter(),
+      ],
+    );
+  }
+
+  Widget _loadMoreFooter() {
+    if (!ref.read(playerActionsProvider).searchHasMore) {
+      return const SizedBox.shrink();
+    }
+    return Center(
+      child: TextButton.icon(
+        onPressed: _loadingMore ? null : _loadMore,
+        icon: _loadingMore
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.expand_more_rounded),
+        label: Text(_loadingMore ? '加载中…' : '加载更多'),
       ),
     );
   }
@@ -213,56 +337,36 @@ class _SearchViewState extends ConsumerState<SearchView> {
   }
 }
 
-/// 插件选择器:收缩为内容宽度的胶囊按钮(InputDecorator 会拉满,故用 Container)。
-class _PluginPicker extends StatelessWidget {
-  const _PluginPicker({
-    required this.plugins,
-    required this.current,
-    required this.onSelected,
+/// 纯文字筛选标签。
+class _TypeTab extends StatelessWidget {
+  const _TypeTab({
+    required this.label,
+    required this.selected,
+    required this.onTap,
   });
 
-  final List<PluginRecord> plugins;
-  final PluginRecord current;
-  final ValueChanged<PluginRecord> onSelected;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      initialValue: current.platform,
-      tooltip: '选择搜索插件',
-      onSelected: (platform) {
-        final picked = plugins.firstWhere(
-          (p) => p.platform == platform,
-          orElse: () => current,
-        );
-        onSelected(picked);
-      },
-      itemBuilder: (context) => [
-        for (final p in plugins)
-          PopupMenuItem(value: p.platform, child: Text(p.platform)),
-      ],
-      child: Container(
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: AppRadius.badgeBorder,
+      onTap: onTap,
+      child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.md,
-          vertical: 6,
+          horizontal: AppSpacing.xs,
+          vertical: AppSpacing.xs,
         ),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHigh,
-          borderRadius: AppRadius.cardBorder,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.extension_rounded, size: 16),
-            const SizedBox(width: 6),
-            Text(current.platform),
-            const SizedBox(width: 4),
-            Icon(
-              Icons.arrow_drop_down_rounded,
-              size: 18,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ],
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: AppText.rowTitle,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            color: selected ? scheme.primary : scheme.onSurfaceVariant,
+          ),
         ),
       ),
     );

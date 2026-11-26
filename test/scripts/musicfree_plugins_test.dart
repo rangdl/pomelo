@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:pomelo/features/plugins/runtime/musicfree_runtime.dart';
+import 'package:pomelo/features/plugins/runtime/pomelo_plugin_runtime.dart';
 import 'package:quickjs_engine/extensions/xhr.dart';
 
 /// 端到端验证 `scripts/musicfree-plugins/` 下的**改造后** MusicFree 插件：
@@ -72,9 +72,9 @@ void main() {
       }
       final source = File(path).readAsStringSync();
 
-      final rt = await MusicFreeRuntime.create();
+      final rt = await PomeloPluginRuntime.create();
       try {
-        rt.loadPlugin(source, name: probe.file);
+        await rt.loadPlugin(source, name: probe.file);
 
         final meta = rt.evaluateJson('''
           (function() {

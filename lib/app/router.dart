@@ -2,12 +2,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/home/presentation/home_screen.dart';
+import '../features/plugins/presentation/collection_screens.dart';
 import '../features/plugins/presentation/library_screen.dart';
-import '../features/plugins/presentation/lx_manager_screen.dart';
 import '../features/plugins/presentation/plugin_manager_screen.dart';
+import '../features/plugins/presentation/sheets_browse_screen.dart';
 import '../features/plugins/presentation/toplists_screen.dart';
+import '../features/search/presentation/search_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../shared/layout/adaptive_app_shell.dart';
+import '../shared/layout/detail_scaffold.dart';
 
 /// 应用路由器。必须在 `ProviderScope` 内部创建：
 /// 全局顶层构造的话，页面里的 ConsumerWidget 会找不到 scope。
@@ -46,10 +49,58 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
-      // 设置页内的二级页留在壳外,全屏覆盖。播放页改为底部 sheet(见 player_sheet.dart)。
-      GoRoute(path: '/plugins', builder: (context, state) => const PluginManagerScreen()),
-      GoRoute(path: '/lx', builder: (context, state) => const LxManagerScreen()),
-      GoRoute(path: '/toplists', builder: (context, state) => const TopListsScreen()),
+      // 搜索页:从首页标题栏右侧按钮进入,宽屏仍保留左侧导航。
+      GoRoute(
+        path: '/search',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: SearchScreen()),
+      ),
+      // 设置页内的二级页：宽屏沿用左侧导航，详情内容显示在右栏（不再整页覆盖）。
+      GoRoute(
+        path: '/plugins',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: PluginManagerScreen()),
+      ),
+      // extra 可传榜单 item,直接进入该榜单的歌曲列表(搜索发现区跳入用)。
+      GoRoute(
+        path: '/toplists',
+        builder: (context, state) => ShellDetailScaffold(
+          child: TopListsScreen(
+            initialItem: state.extra as Map<String, dynamic>?,
+          ),
+        ),
+      ),
+      // 推荐歌单浏览(按标签分页)。
+      GoRoute(
+        path: '/sheets',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: SheetsBrowseScreen()),
+      ),
+      // 歌单/专辑/歌手详情:extra 必须带条目本身(含 _pluginId),否则按不可用处理。
+      GoRoute(
+        path: '/sheet',
+        builder: (context, state) => ShellDetailScaffold(
+          child: SheetScreen(
+            item: state.extra as Map<String, dynamic>? ?? const {},
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/album',
+        builder: (context, state) => ShellDetailScaffold(
+          child: AlbumScreen(
+            item: state.extra as Map<String, dynamic>? ?? const {},
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/artist',
+        builder: (context, state) => ShellDetailScaffold(
+          child: ArtistScreen(
+            item: state.extra as Map<String, dynamic>? ?? const {},
+          ),
+        ),
+      ),
     ],
   );
 });

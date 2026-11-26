@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../features/playback/data/media_proxy_server.dart';
 import '../layout/window_class.dart';
 import '../ui/tokens.dart';
 
 /// 媒体网格列数:随窗口分级变化,禁止写死列数。
 int mediaGridColumns(WindowClass windowClass) => switch (windowClass) {
-      WindowClass.compact => 3,
-      WindowClass.medium => 4,
-      WindowClass.expanded => 6,
-    };
+  WindowClass.compact => 3,
+  WindowClass.medium => 4,
+  WindowClass.expanded => 6,
+};
 
 /// 配合 [WindowClassBuilder] 使用:
 /// `GridView(gridDelegate: mediaGridDelegate(windowClass))`。
@@ -64,7 +65,7 @@ class PosterCard extends StatelessWidget {
                 children: [
                   if (coverUrl != null)
                     Image.network(
-                      coverUrl!,
+                      cachedArtworkUrl(coverUrl!),
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) => _placeholder(scheme),
                     )
@@ -81,7 +82,10 @@ class PosterCard extends StatelessWidget {
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              fontSize: AppText.cardTitle,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           if (subtitle != null)
             Text(
@@ -119,10 +123,13 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs / 2,
+      ),
       decoration: BoxDecoration(
         color: Colors.black54,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppRadius.badgeBorder,
       ),
       child: Text(
         text,

@@ -7,12 +7,19 @@ import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
 import '../../playback/presentation/player_sheet.dart';
 import '../domain/plugin_record.dart';
+import '../domain/track_origin.dart';
 import 'plugin_providers.dart';
+import 'track_more.dart';
 import 'toplists_providers.dart';
 
 /// 榜单页：按榜单分组展示，点榜单看歌曲，点歌播放。
+///
+/// [initialItem] 非空时(如从搜索发现区点榜单封面跳入)直接进入该榜单的歌曲列表。
 class TopListsScreen extends ConsumerStatefulWidget {
-  const TopListsScreen({super.key});
+  const TopListsScreen({super.key, this.initialItem});
+
+  /// 进入页面即打开的榜单项(与插件 getTopLists 返回的 item 同构)。
+  final Map<String, dynamic>? initialItem;
 
   @override
   ConsumerState<TopListsScreen> createState() => _TopListsScreenState();
@@ -23,6 +30,22 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
   Map<String, dynamic>? _selected;
   List<Map<String, dynamic>>? _songs;
   bool _loadingSongs = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialItem;
+    if (initial != null) {
+      _selected = initial;
+      _loadingSongs = true;
+      // 等首帧后再读 provider 并拉取歌曲,避免 build 期间改状态。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final plugin = ref.read(toplistPluginProvider);
+        if (plugin != null) _openList(plugin, initial);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,11 +69,9 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
           ? const EmptyState(
               icon: Icons.leaderboard_rounded,
               title: '没有支持榜单的插件',
-              message: '安装一个带 getTopLists 能力的 MusicFree 插件后即可浏览榜单。',
+              message: '安装一个支持榜单的插件后即可浏览榜单。',
             )
-          : (_selected == null
-              ? _buildCatalog(plugin)
-              : _buildSongs(plugin)),
+          : (_selected == null ? _buildCatalog(plugin) : _buildSongs(plugin)),
     );
   }
 
@@ -58,7 +79,18 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
     final groups = ref.watch(topListGroupsProvider(plugin.id));
     return groups.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('加载榜单失败: $e')),
+      error: (e, _) => EmptyState(
+        icon: Icons.error_outline_rounded,
+        title: '加载榜单失败',
+        message: '$e',
+        actions: [
+          FilledButton.tonalIcon(
+            onPressed: () => ref.invalidate(topListGroupsProvider(plugin.id)),
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('重试'),
+          ),
+        ],
+      ),
       data: (list) {
         if (list.isEmpty) {
           return const EmptyState(
@@ -82,7 +114,7 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
                         subtitle: '${item['description'] ?? ''}'.isEmpty
                             ? null
                             : '${item['description']}',
-                        onTap: () => _openList(plugin, group, item),
+                        onTap: () => _openList(plugin, item),
                       ),
                   ],
                 ),
@@ -101,19 +133,23 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
     }
     final songs = _songs ?? const [];
     if (songs.isEmpty) {
-      return const Center(child: Text('该榜单暂无歌曲'));
+      return const EmptyState(
+        icon: Icons.queue_music_rounded,
+        title: '该榜单暂无歌曲',
+        message: '换个榜单或稍后再试。',
+      );
     }
     return CenteredMaxWidth(
       child: ListView(
         padding: AppSpacing.pagePadding,
         children: [
           GroupCard(
+            dividerIndent: AppSpacing.dividerIndentTrack,
             children: [
               for (final (i, item) in songs.indexed)
-                SettingsItem(
-                  icon: Icons.music_note_rounded,
-                  title: '${item['title'] ?? '未知'}',
-                  subtitle: '${item['artist'] ?? ''}',
+                TrackTile(
+                  item: item,
+                  trailing: TrackMoreButton(item: item),
                   onTap: () => _play(songs, i),
                 ),
             ],
@@ -123,28 +159,17 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
     );
   }
 
-  Future<void> _openList(
-    PluginRecord plugin,
-    TopListGroup group,
-    Map<String, dynamic> item,
-  ) async {
+  Future<void> _openList(PluginRecord plugin, Map<String, dynamic> item) async {
     setState(() {
       _selected = item;
       _loadingSongs = true;
       _songs = null;
     });
     try {
-      final rt = await ref.read(musicFreeRuntimeProvider(plugin).future);
+      final rt = await ref.read(pluginRuntimeProvider(plugin.id).future);
       final songs = await rt.getTopListDetail(item);
-      // 补上来源插件与默认 lxSource，保证能解析播放。
-      final enriched = songs
-          .map((s) => {
-                ...s,
-                '_pluginId': plugin.id,
-                if (s['lxSource'] == null && plugin.lxSource != null)
-                  'lxSource': plugin.lxSource,
-              })
-          .toList();
+      // 统一补上来源标记（插件 id + 音源 key），保证能解析播放。
+      final enriched = songs.map((s) => tagTrackOrigin(s, plugin)).toList();
       if (!mounted) return;
       setState(() {
         _songs = enriched;
@@ -156,9 +181,8 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
         _loadingSongs = false;
         _songs = const [];
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('加载榜单歌曲失败: $e')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('加载榜单歌曲失败: $e')));
     }
   }
 
@@ -168,9 +192,8 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
       if (mounted) showPlayerSheet(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('播放失败: $e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('播放失败: $e')));
       }
     }
   }

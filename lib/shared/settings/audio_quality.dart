@@ -17,20 +17,20 @@ enum AudioQuality {
   /// 通用 MusicFree 插件通常用 standard/higher/highest（酷狗/网易系）。
   /// 这里取 maxim「通用 MusicFree 约定」的一组，兼容多数插件。
   String get musicFreeValue => switch (this) {
-        AudioQuality.standard => 'standard',
-        AudioQuality.high => 'higher',
-        AudioQuality.lossless => 'highest',
-      };
+    AudioQuality.standard => 'standard',
+    AudioQuality.high => 'higher',
+    AudioQuality.lossless => 'highest',
+  };
 
   /// 传给 LX 脚本 `musicUrl` action 的 type 值（各脚本按此映射平台音质）。
   String get lxValue => switch (this) {
-        AudioQuality.standard => '128k',
-        AudioQuality.high => '320k',
-        AudioQuality.lossless => 'flac',
-      };
+    AudioQuality.standard => '128k',
+    AudioQuality.high => '320k',
+    AudioQuality.lossless => 'flac',
+  };
 
   static AudioQuality fromName(String? name) => AudioQuality.values.firstWhere(
-        (q) => q.name == name,
-        orElse: () => AudioQuality.high,
-      );
+    (q) => q.name == name,
+    orElse: () => AudioQuality.high,
+  );
 }

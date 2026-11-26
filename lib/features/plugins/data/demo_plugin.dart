@@ -8,9 +8,9 @@ module.exports = {
   version: "0.1.0",
   author: "pomelo",
   description: "内置示例插件：固定曲目 + 公开测试音频，用于验证播放链路",
-  // 声明本插件的结果对应哪个 LX 音源平台（kw/tx/kg/wy/mg/xm…）。
-  // 播放时宿主会用它精确匹配 LX 脚本，不再做前缀猜测。
-  lxSource: "kw",
+  // 声明本插件的结果对应的标准音源 key（kw/tx/kg/wy/mg/qs）。
+  // 宿主用它做跨插件兜底匹配，避免靠 platform 名猜。
+  sourceKeys: ["kw"],
 
   async search(query, page, type) {
     if (type !== 'music') return { isEnd: true, data: [] };

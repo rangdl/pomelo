@@ -52,10 +52,12 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
     _subs.add(_player.stream.position.listen((_) => _broadcastState()));
     _subs.add(_player.stream.duration.listen((_) => _broadcastState()));
     _subs.add(_player.stream.buffering.listen((_) => _broadcastState()));
-    _subs.add(_player.stream.playing.listen((playing) {
-      _ensureAudioSession(playing);
-      _broadcastState();
-    }));
+    _subs.add(
+      _player.stream.playing.listen((playing) {
+        _ensureAudioSession(playing);
+        _broadcastState();
+      }),
+    );
 
     _completedSub = _player.stream.completed.listen((done) {
       if (!done) return;
@@ -94,8 +96,8 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
         androidCompactActionIndices: const [0, 1, 2],
         processingState: hasItem
             ? (_player.state.completed
-                ? AudioProcessingState.completed
-                : AudioProcessingState.ready)
+                  ? AudioProcessingState.completed
+                  : AudioProcessingState.ready)
             : AudioProcessingState.idle,
         playing: _player.state.playing,
         updatePosition: _player.state.position,
@@ -151,7 +153,10 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
 
   /// 引擎里是否已加载了 [id] 这一首（决定「播放」是续播还是重新解析）。
   bool hasLoaded(String? id) =>
-      id != null && id.isNotEmpty && id == _loadedId && _player.state.duration > Duration.zero;
+      id != null &&
+      id.isNotEmpty &&
+      id == _loadedId &&
+      _player.state.duration > Duration.zero;
 
   /// 更新队列位置（通知栏「上一首/下一首」高亮用）。
   void updateQueueIndex(int index) {

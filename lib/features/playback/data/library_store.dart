@@ -29,7 +29,10 @@ class LibraryStore {
       if (!await file.exists()) return [];
       final raw = jsonDecode(await file.readAsString());
       if (raw is List) {
-        return raw.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+        return raw
+            .whereType<Map>()
+            .map((e) => e.cast<String, dynamic>())
+            .toList();
       }
     } catch (_) {}
     return [];
@@ -67,6 +70,26 @@ class LibraryStore {
 
   Future<List<Map<String, dynamic>>> loadFavorites() =>
       _readList(_favoritesFile);
+
+  Future<List<Map<String, dynamic>>> clearFavorites() async {
+    await _writeList(_favoritesFile, []);
+    return [];
+  }
+
+  /// 批量收藏（已存在的不重复添加），返回最新列表。
+  Future<List<Map<String, dynamic>>> addFavorites(
+    Iterable<Map<String, dynamic>> items,
+  ) async {
+    final list = await loadFavorites();
+    final keys = list.map(_key).toSet();
+    for (final item in items) {
+      if (keys.add(_key(item))) {
+        list.insert(0, _sanitize(item));
+      }
+    }
+    await _writeList(_favoritesFile, list);
+    return list;
+  }
 
   Future<bool> isFavorite(Map<String, dynamic> item) async {
     final list = await loadFavorites();

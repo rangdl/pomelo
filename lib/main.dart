@@ -12,9 +12,13 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app/app.dart';
 import 'features/playback/data/audio_player_service.dart';
+import 'features/playback/data/media_proxy_server.dart';
 import 'features/playback/data/playback_store.dart';
 import 'features/playback/presentation/playback_providers.dart';
+import 'features/plugins/presentation/plugin_providers.dart';
+import 'shared/settings/cache_limit.dart';
 import 'shared/settings/settings_store.dart';
+import 'shared/settings/theme_color.dart';
 import 'shared/settings/theme_mode.dart';
 
 const _defaultWindowSize = Size(1280, 720);
@@ -31,8 +35,17 @@ Future<void> main() async {
   await LiquidGlassWidgets.initialize();
   final settingsStore = await SettingsStore.open();
   final initialThemeMode = await loadThemeModeOption(settingsStore);
+  final initialThemeColor = await loadThemeColor(settingsStore);
   final initialAudioQuality = await loadAudioQuality(settingsStore);
+  final initialCacheLimit = cacheLimitFromStore(settingsStore);
   final playbackSnapshot = await loadPlaybackSnapshot();
+
+  // 本地媒体服务：播放器与封面统一走 127.0.0.1，由服务端取流/取图并落盘缓存。
+  MediaLinkCache.instance = await MediaLinkCache.open();
+  MediaProxyServer.instance = await MediaProxyServer.start();
+  MediaProxyServer.instance?.maxCacheBytes = initialCacheLimit.bytes;
+  // 启动时先按上限清理一次，避免上次遗留的缓存无限增长。
+  unawaited(MediaProxyServer.instance?.enforceLimit() ?? Future<void>.value());
 
   // 播放下沉到前台 Service：切后台 / 锁屏也能继续播放并可被系统控制。
   final audioHandler = await AudioService.init<AudioPlayerService>(
@@ -50,10 +63,13 @@ Future<void> main() async {
       overrides: [
         settingsStoreProvider.overrideWithValue(settingsStore),
         themeModeInitializerProvider.overrideWithValue(initialThemeMode),
+        themeColorInitializerProvider.overrideWithValue(initialThemeColor),
         audioQualityInitializerProvider.overrideWithValue(initialAudioQuality),
-        playbackSnapshotInitializerProvider.overrideWithValue(
-          playbackSnapshot,
+        cacheLimitInitializerProvider.overrideWithValue(initialCacheLimit),
+        selectedSearchPluginInitializerProvider.overrideWithValue(
+          settingsStore.read<String>('selectedSearchPluginId'),
         ),
+        playbackSnapshotInitializerProvider.overrideWithValue(playbackSnapshot),
         audioPlayerProvider.overrideWithValue(audioHandler),
       ],
       child: LiquidGlassWidgets.wrap(

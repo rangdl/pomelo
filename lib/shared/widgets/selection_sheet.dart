@@ -28,6 +28,9 @@ Future<T?> showSelectionSheet<T>({
 }) {
   return showModalBottomSheet<T>(
     context: context,
+    // 一级页面位于分支 Navigator 内,必须走根 Navigator,
+    // 否则会被外壳浮层(迷你播放胶囊)盖住。
+    useRootNavigator: true,
     showDragHandle: true,
     builder: (context) => SafeArea(
       child: Column(

@@ -7,6 +7,7 @@ import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
 import '../../playback/presentation/player_sheet.dart';
 import 'library_providers.dart';
+import 'track_more.dart';
 
 /// 我的：收藏与播放历史。
 ///
@@ -19,41 +20,93 @@ class LibraryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return DefaultTabController(
       length: 2,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: TabBar(
-                  tabs: [
-                    Tab(text: '收藏'),
-                    Tab(text: '最近播放'),
-                  ],
-                ),
-              ),
-              IconButton(
-                tooltip: '清空历史',
-                icon: const Icon(Icons.delete_sweep_rounded),
-                onPressed: () async {
-                  await ref.read(historyProvider.notifier).clear();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('已清空播放历史')),
-                    );
-                  }
-                },
-              ),
-            ],
-          ),
-          const Expanded(
-            child: TabBarView(
+      // Builder 提供 DefaultTabController 之下的 context，
+      // 否则在 build 里直接 DefaultTabController.of(context) 会找不到控制器。
+      child: Builder(
+        builder: (context) => Column(
+          children: [
+            Row(
               children: [
-                _SongList(tab: _ListTab.favorites),
-                _SongList(tab: _ListTab.history),
+                const Expanded(
+                  child: TabBar(
+                    tabs: [
+                      Tab(text: '收藏'),
+                      Tab(text: '最近播放'),
+                    ],
+                  ),
+                ),
+                // 「清空」只对当前 tab 有意义:收藏页清收藏,历史页清历史。
+                // 收进更多菜单并二次确认,避免误触清空全部数据。
+                AnimatedBuilder(
+                  animation: DefaultTabController.of(context),
+                  builder: (context, _) {
+                    final onHistory =
+                        DefaultTabController.of(context).index == 1;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: AppSpacing.sm),
+                      child: PopupMenuButton<String>(
+                        tooltip: '更多',
+                        icon: const Icon(Icons.more_horiz_rounded),
+                        position: PopupMenuPosition.under,
+                        onSelected: (_) async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            useRootNavigator: true,
+                            builder: (ctx) => AlertDialog(
+                              title: Text(onHistory ? '清空播放历史' : '清空收藏'),
+                              content: Text(
+                                onHistory
+                                    ? '将移除全部播放记录，此操作无法撤销。'
+                                    : '将移除全部收藏，此操作无法撤销。',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('取消'),
+                                ),
+                                FilledButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  child: const Text('清空'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed != true) return;
+                          if (onHistory) {
+                            await ref.read(historyProvider.notifier).clear();
+                          } else {
+                            await ref.read(favoritesProvider.notifier).clear();
+                          }
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(onHistory ? '已清空播放历史' : '已清空收藏'),
+                              ),
+                            );
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'clear',
+                            child: Text(onHistory ? '清空播放历史' : '清空收藏'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
-          ),
-        ],
+            const Expanded(
+              child: TabBarView(
+                children: [
+                  _SongList(tab: _ListTab.favorites),
+                  _SongList(tab: _ListTab.history),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -73,7 +126,24 @@ class _SongList extends ConsumerWidget {
         : ref.watch(historyProvider);
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('加载失败: $e')),
+      error: (e, _) => EmptyState(
+        icon: Icons.error_outline_rounded,
+        title: '加载失败',
+        message: '$e',
+        actions: [
+          FilledButton.tonalIcon(
+            onPressed: () {
+              if (tab == _ListTab.favorites) {
+                ref.invalidate(favoritesProvider);
+              } else {
+                ref.invalidate(historyProvider);
+              }
+            },
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('重试'),
+          ),
+        ],
+      ),
       data: (items) {
         if (items.isEmpty) {
           return EmptyState(
@@ -91,14 +161,12 @@ class _SongList extends ConsumerWidget {
             padding: AppSpacing.pagePadding,
             children: [
               GroupCard(
+                dividerIndent: AppSpacing.dividerIndentTrack,
                 children: [
                   for (final (i, item) in items.indexed)
-                    SettingsItem(
-                      icon: tab == _ListTab.favorites
-                          ? Icons.favorite_rounded
-                          : Icons.history_rounded,
-                      title: '${item['title'] ?? '未知'}',
-                      subtitle: '${item['artist'] ?? ''}',
+                    TrackTile(
+                      item: item,
+                      trailing: TrackMoreButton(item: item),
                       onTap: () async {
                         try {
                           await ref
@@ -107,9 +175,9 @@ class _SongList extends ConsumerWidget {
                           if (context.mounted) showPlayerSheet(context);
                         } catch (e) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('播放失败: $e')),
-                            );
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text('播放失败: $e')));
                           }
                         }
                       },

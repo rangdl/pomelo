@@ -1,7 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+
+/// 共享的设置存储（由 main() 启动时 open 后注入）。
+final settingsStoreProvider = Provider<SettingsStore>(
+  (ref) => throw UnimplementedError('settingsStoreProvider 需在启动时 override'),
+);
 
 /// `settings.json` 的底层读写：所有设置项合并存同一个 JSON 对象，
 /// 避免不同设置互相覆盖。上层各 Notifier 通过 [SettingsStore.patch]

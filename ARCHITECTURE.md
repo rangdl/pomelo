@@ -9,14 +9,17 @@ lib/
 ├── main.dart                      # 入口:窗口管理、设置加载、ProviderScope
 ├── app/                           # 应用级装配
 │   ├── app.dart                   # MaterialApp.router + 双主题接线
-│   ├── theme.dart                 # 浅色/深色双主题(品牌橙 seed)
+│   ├── theme.dart                 # 浅色/深色双主题(seed 为主题色,默认蓝,设置页可换)
 │   └── router.dart                # go_router:两级 shell + 全屏子页
 ├── shared/                        # 跨 feature 的共享层
 │   ├── layout/                    # ★ 自适应布局层(核心,见 §2)
 │   │   ├── window_class.dart      #   断点定义与测量(M3 标准,永不改)
 │   │   └── adaptive_app_shell.dart #   应用外壳:桌面 rail / 移动底栏
 │   ├── settings/
-│   │   └── theme_mode.dart        # 主题模式(系统/浅色/深色)+ 持久化
+│   │   ├── settings_store.dart    # settings.json 读写(所有设置的持久化底座)
+│   │   ├── theme_mode.dart        # 主题模式(系统/浅色/深色)
+│   │   ├── theme_color.dart       # 主题色(蓝/橙/绿/紫/粉/青,默认蓝)
+│   │   └── audio_quality.dart     # 音质偏好
 │   ├── ui/
 │   │   └── tokens.dart            #   设计令牌(间距/圆角/字号/图标徽章,见 UI_DESIGN.md)
 │   └── widgets/                   #   通用组件(SectionHeader/GroupCard/SettingsItem/EmptyState/选择弹层/媒体网格)
@@ -72,25 +75,27 @@ lib/
 ### 2.3 路由结构
 
 ```
-StatefulShellRoute.indexedStack        # 一级导航壳
+StatefulShellRoute.indexedStack        # 一级导航壳(3 个入口)
 ├── 分支 0: '/'        首页
-└── 分支 1: '/settings' 设置
+├── 分支 1: '/library' 我的(收藏 + 最近播放)
+└── 分支 2: '/settings' 设置
 顶层全屏路由(覆盖壳)
 ├── '/plugins'   MusicFree 插件管理(设置页进入)
 ├── '/lx'        LX 音源脚本管理(设置页进入)
-└── '/player'    全屏播放页(封面背景,自带返回)
+└── '/toplists'  榜单(可传 extra 榜单项直接进入歌曲列表)
+全屏播放页不走路由,是底部弹层(showModalBottomSheet,见 player_sheet.dart)。
 ```
 
 ### 2.4 页面层规则
 
-1. 页面**不带** Scaffold/AppBar(壳提供);二级全屏页(插件/LX/播放)自带 `Scaffold + AppBar + 返回`。
+1. 页面**不带** Scaffold/AppBar(壳提供);二级全屏页(插件/LX/榜单)自带 `Scaffold + AppBar + 返回`;播放页是底部弹层。
 2. 页面内部重排用 `WindowClassBuilder` / `context.windowClass`,不读裸尺寸。
 3. 超宽列表页用 `CenteredMaxWidth` 限行宽。
 
 ## 3. 主题系统
 
-- `ThemeModeOption`(system / light / dark),`Notifier` 持有,`settings.json` 持久化(应用支持目录),启动时由 `main()` 注入 `ProviderScope`。
-- 双主题同 seed(品牌橙 `0xFFFF7A45`);背景走 iOS 分组列表风格:浅色 `#F2F2F7` / 深色 `#1C1C1E`,卡片为 surfaceContainerHigh。
+- `ThemeModeOption`(system / light / dark)与 `AppThemeColor`(默认蓝 `#3B82F6`,蓝/橙/绿/紫/粉/青可选)各自 `Notifier` 持有,`settings.json` 持久化(应用支持目录),启动时由 `main()` 注入 `ProviderScope`。
+- 双主题同 seed(主题色,`pomeloTheme(brightness, seedColor)`);背景走 iOS 分组列表风格:浅色 `#F2F2F7` / 深色 `#1C1C1E`,卡片为 surfaceContainerHigh。
 - 玻璃组件(`liquid_glass_widgets`)通过 `LiquidGlassWidgets.wrap(brightnessResolver: Theme.maybeBrightnessOf)` 跟随**应用主题**;使用范围仅限移动端底部导航栏。
 
 ## 4. 扩展约定

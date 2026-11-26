@@ -23,8 +23,11 @@ class LxCrypto {
   }
 
   /// MD5 十六进制小写。
-  static String md5Hex(String input) {
-    return c.md5.convert(utf8.encode(input)).toString();
+  static String md5Hex(String input) => md5Bytes(utf8.encode(input));
+
+  /// 对任意字节做 MD5，返回十六进制小写（对应原生 LX 的 Buffer 入参）。
+  static String md5Bytes(List<int> bytes) {
+    return c.md5.convert(bytes).toString();
   }
 
   /// AES 加密，返回 base64。
@@ -79,6 +82,62 @@ class LxCrypto {
         PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
           ..init(
             true,
+            PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
+              params,
+              null,
+            ),
+          );
+    return base64.encode(cipher.process(data));
+  }
+
+  /// AES 解密，输入 base64 密文，返回 base64 明文。
+  ///
+  /// 参数语义与 [aesEncryptBase64] 相同（`aes-128-cbc` / `aes-128-ecb`）。
+  static String aesDecryptBase64({
+    required String dataB64,
+    required String mode,
+    required String keyB64,
+    required String ivB64,
+  }) {
+    final data = base64.decode(dataB64);
+    _checkSize(data.length, 'AES 密文');
+    final key = base64.decode(keyB64);
+    final iv = ivB64.isEmpty ? Uint8List(0) : base64.decode(ivB64);
+
+    final spec = mode.toLowerCase();
+    final isCbc = spec.contains('cbc');
+    final noPadding = spec.contains('nopadding');
+
+    if (key.length != 16) {
+      throw ArgumentError('仅支持 AES-128（16 字节 key），实际 ${key.length}');
+    }
+
+    final effectiveIv = isCbc
+        ? (iv.length == 16 ? iv : Uint8List(16))
+        : Uint8List(16);
+    final params = ParametersWithIV<KeyParameter>(
+      KeyParameter(key),
+      effectiveIv,
+    );
+
+    if (noPadding) {
+      if (data.length % 16 != 0) {
+        throw ArgumentError('NoPadding 模式要求密文长度为 16 的整数倍');
+      }
+      final cipher = isCbc
+          ? (CBCBlockCipher(AESEngine())..init(false, params))
+          : (ECBBlockCipher(AESEngine())..init(false, KeyParameter(key)));
+      final out = Uint8List(data.length);
+      for (var offset = 0; offset < data.length; offset += 16) {
+        cipher.processBlock(data, offset, out, offset);
+      }
+      return base64.encode(out);
+    }
+
+    final cipher =
+        PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
+          ..init(
+            false,
             PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
               params,
               null,

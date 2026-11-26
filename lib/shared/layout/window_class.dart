@@ -16,14 +16,15 @@ const double _expandedBreakpoint = 840;
 
 /// 按宽度归入窗口分级。
 WindowClass windowClassFromWidth(double width) => switch (width) {
-      >= _expandedBreakpoint => WindowClass.expanded,
-      >= _mediumBreakpoint => WindowClass.medium,
-      _ => WindowClass.compact,
-    };
+  >= _expandedBreakpoint => WindowClass.expanded,
+  >= _mediumBreakpoint => WindowClass.medium,
+  _ => WindowClass.compact,
+};
 
 extension WindowClassX on BuildContext {
   /// 当前窗口分级。会随窗口尺寸变化重建调用方。
-  WindowClass get windowClass => windowClassFromWidth(MediaQuery.sizeOf(this).width);
+  WindowClass get windowClass =>
+      windowClassFromWidth(MediaQuery.sizeOf(this).width);
 }
 
 /// 窗口跨断点时才重建子树的 [LayoutBuilder]。
@@ -45,9 +46,10 @@ class WindowClassBuilder extends StatelessWidget {
   }
 }
 
-/// 超宽窗口时限制内容行宽并居中,避免列表/表单行被拉满整屏。
+/// 限制内容行宽并居中。列表/表单默认 960,超过则居中留白;
+/// 网格等需要铺满的场景显式传 [double.infinity]。
 class CenteredMaxWidth extends StatelessWidget {
-  const CenteredMaxWidth({super.key, this.maxWidth = 720, required this.child});
+  const CenteredMaxWidth({super.key, this.maxWidth = 960, required this.child});
 
   final double maxWidth;
   final Widget child;

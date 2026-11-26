@@ -34,7 +34,8 @@ class LrcParser {
         final sec = int.tryParse(m.group(2) ?? '0') ?? 0;
         final fracRaw = m.group(3) ?? '0';
         // 处理 1~3 位小数
-        final millis = int.tryParse(fracRaw.padRight(3, '0').substring(0, 3)) ?? 0;
+        final millis =
+            int.tryParse(fracRaw.padRight(3, '0').substring(0, 3)) ?? 0;
         final time = Duration(minutes: min, seconds: sec, milliseconds: millis);
         lines.add(LyricLine(time, text));
       }
