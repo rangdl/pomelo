@@ -16,6 +16,8 @@ import 'features/playback/data/media_proxy_server.dart';
 import 'features/playback/data/playback_store.dart';
 import 'features/playback/presentation/playback_providers.dart';
 import 'features/plugins/presentation/plugin_providers.dart';
+import 'shared/logging/app_logger.dart';
+import 'shared/settings/app_font.dart';
 import 'shared/settings/cache_limit.dart';
 import 'shared/settings/settings_store.dart';
 import 'shared/settings/theme_color.dart';
@@ -30,73 +32,93 @@ const _windowStateFileName = 'window_state.json';
 RandomAccessFile? _instanceLock;
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  // 同一时间只允许一个播放器实例，避免两个进程抢音频设备与缓存文件。
-  if (!await _acquireSingleInstance()) {
-    debugPrint('[pomelo] 已有一个实例在运行，退出本次启动');
-    exit(0);
-  }
-  MediaKit.ensureInitialized();
-  if (_supportsWindowManager) {
-    await _setUpWindow();
-  }
-  // 预加载 shader 字节码，避免首帧卡顿（移动端底部导航栏仍用玻璃）
-  await LiquidGlassWidgets.initialize();
-  final settingsStore = await SettingsStore.open();
-  final initialThemeMode = await loadThemeModeOption(settingsStore);
-  final initialThemeColor = await loadThemeColor(settingsStore);
-  final initialAudioQuality = await loadAudioQuality(settingsStore);
-  final initialCacheLimit = cacheLimitFromStore(settingsStore);
-  final playbackSnapshot = await loadPlaybackSnapshot();
+  // 全局兜底：未捕获的异步异常也写入日志，桌面端不至于无痕退出。
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      // 日志最先初始化：之后所有错误（含已有 debugPrint 分支）都能落盘。
+      await AppLogger.instance.init();
+      // 同一时间只允许一个播放器实例，避免两个进程抢音频设备与缓存文件。
+      if (!await _acquireSingleInstance()) {
+        debugPrint('[pomelo] 已有一个实例在运行，退出本次启动');
+        exit(0);
+      }
+      MediaKit.ensureInitialized();
+      if (_supportsWindowManager) {
+        await _setUpWindow();
+      }
+      // 预加载 shader 字节码，避免首帧卡顿（移动端底部导航栏仍用玻璃）
+      await LiquidGlassWidgets.initialize();
+      final settingsStore = await SettingsStore.open();
+      final initialThemeMode = await loadThemeModeOption(settingsStore);
+      final initialThemeColor = await loadThemeColor(settingsStore);
+      final initialAudioQuality = await loadAudioQuality(settingsStore);
+      final initialCacheLimit = cacheLimitFromStore(settingsStore);
+      // 自定义字体在这里完成注册，首帧就用用户选中的字体。
+      final initialFont = await loadAppFontSelection(settingsStore);
+      final playbackSnapshot = await loadPlaybackSnapshot();
 
-  // 本地媒体服务：播放器与封面统一走 127.0.0.1，由服务端取流/取图并落盘缓存。
-  MediaLinkCache.instance = await MediaLinkCache.open();
-  MediaProxyServer.instance = await MediaProxyServer.start();
-  MediaProxyServer.instance?.maxCacheBytes = initialCacheLimit.bytes;
-  // 启动时先按上限清理一次，避免上次遗留的缓存无限增长。
-  unawaited(MediaProxyServer.instance?.enforceLimit() ?? Future<void>.value());
+      // 本地媒体服务：播放器与封面统一走 127.0.0.1，由服务端取流/取图并落盘缓存。
+      MediaLinkCache.instance = await MediaLinkCache.open();
+      MediaProxyServer.instance = await MediaProxyServer.start();
+      MediaProxyServer.instance?.maxCacheBytes = initialCacheLimit.bytes;
+      // 启动时先按上限清理一次，避免上次遗留的缓存无限增长。
+      unawaited(
+        MediaProxyServer.instance?.enforceLimit() ?? Future<void>.value(),
+      );
 
-  // 播放下沉到前台 Service：切后台 / 锁屏也能继续播放并可被系统控制。
-  final audioHandler = await AudioService.init<AudioPlayerService>(
-    builder: () => AudioPlayerService(),
-    config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.pomelo.pomelo.audio',
-      androidNotificationChannelName: 'Pomelo 播放',
-      androidNotificationOngoing: true,
-      androidStopForegroundOnPause: true,
-    ),
-  );
-
-  // 恢复上次的音量与播放速度。
-  final savedVolume = settingsStore.read<num>('volume')?.toDouble();
-  if (savedVolume != null) {
-    await audioHandler.setVolume(savedVolume.clamp(0, 100).toDouble());
-  }
-  final savedSpeed = settingsStore.read<num>('speed')?.toDouble();
-  if (savedSpeed != null && savedSpeed != 1.0) {
-    await audioHandler.setSpeed(savedSpeed);
-  }
-
-  runApp(
-    ProviderScope(
-      overrides: [
-        settingsStoreProvider.overrideWithValue(settingsStore),
-        themeModeInitializerProvider.overrideWithValue(initialThemeMode),
-        themeColorInitializerProvider.overrideWithValue(initialThemeColor),
-        audioQualityInitializerProvider.overrideWithValue(initialAudioQuality),
-        cacheLimitInitializerProvider.overrideWithValue(initialCacheLimit),
-        selectedSearchPluginInitializerProvider.overrideWithValue(
-          settingsStore.read<String>('selectedSearchPluginId'),
+      // 播放下沉到前台 Service：切后台 / 锁屏也能继续播放并可被系统控制。
+      final audioHandler = await AudioService.init<AudioPlayerService>(
+        builder: () => AudioPlayerService(),
+        config: const AudioServiceConfig(
+          androidNotificationChannelId: 'com.pomelo.pomelo.audio',
+          androidNotificationChannelName: 'Pomelo 播放',
+          androidNotificationOngoing: true,
+          androidStopForegroundOnPause: true,
         ),
-        playbackSnapshotInitializerProvider.overrideWithValue(playbackSnapshot),
-        audioPlayerProvider.overrideWithValue(audioHandler),
-      ],
-      child: LiquidGlassWidgets.wrap(
-        // 让玻璃组件的亮暗跟随应用主题，而不是系统
-        brightnessResolver: Theme.maybeBrightnessOf,
-        child: const PomeloApp(),
-      ),
-    ),
+      );
+
+      // 恢复上次的音量与播放速度。
+      final savedVolume = settingsStore.read<num>('volume')?.toDouble();
+      if (savedVolume != null) {
+        await audioHandler.setVolume(savedVolume.clamp(0, 100).toDouble());
+      }
+      final savedSpeed = settingsStore.read<num>('speed')?.toDouble();
+      if (savedSpeed != null && savedSpeed != 1.0) {
+        await audioHandler.setSpeed(savedSpeed);
+      }
+
+      runApp(
+        ProviderScope(
+          overrides: [
+            settingsStoreProvider.overrideWithValue(settingsStore),
+            themeModeInitializerProvider.overrideWithValue(initialThemeMode),
+            themeColorInitializerProvider.overrideWithValue(initialThemeColor),
+            audioQualityInitializerProvider.overrideWithValue(
+              initialAudioQuality,
+            ),
+            cacheLimitInitializerProvider.overrideWithValue(initialCacheLimit),
+            appFontInitializerProvider.overrideWithValue(initialFont),
+            selectedSearchPluginInitializerProvider.overrideWithValue(
+              settingsStore.read<String>('selectedSearchPluginId'),
+            ),
+            playbackSnapshotInitializerProvider.overrideWithValue(
+              playbackSnapshot,
+            ),
+            audioPlayerProvider.overrideWithValue(audioHandler),
+          ],
+          child: LiquidGlassWidgets.wrap(
+            // 让玻璃组件的亮暗跟随应用主题，而不是系统
+            brightnessResolver: Theme.maybeBrightnessOf,
+            child: const PomeloApp(),
+          ),
+        ),
+      );
+    },
+    (error, stack) {
+      // 兜底记录（zone 内未捕获的异步异常）。
+      AppLogger.instance.error('uncaught', '$error', error, stack);
+    },
   );
 }
 

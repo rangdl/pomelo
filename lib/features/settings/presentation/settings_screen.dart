@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/layout/window_class.dart';
+import '../../../shared/settings/app_font.dart';
 import '../../../shared/settings/audio_quality.dart';
 import '../../../shared/settings/cache_limit.dart';
 import '../../../shared/settings/settings_store.dart';
@@ -43,6 +47,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeOptionProvider);
     final themeColor = ref.watch(themeColorProvider);
+    final font = ref.watch(appFontProvider);
     final quality = ref.watch(audioQualityProvider);
     final cacheLimit = ref.watch(cacheLimitProvider);
     final cacheUsage = ref.watch(cacheUsageProvider);
@@ -92,6 +97,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: '默认音质',
                 subtitle: quality.label,
                 onTap: () => _pickQuality(quality),
+              ),
+              SettingsItem(
+                icon: Icons.font_download_rounded,
+                title: '字体',
+                subtitle: font.label,
+                onTap: () => _pickFont(font),
               ),
             ],
           ),
@@ -204,6 +215,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: '数据目录',
                 subtitle: '查看配置与缓存所在位置',
                 onTap: _showDataDir,
+              ),
+              SettingsItem(
+                icon: Icons.article_rounded,
+                title: '运行日志',
+                subtitle: '查看最近的错误与运行记录',
+                onTap: () => context.push('/logs'),
               ),
               SettingsItem(
                 icon: Icons.description_outlined,
@@ -329,6 +346,106 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } else {
       notifier.start(Duration(minutes: minutes));
     }
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// 字体选择：系统默认 / 内置（与 loomy 同款）/ 自定义上传。
+  Future<void> _pickFont(AppFontSelection current) async {
+    final action = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('字体'),
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              0,
+              AppSpacing.lg,
+              AppSpacing.sm,
+            ),
+            child: Text(
+              '内置字体与 loomy 同款，中英文观感统一；也可以上传本地字体文件。',
+              style: TextStyle(
+                fontSize: AppText.rowSubtitle,
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          RadioGroup<AppFontKind>(
+            groupValue: current.kind,
+            onChanged: (kind) {
+              if (kind != null) Navigator.pop(ctx, kind.id);
+            },
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final kind in AppFontKind.values)
+                  RadioListTile<AppFontKind>(
+                    value: kind,
+                    title: Text(kind.label),
+                    subtitle: switch (kind) {
+                      AppFontKind.system => null,
+                      AppFontKind.bundled => const Text(bundledFontLabel),
+                      AppFontKind.custom =>
+                        current.customName == null
+                            ? const Text('未上传，请从下方导入')
+                            : Text(current.customName!),
+                    },
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.upload_file_rounded),
+            title: const Text('从文件导入字体'),
+            subtitle: const Text('支持 .ttf / .otf / .ttc'),
+            onTap: () => Navigator.pop(ctx, 'import'),
+          ),
+        ],
+      ),
+    );
+    if (action == null || !mounted) return;
+
+    if (action == 'import') {
+      await _importFont();
+      return;
+    }
+    final notifier = ref.read(appFontProvider.notifier);
+    switch (action) {
+      case 'system':
+        await notifier.useSystem();
+      case 'bundled':
+        await notifier.useBundled();
+      case 'custom':
+        final ok = await notifier.useCustom();
+        if (!ok && mounted) _toast('还没有可用的自定义字体，请先导入');
+    }
+  }
+
+  /// 选择本地字体文件并立即应用。
+  Future<void> _importFont() async {
+    const typeGroup = XTypeGroup(
+      label: '字体文件',
+      extensions: ['ttf', 'otf', 'ttc'],
+    );
+    XFile? file;
+    try {
+      file = await openFile(acceptedTypeGroups: const [typeGroup]);
+    } catch (e) {
+      _toast('打开文件选择器失败: $e');
+      return;
+    }
+    if (file == null || !mounted) return;
+    final ok = await ref
+        .read(appFontProvider.notifier)
+        .importFont(File(file.path), originalName: file.name);
+    if (!mounted) return;
+    _toast(ok ? '已应用字体：${file.name}' : '字体加载失败，请确认文件是有效的字体');
   }
 
   Future<void> _showDataDir() async {

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/logging/app_logger.dart';
 import '../../../shared/settings/settings_store.dart';
 import '../data/plugin_repository.dart';
 import '../domain/plugin_record.dart';
@@ -82,7 +83,11 @@ final pluginRuntimeProvider =
       if (plugin == null) {
         throw StateError('插件不存在或已被移除: $pluginId');
       }
-      final rt = await PomeloPluginRuntime.create();
+      final rt = await PomeloPluginRuntime.create(
+        // 插件脚本里的 console/lx.log 统一落盘，排查音源问题时能看到上下文。
+        onLog: (tag, message) =>
+            AppLogger.instance.info('plugin/$tag', message),
+      );
       try {
         await rt.loadPlugin(plugin.source, name: plugin.platform);
       } catch (_) {

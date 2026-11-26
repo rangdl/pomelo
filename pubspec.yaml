@@ -40,3 +40,10 @@ flutter:
   assets:
     - scripts/xinghai-music-source-qs-v1.3.0.js
     - scripts/xinghai-music-sourcev2.3.19.js
+    - assets/fonts/NOTICE.txt
+
+  # 内置字体（与 loomy 同款 Droid Sans Fallback），设置页可切换/上传自定义字体。
+  fonts:
+    - family: DroidSansFallback
+      fonts:
+        - asset: assets/fonts/DroidSansFallback.ttf

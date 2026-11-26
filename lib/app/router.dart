@@ -8,6 +8,7 @@ import '../features/plugins/presentation/plugin_manager_screen.dart';
 import '../features/plugins/presentation/sheets_browse_screen.dart';
 import '../features/plugins/presentation/toplists_screen.dart';
 import '../features/search/presentation/search_screen.dart';
+import '../features/settings/presentation/logs_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../shared/layout/adaptive_app_shell.dart';
 import '../shared/layout/detail_scaffold.dart';
@@ -60,6 +61,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/plugins',
         builder: (context, state) =>
             const ShellDetailScaffold(child: PluginManagerScreen()),
+      ),
+      // 运行日志：查看/复制/导出/清空，方便反馈问题时附上现场。
+      GoRoute(
+        path: '/logs',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: LogsScreen()),
       ),
       // extra 可传榜单 item,直接进入该榜单的歌曲列表(搜索发现区跳入用)。
       GoRoute(

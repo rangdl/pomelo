@@ -1,0 +1,11 @@
+Droid Sans Fallback
+===================
+
+文件：assets/fonts/DroidSansFallback.ttf
+字体家族：Droid Sans Fallback（Regular）
+版本：2.56
+版权：Digitized data copyright Google Corporation © 2006
+许可：Apache License, Version 2.0
+许可全文：http://www.apache.org/licenses/LICENSE-2.0
+
+该字体随 Pomelo 一起分发，用于统一中英文显示效果。

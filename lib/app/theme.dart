@@ -5,9 +5,14 @@ import '../shared/ui/tokens.dart';
 /// 构建指定亮度和主题色的应用主题。
 ///
 /// 主题色由设置页的 [AppThemeColor] 提供(seed),全应用唯一强调色来源。
+/// [fontFamily] 为设置页选中的字体 family(内置/自定义);为空时用系统默认。
 /// 背景走 iOS 分组列表风格(浅灰底 + 卡片 / 深灰底 + 深卡片),
 /// 组件样式集中在这里统一,页面不写样式覆盖。
-ThemeData pomeloTheme(Brightness brightness, Color seedColor) {
+ThemeData pomeloTheme(
+  Brightness brightness,
+  Color seedColor, {
+  String? fontFamily,
+}) {
   final base = ColorScheme.fromSeed(
     seedColor: seedColor,
     brightness: brightness,
@@ -48,6 +53,7 @@ ThemeData pomeloTheme(Brightness brightness, Color seedColor) {
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
+    fontFamily: fontFamily,
     scaffoldBackgroundColor: scaffoldBg,
 
     // 顶栏:与页面背景融为一体,标题字号收敛(参照图二「设置」的小标题)。
@@ -62,6 +68,7 @@ ThemeData pomeloTheme(Brightness brightness, Color seedColor) {
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: scheme.onSurface,
+        fontFamily: fontFamily,
       ),
     ),
 
@@ -116,11 +123,15 @@ ThemeData pomeloTheme(Brightness brightness, Color seedColor) {
     tabBarTheme: TabBarThemeData(
       labelColor: scheme.primary,
       unselectedLabelColor: scheme.onSurfaceVariant,
-      labelStyle: const TextStyle(
+      labelStyle: TextStyle(
         fontSize: AppText.rowTitle,
         fontWeight: FontWeight.w600,
+        fontFamily: fontFamily,
       ),
-      unselectedLabelStyle: const TextStyle(fontSize: AppText.rowTitle),
+      unselectedLabelStyle: TextStyle(
+        fontSize: AppText.rowTitle,
+        fontFamily: fontFamily,
+      ),
       indicatorSize: TabBarIndicatorSize.tab,
       indicator: UnderlineTabIndicator(
         borderSide: BorderSide(width: 2, color: scheme.primary),
@@ -143,6 +154,7 @@ ThemeData pomeloTheme(Brightness brightness, Color seedColor) {
       labelStyle: TextStyle(
         fontSize: AppText.rowSubtitle,
         color: scheme.onSurface,
+        fontFamily: fontFamily,
       ),
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
     ),
@@ -176,7 +188,11 @@ ThemeData pomeloTheme(Brightness brightness, Color seedColor) {
       color: scheme.surfaceContainerHigh,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
-      textStyle: TextStyle(fontSize: AppText.rowTitle, color: scheme.onSurface),
+      textStyle: TextStyle(
+        fontSize: AppText.rowTitle,
+        color: scheme.onSurface,
+        fontFamily: fontFamily,
+      ),
     ),
 
     dialogTheme: DialogThemeData(
