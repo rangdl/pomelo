@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:path_provider/path_provider.dart';
 
+import '../../../shared/storage/json_file_store.dart';
 import '../domain/play_mode.dart';
 
 /// 播放状态的本地快照：上次的播放队列、当前曲目、播放模式。
@@ -52,32 +52,21 @@ class PlaybackSnapshot {
 
 const _playbackStateFileName = 'playback_state.json';
 
-Future<File> _stateFile() async {
+Future<JsonFileStore> _stateStore() async {
   final directory = await getApplicationSupportDirectory();
-  return File(
-    '${directory.path}${Platform.pathSeparator}$_playbackStateFileName',
+  return JsonFileStore(
+    File('${directory.path}${Platform.pathSeparator}$_playbackStateFileName'),
   );
 }
 
 /// 读取上次的播放快照；不存在或损坏时返回 null。
 Future<PlaybackSnapshot?> loadPlaybackSnapshot() async {
-  try {
-    final file = await _stateFile();
-    if (!await file.exists()) return null;
-    final data = jsonDecode(await file.readAsString());
-    if (data is! Map<String, dynamic>) return null;
-    return PlaybackSnapshot.fromJson(data);
-  } catch (_) {
-    return null;
-  }
+  final raw = await (await _stateStore()).read();
+  if (raw is! Map) return null;
+  return PlaybackSnapshot.fromJson(Map<String, dynamic>.from(raw));
 }
 
 /// 保存播放快照（失败静默，不影响本次会话）。
 Future<void> savePlaybackSnapshot(PlaybackSnapshot snapshot) async {
-  try {
-    final file = await _stateFile();
-    await file.writeAsString(jsonEncode(snapshot.toJson()));
-  } catch (_) {
-    // 持久化失败不影响正常使用
-  }
+  await (await _stateStore()).write(snapshot.toJson());
 }

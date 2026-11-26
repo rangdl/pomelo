@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/cover_image.dart';
 import '../../../shared/widgets/track_tile.dart';
 import '../../playback/application/player_actions.dart';
-import '../../playback/data/media_proxy_server.dart';
 import 'plugin_providers.dart';
 
 /// 歌曲行尾部的「更多」入口：歌曲详情 / 评论。
@@ -74,6 +74,7 @@ class _TrackInfoSheet extends ConsumerStatefulWidget {
 class _TrackInfoSheetState extends ConsumerState<_TrackInfoSheet> {
   Map<String, dynamic>? _info;
   bool _loading = true;
+  String? _errorText;
 
   @override
   void initState() {
@@ -82,14 +83,23 @@ class _TrackInfoSheetState extends ConsumerState<_TrackInfoSheet> {
   }
 
   Future<void> _load() async {
-    final info = await ref
-        .read(playerActionsProvider)
-        .fetchMusicInfo(widget.item);
-    if (!mounted) return;
-    setState(() {
-      _info = info;
-      _loading = false;
-    });
+    try {
+      final info = await ref
+          .read(playerActionsProvider)
+          .fetchMusicInfo(widget.item);
+      if (!mounted) return;
+      setState(() {
+        _info = info;
+        _loading = false;
+      });
+    } catch (e) {
+      // 拉取详情失败不影响展示已有信息，只把错误收口掉。
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _errorText = '获取详情失败: $e';
+      });
+    }
   }
 
   @override
@@ -128,15 +138,7 @@ class _TrackInfoSheetState extends ConsumerState<_TrackInfoSheet> {
                   child: SizedBox(
                     width: 56,
                     height: 56,
-                    child: artwork.isEmpty
-                        ? const ColoredBox(
-                            color: Colors.black12,
-                            child: Icon(Icons.music_note_rounded),
-                          )
-                        : Image.network(
-                            cachedArtworkUrl(artwork),
-                            fit: BoxFit.cover,
-                          ),
+                    child: CoverImage(url: artwork, decodeWidth: 56),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -202,6 +204,16 @@ class _TrackInfoSheetState extends ConsumerState<_TrackInfoSheet> {
                   '该插件未返回更多信息',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              if (_errorText != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _errorText!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
             ],
@@ -276,20 +288,29 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
     if (_loading || _end) return;
     setState(() => _loading = true);
     final next = _page + 1;
-    final list = await ref
-        .read(playerActionsProvider)
-        .fetchMusicComments(widget.item, page: next);
-    if (!mounted) return;
-    setState(() {
-      _page = next;
-      _loading = false;
-      if (list.isEmpty) {
-        _end = true;
-      } else {
-        _comments.addAll(list);
-      }
-      if (list.isEmpty && _comments.isEmpty) _error = '暂无评论';
-    });
+    try {
+      final list = await ref
+          .read(playerActionsProvider)
+          .fetchMusicComments(widget.item, page: next);
+      if (!mounted) return;
+      setState(() {
+        _page = next;
+        _loading = false;
+        if (list.isEmpty) {
+          _end = true;
+        } else {
+          _comments.addAll(list);
+        }
+        if (list.isEmpty && _comments.isEmpty) _error = '暂无评论';
+      });
+    } catch (e) {
+      // 失败必须复位 loading，否则「加载更多」按钮会一直转圈。
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = '加载评论失败: $e';
+      });
+    }
   }
 
   @override

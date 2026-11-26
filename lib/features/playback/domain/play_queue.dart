@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../presentation/playback_providers.dart';
@@ -54,4 +56,60 @@ class PlayQueue extends Notifier<List<Map<String, dynamic>>> {
     state = const [];
     _index = 0;
   }
+
+  /// 追加到队列末尾（不打断当前播放）。
+  void appendAll(List<Map<String, dynamic>> items) {
+    if (items.isEmpty) return;
+    if (state.isEmpty) {
+      setAll(items);
+      return;
+    }
+    state = List.unmodifiable([...state, ...items]);
+  }
+
+  /// 插入到当前曲目之后（「下一首播放」）。
+  void insertNext(List<Map<String, dynamic>> items) {
+    if (items.isEmpty) return;
+    if (state.isEmpty) {
+      setAll(items);
+      return;
+    }
+    final list = List<Map<String, dynamic>>.from(state);
+    final at = (_index + 1).clamp(0, list.length);
+    list.insertAll(at, items);
+    state = List.unmodifiable(list);
+  }
+
+  /// 拖动重排：把 [from] 移到 [to]，并保持「当前播放曲目」不变。
+  void move(int from, int to) {
+    if (from == to || from < 0 || from >= state.length) return;
+    final list = List<Map<String, dynamic>>.from(state);
+    final item = list.removeAt(from);
+    final target = to.clamp(0, list.length);
+    list.insert(target, item);
+    if (_index == from) {
+      _index = target;
+    } else if (from < _index && target >= _index) {
+      _index -= 1;
+    } else if (from > _index && target <= _index) {
+      _index += 1;
+    }
+    state = List.unmodifiable(list);
+  }
+
+  /// 随机打乱队列，仍指向原来正在播放的那一首。
+  void shuffle() {
+    if (state.length <= 1) return;
+    final playing = current;
+    final list = List<Map<String, dynamic>>.from(state)..shuffle(Random());
+    state = List.unmodifiable(list);
+    if (playing != null) {
+      final key = _key(playing);
+      final i = list.indexWhere((e) => _key(e) == key);
+      if (i >= 0) _index = i;
+    }
+  }
+
+  static String _key(Map<String, dynamic> item) =>
+      '${item['_pluginId'] ?? ''}:${item['id'] ?? item['title'] ?? ''}';
 }

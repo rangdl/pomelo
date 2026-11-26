@@ -31,12 +31,16 @@ class PlayerActions {
 
   final Ref _ref;
 
+  /// 搜索代次：只接受最后一次搜索的结果，避免旧请求晚到覆盖新结果。
+  int _searchGeneration = 0;
+
   Future<void> search(
     PluginRecord plugin,
     String query, {
     int page = 1,
     String type = 'music',
   }) async {
+    final generation = ++_searchGeneration;
     final results = _ref.read(searchResultsProvider.notifier);
     // 第一页显示 loading，加载更多时保留旧结果、追加展示。
     if (page <= 1) {
@@ -45,6 +49,8 @@ class PlayerActions {
     try {
       final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
       final result = await rt.search(query, page: page, type: type);
+      // 期间又发起了新的搜索，丢弃这次结果。
+      if (generation != _searchGeneration) return;
       final data = (result['data'] as List).cast<dynamic>();
       final mapped = [
         for (final e in data)
@@ -64,6 +70,7 @@ class PlayerActions {
         results.set(AsyncValue.data([...prev, ...mapped]));
       }
     } catch (e, st) {
+      if (generation != _searchGeneration) return;
       if (page <= 1) {
         results.set(AsyncValue.error(e, st));
       } else {
@@ -77,53 +84,102 @@ class PlayerActions {
   bool _searchHasMore = false;
   bool get searchHasMore => _searchHasMore;
 
+  /// 播放代次：每次发起播放 +1。
+  ///
+  /// 取链、打开都是异步的；快速连点/自动切歌时，旧请求晚到会覆盖新曲目。
+  /// 每次 await 之后比对代次，过期请求直接丢弃。
+  int _playGeneration = 0;
+
   /// 解析并播放一首歌（不改变队列）。
   Future<void> playItem(Map<String, dynamic> item) async {
+    // 同步自增，保证「后点的歌」代次更高（不能放在 await 之后）。
+    final generation = ++_playGeneration;
     final repo = await _ref.read(pluginRepositoryProvider.future);
+    if (generation != _playGeneration) return;
     final player = _ref.read(audioPlayerProvider);
     _ref.read(nowPlayingProvider.notifier).set(item);
     // 同步通知栏的队列位置（高亮当前曲）。
     player.updateQueueIndex(_ref.read(playQueueProvider.notifier).index);
-    final ResolvedSource source;
+
+    final cacheKey = _mediaKey(item);
+    ResolvedSource source;
     try {
       source = await _resolveUrl(repo, item);
     } catch (e) {
-      // 取链失败说明「这首放不了」，不是播放器的瞬时错误：直接反馈一次，
-      // 不进入 3 秒探测 + 自动跳下一首的流程，否则一首失败会连环跳完整队列。
-      _toast('播放失败: ${item['title'] ?? ''}（$e）');
-      rethrow;
+      if (generation != _playGeneration) return;
+      // 取链失败：可能命中了已失效的缓存链接，淘汰后重试一次。
+      MediaLinkCache.instance?.remove(cacheKey);
+      try {
+        source = await _resolveUrl(repo, item, forceRefresh: true);
+      } catch (e2) {
+        if (generation != _playGeneration) return;
+        // 取链失败说明「这首放不了」，不是播放器的瞬时错误：直接反馈一次，
+        // 不进入 3 秒探测 + 自动跳下一首的流程，否则一首失败会连环跳完整队列。
+        _toast('播放失败: ${item['title'] ?? ''}（$e2）');
+        return;
+      }
     }
+    if (generation != _playGeneration) return;
+
     try {
-      final proxy = _canProxy(source.url) ? MediaProxyServer.instance : null;
-      // 有本地服务就让播放器只连 127.0.0.1：取链、防盗链头、边播边存都在服务端。
-      final streamUrl = proxy == null
-          ? source.url
-          : proxy.streamUrl(_mediaKey(item), source.url, source.headers);
-      final art = '${item['artwork'] ?? ''}';
-      final coverUri = art.isEmpty ? null : Uri.tryParse(cachedArtworkUrl(art));
-      await player.open(
-        streamUrl,
-        headers: proxy == null ? source.headers : null,
-        meta: MediaMeta(
-          id: '${item['id'] ?? source.url}',
-          title: '${item['title'] ?? '未知歌曲'}',
-          artist: '${item['artist'] ?? ''}',
-          album: '${item['album'] ?? ''}',
-          artUri: coverUri,
-          duration: _durationOf(item),
-        ),
-      );
-      // 记录播放历史（异步、失败静默）。
+      await _openSource(item, source);
+      if (generation != _playGeneration) return;
       _recordHistory(item);
       // 预取下一首的音源，切歌时无需再等取链。
       unawaited(prefetchNext());
-      if (proxy != null && art.isNotEmpty) {
+      final art = '${item['artwork'] ?? ''}';
+      final proxy = MediaProxyServer.instance;
+      if (proxy != null && art.isNotEmpty && _canProxy(source.url)) {
         unawaited(proxy.prefetchCover(art));
       }
     } catch (e) {
-      _reportPlayFailure(item, '$e');
-      rethrow;
+      if (generation != _playGeneration) return;
+      // 播放失败可能是「签名过期」或「之前的音频缓存是残片」：清掉后重试一次。
+      MediaLinkCache.instance?.remove(cacheKey);
+      await MediaProxyServer.instance?.evictAudio(cacheKey);
+      if (generation != _playGeneration) return;
+      try {
+        final retry = await _resolveUrl(repo, item, forceRefresh: true);
+        if (generation != _playGeneration) return;
+        await _openSource(item, retry);
+        if (generation != _playGeneration) return;
+        _recordHistory(item);
+        unawaited(prefetchNext());
+      } catch (e2) {
+        if (generation != _playGeneration) return;
+        _reportPlayFailure(item, '$e2');
+      }
     }
+  }
+
+  /// 用已解析出的地址打开播放器（含本地代理登记与封面地址改写）。
+  Future<void> _openSource(
+    Map<String, dynamic> item,
+    ResolvedSource source,
+  ) async {
+    final player = _ref.read(audioPlayerProvider);
+    final proxy = _canProxy(source.url) ? MediaProxyServer.instance : null;
+    // 有本地服务就让播放器只连 127.0.0.1：取链、防盗链头、边播边存都在服务端。
+    final streamUrl = proxy == null
+        ? source.url
+        : proxy.streamUrl(_mediaKey(item), source.url, source.headers);
+    final art = '${item['artwork'] ?? ''}';
+    // 封面只接受 http(s)：data: 内联图与本地路径交给系统媒体控件会取不到。
+    final coverUri = isRemoteHttpUrl(art)
+        ? Uri.tryParse(cachedArtworkUrl(art))
+        : null;
+    await player.open(
+      streamUrl,
+      headers: proxy == null ? source.headers : null,
+      meta: MediaMeta(
+        id: '${item['id'] ?? source.url}',
+        title: '${item['title'] ?? '未知歌曲'}',
+        artist: '${item['artist'] ?? ''}',
+        album: '${item['album'] ?? ''}',
+        artUri: coverUri,
+        duration: _durationOf(item),
+      ),
+    );
   }
 
   void _recordHistory(Map<String, dynamic> item) {
@@ -434,6 +490,35 @@ class PlayerActions {
     }
   }
 
+  /// 播放全部：替换队列并从第一首开始。
+  Future<void> playAll(List<Map<String, dynamic>> items) =>
+      playFromList(items, 0);
+
+  /// 随机播放：打乱后从第一首开始。
+  Future<void> shufflePlay(List<Map<String, dynamic>> items) async {
+    if (items.isEmpty) return;
+    final queue = _ref.read(playQueueProvider.notifier);
+    queue.setAll(items);
+    queue.shuffle();
+    final shuffled = _ref.read(playQueueProvider);
+    if (shuffled.isEmpty) return;
+    await safePlay(shuffled.first);
+  }
+
+  /// 加入队列末尾（不打断当前播放）。
+  void enqueue(List<Map<String, dynamic>> items) {
+    if (items.isEmpty) return;
+    _ref.read(playQueueProvider.notifier).appendAll(items);
+    _toast('已加入播放队列（${items.length} 首）');
+  }
+
+  /// 设为下一首播放。
+  void playNext(List<Map<String, dynamic>> items) {
+    if (items.isEmpty) return;
+    _ref.read(playQueueProvider.notifier).insertNext(items);
+    _toast(items.length > 1 ? '已将 ${items.length} 首设为下一首播放' : '已设为下一首播放');
+  }
+
   /// 播放/暂停切换。
   ///
   /// 恢复的快照只有元信息、播放器里并没有真正加载过媒体；此时点「播放」需
@@ -516,6 +601,8 @@ class PlayerActions {
       // 3 秒后仍在推进或处于播放态 → 说明 mpv 已自行恢复，忽略该错误。
       if (playing && nowPos > _errorProbePosition) return;
       if (nowPos > _errorProbePosition) return;
+      // 用户主动暂停导致的「不推进」不是故障，不能据此跳歌。
+      if (player.userPaused) return;
       // 确实卡住：提示并尝试自动跳下一首。
       _toast('播放失败: $message');
       final items = _ref.read(playQueueProvider);
@@ -550,15 +637,17 @@ class PlayerActions {
   /// 「无法获取有效的播放链接」。
   Future<ResolvedSource> _resolveUrl(
     PluginRepository repo,
-    Map<String, dynamic> item,
-  ) async {
+    Map<String, dynamic> item, {
+    bool forceRefresh = false,
+  }) async {
     final ownerId = item['_pluginId'] as String?;
     final quality = _ref.read(audioQualityProvider);
     final payload = stripTrackOrigin(item);
 
     // 命中链接缓存（10 分钟内）直接复用，避免每次切歌都请求音源。
+    // 播放失败后的重试传 forceRefresh，跳过缓存重新向音源要地址。
     final cacheKey = _mediaKey(item, quality);
-    final cached = MediaLinkCache.instance?.get(cacheKey);
+    final cached = forceRefresh ? null : MediaLinkCache.instance?.get(cacheKey);
     if (cached != null) {
       debugPrint('[pomelo] 命中播放链接缓存: ${item['title']}');
       return ResolvedSource(cached.url, cached.headers);

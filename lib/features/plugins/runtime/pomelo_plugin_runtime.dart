@@ -1,12 +1,6 @@
-import 'dart:async';
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:quickjs_engine/extensions/xhr.dart';
-import 'package:quickjs_engine/quickjs_engine.dart';
 
-import 'lx_compat.dart';
+import 'plugin_worker.dart';
 
 /// 插件加载结果。
 ///
@@ -53,20 +47,21 @@ class PluginLoadResult {
   bool get hasUpdateAlert => updateAlert != null && updateAlert!.isNotEmpty;
 }
 
-/// 统一插件运行时：每插件一个 QuickJS 实例，同时承载自有格式插件与 LX 脚本。
+/// 统一插件运行时（主 isolate 侧门面）。
+///
+/// 每个插件一个 QuickJS 引擎，运行在**独立 Isolate** 中：插件里的死循环、
+/// 无限递归或卡死的 Promise 都不会冻结 UI。宿主通过端口用 JSON 协议通信。
 ///
 /// - 自有格式：`module.exports = { platform, search, getMediaSource, ... }`
-/// - LX 脚本：`lx.on('request', ...)` + `lx.send('inited', ...)`，由 [LxCompat]
+/// - LX 脚本：`lx.on('request', ...)` + `lx.send('inited', ...)`，由兼容层
 ///   包装成同形导出（只提供 `getMediaSource`）。
-///
-/// 两条路径互不干扰，格式在加载后自动判定，宿主无感知。
 class PomeloPluginRuntime {
-  PomeloPluginRuntime._(this._js);
+  PomeloPluginRuntime._(this._host);
 
-  final JavascriptRuntime _js;
+  final PluginHost _host;
 
   /// LX 脚本声明的源（`kw/kg/tx/wy/mg/qs…`）。
-  final Map<String, dynamic> sources = {};
+  Map<String, dynamic> sources = {};
 
   /// 源 → 音质列表。
   Map<String, List<String>> qualitys = const {};
@@ -77,365 +72,98 @@ class PomeloPluginRuntime {
   bool initialized = false;
   String? initError;
 
-  bool _loaded = false;
+  bool _disposed = false;
 
-  /// 串行队列：同一插件的 `__lastResult/__lastError` 是全局位，并发调用会互相覆盖。
-  Future<void> _tail = Future<void>.value();
+  /// 每次成功调用回调一次（上层可据此做闲置回收计时）。
+  void Function()? onActivity;
 
-  String _platform = '';
-  String _version = '';
-  String _author = '';
-  String _description = '';
-
-  /// 创建实例。
-  ///
-  /// 不能直接用 `getJavascriptRuntime()`：它内部调用 `enableFetch()` 但不 await，
-  /// 而 fetch polyfill 要异步读 bundle，会导致脚本执行时 `fetch is not defined`。
+  /// 创建实例：拉取 fetch polyfill 后启动插件 worker。
   static Future<PomeloPluginRuntime> create({
     int stackSize = 1024 * 1024,
+    int? memoryLimit = 64 * 1024 * 1024,
+    void Function(String tag, String message)? onLog,
   }) async {
-    final js = QuickJsRuntime2(stackSize: stackSize);
-    js.onMessage('pluginLog', (dynamic args) {
-      if (kDebugMode) debugPrint('[plugin] $args');
-    });
-    js.onMessage('lxLog', (dynamic args) {
-      if (kDebugMode) debugPrint('[lx] $args');
-    });
-    js.enableXhr();
     final polyfill = await rootBundle.loadString(
       'packages/quickjs_engine/assets/js/fetch.js',
     );
-    js.evaluate(polyfill);
-    js.enableHandlePromises();
-    LxCompat.installBridges(js);
-    return PomeloPluginRuntime._(js);
+    final host = await PluginHost.spawn(
+      fetchPolyfill: polyfill,
+      stackSize: stackSize,
+      memoryLimit: memoryLimit,
+    );
+    host.onLog = onLog;
+    return PomeloPluginRuntime._(host);
   }
 
-  JavascriptRuntime get js => _js;
-
   /// 加载插件源码并自动判定格式。
-  ///
-  /// 判定顺序：先看 `module.exports` 是否有方法 → 自有格式；否则看脚本是否
-  /// 注册了 LX request handler / 上报了 inited → LX 兼容模式；都没有则报错。
   Future<PluginLoadResult> loadPlugin(
     String source, {
     String name = 'plugin',
     Duration initTimeout = const Duration(seconds: 20),
+    Map<String, dynamic> userVariables = const {},
   }) async {
-    final meta = LxScriptMeta.parse(source);
-    final scriptName = (meta.name?.trim().isNotEmpty ?? false)
-        ? meta.name!.trim()
-        : name;
-    _platform = scriptName;
-    _version = meta.version ?? '';
-    _author = meta.author ?? '';
-    _description = meta.description ?? '';
-
-    _js.evaluate(
-      LxCompat.prelude(
-        id: name,
-        name: scriptName,
-        version: meta.version ?? '',
-        author: meta.author ?? '',
-        description: meta.description ?? '',
-        homepage: meta.homepage ?? '',
-        // 部分脚本（如野花）会校验源码原文，必须传原始脚本。
-        rawScript: source,
-      ),
+    final raw = await _host.call(
+      'load',
+      [source, name, initTimeout.inMilliseconds, userVariables],
+      // 初始化本身在 worker 内有超时，这里留出余量。
+      timeout: initTimeout + const Duration(seconds: 15),
     );
-    _js.evaluate(LxCompat.bridge);
-
-    // 不用 "use strict"：部分 LX 脚本依赖非严格模式的隐式全局赋值。
-    // 脚本异常先落到 __lx_loadError，再按格式统一抛出。
-    final wrapped =
-        '''
-(function(module, exports, require, console, env) {
-try {
-$source
-} catch (e) {
-  globalThis.__lx_loadError = String((e && e.message) || e);
-}
-})(__pluginModule, __pluginModule.exports, __noRequire, __pluginConsole, __pluginEnv);
-''';
-    final result = _js.evaluate(wrapped, sourceUrl: '$name.js');
-    if (result.isError) {
-      throw StateError('插件加载失败: ${result.stringResult}');
-    }
-    _loaded = true;
-
-    final reflect =
-        _evalRaw('''
-(function() {
-  var m = __pluginModule.exports;
-  if (!m || typeof m !== 'object') return { methods: [] };
-  var methods = Object.keys(m).filter(function(k) {
-    return typeof m[k] === 'function';
-  });
-  var declaredKeys = Array.isArray(m.sourceKeys) ? m.sourceKeys
-    : (typeof m.lxSource === 'string' && m.lxSource ? [m.lxSource] : []);
-  return {
-    methods: methods,
-    sourceKeys: declaredKeys,
-    platform: m.platform || '',
-    version: m.version || '',
-    author: m.author || '',
-    description: m.description || '',
-    srcUrl: m.srcUrl || ''
-  };
-})()
-''') as Map<String, dynamic>? ??
-        const {};
-
-    final methods = (reflect['methods'] as List?)?.cast<String>() ?? const [];
-
-    if (methods.isNotEmpty) {
-      // 顶层代码抛异常时模块可能已导出部分方法，静默成功会掩盖问题。
-      final loadError = _evalRaw('globalThis.__lx_loadError || null');
-      if (loadError is String && loadError.isNotEmpty) {
-        debugPrint(
-          '[pomelo] 插件 ${_pickString(reflect['platform']) ?? name} '
-          '加载时有异常: $loadError',
-        );
-      }
-      final platform = _pickString(reflect['platform']) ?? _platform;
-      _platform = platform;
-      _version = _pickString(reflect['version']) ?? _version;
-      _author = _pickString(reflect['author']) ?? _author;
-      _description = _pickString(reflect['description']) ?? _description;
-      final declaredKeys =
-          (reflect['sourceKeys'] as List?)?.map((e) => '$e').toList() ??
-          const [];
-      return PluginLoadResult(
-        isLxCompat: false,
-        platform: platform,
-        version: _version,
-        author: _author,
-        description: _description,
-        supportedMethods: methods,
-        srcUrl: _pickString(reflect['srcUrl']),
-        sourceKeys: declaredKeys.isEmpty ? [platform] : declaredKeys,
-      );
-    }
-
-    // 没有导出方法：只有注册过 LX handler / 上报过 inited 才算 LX 脚本。
-    final looksLx =
-        _evalRaw(
-          'typeof __lx_requestHandler === "function" || '
-          'globalThis.__lx_initPayload !== undefined',
-        ) ==
-        true;
-    if (!looksLx) {
-      final loadError = _evalRaw('globalThis.__lx_loadError || null');
-      if (loadError is String && loadError.isNotEmpty) {
-        throw StateError('插件加载失败: $loadError');
-      }
-      throw StateError('无法识别的插件格式：既没有导出插件方法，也不是 LX 音源脚本');
-    }
-
-    final ok = await waitForInit(timeout: initTimeout);
-    if (!ok) {
-      throw StateError('LX 脚本初始化失败: ${initError ?? "未知原因"}');
-    }
-
-    final lxMethods = <String>['getMediaSource'];
-    if (_lxSupportsAction('lyric')) lxMethods.add('getLyric');
+    final map = Map<String, dynamic>.from(raw as Map);
+    sources = map['sources'] is Map
+        ? Map<String, dynamic>.from(map['sources'] as Map)
+        : const {};
+    final rawQualitys = map['qualitys'];
+    qualitys = rawQualitys is Map
+        ? {
+            for (final e in rawQualitys.entries)
+              '${e.key}': (e.value as List?)?.map((q) => '$q').toList() ?? [],
+          }
+        : const {};
+    updateAlert = map['updateAlert'] is Map
+        ? Map<String, dynamic>.from(map['updateAlert'] as Map)
+        : null;
+    initialized = map['initialized'] == true;
+    initError = map['initError'] is String ? map['initError'] as String : null;
+    _notifyActivity();
 
     return PluginLoadResult(
-      isLxCompat: true,
-      platform: _platform,
-      version: _version,
-      author: _author,
-      description: _description,
-      supportedMethods: lxMethods,
-      srcUrl: _pickString(updateAlert?['updateUrl']),
-      sourceKeys: sources.keys.toList()..sort(),
+      isLxCompat: map['isLxCompat'] == true,
+      platform: '${map['platform'] ?? name}',
+      version: '${map['version'] ?? ''}',
+      author: '${map['author'] ?? ''}',
+      description: '${map['description'] ?? ''}',
+      supportedMethods:
+          (map['supportedMethods'] as List?)?.map((e) => '$e').toList() ??
+          const [],
+      srcUrl: map['srcUrl'] is String ? map['srcUrl'] as String : null,
+      sourceKeys:
+          (map['sourceKeys'] as List?)?.map((e) => '$e').toList() ?? const [],
       qualitys: qualitys,
       updateAlert: updateAlert,
     );
   }
 
-  String? _pickString(dynamic value) {
-    if (value is String && value.trim().isNotEmpty) return value.trim();
-    return null;
-  }
-
-  /// 等待 LX 脚本上报 `inited` 并完成包装。非 LX 插件直接返回 true。
-  Future<bool> waitForInit({
-    Duration timeout = const Duration(seconds: 20),
-  }) async {
-    if (initialized) return true;
-    final deadline = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(deadline)) {
-      _js.executePendingJob();
-      final state =
-          _evalRaw('''(function() {
-  return {
-    init: globalThis.__lx_initPayload !== undefined,
-    err: globalThis.__lx_loadError || null
-  };
-})()''') as Map<String, dynamic>? ??
-          const {};
-      final err = state['err'];
-      if (err is String && err.isNotEmpty) {
-        initError = err;
-        return false;
-      }
-      if (state['init'] == true) {
-        // 给脚本一个微任务窗口把 send('inited') 后的收尾逻辑跑完。
-        await Future<void>.delayed(const Duration(milliseconds: 5));
-        _js.executePendingJob();
-        return _finalizeLx();
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-    initError = '初始化超时';
-    return false;
-  }
-
-  bool _finalizeLx() {
-    final payload = _evalRaw(
-      'globalThis.__lx_initPayload || null',
-    ) as Map<String, dynamic>?;
-    if (payload != null && payload['status'] == false) {
-      initError = '${payload['message'] ?? '初始化失败'}';
-      return false;
-    }
-    final declared = payload?['sources'];
-    if (declared is Map) {
-      sources
-        ..clear()
-        ..addAll(declared.cast<String, dynamic>());
-    }
-    qualitys = {
-      for (final entry in sources.entries) entry.key: _qualitysOf(entry.value),
-    };
-    updateAlert = _evalRaw(
-      'globalThis.__lx_updateAlert || null',
-    ) as Map<String, dynamic>?;
-    _js.evaluate(
-      LxCompat.createVirtualExports(
-        platform: _platform,
-        version: _version,
-        author: _author,
-        description: _description,
-      ),
-    );
-    initialized = true;
-    return true;
-  }
-
-  List<String> _qualitysOf(dynamic value) {
-    if (value is List) return value.map((e) => '$e').toList();
-    if (value is Map) {
-      final q = value['qualitys'];
-      if (q is List) return q.map((e) => '$e').toList();
-    }
-    return const [];
-  }
-
-  /// LX 源是否声明了某个 action（如 `lyric`）。
-  bool _lxSupportsAction(String action) {
-    for (final value in sources.values) {
-      if (value is Map) {
-        final actions = value['actions'];
-        if (actions is List && actions.map((e) => '$e').contains(action)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  // ---------------------------------------------------------------------------
-  // 调用
-  // ---------------------------------------------------------------------------
-
-  /// 调用插件方法并等待 Promise 结算。内部串行执行，避免结果位互相覆盖。
+  /// 调用插件方法并等待结果。worker 内部串行，避免全局结果位互相覆盖。
   Future<dynamic> invoke(
     String method,
     List<dynamic> args, {
     Duration timeout = const Duration(seconds: 20),
-  }) {
-    return _serial(() => _invoke(method, args, timeout));
+  }) async {
+    if (_disposed) throw StateError('插件运行时已关闭');
+    final result = await _host.call('invoke', [
+      method,
+      args,
+      timeout.inMilliseconds,
+    ], timeout: timeout + const Duration(seconds: 5));
+    _notifyActivity();
+    return result;
   }
 
-  Future<T> _serial<T>(Future<T> Function() task) {
-    final completer = Completer<void>();
-    final previous = _tail;
-    _tail = completer.future;
-    return previous.then((_) => task()).whenComplete(completer.complete);
-  }
-
-  Future<dynamic> _invoke(
-    String method,
-    List<dynamic> args,
-    Duration timeout,
-  ) async {
-    if (!_loaded) throw StateError('插件尚未加载');
-    final argsJson = jsonEncode(args);
-    _js.evaluate('''
-      globalThis.__lastResult = undefined;
-      globalThis.__lastError = undefined;
-      (async function() {
-        try {
-          var fn = __pluginModule.exports && __pluginModule.exports['$method'];
-          if (typeof fn !== 'function') {
-            __lastResult = { __unsupported: true };
-            return;
-          }
-          var a = JSON.parse(${jsonEncode(argsJson)});
-          var r = await fn.apply(__pluginModule.exports, a);
-          __lastResult = (r === undefined ? null : r);
-        } catch (e) {
-          __lastError = (e && e.message) ? e.message : String(e);
-        }
-      })();
-    ''');
-
-    // 轮询只查轻量标志位：搜索结果/榜单可能上百条，每轮序列化大 JSON 会卡住
-    // 主 isolate（真机表现为无响应）。
-    final deadline = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(deadline)) {
-      _js.executePendingJob();
-      final done = _js.evaluate(
-        '(globalThis.__lastResult !== undefined || '
-        'globalThis.__lastError !== undefined) ? "1" : "0"',
-      );
-      if (done.stringResult.contains('1')) {
-        final state = _js.evaluate(
-          'JSON.stringify({r: globalThis.__lastResult, e: globalThis.__lastError})',
-        );
-        final map = jsonDecode(state.stringResult) as Map<String, dynamic>;
-        if (map['e'] != null) throw StateError('插件方法异常: ${map['e']}');
-        final value = map['r'];
-        if (value is Map && value['__unsupported'] == true) {
-          throw UnsupportedError('插件未实现 $method');
-        }
-        return value;
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 15));
-    }
-    throw StateError('调用 $method 超时');
-  }
-
-  /// 求值并解析 JSON 结果（null 表示 JS 侧给出 null/undefined）。
-  Map<String, dynamic>? evaluateJson(String code) {
-    final value = _evalRaw(code);
-    return value is Map<String, dynamic> ? value : null;
-  }
-
-  dynamic _evalRaw(String expr) {
-    final result = _js.evaluate('JSON.stringify($expr)');
-    if (result.isError) throw StateError('求值失败: ${result.stringResult}');
-    final text = result.stringResult;
-    if (text == 'undefined' || text == 'null') return null;
+  void _notifyActivity() {
     try {
-      final decoded = jsonDecode(text);
-      // evaluate 可能把字符串结果再包一层引号，先解包一次。
-      if (decoded is String) return jsonDecode(decoded);
-      return decoded;
+      onActivity?.call();
     } catch (_) {
-      return null;
+      // 回调异常不影响调用本身。
     }
   }
 
@@ -558,12 +286,7 @@ $source
   Future<List<Map<String, dynamic>>> getTopLists() async {
     try {
       final result = await invoke('getTopLists', []);
-      if (result is List) {
-        return result
-            .whereType<Map>()
-            .map((e) => e.cast<String, dynamic>())
-            .toList();
-      }
+      if (result is List) return _maps(result);
     } catch (_) {
       // 插件未实现或出错：静默返回空。
     }
@@ -713,55 +436,23 @@ $source
     required String action,
     required Map<String, dynamic> info,
     Duration timeout = const Duration(seconds: 15),
-  }) {
-    return _serial(() => _lxRequest(source, action, info, timeout));
-  }
-
-  Future<dynamic> _lxRequest(
-    String source,
-    String action,
-    Map<String, dynamic> info,
-    Duration timeout,
-  ) async {
+  }) async {
+    if (_disposed) throw StateError('插件运行时已关闭');
     if (!initialized) throw StateError('该插件不是 LX 音源脚本，未初始化');
-
-    _js.evaluate('''
-      globalThis.__lx_result = undefined;
-      globalThis.__lx_resultError = undefined;
-      globalThis.__lx_requestInFlight = true;
-      (function() {
-        var handler = __lx_requestHandler;
-        if (typeof handler !== 'function') {
-          __lx_resultError = 'request handler is not defined';
-          __lx_requestInFlight = false;
-          return;
-        }
-        Promise.resolve()
-          .then(function() {
-            return handler({ source: ${jsonEncode(source)}, action: ${jsonEncode(action)}, info: ${jsonEncode(info)} });
-          })
-          .then(function(r) { __lx_result = r; __lx_requestInFlight = false; })
-          .catch(function(e) { __lx_resultError = (e && e.message) || String(e); __lx_requestInFlight = false; });
-      })();
-    ''');
-
-    final deadline = DateTime.now().add(timeout);
-    while (DateTime.now().isBefore(deadline)) {
-      _js.executePendingJob();
-      final state = _js.evaluate(
-        'JSON.stringify({ done: globalThis.__lx_requestInFlight === false, '
-        'r: globalThis.__lx_result === undefined ? null : globalThis.__lx_result, '
-        'e: globalThis.__lx_resultError || null })',
-      );
-      final map = jsonDecode(state.stringResult) as Map<String, dynamic>;
-      if (map['done'] == true) {
-        if (map['e'] != null) throw StateError('LX 请求失败: ${map['e']}');
-        return map['r'];
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-    }
-    throw StateError('LX 请求超时');
+    final result = await _host.call('lxRequest', [
+      source,
+      action,
+      info,
+      timeout.inMilliseconds,
+    ], timeout: timeout + const Duration(seconds: 5));
+    _notifyActivity();
+    return result;
   }
 
-  void dispose() => _js.dispose();
+  /// 释放运行时（结束 worker Isolate）。
+  Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+    await _host.close();
+  }
 }

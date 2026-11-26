@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../ui/tokens.dart';
 import 'track_tile.dart';
-import '../../features/playback/data/media_proxy_server.dart';
+import 'cover_image.dart';
 
 /// 歌单 / 专辑 / 歌手等「集合」类结果行:40 封面 + 标题 + 副标题 + 箭头。
 ///
@@ -36,11 +36,7 @@ class CollectionRow extends StatelessWidget {
           height: 40,
           child: cover.isEmpty
               ? Icon(placeholderIcon)
-              : Image.network(
-                  cachedArtworkUrl(cover),
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Icon(placeholderIcon),
-                ),
+              : CoverImage(url: cover, decodeWidth: 40, icon: placeholderIcon),
         ),
       ),
       title: Text(

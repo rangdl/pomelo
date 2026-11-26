@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/settings/audio_quality.dart';
 import '../../../shared/settings/cache_limit.dart';
+import '../../../shared/settings/settings_store.dart';
 import '../../../shared/settings/theme_color.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/data/media_proxy_server.dart';
+import '../../playback/presentation/playback_providers.dart';
 
 /// 设置页:分组卡片列表(iOS 设置风格),含主题模式切换。
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -23,6 +27,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   /// 正在执行的清理动作(按行控制 loading,不整页闪)。
   final Set<String> _clearing = {};
 
+  /// 当前音量/速度（本地镜像，改完立刻反映到副标题）。
+  double _volume = 100;
+  double _speed = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    final player = ref.read(audioPlayerProvider);
+    _volume = player.volume;
+    _speed = player.speed;
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeOptionProvider);
@@ -30,6 +46,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final quality = ref.watch(audioQualityProvider);
     final cacheLimit = ref.watch(cacheLimitProvider);
     final cacheUsage = ref.watch(cacheUsageProvider);
+    final sleepAt = ref.watch(sleepTimerProvider);
     final scheme = Theme.of(context).colorScheme;
 
     // 超宽窗口限行宽,避免列表被拉满整屏。
@@ -75,6 +92,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: '默认音质',
                 subtitle: quality.label,
                 onTap: () => _pickQuality(quality),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader('播放'),
+          GroupCard(
+            children: [
+              SettingsItem(
+                icon: Icons.volume_up_rounded,
+                title: '音量',
+                subtitle: '${_volume.round()}%',
+                onTap: _pickVolume,
+              ),
+              SettingsItem(
+                icon: Icons.speed_rounded,
+                title: '播放速度',
+                subtitle: '${_speed.toStringAsFixed(2)}x',
+                onTap: _pickSpeed,
+              ),
+              SettingsItem(
+                icon: Icons.bedtime_rounded,
+                title: '睡眠定时器',
+                subtitle: _sleepLabel(sleepAt),
+                onTap: _pickSleep,
               ),
             ],
           ),
@@ -148,6 +189,167 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 },
               ),
             ],
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          const SectionHeader('关于'),
+          GroupCard(
+            children: [
+              const SettingsItem(
+                icon: Icons.info_outline_rounded,
+                title: 'Pomelo',
+                subtitle: '本地优先的 Flutter 音乐播放器',
+              ),
+              SettingsItem(
+                icon: Icons.folder_open_rounded,
+                title: '数据目录',
+                subtitle: '查看配置与缓存所在位置',
+                onTap: _showDataDir,
+              ),
+              SettingsItem(
+                icon: Icons.description_outlined,
+                title: '开源许可',
+                subtitle: '查看第三方库许可',
+                onTap: () => showLicensePage(
+                  context: context,
+                  applicationName: 'Pomelo',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 睡眠定时器副标题：显示剩余时间。
+  String _sleepLabel(DateTime? at) {
+    if (at == null) return '未开启';
+    final left = at.difference(DateTime.now());
+    if (left.isNegative) return '未开启';
+    final minutes = (left.inSeconds / 60).ceil();
+    return '约 $minutes 分钟后暂停';
+  }
+
+  Future<void> _pickVolume() async {
+    final player = ref.read(audioPlayerProvider);
+    var value = _volume;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('音量'),
+        content: StatefulBuilder(
+          builder: (ctx, setLocal) => Row(
+            children: [
+              const Icon(Icons.volume_down_rounded),
+              Expanded(
+                child: Slider(
+                  value: value,
+                  max: 100,
+                  onChanged: (v) {
+                    setLocal(() => value = v);
+                    player.setVolume(v);
+                  },
+                ),
+              ),
+              SizedBox(
+                width: 42,
+                child: Text('${value.round()}%', textAlign: TextAlign.end),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('完成'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _volume = player.volume);
+    await ref.read(settingsStoreProvider).patch({'volume': player.volume});
+  }
+
+  Future<void> _pickSpeed() async {
+    final player = ref.read(audioPlayerProvider);
+    const options = [0.75, 1.0, 1.25, 1.5, 2.0];
+    final picked = await showDialog<double>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('播放速度'),
+        children: [
+          RadioGroup<double>(
+            groupValue: _speed,
+            onChanged: (selected) => Navigator.pop(ctx, selected),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final v in options)
+                  RadioListTile<double>(
+                    value: v,
+                    title: Text('${v.toStringAsFixed(2)}x'),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    if (picked == null || !mounted) return;
+    await player.setSpeed(picked);
+    setState(() => _speed = picked);
+    await ref.read(settingsStoreProvider).patch({'speed': picked});
+  }
+
+  Future<void> _pickSleep() async {
+    final active = ref.read(sleepTimerProvider) != null;
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('睡眠定时器'),
+        children: [
+          for (final m in const [15, 30, 45, 60, 90])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, m),
+              child: Text('$m 分钟后暂停'),
+            ),
+          if (active)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, 0),
+              child: const Text('关闭定时器'),
+            ),
+        ],
+      ),
+    );
+    if (minutes == null) return;
+    final notifier = ref.read(sleepTimerProvider.notifier);
+    if (minutes == 0) {
+      notifier.cancel();
+    } else {
+      notifier.start(Duration(minutes: minutes));
+    }
+  }
+
+  Future<void> _showDataDir() async {
+    final dir = await getApplicationSupportDirectory();
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('数据目录'),
+        content: SelectableText(dir.path),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: dir.path));
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            child: const Text('复制路径'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('关闭'),
           ),
         ],
       ),
@@ -318,6 +520,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('已清除$label')));
+      }
+    } catch (e) {
+      // 清理是破坏性操作：失败要明确告知，而不是静默失败。
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('清除$label 失败: $e')));
       }
     } finally {
       if (mounted) setState(() => _clearing.remove(key));

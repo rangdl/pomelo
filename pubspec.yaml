@@ -1,5 +1,5 @@
 name: pomelo
-description: "A new Flutter project."
+description: "Pomelo - 基于可插拔音源插件的跨平台音乐播放器。"
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -10,7 +10,6 @@ dependencies:
   audio_service: ^0.18.19
   audio_session: ^0.2.4
   crypto: ^3.0.8
-  cupertino_icons: ^2.0.0
   file_selector: ^1.1.0
   flutter:
     sdk: flutter
@@ -24,7 +23,6 @@ dependencies:
   pointycastle: ^4.0.0
   quickjs_engine:
     path: third_party/quickjs_engine
-  riverpod_annotation: ^4.0.8
   url_launcher: ^6.3.3
   window_manager: ^0.5.1
 
@@ -34,8 +32,6 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
-  riverpod_generator: ^4.0.10
-  build_runner: ^2.17.1
   http: ^1.6.0
 
 flutter:

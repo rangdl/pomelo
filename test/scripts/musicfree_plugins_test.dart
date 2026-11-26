@@ -27,8 +27,11 @@ class _TolerantClient extends http.BaseClient {
 
 Future<bool> _reachable(String host) async {
   try {
-    final socket = await Socket.connect(host, 443,
-        timeout: const Duration(seconds: 6));
+    final socket = await Socket.connect(
+      host,
+      443,
+      timeout: const Duration(seconds: 6),
+    );
     socket.destroy();
     return true;
   } catch (_) {
@@ -50,7 +53,11 @@ void main() {
   setUpAll(() => xhrSetHttpClient(_TolerantClient()));
 
   const probes = <_Probe>[
-    _Probe('gd-music.js', 'music-api.gdstudio.xyz', ['周杰伦', '林俊杰', 'Taylor Swift']),
+    _Probe('gd-music.js', 'music-api.gdstudio.xyz', [
+      '周杰伦',
+      '林俊杰',
+      'Taylor Swift',
+    ]),
     _Probe('maoer-fm.js', 'www.missevan.com', ['广播剧', '白夜行', '鬼吹灯']),
     _Probe('udio.js', 'www.udio.com', ['lofi', 'jazz', 'rock']),
     _Probe('suno.js', 'studio-api.suno.ai', []),
@@ -74,21 +81,13 @@ void main() {
 
       final rt = await PomeloPluginRuntime.create();
       try {
-        await rt.loadPlugin(source, name: probe.file);
-
-        final meta = rt.evaluateJson('''
-          (function() {
-            var m = __pluginModule.exports || {};
-            return {
-              platform: m.platform, version: m.version,
-              methods: Object.keys(m).filter(function(k){return typeof m[k]==='function';})
-            };
-          })()
-        ''');
+        final loaded = await rt.loadPlugin(source, name: probe.file);
         // ignore: avoid_print
-        print('[${probe.file}] 元信息: $meta');
-        expect(meta, isNotNull);
-        expect(meta!['platform'], isNotEmpty);
+        print(
+          '[${probe.file}] 元信息: platform=${loaded.platform} '
+          'version=${loaded.version} methods=${loaded.supportedMethods}',
+        );
+        expect(loaded.platform, isNotEmpty);
 
         if (!await _reachable(probe.host)) {
           // ignore: avoid_print
@@ -121,7 +120,9 @@ void main() {
         }
 
         // ignore: avoid_print
-        print('[${probe.file}] 首条(${usedTerm!}): ${hit['title']} - ${hit['artist']}');
+        print(
+          '[${probe.file}] 首条(${usedTerm!}): ${hit['title']} - ${hit['artist']}',
+        );
 
         // 取播放地址（只对单曲型插件；部分插件需要真实 id）
         try {
@@ -137,8 +138,7 @@ void main() {
       } finally {
         rt.dispose();
       }
-    },
-        timeout: const Timeout(Duration(minutes: 2)));
+    }, timeout: const Timeout(Duration(minutes: 2)));
   }
 
   // 只作为 jsonDecode 使用，避免未使用告警

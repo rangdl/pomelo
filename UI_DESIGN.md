@@ -52,8 +52,8 @@
 | 组标题 | `AppText.sectionHeader` 12,`onSurfaceVariant` | `SectionHeader` |
 | 行标题 | `AppText.rowTitle` 14,`w600` | `SettingsItem` / `TrackTile` 标题 |
 | 网格卡标题 | `AppText.cardTitle` 13,`w600` | `PosterCard` |
-| 行副标题 | `AppText.rowSubtitle` 11.5,`onSurfaceVariant` | `SettingsItem` / `TrackTile` / `CollectionRow` 副标题 |
-| 紧凑文字 | `AppText.compact` 10.5 | 时间、角标、底栏标签 |
+| 行副标题 | `AppText.rowSubtitle` 12,`onSurfaceVariant` | `SettingsItem` / `TrackTile` / `CollectionRow` 副标题 |
+| 紧凑文字 | `AppText.compact` 12 | 时间、角标、底栏标签(字号下限 12,保证可读性) |
 | 弹层/空态标题 | `AppText.heading` 16,`w600` | 底部弹层标题、`EmptyState.title` |
 | 详情页头 | `AppText.detailTitle` 18,`w700` | `CollectionHeader`、侧栏品牌字 |
 | 播放页大标题 | `AppText.displayTitle` 22,`w700` | 播放页歌名(沉浸页) |

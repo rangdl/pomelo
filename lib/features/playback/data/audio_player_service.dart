@@ -51,13 +51,9 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
     // 位置 / 时长 / 缓冲 -> 广播给系统（通知栏进度条）
     _subs.add(_player.stream.position.listen((_) => _broadcastState()));
     _subs.add(_player.stream.duration.listen((_) => _broadcastState()));
+    _subs.add(_player.stream.buffer.listen((_) => _broadcastState()));
     _subs.add(_player.stream.buffering.listen((_) => _broadcastState()));
-    _subs.add(
-      _player.stream.playing.listen((playing) {
-        _ensureAudioSession(playing);
-        _broadcastState();
-      }),
-    );
+    _subs.add(_player.stream.playing.listen((_) => _broadcastState()));
 
     _completedSub = _player.stream.completed.listen((done) {
       if (!done) return;
@@ -70,39 +66,35 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
     });
   }
 
-  Future<void> _ensureAudioSession(bool playing) async {
-    // media_kit 播放时申请焦点，让系统按媒体流处理音量/打断。
-    playbackState.add(
-      playbackState.value.copyWith(
-        playing: playing,
-        processingState: playing
-            ? AudioProcessingState.ready
-            : AudioProcessingState.idle,
-      ),
-    );
-  }
-
   void _broadcastState() {
     final hasItem = mediaItem.value != null;
+    final state = _player.state;
     playbackState.add(
       playbackState.value.copyWith(
         controls: [
           MediaControl.skipToPrevious,
-          if (_player.state.playing) MediaControl.pause else MediaControl.play,
+          if (state.playing) MediaControl.pause else MediaControl.play,
           MediaControl.skipToNext,
           MediaControl.stop,
         ],
         systemActions: const {MediaAction.seek},
         androidCompactActionIndices: const [0, 1, 2],
-        processingState: hasItem
-            ? (_player.state.completed
-                  ? AudioProcessingState.completed
-                  : AudioProcessingState.ready)
-            : AudioProcessingState.idle,
-        playing: _player.state.playing,
-        updatePosition: _player.state.position,
-        bufferedPosition: _player.state.duration,
-        speed: 1.0,
+        // 暂停不等于空闲：只有「没有曲目」才是 idle，暂停仍是 ready，
+        // 否则系统的播放/暂停状态会来回跳变。
+        processingState: !hasItem
+            ? AudioProcessingState.idle
+            : state.completed
+            ? AudioProcessingState.completed
+            : state.buffering
+            ? AudioProcessingState.buffering
+            : AudioProcessingState.ready,
+        playing: state.playing,
+        updatePosition: state.position,
+        // 缓冲进度用 mpv 自报的缓冲位置，不再拿总时长冒充。
+        bufferedPosition: state.buffer > state.position
+            ? state.buffer
+            : state.position,
+        speed: state.rate,
         queueIndex: _queueIndex,
       ),
     );
@@ -136,12 +128,15 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
           duration: meta.duration,
         ),
       );
-      _loadedId = meta.id;
       _broadcastState();
     }
     try {
+      _userPaused = false;
       await _player.open(Media(url, httpHeaders: headers), play: true);
+      // 打开成功后才标记「已加载」，避免失败时被误判为可直接续播。
+      _loadedId = meta?.id;
     } catch (e) {
+      _loadedId = null;
       if (kDebugMode) debugPrint('media_kit open 失败: $e');
       rethrow;
     }
@@ -152,11 +147,14 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   String? get loadedId => _loadedId;
 
   /// 引擎里是否已加载了 [id] 这一首（决定「播放」是续播还是重新解析）。
-  bool hasLoaded(String? id) =>
-      id != null &&
-      id.isNotEmpty &&
-      id == _loadedId &&
-      _player.state.duration > Duration.zero;
+  ///
+  /// 不再用「时长 > 0」判断：网络流刚打开时时长可能还是 0，会被误判为未加载
+  /// 而触发整首重新解析。
+  bool hasLoaded(String? id) => id != null && id.isNotEmpty && id == _loadedId;
+
+  /// 是否由用户主动暂停（用于区分「用户暂停」与「播放卡死」）。
+  bool _userPaused = false;
+  bool get userPaused => _userPaused;
 
   /// 更新队列位置（通知栏「上一首/下一首」高亮用）。
   void updateQueueIndex(int index) {
@@ -165,15 +163,26 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    _userPaused = false;
+    await _player.play();
+  }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() async {
+    _userPaused = true;
+    await _player.pause();
+  }
 
   @override
   Future<void> stop() async {
     await _player.stop();
+    // 停止后引擎里不再有可用媒体，清掉标记，下次播放会重新解析。
+    _loadedId = null;
+    _userPaused = false;
+    mediaItem.add(null);
     await super.stop();
+    _broadcastState();
   }
 
   @override
@@ -194,6 +203,33 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   set skipCallback(void Function(bool next) cb) => _onSkip = cb;
 
   Future<void> setVolume(double volume) => _player.setVolume(volume);
+
+  /// 静音/取消静音（记住上一次的可听音量）。
+  Future<void> toggleMute() async {
+    final current = _player.state.volume;
+    if (current > 0) {
+      _lastAudibleVolume = current;
+      await _player.setVolume(0);
+    } else {
+      await _player.setVolume(
+        _lastAudibleVolume > 0 ? _lastAudibleVolume : 100,
+      );
+    }
+  }
+
+  double _lastAudibleVolume = 100;
+
+  bool get muted => _player.state.volume <= 0;
+
+  /// 播放速度（1.0 为原速）；同步到通知栏的 playbackState。
+  @override
+  Future<void> setSpeed(double speed) async {
+    final clamped = speed.clamp(0.5, 2.0);
+    await _player.setRate(clamped);
+    playbackState.add(playbackState.value.copyWith(speed: clamped));
+  }
+
+  double get speed => _player.state.rate;
 
   Future<void> dispose() async {
     await _completedSub?.cancel();

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../features/playback/data/media_proxy_server.dart';
 import '../layout/window_class.dart';
 import '../ui/tokens.dart';
+import 'cover_image.dart';
 
 /// 媒体网格列数:随窗口分级变化,禁止写死列数。
 int mediaGridColumns(WindowClass windowClass) => switch (windowClass) {
@@ -64,10 +64,11 @@ class PosterCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   if (coverUrl != null)
-                    Image.network(
-                      cachedArtworkUrl(coverUrl!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => _placeholder(scheme),
+                    CoverImage(
+                      url: coverUrl!,
+                      decodeWidth: 320,
+                      icon: Icons.music_note_rounded,
+                      iconSize: 32,
                     )
                   else
                     _placeholder(scheme),

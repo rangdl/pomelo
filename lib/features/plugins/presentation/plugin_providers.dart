@@ -63,6 +63,9 @@ final selectedSearchPluginProvider =
 // 运行时
 // ---------------------------------------------------------------------------
 
+/// 插件实例闲置多久后回收（每个插件独立 Isolate，不宜长驻）。
+const Duration _idleTimeout = Duration(minutes: 10);
+
 /// 插件运行时，按插件 **id** 缓存。
 ///
 /// 不能用 autoDispose：`playItem` 里会先 `ref.read(...future)` 拿实例，
@@ -83,9 +86,26 @@ final pluginRuntimeProvider =
       try {
         await rt.loadPlugin(plugin.source, name: plugin.platform);
       } catch (_) {
-        rt.dispose();
+        await rt.dispose();
         rethrow;
       }
-      ref.onDispose(rt.dispose);
+
+      // 闲置回收：每个插件独占一个 Isolate，长期驻留会累积内存。
+      // 每次调用都重置计时，10 分钟无活动即销毁实例（下次使用会重新加载）。
+      Timer? idleTimer;
+      void touch() {
+        idleTimer?.cancel();
+        idleTimer = Timer(_idleTimeout, () {
+          if (!ref.mounted) return;
+          ref.invalidateSelf();
+        });
+      }
+
+      rt.onActivity = touch;
+      touch();
+      ref.onDispose(() {
+        idleTimer?.cancel();
+        unawaited(rt.dispose());
+      });
       return rt;
     });

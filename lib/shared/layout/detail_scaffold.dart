@@ -42,7 +42,9 @@ class ShellDetailScaffold extends ConsumerWidget {
             children: [
               AppSideNavigation(
                 currentIndex: ref.watch(activeBranchProvider),
-                width: windowClass == WindowClass.expanded ? 208 : 176,
+                // 与 AdaptiveAppShell 的 medium 断点保持一致：折叠为纯图标栏。
+                width: windowClass == WindowClass.expanded ? 208 : 76,
+                collapsed: windowClass != WindowClass.expanded,
                 onTap: (i) => _goTab(context, ref, i),
               ),
               const VerticalDivider(width: 1),

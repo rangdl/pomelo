@@ -28,6 +28,7 @@ lib/
     ├── search/                    # 搜索(providers + view)
     ├── playback/                  # 播放(domain/application/presentation)
     ├── plugins/                   # 插件与 LX 音源(data/domain/presentation)
+    │                              #   runtime/ 为独立 Isolate 中的 QuickJS 运行时(见 §6)
     └── settings/                  # 设置页(分组卡片列表)
 ```
 
@@ -66,7 +67,7 @@ lib/
 
 `AdaptiveAppShell`:
 
-- **medium / expanded**:左侧 `NavigationRail`(Material 风格)+ 内容
+- **medium / expanded**:左侧 `AppSideNavigation` 自定义侧栏(折叠 76 / 展开 208 逻辑像素)+ 内容
 - **compact**:底部玻璃导航栏(**全应用唯一保留玻璃效果的地方**)
 - 标题栏、背景、导航形态全部收敛在这一层
 
@@ -80,15 +81,19 @@ StatefulShellRoute.indexedStack        # 一级导航壳(3 个入口)
 ├── 分支 1: '/library' 我的(收藏 + 最近播放)
 └── 分支 2: '/settings' 设置
 顶层全屏路由(覆盖壳)
-├── '/plugins'   MusicFree 插件管理(设置页进入)
-├── '/lx'        LX 音源脚本管理(设置页进入)
-└── '/toplists'  榜单(可传 extra 榜单项直接进入歌曲列表)
-全屏播放页不走路由,是底部弹层(showModalBottomSheet,见 player_sheet.dart)。
+├── '/search'   搜索(可带关键词)
+├── '/plugins'  插件管理(自有格式插件 + LX 脚本统一入口,设置页进入)
+├── '/toplists' 榜单(可传 extra 榜单项直接进入歌曲列表)
+├── '/sheets'   推荐歌单浏览
+├── '/sheet'    歌单详情
+├── '/album'    专辑详情
+└── '/artist'   歌手详情
+全屏播放页不走路由,是根 Navigator 上的自定义全屏路由(滑入 + 下滑关闭,见 player_sheet.dart)。
 ```
 
 ### 2.4 页面层规则
 
-1. 页面**不带** Scaffold/AppBar(壳提供);二级全屏页(插件/LX/榜单)自带 `Scaffold + AppBar + 返回`;播放页是底部弹层。
+1. 页面**不带** Scaffold/AppBar(壳提供);二级全屏页(插件/榜单/歌单/专辑/歌手)自带 `Scaffold + AppBar + 返回`;播放页是全屏自定义路由。
 2. 页面内部重排用 `WindowClassBuilder` / `context.windowClass`,不读裸尺寸。
 3. 超宽列表页用 `CenteredMaxWidth` 限行宽。
 
@@ -111,3 +116,15 @@ StatefulShellRoute.indexedStack        # 一级导航壳(3 个入口)
 2. 布局决策只有壳层一处,页面与布局解耦——页面增删不动布局;
 3. 状态保持靠 indexedStack,与视觉无关——重构皮肤不影响交互状态;
 4. 主题切换走标准 `ThemeMode`,玻璃只限定在移动底栏——视觉边界清晰。
+
+## 6. 插件运行时(隔离执行)
+
+插件是第三方 JS,必须假设它会死循环、无限递归或卡住 Promise,因此**每个插件独占一个 Isolate**:
+
+- 主 isolate 只保留门面 `PomeloPluginRuntime`(`features/plugins/runtime/pomelo_plugin_runtime.dart`),通过 `SendPort` 发送 `{id, method, args}`。
+- worker isolate 里跑 QuickJS(`plugin_worker.dart` 的 `_WorkerEngine`),同一时刻只处理一个请求,结果以 `{id, ok, data|error}` 回传;全局结果位因此不会被并发调用互相覆盖。
+- 主 isolate 侧调用带超时,超时即 `Isolate.kill(immediate)` 止损,UI 不会跟着卡死。
+- fetch polyfill 依赖 `rootBundle`,只能在主 isolate 读取,启动时作为参数传给 worker。
+- 插件实例闲置 10 分钟自动回收(`plugin_providers.dart`),避免用过的插件常驻一份引擎。
+- 插件内 `sendMessage('pluginLog' / 'lxLog')` 走独立日志通道,不占用调用结果。
+- LX 脚本由兼容层(`lx_compat.dart`)包装成与自有格式同形的 `getMediaSource` 导出,宿主不区分插件出身。

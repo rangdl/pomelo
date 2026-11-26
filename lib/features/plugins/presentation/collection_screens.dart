@@ -6,7 +6,6 @@ import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
-import '../../playback/data/media_proxy_server.dart';
 import '../domain/plugin_record.dart';
 import 'plugin_providers.dart';
 import 'track_list_view.dart';
@@ -148,11 +147,11 @@ class ArtistScreen extends ConsumerWidget {
                         height: 72,
                         child: avatar.isEmpty
                             ? _avatarPlaceholder(context)
-                            : Image.network(
-                                cachedArtworkUrl(avatar),
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) =>
-                                    _avatarPlaceholder(context),
+                            : CoverImage(
+                                url: avatar,
+                                decodeWidth: 72,
+                                icon: Icons.person_rounded,
+                                iconSize: 30,
                               ),
                       ),
                     ),

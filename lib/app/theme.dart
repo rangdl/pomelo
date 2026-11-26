@@ -39,7 +39,7 @@ ThemeData pomeloTheme(Brightness brightness, Color seedColor) {
     onSurface: isDark ? const Color(0xFFEDEDED) : const Color(0xFF1C1C1E),
     onSurfaceVariant: isDark
         ? const Color(0xFFA8A8AD)
-        : const Color(0xFF8A8A8E),
+        : const Color(0xFF6B6B70),
   );
   final buttonShape = RoundedRectangleBorder(
     borderRadius: AppRadius.cardBorder,
@@ -121,7 +121,7 @@ ThemeData pomeloTheme(Brightness brightness, Color seedColor) {
         fontWeight: FontWeight.w600,
       ),
       unselectedLabelStyle: const TextStyle(fontSize: AppText.rowTitle),
-      indicatorSize: TabBarIndicatorSize.label,
+      indicatorSize: TabBarIndicatorSize.tab,
       indicator: UnderlineTabIndicator(
         borderSide: BorderSide(width: 2, color: scheme.primary),
       ),

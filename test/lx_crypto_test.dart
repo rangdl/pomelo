@@ -21,7 +21,11 @@ void main() {
     const key = '1234567890123456'; // 16 字节
     final keyB64 = base64.encode(utf8.encode(key));
 
-    String encrypt(String plain, String mode, {String iv = '0000000000000000'}) {
+    String encrypt(
+      String plain,
+      String mode, {
+      String iv = '0000000000000000',
+    }) {
       return LxCrypto.aesEncryptBase64(
         dataB64: base64.encode(utf8.encode(plain)),
         mode: mode,
@@ -35,19 +39,18 @@ void main() {
       const iv = 'abcdefghijklmnop';
       final out = encrypt(plain, 'aes-128-cbc', iv: iv);
 
-      final cipher = PaddedBlockCipherImpl(
-        PKCS7Padding(),
-        CBCBlockCipher(AESEngine()),
-      )..init(
-          false,
-          PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
-            ParametersWithIV<KeyParameter>(
-              KeyParameter(Uint8List.fromList(utf8.encode(key))),
-              Uint8List.fromList(utf8.encode(iv)),
-            ),
-            null,
-          ),
-        );
+      final cipher =
+          PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
+            ..init(
+              false,
+              PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
+                ParametersWithIV<KeyParameter>(
+                  KeyParameter(Uint8List.fromList(utf8.encode(key))),
+                  Uint8List.fromList(utf8.encode(iv)),
+                ),
+                null,
+              ),
+            );
       final decrypted = utf8.decode(cipher.process(base64.decode(out)));
       expect(decrypted, plain);
     });
@@ -71,7 +74,9 @@ void main() {
     });
 
     test('超过同步上限时报错', () {
-      final big = base64.encode(List<int>.filled(LxCrypto.maxPlainBytes + 1, 0));
+      final big = base64.encode(
+        List<int>.filled(LxCrypto.maxPlainBytes + 1, 0),
+      );
       expect(
         () => LxCrypto.aesEncryptBase64(
           dataB64: big,
@@ -127,17 +132,25 @@ void main() {
 
 AsymmetricKeyPair<PublicKey, PrivateKey> generateKeyPair() {
   final keyGen = RSAKeyGenerator()
-    ..init(ParametersWithRandom(
-      RSAKeyGeneratorParameters(BigInt.from(65537), 2048, 64),
-      SecureRandom('Fortuna')
-        ..seed(KeyParameter(Uint8List.fromList(List<int>.generate(32, (i) => i + 1)))),
-    ));
+    ..init(
+      ParametersWithRandom(
+        RSAKeyGeneratorParameters(BigInt.from(65537), 2048, 64),
+        SecureRandom('Fortuna')..seed(
+          KeyParameter(
+            Uint8List.fromList(List<int>.generate(32, (i) => i + 1)),
+          ),
+        ),
+      ),
+    );
   return keyGen.generateKeyPair();
 }
 
 /// 构造 X.509 SubjectPublicKeyInfo PEM。
 String _x509Pem(RSAPublicKey key) {
-  final pkcs1 = _derSequence([_derInt(key.modulus!), _derInt(key.publicExponent!)]);
+  final pkcs1 = _derSequence([
+    _derInt(key.modulus!),
+    _derInt(key.publicExponent!),
+  ]);
   final algorithm = _derSequence([
     _derOid([0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01]),
     _derNull(),
@@ -148,7 +161,10 @@ String _x509Pem(RSAPublicKey key) {
 
 /// 构造裸 PKCS#1 RSAPublicKey PEM。
 String _pkcs1Pem(RSAPublicKey key) {
-  final pkcs1 = _derSequence([_derInt(key.modulus!), _derInt(key.publicExponent!)]);
+  final pkcs1 = _derSequence([
+    _derInt(key.modulus!),
+    _derInt(key.publicExponent!),
+  ]);
   return '-----BEGIN RSA PUBLIC KEY-----\n${base64.encode(pkcs1)}\n'
       '-----END RSA PUBLIC KEY-----';
 }
@@ -172,7 +188,11 @@ List<int> _derLen(int len) {
   return [0x80 | bytes.length, ...bytes];
 }
 
-List<int> _derTag(int tag, List<int> body) => [tag, ..._derLen(body.length), ...body];
+List<int> _derTag(int tag, List<int> body) => [
+  tag,
+  ..._derLen(body.length),
+  ...body,
+];
 
 List<int> _derSequence(List<List<int>> items) =>
     _derTag(0x30, items.expand((e) => e).toList());
@@ -183,7 +203,8 @@ List<int> _derInt(BigInt value) {
   var hex = value.toRadixString(16);
   if (hex.length.isOdd) hex = '0$hex';
   final bytes = <int>[
-    for (var i = 0; i < hex.length; i += 2) int.parse(hex.substring(i, i + 2), radix: 16),
+    for (var i = 0; i < hex.length; i += 2)
+      int.parse(hex.substring(i, i + 2), radix: 16),
   ];
   // DER INTEGER 为正数时若最高位为 1，需要补 0x00
   if (bytes.isNotEmpty && (bytes.first & 0x80) != 0) bytes.insert(0, 0);

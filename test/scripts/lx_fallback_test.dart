@@ -29,8 +29,11 @@ class _TolerantClient extends http.BaseClient {
 
 Future<bool> _reachable(String host) async {
   try {
-    final s = await Socket.connect(host, 443,
-        timeout: const Duration(seconds: 6));
+    final s = await Socket.connect(
+      host,
+      443,
+      timeout: const Duration(seconds: 6),
+    );
     s.destroy();
     return true;
   } catch (_) {
@@ -94,7 +97,9 @@ void main() {
           }
           first = Map<String, dynamic>.from(list.first as Map);
           // ignore: avoid_print
-          print('[$file] 搜到: ${first['title']} - ${first['artist']} id=${first['id']}');
+          print(
+            '[$file] 搜到: ${first['title']} - ${first['artist']} id=${first['id']}',
+          );
         } finally {
           rt.dispose();
         }

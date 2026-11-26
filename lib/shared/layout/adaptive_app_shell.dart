@@ -210,10 +210,12 @@ class AppSideNavigation extends StatelessWidget {
                 AppSpacing.xl,
               ),
               child: collapsed
-                  ? Icon(
-                      Icons.graphic_eq_rounded,
-                      color: scheme.primary,
-                      size: 22,
+                  ? Center(
+                      child: Icon(
+                        Icons.graphic_eq_rounded,
+                        color: scheme.primary,
+                        size: 22,
+                      ),
                     )
                   : Row(
                       children: [
@@ -290,14 +292,12 @@ class _SideNavItem extends StatelessWidget {
             borderRadius: AppRadius.cardBorder,
           ),
           child: collapsed
-              ? Icon(icon, size: 22, color: iconColor)
+              // 折叠态图标必须居中：AnimatedContainer 在 stretch 下默认靠左。
+              ? Center(child: Icon(icon, size: 22, color: iconColor))
               : Row(
                   children: [
                     TweenAnimationBuilder<double>(
-                      tween: Tween(
-                        begin: selected ? 1 : 0,
-                        end: selected ? 1 : 0,
-                      ),
+                      tween: Tween(begin: 0, end: selected ? 1.0 : 0.0),
                       duration: duration,
                       curve: Curves.easeOutCubic,
                       builder: (context, t, child) => Icon(

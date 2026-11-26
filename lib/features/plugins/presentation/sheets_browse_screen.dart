@@ -28,6 +28,9 @@ class _SheetsBrowseScreenState extends ConsumerState<SheetsBrowseScreen> {
   bool _booting = true;
   Object? _error;
 
+  /// 初始化（找插件 / 拉标签）失败的原因，非空时展示重试入口。
+  Object? _bootError;
+
   @override
   void initState() {
     super.initState();
@@ -35,26 +38,39 @@ class _SheetsBrowseScreenState extends ConsumerState<SheetsBrowseScreen> {
   }
 
   Future<void> _bootstrap() async {
-    final repo = await ref.read(pluginRepositoryProvider.future);
-    final plugin = repo.enabledPlugins
-        .where((p) => p.supportedMethods.contains('getRecommendSheetTags'))
-        .firstOrNull;
-    if (!mounted) return;
-    if (plugin == null) {
-      setState(() => _booting = false);
-      return;
-    }
-    final tags = await ref
-        .read(playerActionsProvider)
-        .fetchRecommendSheetTags(plugin);
-    if (!mounted) return;
     setState(() {
-      _plugin = plugin;
-      _tags = tags;
-      _tag = tags.isNotEmpty ? tags.first : null;
-      _booting = false;
+      _booting = true;
+      _bootError = null;
     });
-    if (_tag != null) await _load();
+    try {
+      final repo = await ref.read(pluginRepositoryProvider.future);
+      final plugin = repo.enabledPlugins
+          .where((p) => p.supportedMethods.contains('getRecommendSheetTags'))
+          .firstOrNull;
+      if (!mounted) return;
+      if (plugin == null) {
+        setState(() => _booting = false);
+        return;
+      }
+      final tags = await ref
+          .read(playerActionsProvider)
+          .fetchRecommendSheetTags(plugin);
+      if (!mounted) return;
+      setState(() {
+        _plugin = plugin;
+        _tags = tags;
+        _tag = tags.isNotEmpty ? tags.first : null;
+        _booting = false;
+      });
+      if (_tag != null) await _load();
+    } catch (e) {
+      // 初始化异常必须收口，否则页面会一直停在转圈状态。
+      if (!mounted) return;
+      setState(() {
+        _booting = false;
+        _bootError = e;
+      });
+    }
   }
 
   Future<void> _load() async {
@@ -89,6 +105,7 @@ class _SheetsBrowseScreenState extends ConsumerState<SheetsBrowseScreen> {
       _sheets.clear();
       _page = 0;
       _end = false;
+      _error = null;
     });
     _load();
   }
@@ -103,6 +120,20 @@ class _SheetsBrowseScreenState extends ConsumerState<SheetsBrowseScreen> {
 
   Widget _buildBody() {
     if (_booting) return const Center(child: CircularProgressIndicator());
+    if (_bootError != null) {
+      return EmptyState(
+        icon: Icons.error_outline_rounded,
+        title: '加载推荐歌单失败',
+        message: '$_bootError',
+        actions: [
+          FilledButton.tonalIcon(
+            onPressed: _bootstrap,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('重试'),
+          ),
+        ],
+      );
+    }
     if (_plugin == null) {
       return const EmptyState(
         icon: Icons.queue_music_rounded,
@@ -132,7 +163,20 @@ class _SheetsBrowseScreenState extends ConsumerState<SheetsBrowseScreen> {
             ),
           ),
         const SizedBox(height: AppSpacing.sm),
-        if (_error != null)
+        if (_error != null && _sheets.isEmpty && !_loading)
+          EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: '加载歌单失败',
+            message: '$_error',
+            actions: [
+              FilledButton.tonalIcon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('重试'),
+              ),
+            ],
+          )
+        else if (_error != null)
           Padding(
             padding: const EdgeInsets.all(AppSpacing.md),
             child: Text('加载失败: $_error'),
@@ -142,7 +186,7 @@ class _SheetsBrowseScreenState extends ConsumerState<SheetsBrowseScreen> {
             padding: EdgeInsets.all(AppSpacing.xl),
             child: Center(child: CircularProgressIndicator()),
           )
-        else if (_sheets.isEmpty && !_loading)
+        else if (_sheets.isEmpty && !_loading && _error == null)
           const EmptyState(
             icon: Icons.queue_music_rounded,
             title: '暂无歌单',

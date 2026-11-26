@@ -30,6 +30,7 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
   Map<String, dynamic>? _selected;
   List<Map<String, dynamic>>? _songs;
   bool _loadingSongs = false;
+  Object? _songsError;
 
   @override
   void initState() {
@@ -42,7 +43,15 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         final plugin = ref.read(toplistPluginProvider);
-        if (plugin != null) _openList(plugin, initial);
+        if (plugin == null) {
+          // 没有可用插件时不能一直停在加载中。
+          setState(() {
+            _loadingSongs = false;
+            _selected = null;
+          });
+          return;
+        }
+        _openList(plugin, initial);
       });
     }
   }
@@ -132,6 +141,23 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     final songs = _songs ?? const [];
+    if (_songsError != null) {
+      return EmptyState(
+        icon: Icons.error_outline_rounded,
+        title: '加载榜单歌曲失败',
+        message: '$_songsError',
+        actions: [
+          FilledButton.tonalIcon(
+            onPressed: () {
+              final selected = _selected;
+              if (selected != null) _openList(plugin, selected);
+            },
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('重试'),
+          ),
+        ],
+      );
+    }
     if (songs.isEmpty) {
       return const EmptyState(
         icon: Icons.queue_music_rounded,
@@ -164,6 +190,7 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
       _selected = item;
       _loadingSongs = true;
       _songs = null;
+      _songsError = null;
     });
     try {
       final rt = await ref.read(pluginRuntimeProvider(plugin.id).future);
@@ -176,13 +203,13 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
         _loadingSongs = false;
       });
     } catch (e) {
+      // 失败时保留错误态与重试入口，不要伪装成「榜单没有歌」。
       if (!mounted) return;
       setState(() {
         _loadingSongs = false;
-        _songs = const [];
+        _songs = null;
+        _songsError = e;
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('加载榜单歌曲失败: $e')));
     }
   }
 

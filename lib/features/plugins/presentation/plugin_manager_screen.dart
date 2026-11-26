@@ -96,6 +96,8 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
         ],
       ),
     );
+    // 对话框关闭后输入框已销毁，及时释放 controller。
+    controller.dispose();
     if (url == null || url.trim().isEmpty) return;
 
     setState(() => _busy = true);
@@ -239,6 +241,7 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
         ],
       ),
     );
+    controller.dispose();
     if (url == null || url.trim().isEmpty) return;
 
     await _run(() async {
@@ -343,11 +346,33 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
         await repo.setDisableResolve(p.id, disabled);
       });
 
-  Future<void> _remove(PluginRecord p) => _runQuiet(() async {
-    final repo = await ref.read(pluginRepositoryProvider.future);
-    await repo.remove(p.id);
-    ref.invalidate(pluginRuntimeProvider(p.id));
-  });
+  /// 删除插件：先二次确认，避免误点导致脚本丢失。
+  Future<void> _remove(PluginRecord p) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除插件'),
+        content: Text('确定删除「${p.platform}」吗？删除后其配置与音源信息将一并移除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _runQuiet(() async {
+      final repo = await ref.read(pluginRepositoryProvider.future);
+      await repo.remove(p.id);
+      ref.invalidate(pluginRuntimeProvider(p.id));
+    });
+  }
 
   Future<void> _ignoreUpdate(PluginRecord p) async {
     final repo = await ref.read(pluginRepositoryProvider.future);

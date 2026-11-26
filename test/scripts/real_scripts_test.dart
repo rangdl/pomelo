@@ -15,8 +15,11 @@ String _read(String name) => File('scripts/$name').readAsStringSync();
 
 Future<bool> _reachable(String host) async {
   try {
-    final socket = await Socket.connect(host, 443,
-        timeout: const Duration(seconds: 6));
+    final socket = await Socket.connect(
+      host,
+      443,
+      timeout: const Duration(seconds: 6),
+    );
     socket.destroy();
     return true;
   } catch (_) {
@@ -57,10 +60,11 @@ void main() {
 
   group('真实脚本 1：星海音乐源-汽水 (MusicFree 插件 qs v1.3.0)', () {
     late PomeloPluginRuntime rt;
+    late PluginLoadResult loaded;
 
     setUpAll(() async {
       rt = await PomeloPluginRuntime.create();
-      await rt.loadPlugin(
+      loaded = await rt.loadPlugin(
         _read('xinghai-music-source-qs-v1.3.0.js'),
         name: 'xinghai-qs',
       );
@@ -69,21 +73,11 @@ void main() {
     tearDownAll(() => rt.dispose());
 
     test('插件加载并暴露元信息', () {
-      final meta = rt.evaluateJson('''
-        (function() {
-          var m = __pluginModule.exports || {};
-          return {
-            platform: m.platform,
-            version: m.version,
-            methods: Object.keys(m).filter(function(k){ return typeof m[k] === 'function'; })
-          };
-        })()
-      ''');
-      expect(meta, isNotNull);
-      expect(meta!['platform'], '星海音乐源-汽水');
-      expect(meta['methods'], contains('search'));
-      expect(meta['methods'], contains('getMediaSource'));
-      expect(meta['methods'], contains('getLyric'));
+      expect(loaded.isLxCompat, isFalse);
+      expect(loaded.platform, '星海音乐源-汽水');
+      expect(loaded.supportedMethods, contains('search'));
+      expect(loaded.supportedMethods, contains('getMediaSource'));
+      expect(loaded.supportedMethods, contains('getLyric'));
     });
 
     test('搜索 -> getMediaSource 取到播放直链', () async {
@@ -122,9 +116,11 @@ void main() {
     tearDownAll(() => rt.dispose());
 
     test('脚本初始化并声明音源', () async {
-      final ok = await rt.waitForInit();
-      expect(ok, isTrue, reason: rt.initError ?? '');
-      expect(rt.sources.keys, containsAll(['wy', 'tx', 'kw', 'kg', 'mg', 'qs']));
+      expect(rt.initialized, isTrue, reason: rt.initError ?? '');
+      expect(
+        rt.sources.keys,
+        containsAll(['wy', 'tx', 'kw', 'kg', 'mg', 'qs']),
+      );
       // ignore: avoid_print
       print('LX 声明音源: ${rt.sources.keys.join(", ")}');
     }, timeout: longTimeout);

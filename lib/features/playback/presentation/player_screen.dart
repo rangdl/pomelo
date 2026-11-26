@@ -113,6 +113,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                         ),
                         child: _LyricScrollView(
                           positionStream: player.positionStream,
+                          onSeek: (d) => player.seek(d),
                         ),
                       ),
                     ),
@@ -308,7 +309,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           ),
           child: Row(
             children: [
-              const Icon(Icons.volume_down_rounded),
+              // 点击喇叭图标静音 / 取消静音。
+              StreamBuilder<double>(
+                stream: volumeStream,
+                initialData: player.volume,
+                builder: (context, snap) {
+                  final vol = (snap.data ?? 100.0).clamp(0.0, 100.0);
+                  return IconButton(
+                    tooltip: vol <= 0 ? '取消静音' : '静音',
+                    onPressed: player.toggleMute,
+                    icon: Icon(
+                      vol <= 0
+                          ? Icons.volume_off_rounded
+                          : vol < 50
+                          ? Icons.volume_down_rounded
+                          : Icons.volume_up_rounded,
+                    ),
+                  );
+                },
+              ),
               Expanded(
                 child: StreamBuilder<double>(
                   stream: volumeStream,
@@ -347,55 +366,124 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               height: math.min(560.0, constraints.maxHeight),
               child: items.isEmpty
                   ? const Center(child: Text('队列为空'))
-                  : ListView.builder(
-                      itemCount: items.length,
-                      itemBuilder: (ctx, i) {
-                        final it = items[i];
-                        final current = i == index;
-                        return ListTile(
-                          selected: current,
-                          leading: current
-                              ? const Icon(Icons.volume_up_rounded)
-                              : Text('${i + 1}'),
-                          title: Text(
-                            '${it['title'] ?? '未知'}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                  : Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xl,
                           ),
-                          subtitle: Text(
-                            '${it['artist'] ?? ''}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Row(
+                            children: [
+                              Text(
+                                '共 ${items.length} 首',
+                                style: Theme.of(ctx).textTheme.bodySmall,
+                              ),
+                              const Spacer(),
+                              TextButton.icon(
+                                onPressed: () {
+                                  ref.read(playQueueProvider.notifier).clear();
+                                  ref.read(audioPlayerProvider).stop();
+                                  Navigator.pop(ctx);
+                                },
+                                icon: const Icon(
+                                  Icons.delete_sweep_rounded,
+                                  size: 18,
+                                ),
+                                label: const Text('清空'),
+                              ),
+                            ],
                           ),
-                          onTap: () {
-                            Navigator.pop(ctx);
-                            ref.read(playQueueProvider.notifier).jumpTo(i);
-                            ref.read(playerActionsProvider).safePlay(it);
-                          },
-                          trailing: IconButton(
-                            tooltip: '从队列移除',
-                            icon: const Icon(Icons.close_rounded, size: 20),
-                            onPressed: () {
-                              final wasCurrent = i == index;
-                              final newIndex = ref
-                                  .read(playQueueProvider.notifier)
-                                  .removeAt(i);
-                              final updated = ref.read(playQueueProvider);
-                              if (updated.isEmpty) {
-                                Navigator.pop(ctx);
-                                ref.read(audioPlayerProvider).stop();
-                                return;
-                              }
-                              if (wasCurrent) {
-                                Navigator.pop(ctx);
-                                ref
-                                    .read(playerActionsProvider)
-                                    .safePlay(updated[newIndex]);
-                              }
+                        ),
+                        Expanded(
+                          child: ReorderableListView.builder(
+                            itemCount: items.length,
+                            // 列表头的 to 已是「移除后」的位置。
+                            onReorderItem: (from, to) {
+                              final queue = ref.read(
+                                playQueueProvider.notifier,
+                              );
+                              queue.move(from, to);
+                              ref
+                                  .read(audioPlayerProvider)
+                                  .updateQueueIndex(queue.index);
+                            },
+                            itemBuilder: (ctx, i) {
+                              final it = items[i];
+                              final current = i == index;
+                              return ListTile(
+                                key: ValueKey(
+                                  '${it['_pluginId'] ?? ''}'
+                                  ':${it['id'] ?? it['title'] ?? ''}:$i',
+                                ),
+                                selected: current,
+                                leading: current
+                                    ? const Icon(Icons.volume_up_rounded)
+                                    : Text('${i + 1}'),
+                                title: Text(
+                                  '${it['title'] ?? '未知'}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  '${it['artist'] ?? ''}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                onTap: () {
+                                  Navigator.pop(ctx);
+                                  ref
+                                      .read(playQueueProvider.notifier)
+                                      .jumpTo(i);
+                                  ref.read(playerActionsProvider).safePlay(it);
+                                },
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      tooltip: '从队列移除',
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        final wasCurrent = i == index;
+                                        final newIndex = ref
+                                            .read(playQueueProvider.notifier)
+                                            .removeAt(i);
+                                        final updated = ref.read(
+                                          playQueueProvider,
+                                        );
+                                        if (updated.isEmpty) {
+                                          Navigator.pop(ctx);
+                                          ref.read(audioPlayerProvider).stop();
+                                          return;
+                                        }
+                                        if (wasCurrent) {
+                                          Navigator.pop(ctx);
+                                          ref
+                                              .read(playerActionsProvider)
+                                              .safePlay(updated[newIndex]);
+                                        }
+                                      },
+                                    ),
+                                    // 桌面端用鼠标也能直接拖动排序。
+                                    ReorderableDragStartListener(
+                                      index: i,
+                                      child: const Padding(
+                                        padding: EdgeInsets.only(left: 8),
+                                        child: Icon(
+                                          Icons.drag_handle_rounded,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
                             },
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
             );
           },
@@ -427,7 +515,7 @@ class _CoverArt extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: radius,
-        child: artwork.isEmpty
+        child: !isRemoteHttpUrl(artwork)
             ? const _CoverPlaceholder()
             : Image.network(
                 cachedArtworkUrl(artwork),
@@ -478,7 +566,7 @@ class _BlurredBackdrop extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (artwork.isEmpty)
+        if (!isRemoteHttpUrl(artwork))
           DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -494,6 +582,8 @@ class _BlurredBackdrop extends StatelessWidget {
             child: Image.network(
               cachedArtworkUrl(artwork),
               fit: BoxFit.cover,
+              // 背景被 40px 模糊，没必要按原图解码。
+              cacheWidth: 240,
               errorBuilder: (context, error, stack) =>
                   const ColoredBox(color: Colors.black),
             ),
@@ -506,9 +596,12 @@ class _BlurredBackdrop extends StatelessWidget {
 
 /// 歌词滚动视图:整首歌词连续滚动,当前行始终停在中间并放大高亮。
 class _LyricScrollView extends ConsumerStatefulWidget {
-  const _LyricScrollView({required this.positionStream});
+  const _LyricScrollView({required this.positionStream, required this.onSeek});
 
   final Stream<Duration> positionStream;
+
+  /// 点击某行歌词时跳转到该行时间点（桌面端无手势拖动也能定位）。
+  final void Function(Duration) onSeek;
 
   @override
   ConsumerState<_LyricScrollView> createState() => _LyricScrollViewState();
@@ -575,7 +668,9 @@ class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
           ),
         ),
       ),
-      error: (e, s) => const SizedBox.shrink(),
+      error: (e, s) => const Center(
+        child: Text('歌词加载失败', style: TextStyle(color: Colors.white38)),
+      ),
       data: (lines) {
         if (lines.isEmpty) {
           return const Center(
@@ -616,11 +711,22 @@ class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
                                 : FontWeight.w400,
                             color: isActive ? Colors.white : Colors.white54,
                           ),
-                          child: Text(
-                            lines[i].text.isEmpty ? '♪' : lines[i].text,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
+                          child: InkWell(
+                            // 点击歌词跳转到对应时间。
+                            onTap: () => widget.onSeek(lines[i].time),
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              child: Text(
+                                lines[i].text.isEmpty ? '♪' : lines[i].text,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
                           ),
                         ),
                       );

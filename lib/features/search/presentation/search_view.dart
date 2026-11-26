@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
+import '../../playback/presentation/playback_providers.dart';
 import '../../plugins/presentation/plugin_providers.dart';
 import '../../plugins/presentation/track_more.dart';
 import 'search_providers.dart';
@@ -27,6 +30,9 @@ class _SearchViewState extends ConsumerState<SearchView> {
   int _page = 1;
   bool _loadingMore = false;
 
+  /// 输入防抖：停止输入 450ms 后再真正发起搜索。
+  Timer? _debounce;
+
   static const _types = <(String, String)>[
     ('music', '单曲'),
     ('sheet', '歌单'),
@@ -39,11 +45,24 @@ class _SearchViewState extends ConsumerState<SearchView> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _search() async {
+  /// 输入变化：防抖后自动搜索；清空时立即清空结果。
+  void _onChanged(String text) {
+    setState(() {});
+    _debounce?.cancel();
+    final q = text.trim();
+    if (q.isEmpty) return;
+    _debounce = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted || _controller.text.trim() != q) return;
+      _search(unfocus: false);
+    });
+  }
+
+  Future<void> _search({bool unfocus = true}) async {
     final q = _controller.text.trim();
     if (q.isEmpty) return;
     final plugins = ref.read(searchablePluginsProvider);
@@ -53,11 +72,12 @@ class _SearchViewState extends ConsumerState<SearchView> {
       (p) => p.id == selectedId,
       orElse: () => plugins.first,
     );
-    FocusScope.of(context).unfocus();
+    if (unfocus) FocusScope.of(context).unfocus();
     setState(() {
       _query = q;
       _page = 1;
     });
+    unawaited(ref.read(searchHistoryProvider.notifier).add(q));
     await ref
         .read(playerActionsProvider)
         .search(plugin, q, page: 1, type: _type);
@@ -164,13 +184,13 @@ class _SearchViewState extends ConsumerState<SearchView> {
                           IconButton(
                             tooltip: '搜索',
                             icon: const Icon(Icons.arrow_forward_rounded),
-                            onPressed: _search,
+                            onPressed: () => _search(),
                           ),
                         ],
                       ),
               ),
               textInputAction: TextInputAction.search,
-              onChanged: (_) => setState(() {}),
+              onChanged: _onChanged,
               onSubmitted: (_) => _search(),
             ),
           ),
@@ -204,6 +224,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
               ],
             ),
           ),
+          if (_query.isEmpty) _historyBar(),
           Expanded(
             child: results.when(
               loading: () => const SizedBox.shrink(),
@@ -213,7 +234,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
                 message: '$e',
                 actions: [
                   FilledButton.tonalIcon(
-                    onPressed: _search,
+                    onPressed: () => _search(),
                     icon: const Icon(Icons.refresh_rounded),
                     label: const Text('重试'),
                   ),
@@ -251,26 +272,107 @@ class _SearchViewState extends ConsumerState<SearchView> {
     );
   }
 
+  /// 最近搜索（点击直接搜；可单条删除或全部清空）。
+  Widget _historyBar() {
+    final history = ref.watch(searchHistoryProvider);
+    if (history.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.page,
+        AppSpacing.xs,
+        AppSpacing.page,
+        0,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 6, right: AppSpacing.xs),
+            child: Icon(
+              Icons.history_rounded,
+              size: 16,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Expanded(
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 2,
+              children: [
+                for (final q in history)
+                  InputChip(
+                    label: Text(q, style: const TextStyle(fontSize: 12)),
+                    visualDensity: VisualDensity.compact,
+                    onPressed: () {
+                      _controller.text = q;
+                      _search();
+                    },
+                    onDeleted: () =>
+                        ref.read(searchHistoryProvider.notifier).remove(q),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: '清空搜索历史',
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+            onPressed: () => ref.read(searchHistoryProvider.notifier).clear(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 滚动接近底部时自动加载下一页（桌面端滚轮也能连续翻）。
+  Widget _withAutoLoad(Widget list) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.extentAfter < 400 &&
+            !_loadingMore &&
+            ref.read(playerActionsProvider).searchHasMore) {
+          _loadMore();
+        }
+        return false;
+      },
+      child: list,
+    );
+  }
+
   /// 单曲结果：分组卡片 + 点击播放。
   Widget _trackResults(List<Map<String, dynamic>> items) {
-    return ListView(
-      padding: AppSpacing.pagePadding,
-      children: [
-        GroupCard(
-          dividerIndent: AppSpacing.dividerIndentTrack,
-          children: [
-            for (final (i, item) in items.indexed)
-              TrackTile(
-                item: item,
-                trailing: TrackMoreButton(item: item),
-                onTap: () => _play(items, i),
-              ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        _loadMoreFooter(),
-      ],
+    final playing = ref.watch(nowPlayingProvider);
+    return _withAutoLoad(
+      ListView(
+        padding: AppSpacing.pagePadding,
+        children: [
+          GroupCard(
+            dividerIndent: AppSpacing.dividerIndentTrack,
+            children: [
+              for (final (i, item) in items.indexed)
+                TrackTile(
+                  item: item,
+                  isPlaying: _isSameTrack(item, playing),
+                  trailing: TrackMoreButton(item: item),
+                  onTap: () => _play(items, i),
+                ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          _loadMoreFooter(),
+        ],
+      ),
     );
+  }
+
+  /// 判断结果项是否为当前播放曲目。
+  bool _isSameTrack(Map<String, dynamic> item, Map<String, dynamic>? playing) {
+    if (playing == null) return false;
+    if ('${item['_pluginId'] ?? ''}' != '${playing['_pluginId'] ?? ''}') {
+      return false;
+    }
+    final a = '${item['id'] ?? item['title'] ?? ''}';
+    return a.isNotEmpty && a == '${playing['id'] ?? playing['title'] ?? ''}';
   }
 
   /// 歌单/专辑/歌手结果：带封面的行,点击进入详情页。

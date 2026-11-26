@@ -22,11 +22,20 @@ import 'shared/settings/theme_color.dart';
 import 'shared/settings/theme_mode.dart';
 
 const _defaultWindowSize = Size(1280, 720);
-const _minimumWindowSize = Size(900, 600);
+// 最小窗口不再高于 expanded 断点（840），保证小窗口下也能走到紧凑布局。
+const _minimumWindowSize = Size(720, 480);
 const _windowStateFileName = 'window_state.json';
+
+/// 单实例锁文件句柄：持有到进程退出，由系统释放。
+RandomAccessFile? _instanceLock;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // 同一时间只允许一个播放器实例，避免两个进程抢音频设备与缓存文件。
+  if (!await _acquireSingleInstance()) {
+    debugPrint('[pomelo] 已有一个实例在运行，退出本次启动');
+    exit(0);
+  }
   MediaKit.ensureInitialized();
   if (_supportsWindowManager) {
     await _setUpWindow();
@@ -58,6 +67,16 @@ Future<void> main() async {
     ),
   );
 
+  // 恢复上次的音量与播放速度。
+  final savedVolume = settingsStore.read<num>('volume')?.toDouble();
+  if (savedVolume != null) {
+    await audioHandler.setVolume(savedVolume.clamp(0, 100).toDouble());
+  }
+  final savedSpeed = settingsStore.read<num>('speed')?.toDouble();
+  if (savedSpeed != null && savedSpeed != 1.0) {
+    await audioHandler.setSpeed(savedSpeed);
+  }
+
   runApp(
     ProviderScope(
       overrides: [
@@ -83,6 +102,23 @@ Future<void> main() async {
 
 bool get _supportsWindowManager =>
     Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+/// 获取单实例文件锁；已被其它实例占用时返回 false。
+Future<bool> _acquireSingleInstance() async {
+  if (_instanceLock != null) return true;
+  try {
+    final dir = await getApplicationSupportDirectory();
+    final file = File('${dir.path}${Platform.pathSeparator}pomelo.lock');
+    final handle = await file.open(mode: FileMode.write);
+    await handle.lock(FileLock.exclusive);
+    // 不关闭句柄：锁随进程存活，退出时由操作系统释放。
+    _instanceLock = handle;
+    return true;
+  } catch (_) {
+    // 拿不到锁说明已有实例在运行；其它异常（平台不支持文件锁）不应阻止启动。
+    return false;
+  }
+}
 
 /// 恢复上次的窗口位置/大小；没有记录时居中显示，并在后续移动、缩放时保存窗口状态。
 Future<void> _setUpWindow() async {
@@ -129,9 +165,39 @@ Future<Rect?> _loadWindowBounds() async {
         bounds.height < _minimumWindowSize.height) {
       return null;
     }
+    // 上次可能在已拔掉的副屏上：位置完全落在可见范围外就丢弃，改为居中。
+    if (!_isBoundsReachable(bounds)) return null;
     return bounds;
   } catch (_) {
     return null;
+  }
+}
+
+/// 粗略判断窗口是否还「够得着」。
+///
+/// Flutter 不提供显示器坐标，只能拿到各屏尺寸；这里用「所有屏宽度之和」
+/// 作为虚拟桌面宽度、最大高度作为高度，避免把副屏上的正常位置误判为越界，
+/// 同时能拦掉「拔掉副屏后窗口跑到 4000px 之外」的情况。
+bool _isBoundsReachable(Rect bounds) {
+  try {
+    final displays = WidgetsBinding.instance.platformDispatcher.displays;
+    if (displays.isEmpty) return true;
+    var totalWidth = 0.0;
+    var maxHeight = 0.0;
+    for (final d in displays) {
+      final ratio = d.devicePixelRatio <= 0 ? 1.0 : d.devicePixelRatio;
+      totalWidth += d.size.width / ratio;
+      final h = d.size.height / ratio;
+      if (h > maxHeight) maxHeight = h;
+    }
+    // 标题栏至少留一点在桌面范围内，用户才拖得回来。
+    final titleBarX = bounds.left + bounds.width / 2;
+    return titleBarX > 0 &&
+        titleBarX < totalWidth &&
+        bounds.top > -10 &&
+        bounds.top < maxHeight - 40;
+  } catch (_) {
+    return true;
   }
 }
 

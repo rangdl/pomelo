@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../shared/storage/json_file_store.dart';
 import '../domain/plugin_record.dart';
 import '../runtime/pomelo_plugin_runtime.dart';
 
@@ -25,9 +26,9 @@ class PluginUpdateResult {
 
 /// 基于文件系统的插件仓库（持久化 plugins.json）：`<appSupport>/plugins/plugins.json`。
 class PluginRepository {
-  PluginRepository._(this._file);
+  PluginRepository._(this._store);
 
-  final File _file;
+  final JsonFileStore _store;
   final List<PluginRecord> _plugins = [];
 
   /// 本次启动是否因插件体系升级清空过旧记录（用于提示用户重新导入）。
@@ -39,16 +40,17 @@ class PluginRepository {
     final dir = await getApplicationSupportDirectory();
     final pluginDir = Directory('${dir.path}/plugins');
     if (!await pluginDir.exists()) await pluginDir.create(recursive: true);
-    final store = PluginRepository._(File('${pluginDir.path}/plugins.json'));
+    final file = File('${pluginDir.path}/plugins.json');
+    final store = PluginRepository._(JsonFileStore(file));
     await store._load();
     return store;
   }
 
   Future<void> _load() async {
-    if (!await _file.exists()) return;
+    final raw = await _store.read();
+    if (raw == null) return;
     try {
-      final raw = await _file.readAsString();
-      final list = jsonDecode(raw) as List;
+      final list = raw as List;
       final entries = list.cast<Map<String, dynamic>>();
       // 插件体系已升级：旧记录（带 kind 字段）不再兼容，清空后要求重新导入。
       if (entries.any((e) => e.containsKey('kind'))) {
@@ -68,9 +70,7 @@ class PluginRepository {
   }
 
   Future<void> _save() async {
-    await _file.writeAsString(
-      jsonEncode(_plugins.map((e) => e.toJson()).toList()),
-    );
+    await _store.write(_plugins.map((e) => e.toJson()).toList());
   }
 
   /// 安装插件（自有格式与 LX 脚本统一入口，格式自动识别）。
@@ -151,7 +151,7 @@ class PluginRepository {
     try {
       return await runtime.loadPlugin(source, name: name);
     } finally {
-      runtime.dispose();
+      await runtime.dispose();
     }
   }
 

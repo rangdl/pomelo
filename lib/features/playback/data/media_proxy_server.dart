@@ -1,17 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// 是否为可直接下载的远端 http(s) 地址。
+///
+/// 插件有时把封面写成 `data:image/svg+xml;base64,…`（占位图）或本地路径，
+/// 这类地址既不能交给代理下载，也不能交给 `Image.network`，需调用方单独处理。
+bool isRemoteHttpUrl(String url) =>
+    url.startsWith('http://') || url.startsWith('https://');
+
 /// 把远端封面地址换成「本地代理地址」。
 ///
 /// 本地服务会下载并落盘缓存，避免每次列表滚动都重新请求远端；
-/// 本地服务未启动（如单测）时原样返回远端地址。
+/// 非 http(s) 地址与本地服务未启动时（如单测）原样返回。
 String cachedArtworkUrl(String url) {
-  if (url.isEmpty) return url;
+  if (!isRemoteHttpUrl(url)) return url;
   return MediaProxyServer.instance?.coverUrl(url) ?? url;
 }
 
@@ -116,6 +124,14 @@ class MediaLinkCache {
 
   int get count => _items.length;
 
+  /// 淘汰单条链接（播放失败时调用，避免反复命中同一个失效地址）。
+  void remove(String key) {
+    if (_items.remove(key) == null) return;
+    _dirty = true;
+    _writeTimer?.cancel();
+    _writeTimer = Timer(const Duration(seconds: 2), _flush);
+  }
+
   /// 清空链接缓存（内存 + 磁盘）。
   Future<void> clear() async {
     _items.clear();
@@ -151,13 +167,17 @@ class MediaLinkCache {
 
 /// 一个登记在本地服务里的远端资源。
 class _RemoteEntry {
-  const _RemoteEntry({required this.url, required this.cacheId, this.headers});
+  _RemoteEntry({required this.url, required this.cacheId, this.headers})
+    : lastUsed = DateTime.now();
 
   final String url;
 
   /// 磁盘缓存文件名（音频按曲目稳定、封面按远端地址稳定）。
   final String cacheId;
   final Map<String, String>? headers;
+
+  /// 最近一次被请求的时间（LRU 淘汰用）。
+  DateTime lastUsed;
 }
 
 /// 本地媒体代理服务。
@@ -168,14 +188,33 @@ class _RemoteEntry {
 ///   - 支持 Range 断点/拖动，保证 seek 可用；
 ///   - 封面下载并落盘缓存。
 class MediaProxyServer {
-  MediaProxyServer._(this._server, this._root);
+  MediaProxyServer._(this._server, this._root, this._secret);
 
   /// 由 main() 启动后注入；未启动时为 null（回退到直连远端地址）。
   static MediaProxyServer? instance;
 
+  /// 每个进程随机生成的路径口令。
+  ///
+  /// 服务只监听 127.0.0.1，但本机其它程序仍可访问；URL 里带上不可猜的随机段
+  /// 后，外部程序拿不到口令就无法借用代理（也无法读取缓存）。
+  final String _secret;
+
   final HttpServer _server;
   final Directory _root;
   final Map<String, _RemoteEntry> _entries = {};
+
+  /// 登记条目的存活时间：超过后不再复用，避免长时间运行后无限增长。
+  static const Duration _entryTtl = Duration(hours: 6);
+
+  /// 内存里最多保留的登记条目数。
+  static const int _maxEntries = 256;
+
+  /// 边播边存少于该字节数视为不可用（避免把错误页落盘当音频）。
+  static const int _minAudioBytes = 1024;
+  static const int _minCoverBytes = 128;
+
+  /// 上游「多久没数据」算超时，避免连接挂在半死不活的 CDN 上。
+  static const Duration _readTimeout = Duration(seconds: 20);
 
   String get baseUrl => 'http://127.0.0.1:${_server.port}';
 
@@ -189,11 +228,11 @@ class MediaProxyServer {
 
   /// 新建 HttpClient。
   ///
-  /// 部分音源封面/音频走 CDN，证书与请求域名不匹配（Hostname mismatch）；
-  /// 这里统一放行，否则会频繁报 CERTIFICATE_VERIFY_FAILED 导致取不到资源。
+  /// 不再无条件放行非法证书：那会让任何中间人都能冒充音源。个别 CDN 证书
+  /// 主机名不匹配时的音源问题，交由插件返回正确的直链/请求头解决。
   HttpClient _newHttpClient({int timeoutSeconds = 15}) => HttpClient()
     ..connectionTimeout = Duration(seconds: timeoutSeconds)
-    ..badCertificateCallback = (cert, host, port) => true;
+    ..idleTimeout = const Duration(seconds: 15);
 
   /// 当前缓存占用（音频 / 封面）。
   Future<MediaCacheUsage> usage() async {
@@ -234,8 +273,20 @@ class MediaProxyServer {
     }
   }
 
+  Future<void>? _enforceFuture;
+
   /// 超过上限时按「最久未使用」删除缓存，直到降到上限的 90%。
-  Future<void> enforceLimit() async {
+  ///
+  /// 单飞：并发下载会同时触发清理，重复遍历+删除既慢又可能互相干扰。
+  Future<void> enforceLimit() {
+    final running = _enforceFuture;
+    if (running != null) return running;
+    final future = _doEnforceLimit().whenComplete(() => _enforceFuture = null);
+    _enforceFuture = future;
+    return future;
+  }
+
+  Future<void> _doEnforceLimit() async {
     if (maxCacheBytes <= 0) return;
     try {
       final infos = <({File file, int length, DateTime modified})>[];
@@ -277,7 +328,12 @@ class MediaProxyServer {
       final root = Directory('${dir.path}${Platform.pathSeparator}media_cache');
       await root.create(recursive: true);
       final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      final proxy = MediaProxyServer._(server, root);
+      // 每次启动重新生成口令：旧链接立即失效，外部程序无法长期借用代理。
+      final random = Random.secure();
+      final secret = base64Url
+          .encode(List<int>.generate(18, (_) => random.nextInt(256)))
+          .replaceAll('=', '');
+      final proxy = MediaProxyServer._(server, root, secret);
       server.listen(
         proxy._handle,
         onError: (Object error) => debugPrint('[pomelo] 媒体服务异常: $error'),
@@ -304,19 +360,50 @@ class MediaProxyServer {
       headers: headers,
       cacheId: _hash('audio:$cacheKey'),
     );
-    return '$baseUrl/stream/$token';
+    _pruneEntries();
+    return '$baseUrl/$_secret/stream/$token';
   }
 
   /// 登记封面并返回本地地址（同一远端地址复用同一缓存文件）。
   String coverUrl(String remoteUrl) {
     final token = _hash('cover:$remoteUrl');
     _entries[token] = _RemoteEntry(url: remoteUrl, cacheId: token);
-    return '$baseUrl/cover/$token';
+    _pruneEntries();
+    return '$baseUrl/$_secret/cover/$token';
+  }
+
+  /// 清理过期 / 超量的登记条目（Map 按插入顺序，头部即最久未用）。
+  void _pruneEntries() {
+    if (_entries.isEmpty) return;
+    final now = DateTime.now();
+    _entries.removeWhere(
+      (_, entry) => now.difference(entry.lastUsed) > _entryTtl,
+    );
+    while (_entries.length > _maxEntries) {
+      _entries.remove(_entries.keys.first);
+    }
+  }
+
+  /// 清掉某首歌的音频缓存（播放失败重试前调用）。
+  ///
+  /// 上次边播边存可能因中断留下残片；不清掉会一直读到坏文件。
+  Future<void> evictAudio(String cacheKey) async {
+    final file = File(
+      '${_audioDir.path}${Platform.pathSeparator}${_hash('audio:$cacheKey')}'
+      '.audio',
+    );
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (e) {
+      debugPrint('[pomelo] 清除音频缓存失败: $e');
+    }
   }
 
   /// 预取封面到磁盘（失败静默）。
+  ///
+  /// 只处理 http(s)：插件可能返回 `data:` 内联图片或本地路径，无法预取。
   Future<void> prefetchCover(String remoteUrl) async {
-    if (remoteUrl.isEmpty) return;
+    if (!isRemoteHttpUrl(remoteUrl)) return;
     final file = _coverFile(_hash('cover:$remoteUrl'));
     if (await _hasContent(file)) return;
     final client = _newHttpClient(timeoutSeconds: 10);
@@ -341,19 +428,30 @@ class MediaProxyServer {
 
   Future<void> _handle(HttpRequest request) async {
     try {
+      if (request.method != 'GET') {
+        request.response.statusCode = HttpStatus.methodNotAllowed;
+        await request.response.close();
+        return;
+      }
       final segments = request.uri.pathSegments;
-      if (segments.length < 2) {
+      // 首段必须是随机口令，否则视为未授权访问（用 404 不泄露服务存在）。
+      if (segments.length < 3 || segments[0] != _secret) {
         _respondNotFound(request);
         return;
       }
-      final entry = _entries[segments[1]];
+      final token = segments[2];
+      final entry = _entries[token];
       if (entry == null) {
         _respondNotFound(request);
         return;
       }
-      if (segments[0] == 'stream') {
+      // 命中即更新最近使用时间，并挪到 Map 末尾（LRU 顺序）。
+      entry.lastUsed = DateTime.now();
+      _entries.remove(token);
+      _entries[token] = entry;
+      if (segments[1] == 'stream') {
         await _serveAudio(request, entry);
-      } else if (segments[0] == 'cover') {
+      } else if (segments[1] == 'cover') {
         await _serveCover(request, entry);
       } else {
         _respondNotFound(request);
@@ -374,7 +472,7 @@ class MediaProxyServer {
       '${_root.path}${Platform.pathSeparator}audio'
       '${Platform.pathSeparator}${entry.cacheId}.audio',
     );
-    if (await _hasContent(file)) {
+    if (await _hasContent(file, minBytes: _minAudioBytes)) {
       await _serveFile(request, file, contentType: _guessAudioType(entry.url));
       return;
     }
@@ -418,9 +516,14 @@ class MediaProxyServer {
       final length = upstream.contentLength;
       if (length >= 0) response.headers.contentLength = length;
 
-      // 只有「完整 200 且长度已知」才落盘；拖动产生的区间请求仅透传。
+      // 只有「完整 200、长度已知且看起来确实是音频」才落盘；
+      // 拖动产生的区间请求、错误页（text/html 等）一律只透传不缓存。
+      final contentType = upstream.headers.contentType?.mimeType ?? '';
       final cacheable =
-          fullFromStart && upstream.statusCode == HttpStatus.ok && length >= 0;
+          fullFromStart &&
+          upstream.statusCode == HttpStatus.ok &&
+          length >= _minAudioBytes &&
+          _looksLikeAudio(contentType);
       if (cacheable) {
         await cacheFile.parent.create(recursive: true);
         // 每次请求用独立的 .part，避免并发写同一临时文件。
@@ -430,21 +533,40 @@ class MediaProxyServer {
         sink = part.openWrite();
       }
 
-      await for (final chunk in upstream) {
+      // 客户端中途断开（拖动、切歌）时，尽快停止拉取上游。
+      var clientGone = false;
+      unawaited(
+        response.done.catchError((Object _) {
+          clientGone = true;
+        }),
+      );
+      var received = 0;
+      await for (final chunk in upstream.timeout(_readTimeout)) {
+        if (clientGone) break;
+        received += chunk.length;
         response.add(chunk);
         sink?.add(chunk);
       }
       await sink?.flush();
       await sink?.close();
       sink = null;
-      await response.close();
+      if (!clientGone) await response.close();
 
       if (part != null) {
-        if (await cacheFile.exists()) {
+        final usable = !clientGone && received >= _minAudioBytes;
+        if (!usable) {
+          // 传输不完整：丢弃残片，避免下次播放读到半个文件。
+          try {
+            await part.delete();
+          } catch (_) {
+            // 忽略。
+          }
+        } else if (await cacheFile.exists()) {
           await part.delete();
         } else {
           await part.rename(cacheFile.path);
         }
+        part = null;
         // 新增缓存后检查上限，超了就按最久未使用淘汰。
         unawaited(enforceLimit());
       }
@@ -474,7 +596,7 @@ class MediaProxyServer {
 
   Future<void> _serveCover(HttpRequest request, _RemoteEntry entry) async {
     final file = _coverFile(entry.cacheId);
-    if (await _hasContent(file)) {
+    if (await _hasContent(file, minBytes: _minCoverBytes)) {
       await _serveFile(request, file, contentType: _guessImageType(entry.url));
       return;
     }
@@ -488,10 +610,17 @@ class MediaProxyServer {
         _respondNotFound(request);
         return;
       }
-      final bytes = await consolidateHttpClientResponseBytes(upstream);
-      await file.parent.create(recursive: true);
-      await file.writeAsBytes(bytes, flush: true);
-      unawaited(enforceLimit());
+      // 逐块读取以便对「长时间没有数据」做超时判断。
+      final bytes = await upstream
+          .timeout(_readTimeout)
+          .fold<List<int>>(<int>[], (acc, chunk) => acc..addAll(chunk));
+      final contentType = upstream.headers.contentType?.mimeType ?? '';
+      // 只缓存「看着像图片且不太小」的响应，防止把错误页写成封面。
+      if (bytes.length >= _minCoverBytes && contentType.startsWith('image/')) {
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytes, flush: true);
+        unawaited(enforceLimit());
+      }
 
       final response = request.response;
       response.statusCode = HttpStatus.ok;
@@ -499,10 +628,12 @@ class MediaProxyServer {
         HttpHeaders.contentTypeHeader,
         upstream.headers.contentType?.toString() ?? _guessImageType(entry.url),
       );
-      response.headers.set(
-        HttpHeaders.cacheControlHeader,
-        'public, max-age=86400',
-      );
+      if (bytes.length >= _minCoverBytes) {
+        response.headers.set(
+          HttpHeaders.cacheControlHeader,
+          'public, max-age=86400',
+        );
+      }
       response.headers.contentLength = bytes.length;
       response.add(bytes);
       await response.close();
@@ -578,12 +709,25 @@ class MediaProxyServer {
     });
   }
 
-  Future<bool> _hasContent(File file) async {
+  Future<bool> _hasContent(File file, {int minBytes = 1}) async {
     try {
-      return await file.exists() && await file.length() > 0;
+      return await file.exists() && await file.length() >= minBytes;
     } catch (_) {
       return false;
     }
+  }
+
+  /// 上游响应是否可能是音频（用于决定要不要落盘）。
+  ///
+  /// 有些 CDN 会返回 application/octet-stream，也一并放行；html/json 等错误页
+  /// 则明确排除。
+  bool _looksLikeAudio(String mimeType) {
+    if (mimeType.isEmpty) return true;
+    final lower = mimeType.toLowerCase();
+    return lower.startsWith('audio/') ||
+        lower.startsWith('video/') ||
+        lower == 'application/octet-stream' ||
+        lower == 'binary/octet-stream';
   }
 
   void _respondNotFound(HttpRequest request) {

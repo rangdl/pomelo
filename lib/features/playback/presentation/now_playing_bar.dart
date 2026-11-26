@@ -5,7 +5,6 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../application/player_actions.dart';
-import '../data/media_proxy_server.dart';
 import 'playback_providers.dart';
 import 'player_sheet.dart';
 
@@ -83,27 +82,11 @@ class NowPlayingBar extends ConsumerWidget {
                         child: SizedBox(
                           width: 36,
                           height: 36,
-                          child: artwork.isEmpty
-                              ? ColoredBox(
-                                  color: scheme.surfaceContainerHighest,
-                                  child: Icon(
-                                    Icons.music_note_rounded,
-                                    size: 20,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                )
-                              : Image.network(
-                                  cachedArtworkUrl(artwork),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => ColoredBox(
-                                    color: scheme.surfaceContainerHighest,
-                                    child: Icon(
-                                      Icons.music_note_rounded,
-                                      size: 20,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ),
+                          child: CoverImage(
+                            url: artwork,
+                            decodeWidth: 36,
+                            iconSize: 20,
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),

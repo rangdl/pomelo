@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:quickjs_engine/quickjs_engine.dart';
 
@@ -104,6 +105,18 @@ class LxCompat {
         key: '${payload['key'] ?? ''}',
       );
     });
+
+    // 随机数用 Dart 的密码学安全随机源，避免脚本侧 Math.random 的可预测性
+    // （部分音源的签名 nonce 依赖它）。
+    js.onMessage('lxRandomBytes', (dynamic args) {
+      final payload = _asMap(args);
+      final size = ((payload['size'] as num?)?.toInt() ?? 16).clamp(1, 4096);
+      final bytes = List<int>.generate(
+        size,
+        (_) => Random.secure().nextInt(256),
+      );
+      return base64Encode(bytes);
+    });
   }
 
   static Map<String, dynamic> _asMap(dynamic args) {
@@ -126,6 +139,7 @@ class LxCompat {
     String description = '',
     String homepage = '',
     String rawScript = '',
+    Map<String, dynamic> userVariables = const {},
   }) =>
       '''
 var __pluginModule = { exports: {} };
@@ -141,7 +155,7 @@ var __pluginConsole = {
 };
 var __pluginEnv = {
   appVersion: '0.1.0',
-  userVariables: {},
+  userVariables: ${jsonEncode(userVariables)},
   os: 'android',
   getUserVariables: function() { return __pluginEnv.userVariables || {}; }
 };
@@ -271,9 +285,9 @@ __lx.utils = {
       return __lx_b64_to_bytes(outB64);
     },
     randomBytes: function(size) {
-      var out = new Uint8Array(size);
-      for (var i = 0; i < size; i++) out[i] = Math.floor(Math.random() * 256);
-      return out;
+      // 交给宿主的密码学安全随机源（脚本侧 Math.random 可预测）。
+      var b64 = sendMessage('lxRandomBytes', JSON.stringify({ size: size }));
+      return __lx_b64_to_bytes(b64);
     }
   },
   buffer: {

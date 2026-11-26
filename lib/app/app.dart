@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../shared/app_keys.dart';
+import '../../shared/layout/player_shortcuts.dart';
 import '../../shared/settings/theme_color.dart';
 import '../../shared/settings/theme_mode.dart';
 import '../features/playback/presentation/playback_providers.dart';
@@ -24,6 +25,13 @@ class PomeloApp extends ConsumerWidget {
       darkTheme: pomeloTheme(Brightness.dark, seedColor),
       themeMode: ref.watch(themeModeOptionProvider.select((m) => m.themeMode)),
       routerConfig: ref.watch(appRouterProvider),
+      // 桌面端全局快捷键（空格播放/暂停、方向键快进快退等）。
+      // 字号缩放限制在 1.0–1.3：桌面系统放大字体时不至于把列表行撑破。
+      builder: (context, child) => MediaQuery.withClampedTextScaling(
+        minScaleFactor: 1.0,
+        maxScaleFactor: 1.3,
+        child: PlayerShortcuts(child: child ?? const SizedBox.shrink()),
+      ),
     );
   }
 }

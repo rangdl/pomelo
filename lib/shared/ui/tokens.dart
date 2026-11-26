@@ -76,10 +76,10 @@ abstract final class AppText {
   static const double rowTitle = 14;
 
   /// 列表行副标题。
-  static const double rowSubtitle = 11.5;
+  static const double rowSubtitle = 12;
 
-  /// 紧凑文字:时间、角标、底栏标签。
-  static const double compact = 10.5;
+  /// 紧凑文字:时间、角标、底栏标签(下限 12,保证可读性)。
+  static const double compact = 12;
 
   /// 网格卡标题。
   static const double cardTitle = 13;

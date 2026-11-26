@@ -45,7 +45,8 @@ void main() {
     await server.start();
     addTearDown(server.stop);
 
-    final script = '''
+    final script =
+        '''
 const {request, on, send, utils, currentScriptInfo} = globalThis.lx;
 const sourceMd5 = utils.crypto.md5(
   utils.buffer.from(currentScriptInfo.rawScript, 'utf8'), 'hex');

@@ -5,7 +5,7 @@ import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
-import '../../playback/data/media_proxy_server.dart';
+import '../../playback/presentation/playback_providers.dart';
 import '../../playback/presentation/player_sheet.dart';
 import 'track_more.dart';
 
@@ -85,11 +85,32 @@ class _TrackListViewState extends ConsumerState<TrackListView> {
         ],
       );
     }
+    final playing = ref.watch(nowPlayingProvider);
     return CenteredMaxWidth(
       child: ListView(
         padding: AppSpacing.pagePadding,
         children: [
           if (widget.header != null) widget.header!,
+          if (_items.isNotEmpty) ...[
+            Row(
+              children: [
+                FilledButton.tonalIcon(
+                  onPressed: () =>
+                      ref.read(playerActionsProvider).playAll(_items),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                  label: const Text('播放全部'),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                TextButton.icon(
+                  onPressed: () =>
+                      ref.read(playerActionsProvider).shufflePlay(_items),
+                  icon: const Icon(Icons.shuffle_rounded, size: 18),
+                  label: const Text('随机播放'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           if (_items.isEmpty)
             EmptyState(
               icon: Icons.music_note_rounded,
@@ -103,6 +124,7 @@ class _TrackListViewState extends ConsumerState<TrackListView> {
                 for (final (i, item) in _items.indexed)
                   TrackTile(
                     item: item,
+                    isPlaying: _isCurrent(item, playing),
                     trailing: TrackMoreButton(item: item),
                     onTap: () async {
                       try {
@@ -141,6 +163,17 @@ class _TrackListViewState extends ConsumerState<TrackListView> {
       ),
     );
   }
+
+  /// 判断列表项是否就是当前正在播放的曲目（插件 id + 曲目 id）。
+  bool _isCurrent(Map<String, dynamic> item, Map<String, dynamic>? playing) {
+    if (playing == null) return false;
+    if ('${item['_pluginId'] ?? ''}' != '${playing['_pluginId'] ?? ''}') {
+      return false;
+    }
+    final a = '${item['id'] ?? item['title'] ?? ''}';
+    final b = '${playing['id'] ?? playing['title'] ?? ''}';
+    return a.isNotEmpty && a == b;
+  }
 }
 
 /// 详情页通用头部：大封面 + 标题 + 副标题。
@@ -169,27 +202,12 @@ class CollectionHeader extends StatelessWidget {
             child: SizedBox(
               width: 108,
               height: 108,
-              child: (coverUrl == null || coverUrl!.isEmpty)
-                  ? ColoredBox(
-                      color: scheme.surfaceContainerHigh,
-                      child: Icon(
-                        Icons.queue_music_rounded,
-                        size: 40,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    )
-                  : Image.network(
-                      cachedArtworkUrl(coverUrl!),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => ColoredBox(
-                        color: scheme.surfaceContainerHigh,
-                        child: Icon(
-                          Icons.queue_music_rounded,
-                          size: 40,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
+              child: CoverImage(
+                url: coverUrl ?? '',
+                decodeWidth: 108,
+                icon: Icons.queue_music_rounded,
+                iconSize: 40,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.md),

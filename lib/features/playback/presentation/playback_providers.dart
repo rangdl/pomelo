@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/player_actions.dart';
@@ -78,24 +81,99 @@ final audioPlayerProvider = Provider<AudioPlayerService>((ref) {
 // 播放状态持久化
 // ---------------------------------------------------------------------------
 
+/// 睡眠定时器：到点自动暂停播放，并清空状态。
+class SleepTimerNotifier extends Notifier<DateTime?> {
+  Timer? _timer;
+
+  @override
+  DateTime? build() {
+    ref.onDispose(() => _timer?.cancel());
+    return null;
+  }
+
+  /// 从现在起 [duration] 后暂停。
+  void start(Duration duration) {
+    _timer?.cancel();
+    state = DateTime.now().add(duration);
+    _timer = Timer(duration, () {
+      ref.read(audioPlayerProvider).pause();
+      state = null;
+    });
+  }
+
+  void cancel() {
+    _timer?.cancel();
+    _timer = null;
+    state = null;
+  }
+}
+
+final sleepTimerProvider = NotifierProvider<SleepTimerNotifier, DateTime?>(
+  SleepTimerNotifier.new,
+);
+
 /// 监听队列 / 索引 / 当前曲 / 播放模式的变化，节流写盘到 playback_state.json。
 ///
 /// 在 App 顶层 `ref.watch` 一次即可长期生效（keepAlive）。
+/// 变化先累积 500ms 再写，避免拖动队列/连续切歌时频繁落盘；窗口关闭或应用
+/// 退到后台时立即 flush，保证最后一次变更不丢。
 final playbackPersistenceProvider = Provider<void>((ref) {
-  void persist() {
+  Timer? timer;
+  PlaybackSnapshot? pending;
+
+  PlaybackSnapshot? currentSnapshot() {
     final queue = ref.read(playQueueProvider);
-    if (queue.isEmpty) return;
-    final index = ref.read(playQueueProvider.notifier).index;
-    final mode = ref.read(playModeProvider);
-    savePlaybackSnapshot(
-      PlaybackSnapshot(queue: queue, index: index, mode: mode),
+    if (queue.isEmpty) return null;
+    return PlaybackSnapshot(
+      queue: queue,
+      index: ref.read(playQueueProvider.notifier).index,
+      mode: ref.read(playModeProvider),
     );
   }
 
-  ref.listen(playQueueProvider, (previous, next) => persist());
-  ref.listen(playModeProvider, (previous, next) => persist());
-  ref.listen(nowPlayingProvider, (previous, next) => persist());
+  void flush() {
+    timer?.cancel();
+    timer = null;
+    final snapshot = pending;
+    pending = null;
+    if (snapshot != null) unawaited(savePlaybackSnapshot(snapshot));
+  }
+
+  void schedule() {
+    final snapshot = currentSnapshot();
+    if (snapshot == null) return;
+    pending = snapshot;
+    timer?.cancel();
+    timer = Timer(const Duration(milliseconds: 500), flush);
+  }
+
+  ref.listen(playQueueProvider, (previous, next) => schedule());
+  ref.listen(playModeProvider, (previous, next) => schedule());
+  ref.listen(nowPlayingProvider, (previous, next) => schedule());
+
+  final observer = _PlaybackLifecycleObserver(onFlush: flush);
+  WidgetsBinding.instance.addObserver(observer);
+  ref.onDispose(() {
+    WidgetsBinding.instance.removeObserver(observer);
+    flush();
+  });
 });
+
+/// 应用生命周期观察者：退后台 / 被系统回收前把待写快照落盘。
+class _PlaybackLifecycleObserver with WidgetsBindingObserver {
+  _PlaybackLifecycleObserver({required this.onFlush});
+
+  final VoidCallback onFlush;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      onFlush();
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
 // 歌词

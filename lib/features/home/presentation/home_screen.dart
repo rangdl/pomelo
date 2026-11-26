@@ -57,15 +57,9 @@ class _DiscoverView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final plugin = ref.watch(toplistPluginProvider);
-    if (plugin == null) {
-      return const EmptyState(
-        icon: Icons.leaderboard_rounded,
-        title: '当前插件没有榜单',
-        message: '在标题栏左侧切换音源,或安装支持榜单的插件。',
-      );
-    }
-
-    final groups = ref.watch(topListGroupsProvider(plugin.id));
+    final groups = plugin == null
+        ? null
+        : ref.watch(topListGroupsProvider(plugin.id));
     return WindowClassBuilder(
       builder: (context, windowClass) => ListView(
         padding: AppSpacing.pagePadding,
@@ -85,62 +79,83 @@ class _DiscoverView extends ConsumerWidget {
                   icon: const Icon(Icons.leaderboard_rounded, size: 18),
                   label: const Text('全部榜单'),
                 ),
-              ],
-            ),
-          ),
-          groups.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => EmptyState(
-              icon: Icons.error_outline_rounded,
-              title: '榜单加载失败',
-              message: '$e',
-              actions: [
-                FilledButton.tonalIcon(
-                  onPressed: () =>
-                      ref.invalidate(topListGroupsProvider(plugin.id)),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('重试'),
+                const SizedBox(width: AppSpacing.xs),
+                TextButton.icon(
+                  onPressed: () => context.push('/search'),
+                  icon: const Icon(Icons.search_rounded, size: 18),
+                  label: const Text('搜索'),
                 ),
               ],
             ),
-            data: (list) {
-              if (list.isEmpty) {
-                return const EmptyState(
-                  icon: Icons.leaderboard_outlined,
-                  title: '暂无榜单',
-                  message: '该插件暂时没有返回榜单数据。',
-                );
-              }
-              return Column(
-                children: [
-                  for (final group in list) ...[
-                    SectionHeader(group.title),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: mediaGridDelegate(windowClass),
-                      itemCount: group.items.length,
-                      itemBuilder: (context, i) {
-                        final item = group.items[i];
-                        final desc = '${item['description'] ?? ''}';
-                        final cover = trackArtwork(item);
-                        return PosterCard(
-                          title: '${item['title'] ?? '榜单'}',
-                          subtitle: desc.isEmpty ? null : desc,
-                          coverUrl: cover.isEmpty ? null : cover,
-                          onTap: () => context.push('/toplists', extra: item),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                  ],
-                ],
-              );
-            },
           ),
+          // 没有榜单能力时不再整块留白：保留快捷入口并说明原因。
+          if (groups == null)
+            EmptyState(
+              icon: Icons.leaderboard_rounded,
+              title: '当前音源没有榜单',
+              message: '仍可通过「推荐歌单」或搜索发现音乐，也可以在标题栏切换音源。',
+              actions: [
+                FilledButton.tonalIcon(
+                  onPressed: () => context.push('/plugins'),
+                  icon: const Icon(Icons.extension_rounded),
+                  label: const Text('管理插件'),
+                ),
+              ],
+            )
+          else
+            groups.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.xxl),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (e, _) => EmptyState(
+                icon: Icons.error_outline_rounded,
+                title: '榜单加载失败',
+                message: '$e',
+                actions: [
+                  FilledButton.tonalIcon(
+                    onPressed: () =>
+                        ref.invalidate(topListGroupsProvider(plugin!.id)),
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('重试'),
+                  ),
+                ],
+              ),
+              data: (list) {
+                if (list.isEmpty) {
+                  return const EmptyState(
+                    icon: Icons.leaderboard_outlined,
+                    title: '暂无榜单',
+                    message: '该插件暂时没有返回榜单数据。',
+                  );
+                }
+                return Column(
+                  children: [
+                    for (final group in list) ...[
+                      SectionHeader(group.title),
+                      GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: mediaGridDelegate(windowClass),
+                        itemCount: group.items.length,
+                        itemBuilder: (context, i) {
+                          final item = group.items[i];
+                          final desc = '${item['description'] ?? ''}';
+                          final cover = trackArtwork(item);
+                          return PosterCard(
+                            title: '${item['title'] ?? '榜单'}',
+                            subtitle: desc.isEmpty ? null : desc,
+                            coverUrl: cover.isEmpty ? null : cover,
+                            onTap: () => context.push('/toplists', extra: item),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                    ],
+                  ],
+                );
+              },
+            ),
         ],
       ),
     );
