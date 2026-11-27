@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audio_service/audio_service.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 
@@ -16,9 +17,71 @@ import 'package:media_kit/media_kit.dart';
 class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   AudioPlayerService() : _player = Player() {
     _wireStreams();
+    _setupAudioSession();
   }
 
   final Player _player;
+
+  /// 音频会话：负责申请/释放音频焦点，并把 AudioAttributes 标记为音乐类型。
+  ///
+  /// 华为等 OEM 的「控制中心媒体卡」会据此判断是否为正在播放的音乐 App；
+  /// 不申请焦点时 content type 会是 UNKNOWN，卡片可能只显示「未在播放」。
+  AudioSession? _session;
+  StreamSubscription<AudioInterruptionEvent>? _interruptSub;
+  StreamSubscription<void>? _noisySub;
+
+  Future<void> _setupAudioSession() async {
+    try {
+      final session = await AudioSession.instance;
+      // 声明为音乐播放：content type = music，usage = media。
+      await session.configure(const AudioSessionConfiguration.music());
+      _session = session;
+
+      // 来电/其它 App 抢占焦点时暂停；短暂打断（如导航播报）结束后恢复。
+      _interruptSub = session.interruptionEventStream.listen((event) {
+        if (!event.begin) {
+          // 打断结束且是被系统暂停（非用户操作）时恢复播放。
+          if (!_userPaused &&
+              event.type == AudioInterruptionType.pause &&
+              !_player.state.playing) {
+            _player.play();
+          }
+          return;
+        }
+        if (event.type == AudioInterruptionType.duck) {
+          _player.setVolume(_player.state.volume * 0.3);
+        } else {
+          // pause / unknown：直接暂停，避免和其它音频混播。
+          if (_player.state.playing) _player.pause();
+        }
+      });
+
+      // 拔耳机等 becoming noisy 事件：暂停。
+      _noisySub = session.becomingNoisyEventStream.listen((_) {
+        if (_player.state.playing) _player.pause();
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('[pomelo] audio session 初始化失败: $e');
+    }
+  }
+
+  /// 申请音频焦点（播放前调用）。
+  Future<void> _requestFocus() async {
+    try {
+      await _session?.setActive(true);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[pomelo] 申请音频焦点失败: $e');
+    }
+  }
+
+  /// 释放音频焦点（暂停/停止后调用）。
+  Future<void> _abandonFocus() async {
+    try {
+      await _session?.setActive(false);
+    } catch (e) {
+      if (kDebugMode) debugPrint('[pomelo] 释放音频焦点失败: $e');
+    }
+  }
 
   // 供 UI 直接消费的细粒度流（与 audio_service 的 playbackState 并行存在）。
   Stream<Duration> get positionStream => _player.stream.position;
@@ -132,6 +195,8 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
     }
     try {
       _userPaused = false;
+      // 播放前申请音频焦点（同时把 AudioAttributes 落成 music）。
+      await _requestFocus();
       await _player.open(Media(url, httpHeaders: headers), play: true);
       // 打开成功后才标记「已加载」，避免失败时被误判为可直接续播。
       _loadedId = meta?.id;
@@ -165,6 +230,7 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   @override
   Future<void> play() async {
     _userPaused = false;
+    await _requestFocus();
     await _player.play();
   }
 
@@ -172,6 +238,7 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   Future<void> pause() async {
     _userPaused = true;
     await _player.pause();
+    await _abandonFocus();
   }
 
   @override
@@ -180,6 +247,7 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
     // 停止后引擎里不再有可用媒体，清掉标记，下次播放会重新解析。
     _loadedId = null;
     _userPaused = false;
+    await _abandonFocus();
     mediaItem.add(null);
     await super.stop();
     _broadcastState();
@@ -234,6 +302,9 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   Future<void> dispose() async {
     await _completedSub?.cancel();
     await _errorSub?.cancel();
+    await _interruptSub?.cancel();
+    await _noisySub?.cancel();
+    await _abandonFocus();
     for (final s in _subs) {
       await s.cancel();
     }
