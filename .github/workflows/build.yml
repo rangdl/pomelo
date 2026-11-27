@@ -1,14 +1,20 @@
 name: build
 
-# 三个平台分别构建，产物作为 artifact 上传。全程不需要任何 secrets：
+# 三平台构建；打 v* tag 时额外创建 GitHub Release 并附上产物。
+# 全程不需要任何用户 secrets：
 # - Android release 使用 debug 签名（android/app/build.gradle.kts 已配置）
 # - iOS 构建未签名（--no-codesign），再手工打包成 unsigned ipa
 # - Windows 直接构建 release 目录
+# - Release 用仓库内置 GITHUB_TOKEN（仅需 workflow 的 contents: write 权限）
 on:
   push:
     branches: [main, 'feat/**']
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   android:
@@ -107,3 +113,41 @@ jobs:
           name: windows-release
           path: windows-release.zip
           if-no-files-found: error
+
+  # 仅打 v* tag 时：等三平台构建完成后，创建 GitHub Release 并附上产物。
+  release:
+    name: Publish Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, ios, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect release files
+        run: |
+          set -e
+          mkdir -p dist
+          # 重命名为更直观的发布文件名。
+          cp artifacts/android-apk/app-release.apk "dist/pomelo-${GITHUB_REF_NAME}-android.apk"
+          cp artifacts/ios-unsigned-ipa/unsigned.ipa "dist/pomelo-${GITHUB_REF_NAME}-ios-unsigned.ipa"
+          cp artifacts/windows-release/windows-release.zip "dist/pomelo-${GITHUB_REF_NAME}-windows.zip"
+          ls -lh dist
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          # 从 tag 名（v1.2.3）生成标题；正文列出三平台产物说明。
+          TAG="${GITHUB_REF_NAME}"
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "柚子音乐 $TAG" \
+            --generate-notes \
+            --notes "多平台构建产物：
+          - Android：debug 签名 APK（可直接安装）
+          - iOS：未签名 IPA（需自行签名后安装）
+          - Windows：release 目录压缩包"
