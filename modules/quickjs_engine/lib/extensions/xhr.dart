@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show ContentType;
 
+import 'package:charset/charset.dart';
 import 'package:quickjs_engine/javascript_runtime.dart';
 import 'package:http/http.dart' as http;
 
@@ -97,8 +99,19 @@ XMLHttpRequest.prototype.send = function(data) {
     //console.log("Calling onloadstart()...");
     this.onloadstart();
   }
+  // 规范化请求体，便于经 JSON 跨桥传给 Dart：
+  //   - Array                        → multipart/form-data 字段列表
+  //   - Uint8Array / ArrayBuffer     → { __b64: <base64> } 二进制体
+  //   - 其它                         → 原样（字符串）
+  var payload = data || null;
+  if (payload && (payload instanceof Uint8Array || payload instanceof ArrayBuffer)) {
+    var u8 = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
+    var bin = '';
+    for (var i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+    payload = { __b64: globalThis.__bytesToB64 ? globalThis.__bytesToB64(u8) : btoa(bin) };
+  }
   var that = this;
-  this._send_native(this._httpMethod, this._url, this._requestHeaders, data || null, function(responseInfo, responseText, error) {
+  this._send_native(this._httpMethod, this._url, this._requestHeaders, payload, function(responseInfo, responseText, error) {
     that._send_native_callback(responseInfo, responseText, error);
   }, this, this.timeout || 0);
 };
@@ -251,6 +264,9 @@ class XhrPendingCall {
   /// multipart/form-data 字段列表（每项：{name, value|base64, filename?, contentType?}）。
   List<dynamic>? formData;
 
+  /// 二进制请求体（原始字节）。
+  List<int>? bodyBytes;
+
   XhrPendingCall({
     required this.idRequest,
     required this.method,
@@ -259,6 +275,7 @@ class XhrPendingCall {
     required this.body,
     this.timeoutMs,
     this.formData,
+    this.bodyBytes,
   });
 }
 
@@ -274,6 +291,37 @@ http.Client? httpClient;
 
 xhrSetHttpClient(http.Client client) {
   httpClient = client;
+}
+
+/// 按响应 Content-Type 的 charset 解码文本；未声明按 UTF-8，失败再试 GBK。
+String _decodeXhrText(List<int> bytes, String? contentType) {
+  String? name;
+  if (contentType != null && contentType.isNotEmpty) {
+    try {
+      name = ContentType.parse(contentType).charset?.toLowerCase();
+    } catch (_) {
+      name = null;
+    }
+  }
+  if (name != null && name.isNotEmpty) {
+    final encoding = Charset.getByName(name);
+    if (encoding != null) {
+      try {
+        return encoding.decode(bytes);
+      } catch (_) {
+        // 声明与实际不符，继续走默认策略。
+      }
+    }
+  }
+  try {
+    return utf8.decode(bytes);
+  } catch (_) {
+    try {
+      return gbk.decode(bytes);
+    } catch (_) {
+      return utf8.decode(bytes, allowMalformed: true);
+    }
+  }
 }
 
 /// 该请求是否已被 JS 侧 abort()。
@@ -323,19 +371,23 @@ Future<http.Response> _executeXhrRequest(XhrPendingCall call) async {
   }
 
   final body = call.body;
+  final bytes = call.bodyBytes;
   switch (method) {
     case 'head':
       return httpClient!.head(uri, headers: call.headers);
     case 'get':
       return httpClient!.get(uri, headers: call.headers);
     case 'post':
-      return httpClient!.post(uri, headers: call.headers, body: body);
+      return httpClient!.post(uri,
+          headers: call.headers, body: bytes ?? body);
     case 'put':
-      return httpClient!.put(uri, headers: call.headers, body: body);
+      return httpClient!.put(uri, headers: call.headers, body: bytes ?? body);
     case 'patch':
-      return httpClient!.patch(uri, headers: call.headers, body: body);
+      return httpClient!.patch(uri,
+          headers: call.headers, body: bytes ?? body);
     case 'delete':
-      return httpClient!.delete(uri, headers: call.headers, body: body);
+      return httpClient!.delete(uri,
+          headers: call.headers, body: bytes ?? body);
     default:
       return httpClient!.get(uri, headers: call.headers);
   }
@@ -393,8 +445,12 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
               .timeout(callTimeout);
           // 请求完成时若在期间被 abort，丢弃结果，不回灌。
           if (_isAborted(this, pendingCall.idRequest)) return;
-          // 二进制响应（如图片/加密音频）不能强解成 UTF-8，allowMalformed 防崩溃。
-          String responseText = utf8.decode(response.bodyBytes, allowMalformed: true);
+          // 二进制响应（如图片/加密音频）不能强解成 UTF-8；按响应头 charset 解码，
+          // 失败按 UTF-8→GBK→allowMalformed 兜底（国内老接口常见 GBK）。
+          String responseText = _decodeXhrText(
+            response.bodyBytes,
+            response.headers['content-type'],
+          );
           try {
             responseText = jsonEncode(json.decode(responseText));
           } on Exception {}
@@ -506,11 +562,15 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
             ? (arguments[5] as num).toInt()
             : null;
 
-        // body 为数组时视为 multipart/form-data 字段列表。
+        // body 为数组时视为 multipart/form-data 字段列表；
+        // 为 {__b64} 时视为二进制体。
         String? body;
         List<dynamic>? formData;
+        List<int>? bodyBytes;
         if (bodyArg is List) {
           formData = bodyArg;
+        } else if (bodyArg is Map && bodyArg['__b64'] is String) {
+          bodyBytes = base64Decode(bodyArg['__b64'] as String);
         } else if (bodyArg != null) {
           body = '$bodyArg';
         }
@@ -535,6 +595,7 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
             body: body,
             timeoutMs: timeoutMs,
             formData: formData,
+            bodyBytes: bodyBytes,
           ),
         );
       } on Error catch (e) {

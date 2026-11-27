@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' show gzip, zlib;
 import 'dart:isolate';
-import 'dart:typed_data';
 
-import 'package:charset/charset.dart';
 import 'package:flutter/foundation.dart';
 import 'package:quickjs_engine/extensions/xhr.dart';
 import 'package:quickjs_engine/quickjs_engine.dart';
@@ -212,15 +210,7 @@ class _WorkerEngine {
     _js.enableHandlePromises();
     LxCompat.installBridges(_js);
     MusicfreeCompat.installBridges(_js);
-    // LX 请求/二进制/zlib 专用桥：fetch 垫片只支持文本，无法满足 raw 字节。
-    _js.onMessage('LxHttp', (dynamic args) {
-      _handleLxHttp(args);
-      return '';
-    });
-    _js.onMessage('LxHttpCancel', (dynamic args) {
-      _cancelLxHttp(args);
-      return '';
-    });
+    // LX 的 HTTP 请求已统一走 XHR（见 quickjs_engine 的 xhr 扩展），仅保留 zlib 桥。
     _js.onMessage('LxZlib', (dynamic args) => _lxZlib(args));
   }
 
@@ -273,7 +263,6 @@ class _WorkerEngine {
       case 'ping':
         return true;
       case 'dispose':
-        _disposeLxHttp();
         _js.dispose();
         return true;
       default:
@@ -619,41 +608,7 @@ $source
     throw StateError('LX 请求超时');
   }
 
-  // ---- LX 专用 HTTP / zlib 桥 ------------------------------------------
-
-  final HttpClient _lxHttpClient = HttpClient()..autoUncompress = true;
-  final Map<int, _LxHttpTask> _lxHttpTasks = {};
-
-  void _handleLxHttp(dynamic raw) {
-    final msg = _mapArg(raw);
-    final id = msg['id'];
-    if (id is! int) return;
-    final task = _LxHttpTask(id);
-    _lxHttpTasks[id] = task;
-    unawaited(_runLxHttp(task, msg));
-  }
-
-  void _cancelLxHttp(dynamic raw) {
-    int? id;
-    if (raw is int) {
-      id = raw;
-    } else if (raw is num) {
-      id = raw.toInt();
-    } else if (raw is List && raw.isNotEmpty && raw.first is num) {
-      id = (raw.first as num).toInt();
-    } else if (raw is Map && raw['id'] is num) {
-      id = (raw['id'] as num).toInt();
-    }
-    if (id == null) return;
-    final task = _lxHttpTasks.remove(id);
-    if (task == null) return;
-    task.cancelled = true;
-    try {
-      task.request?.abort();
-    } catch (_) {
-      // 请求已结束。
-    }
-  }
+  // ---- LX zlib 桥 ------------------------------------------------------
 
   /// JS 侧 `sendMessage(channel, JSON.stringify(x))` 会被引擎解析成 Map/List，
   /// 但旧路径也可能直接传字符串，这里统一兼容。
@@ -668,170 +623,6 @@ $source
       }
     }
     return const {};
-  }
-
-  Future<void> _runLxHttp(
-    _LxHttpTask task,
-    Map<String, dynamic> msg,
-  ) async {
-    // LX 允许 timeout 传 0 表示不限时；宿主统一按默认 30s 兜底。
-    final rawTimeout = (msg['timeout'] as num?)?.toInt() ?? 0;
-    final timeout = Duration(
-      milliseconds: rawTimeout > 0 ? rawTimeout : 30000,
-    );
-    try {
-      final uri = Uri.parse('${msg['url']}');
-      if (uri.scheme != 'http' && uri.scheme != 'https') {
-        throw StateError('仅支持 http/https 请求');
-      }
-      final method = '${msg['method'] ?? 'GET'}'.toUpperCase();
-      final request = await _lxHttpClient.openUrl(method, uri).timeout(timeout);
-      task.request = request;
-      if (task.cancelled) {
-        request.abort();
-        return;
-      }
-      request.followRedirects = true;
-      request.maxRedirects = 5;
-
-      final headers =
-          (msg['headers'] as Map?)?.cast<String, dynamic>() ?? const {};
-      headers.forEach((key, value) {
-        final lower = key.toLowerCase();
-        // 交给 HttpClient 自己计算长度和 Host。
-        if (lower == 'content-length' || lower == 'host') return;
-        request.headers.set(key, '$value');
-      });
-
-      final formData = msg['formData'];
-      if (formData is List && formData.isNotEmpty) {
-        final boundary = '----PomeloLx${DateTime.now().microsecondsSinceEpoch}';
-        final body = BytesBuilder(copy: false);
-        for (final item in formData) {
-          if (item is! Map) continue;
-          final name = '${item['name'] ?? ''}';
-          final filename = item['filename'];
-          final contentType = item['contentType'];
-          body.add(utf8.encode('--$boundary\r\n'));
-          var disposition = 'Content-Disposition: form-data; name="$name"';
-          if (filename != null && '$filename'.isNotEmpty) {
-            disposition += '; filename="$filename"';
-          }
-          body.add(utf8.encode('$disposition\r\n'));
-          if (contentType != null && '$contentType'.isNotEmpty) {
-            body.add(utf8.encode('Content-Type: $contentType\r\n'));
-          }
-          body.add(utf8.encode('\r\n'));
-          final b64 = item['base64'];
-          if (b64 is String && b64.isNotEmpty) {
-            body.add(base64Decode(b64));
-          } else {
-            body.add(utf8.encode('${item['value'] ?? ''}'));
-          }
-          body.add(utf8.encode('\r\n'));
-        }
-        body.add(utf8.encode('--$boundary--\r\n'));
-        request.headers
-            .set('content-type', 'multipart/form-data; boundary=$boundary');
-        request.add(body.takeBytes());
-      } else {
-        final bodyBase64 = msg['bodyBase64'];
-        final body = msg['body'];
-        if (bodyBase64 is String && bodyBase64.isNotEmpty) {
-          request.add(base64Decode(bodyBase64));
-        } else if (body != null) {
-          request.add(utf8.encode('$body'));
-        }
-      }
-
-      if (task.cancelled) {
-        request.abort();
-        return;
-      }
-      final response = await request.close().timeout(timeout);
-      final bytes = await response
-          .fold<BytesBuilder>(BytesBuilder(copy: false), (b, chunk) => b..add(chunk))
-          .timeout(timeout);
-      if (task.cancelled) return;
-
-      final respHeaders = <String, String>{};
-      response.headers.forEach((name, values) {
-        respHeaders[name] = values.join(', ');
-      });
-      final data = bytes.takeBytes();
-      _settleLxHttp(task, {
-        'resp': {
-          'statusCode': response.statusCode,
-          'statusMessage': response.reasonPhrase,
-          'headers': respHeaders,
-          'bytes': data.length,
-          'rawBase64': base64Encode(data),
-        },
-        'text': _decodeLxText(data, response.headers.contentType),
-      });
-    } catch (e) {
-      if (task.cancelled) return;
-      _settleLxHttp(task, {
-        'error': e is TimeoutException ? 'ETIMEDOUT: 请求超时' : '$e',
-      });
-    } finally {
-      _lxHttpTasks.remove(task.id);
-    }
-  }
-
-  /// 按响应 `Content-Type` 的 charset 解码文本；未声明或声明错误时按 UTF-8，
-  /// 失败再尝试 GBK（国内老接口常见），最后才容忍错误字节。
-  String _decodeLxText(List<int> bytes, ContentType? contentType) {
-    final name = contentType?.charset?.toLowerCase();
-    if (name != null && name.isNotEmpty) {
-      final encoding = Charset.getByName(name);
-      if (encoding != null) {
-        try {
-          return encoding.decode(bytes);
-        } catch (_) {
-          // 声明与实际不符，继续按默认策略。
-        }
-      }
-    }
-    try {
-      return utf8.decode(bytes);
-    } catch (_) {
-      try {
-        return gbk.decode(bytes);
-      } catch (_) {
-        return utf8.decode(bytes, allowMalformed: true);
-      }
-    }
-  }
-
-  void _settleLxHttp(_LxHttpTask task, Map<String, dynamic> payload) {    if (task.settled || task.cancelled) return;
-    task.settled = true;
-    // 双重编码后再 JSON.parse，避免响应内容里的引号/换行破坏 evaluate。
-    final literal = jsonEncode(jsonEncode(payload));
-    try {
-      _js.evaluate(
-        'globalThis.__lxHttpSettle(${task.id}, JSON.parse($literal));',
-      );
-    } catch (_) {
-      // worker 已销毁。
-    }
-  }
-
-  void _disposeLxHttp() {
-    for (final task in _lxHttpTasks.values) {
-      task.cancelled = true;
-      try {
-        task.request?.abort();
-      } catch (_) {
-        // 忽略。
-      }
-    }
-    _lxHttpTasks.clear();
-    try {
-      _lxHttpClient.close(force: true);
-    } catch (_) {
-      // 忽略。
-    }
   }
 
   dynamic _lxZlib(dynamic raw) {
@@ -870,11 +661,3 @@ $source
   }
 }
 
-class _LxHttpTask {
-  _LxHttpTask(this.id);
-
-  final int id;
-  HttpClientRequest? request;
-  bool cancelled = false;
-  bool settled = false;
-}

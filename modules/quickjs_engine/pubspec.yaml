@@ -18,6 +18,8 @@ dependencies:
   ffi: ^2.0.0
   http: ^1.0.0
   sync_http: ^0.3.0
+  # 本地 patch：XHR 文本响应按响应头 charset 解码（含 GBK 兜底）。
+  charset: ^2.0.1
 
 dev_dependencies:
   flutter_test:

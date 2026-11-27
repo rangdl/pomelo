@@ -258,6 +258,22 @@ function __lx_bytes_to_b64(bytes) {
   for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
   return btoa(s);
 }
+// UTF-8 解码（TextDecoder 不可用时的兜底）。
+function __lx_utf8_decode(u8) {
+  var out = '';
+  for (var i = 0; i < u8.length;) {
+    var c = u8[i++];
+    if (c < 0x80) out += String.fromCharCode(c);
+    else if (c < 0xe0) out += String.fromCharCode(((c & 0x1f) << 6) | (u8[i++] & 0x3f));
+    else if (c < 0xf0) out += String.fromCharCode(((c & 0x0f) << 12) | ((u8[i++] & 0x3f) << 6) | (u8[i++] & 0x3f));
+    else {
+      var cp = ((c & 0x07) << 18) | ((u8[i++] & 0x3f) << 12) | ((u8[i++] & 0x3f) << 6) | (u8[i++] & 0x3f);
+      cp -= 0x10000;
+      out += String.fromCharCode(0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff));
+    }
+  }
+  return out;
+}
 function __lx_to_bytes(input, encoding) {
   if (typeof input === 'string') {
     if (encoding === 'base64') return __lx_b64_to_bytes(input);
@@ -357,35 +373,8 @@ __lx.utils = {
   }
 };
 
-// LX 请求走宿主专用桥：支持真实字节、formData、timeout 和可取消。
-var __lxHttpPending = {};
-var __lxHttpSeq = 0;
-
-globalThis.__lxHttpSettle = function(id, payload) {
-  var pending = __lxHttpPending[id];
-  if (!pending || pending.settled) return;
-  pending.settled = true;
-  delete __lxHttpPending[id];
-  if (payload && payload.error) {
-    pending.callback(new Error(payload.error), null, null);
-    return;
-  }
-  var resp = (payload && payload.resp) || {};
-  var raw = __lx_b64_to_bytes(resp.rawBase64 || '');
-  var text = payload && payload.text != null ? payload.text : '';
-  // 原生 LX 会对响应体尝试 JSON.parse（失败则保留字符串）。
-  var parsed = text;
-  try { parsed = JSON.parse(text); } catch (e) {}
-  pending.callback(null, {
-    statusCode: resp.statusCode,
-    statusMessage: resp.statusMessage,
-    headers: resp.headers || {},
-    bytes: raw.length,
-    raw: raw,
-    body: parsed
-  }, parsed);
-};
-
+// LX 请求统一走 XHR（宿主已把 XHR 扩展为完整 HTTP 引擎：真实字节 / formData /
+// timeout / 可取消）。不再使用专用的 LxHttp 消息通道。
 function __lx_do_request(url, options, callback) {
   options = options || {};
   var headers = {};
@@ -453,31 +442,84 @@ function __lx_do_request(url, options, callback) {
     }
   }
 
-  var id = ++__lxHttpSeq;
-  __lxHttpPending[id] = { callback: callback, settled: false };
-  try {
-    sendMessage('LxHttp', JSON.stringify({
-      id: id,
-      url: url,
-      method: (options.method || 'get').toUpperCase(),
-      headers: headers,
-      body: body == null ? null : body,
-      bodyBase64: bodyBase64,
-      formData: formData,
-      timeout: options.timeout
-    }));
-  } catch (e) {
-    delete __lxHttpPending[id];
-    callback(new Error(e && e.message ? e.message : String(e)), null, null);
-    return function() {};
+  // 统一走 XHR：以 arraybuffer 拿真实字节，再在 JS 侧解码文本 / 解析 JSON。
+  var xhr = new XMLHttpRequest();
+  xhr.open((options.method || 'get').toUpperCase(), url, true);
+  xhr.responseType = 'arraybuffer';
+  var timeout = options.timeout;
+  if (timeout && timeout > 0) xhr.timeout = timeout;
+  for (var hk in headers) {
+    try { xhr.setRequestHeader(hk, headers[hk]); } catch (e) {}
   }
 
-  return function() {
-    var pending = __lxHttpPending[id];
-    if (!pending || pending.settled) return;
-    pending.settled = true;
-    delete __lxHttpPending[id];
-    try { sendMessage('LxHttpCancel', JSON.stringify(id)); } catch (e) {}
+  function finish(err, resp) {
+    if (err) {
+      callback(err, null, null);
+      return;
+    }
+    var raw = resp.raw;
+    var text = resp.text;
+    // 原生 LX 会对响应体尝试 JSON.parse（失败则保留字符串）。
+    var parsed = text;
+    try { parsed = JSON.parse(text); } catch (e) {}
+    callback(null, {
+      statusCode: resp.statusCode,
+      statusMessage: resp.statusMessage,
+      headers: resp.headers,
+      bytes: raw.length,
+      raw: raw,
+      body: parsed
+    }, parsed);
+  }
+
+  xhr.onload = function () {
+    var raw = new Uint8Array(xhr.response || new ArrayBuffer(0));
+    // XHR 的 responseText 已由宿主按响应头 charset 解码（含 GBK 兜底），优先用它；
+    // 仅在缺失时才对原始字节做 UTF-8 兜底解码。
+    var text = xhr.responseText;
+    if (typeof text !== 'string' || text.length === 0) {
+      try {
+        text = typeof TextDecoder !== 'undefined'
+          ? new TextDecoder('utf-8').decode(raw)
+          : __lx_utf8_decode(raw);
+      } catch (e) { text = ''; }
+    }
+    var respHeaders = {};
+    var rawHeaders = xhr.getAllResponseHeaders() || '';
+    rawHeaders.split(/\r?\n/).forEach(function (line) {
+      var idx = line.indexOf(':');
+      if (idx > 0) respHeaders[line.slice(0, idx).trim().toLowerCase()] = line.slice(idx + 1).trim();
+    });
+    finish(null, {
+      statusCode: xhr.status,
+      statusMessage: xhr.statusText,
+      headers: respHeaders,
+      raw: raw,
+      text: text
+    });
+  };
+  xhr.onerror = function () { finish(new Error('Network request failed'), null); };
+  xhr.ontimeout = function () { finish(new Error('ETIMEDOUT: 请求超时'), null); };
+
+  // 请求体：formData 数组 → multipart；二进制 → ArrayBuffer；其余 → 字符串。
+  var sendData = null;
+  if (formData) {
+    sendData = formData;
+  } else if (bodyBase64) {
+    sendData = __lx_b64_to_bytes(bodyBase64).buffer;
+  } else if (body != null) {
+    sendData = body;
+  }
+  try {
+    xhr.send(sendData);
+  } catch (e) {
+    finish(new Error(e && e.message ? e.message : String(e)), null);
+    return function () {};
+  }
+
+  // 返回取消函数：调用 XHR.abort()。
+  return function () {
+    try { xhr.abort(); } catch (e) {}
   };
 }
 

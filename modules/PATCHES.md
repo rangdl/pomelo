@@ -39,6 +39,11 @@ pub.dev 拉取的普通依赖，而是以 `path:` 依赖接入（见 `pubspec.ya
 4. **abort 真生效**：`abort()` 通过 `XhrAbortNative` 消息把请求 id 通知 Dart，
    `XhrPendingCall` 结果回灌前检查 id 是否已 abort，命中则丢弃；
    （`package:http` 无法中断底层 socket，故采用「结果丢弃 + 尽快返回」策略。）
+5. **文本按 charset 解码**：Dart 侧 `_decodeXhrText` 按响应头 `Content-Type` 的
+   charset 解码，未声明按 UTF-8，失败再试 GBK，最后 `allowMalformed`。
+   为此在 `pubspec.yaml` 增加 `charset` 依赖（本地 patch 的一部分）。
+6. **二进制请求体**：`send(Uint8Array/ArrayBuffer)` 时 JS 侧转成 `{__b64}`，
+   Dart 侧解码为字节作请求体（供 LX 的二进制 body 使用）。
 
 **保留**：`xhrSetHttpClient()` 注入点不变（三个测试依赖它注入容错 client）。
 底层仍用 `package:http`（默认 `IOClient` 即 `dart:io HttpClient`），不换底层，
@@ -48,7 +53,30 @@ pub.dev 拉取的普通依赖，而是以 `path:` 依赖接入（见 `pubspec.ya
 
 **上游升级注意**：若上游实现了 arraybuffer / timeout / multipart / abort，优先用
 上游实现并删除对应补丁；注意保留 `__b64ToArrayBuffer` 与 `__xhrAbortNative`
-的注入时机（需在插件脚本执行前定义），以及 `XhrAbortNative` 消息监听。
+的注入时机（需在插件脚本执行前定义），以及 `XhrAbortNative` 消息监听；
+`charset` 依赖与 `dart:io` 的 `ContentType` 导入也是补丁的一部分。
+
+### 补丁 2（应用层）：LX 的 lx.request 统一走 XHR
+
+> 这一条不在 vendored 包内，改动在 `lib/features/plugins/runtime/`（lx_compat.dart /
+> plugin_worker.dart），记录在此以便理解整体架构；升级 quickjs_engine 不受影响。
+
+**背景**：此前 LX 有一整套专用二进制 HTTP 通道（`LxHttp`/`LxHttpCancel` 消息 +
+`_runLxHttp` + `_decodeLxText` + `_settleLxHttp` 等，位于 plugin_worker.dart），
+与 XHR 重复实现「Dart 取字节 → base64 回灌 → JS 还原」。
+
+**改动**：
+- `lx_compat.dart` 的 `__lx_do_request` 改为直接用 `XMLHttpRequest`
+  （`responseType='arraybuffer'`）：文本优先用宿主已按 charset 解码的
+  `responseText`，仅在缺失时对原始字节做 UTF-8 兜底；formData 数组直接
+  `xhr.send(formData)`，二进制 body 用 `{__b64}`；取消函数调用 `xhr.abort()`。
+- `plugin_worker.dart` 删除整套 `LxHttp` 桥（消息注册、`_runLxHttp`、
+  `_decodeLxText`、`_settleLxHttp`、`_disposeLxHttp`、`_LxHttpTask`、
+  `_lxHttpClient`），仅保留 `LxZlib` 桥；相关 `charset` / `dart:io HttpClient`
+  导入一并清理。
+
+**效果**：Dart 侧只剩一套 HTTP 执行路径（XHR），formData / 超时 / 取消 / charset
+解码全部惠及 LX 与 MusicFree 两类插件。LX 脚本对外接口（`lx.request`）不变。
 
 ---
 
