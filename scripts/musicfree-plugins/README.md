@@ -25,6 +25,7 @@
 | `fengsui-kw.js` | 风誰·酷我 | long-888-long/fengsui-musicfree `kw-fengsui.js` | ✅ 搜索 + 播放直链 |
 | `fengsui-qq.js` | 风誰·QQ音乐 | long-888-long/fengsui-musicfree `qq-fengsui.js` | ✅ 搜索（取链中转已失效） |
 | `fengsui-wy.js` | 风誰·网易云 | long-888-long/fengsui-musicfree `wy-fengsui.js` | ✅ 搜索 + 播放直链 |
+| `migu.js` | 咪咕音乐 | Domdkw/MusicFree-migu `dist/migu-plugin.js` | ✅ 搜索 + 播放直链 + 歌词 + 榜单 |
 
 > 说明：「取链需登录/VIP」「中转失效」是**上游服务端**限制，与运行时无关——插件本身
 > 加载、搜索（宿主所需的最小能力）全部正常。

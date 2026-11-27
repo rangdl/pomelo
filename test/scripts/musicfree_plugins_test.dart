@@ -68,6 +68,7 @@ void main() {
     _Probe('fengsui-wy.js', 'music.163.com', ['周杰伦', '林俊杰']),
     _Probe('qishui.js', 'api5-lq.qishui.com', ['周杰伦', '林俊杰']),
     _Probe('xiaowo.js', 'music.163.com', ['周杰伦', '林俊杰']),
+    _Probe('migu.js', 'm.music.migu.cn', ['周杰伦', '林俊杰']),
   ];
 
   for (final probe in probes) {

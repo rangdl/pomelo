@@ -48,6 +48,7 @@ flutter:
     - scripts/musicfree-plugins/fengsui-kw.js
     - scripts/musicfree-plugins/fengsui-qq.js
     - scripts/musicfree-plugins/fengsui-wy.js
+    - scripts/musicfree-plugins/migu.js
     - assets/fonts/NOTICE.txt
 
   # 内置字体（与 loomy 同款 Droid Sans Fallback），设置页可切换/上传自定义字体。

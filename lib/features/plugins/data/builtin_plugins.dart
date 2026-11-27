@@ -59,11 +59,16 @@ const List<BuiltinPlugin> builtinPlugins = [
     assetPath: 'scripts/musicfree-plugins/fengsui-wy.js',
     fallbackName: 'fengsui-wy',
   ),
+  // 咪咕（补全 LX 5 平台中的 mg 元数据源）
+  BuiltinPlugin(
+    assetPath: 'scripts/musicfree-plugins/migu.js',
+    fallbackName: 'migu',
+  ),
 ];
 
 /// 内置插件清单版本号：修改 [builtinPlugins] 后请递增，
 /// 已装老版本的用户下次启动会重新预装一次。
-const int _builtinSeedVersion = 4;
+const int _builtinSeedVersion = 5;
 const String _seedVersionKey = 'builtinPluginsSeedVersion';
 
 /// 首次启动（或内置清单升级后）把内置插件安装进插件仓库。
