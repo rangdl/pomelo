@@ -1,4 +1,4 @@
-package com.pomelo.pomelo
+package io.github.rangdl.pomelo
 
 import com.ryanheise.audioservice.AudioServiceActivity
 

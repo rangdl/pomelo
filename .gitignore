@@ -50,3 +50,12 @@ app.*.map.json
 # vendored quickjs_engine 构建缓存
 modules/quickjs_engine/android/.cxx/
 modules/quickjs_engine/native/build/
+
+# iOS / CocoaPods
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh

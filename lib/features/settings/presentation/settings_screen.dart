@@ -207,7 +207,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             children: [
               const SettingsItem(
                 icon: Icons.info_outline_rounded,
-                title: 'Pomelo',
+                title: '柚子音乐',
                 subtitle: '本地优先的 Flutter 音乐播放器',
               ),
               SettingsItem(
@@ -228,7 +228,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 subtitle: '查看第三方库许可',
                 onTap: () => showLicensePage(
                   context: context,
-                  applicationName: 'Pomelo',
+                  applicationName: '柚子音乐',
                 ),
               ),
             ],

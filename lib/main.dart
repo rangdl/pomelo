@@ -161,7 +161,7 @@ Future<void> _setUpWindow() async {
     size: savedBounds?.size ?? _defaultWindowSize,
     minimumSize: _minimumWindowSize,
     center: savedBounds == null,
-    title: 'Pomelo',
+    title: '柚子音乐',
   );
 
   await windowManager.waitUntilReadyToShow(options, () async {

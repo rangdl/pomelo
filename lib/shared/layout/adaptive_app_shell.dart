@@ -15,7 +15,7 @@ const List<(IconData, String)> appNavDestinations = [
   (Icons.settings_rounded, '设置'),
 ];
 
-const List<String> _appNavTitles = ['Pomelo', '我的', '设置'];
+const List<String> _appNavTitles = ['柚子音乐', '我的', '设置'];
 
 /// 当前选中的导航分支。
 ///
@@ -133,7 +133,7 @@ class _HomeTitleBar extends StatelessWidget {
       children: [
         if (showBrand) ...[
           Text(
-            'Pomelo',
+            '柚子音乐',
             style: TextStyle(
               fontSize: AppText.detailTitle,
               fontWeight: FontWeight.w700,
@@ -226,7 +226,7 @@ class AppSideNavigation extends StatelessWidget {
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         Text(
-                          'Pomelo',
+                          '柚子音乐',
                           style: TextStyle(
                             fontSize: AppText.detailTitle,
                             fontWeight: FontWeight.w700,

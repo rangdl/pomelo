@@ -7,3 +7,4 @@ analyzer:
     - windows/**
     # 本地 vendored 的模块副本（打补丁版 quickjs_engine 等），不参与本项目 lint。
     - modules/**
+    - ios/**

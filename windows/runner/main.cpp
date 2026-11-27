@@ -27,7 +27,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"pomelo", origin, size)) {
+  // 窗口标题：柚子音乐（用 \u 转义，避免源文件编码影响宽字符串）。
+  if (!window.Create(L"\u67da\u5b50\u97f3\u4e50", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

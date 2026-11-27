@@ -22,7 +22,7 @@ class PomeloApp extends ConsumerWidget {
     // 字体切换同样重建 ThemeData,所有文字立即换用新字体。
     final fontFamily = ref.watch(appFontProvider).fontFamily;
     return MaterialApp.router(
-      title: 'Pomelo',
+      title: '柚子音乐',
       scaffoldMessengerKey: globalScaffoldMessengerKey,
       theme: pomeloTheme(Brightness.light, seedColor, fontFamily: fontFamily),
       darkTheme: pomeloTheme(
