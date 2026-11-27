@@ -31,6 +31,10 @@ const List<BuiltinPlugin> builtinPlugins = [
     fallbackName: 'xinghai-music-source',
   ),
   BuiltinPlugin(
+    assetPath: 'scripts/lx-aggregate-backend.js',
+    fallbackName: 'lx-aggregate-backend',
+  ),
+  BuiltinPlugin(
     assetPath: 'scripts/lx-test-source.js',
     fallbackName: 'lx-test-source',
   ),
@@ -59,7 +63,7 @@ const List<BuiltinPlugin> builtinPlugins = [
 
 /// 内置插件清单版本号：修改 [builtinPlugins] 后请递增，
 /// 已装老版本的用户下次启动会重新预装一次。
-const int _builtinSeedVersion = 3;
+const int _builtinSeedVersion = 4;
 const String _seedVersionKey = 'builtinPluginsSeedVersion';
 
 /// 首次启动（或内置清单升级后）把内置插件安装进插件仓库。
