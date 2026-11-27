@@ -143,7 +143,17 @@ XMLHttpRequest.prototype._send_native_callback = function(responseInfo, response
         this.response = this.responseText;
         break;
       case "arraybuffer":
-        error = "XHR arraybuffer response is not supported!";
+        // 原始字节由 Dart 侧以 base64 回灌在 responseInfo.bodyB64。
+        try {
+          var b64 = responseInfo && responseInfo.bodyB64;
+          if (typeof b64 !== "string" || b64.length === 0) {
+            this.response = new ArrayBuffer(0);
+          } else {
+            this.response = globalThis.__b64ToArrayBuffer(b64);
+          }
+        } catch (e) {
+          error = "XHR arraybuffer decode failed: " + e;
+        }
         break;
       case "document":
         this.response = this.responseText;
@@ -338,15 +348,19 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
                   .timeout(_xhrRequestTimeout);
               break;
           }
-          String responseText = utf8.decode(response.bodyBytes);
+          // 二进制响应（如图片/加密音频）不能强解成 UTF-8，allowMalformed 防崩溃。
+          String responseText = utf8.decode(response.bodyBytes, allowMalformed: true);
           try {
             responseText = jsonEncode(json.decode(responseText));
           } on Exception {}
           final xhrResult = XmlHttpRequestResponse(
             responseText: responseText,
+            // 原始字节以 base64 一并回灌，供 responseType=arraybuffer 的调用方使用。
+            bodyB64: base64.encode(response.bodyBytes),
             responseInfo: XhtmlHttpResponseInfo(
               statusCode: response.statusCode,
               statusText: response.reasonPhrase ?? '',
+              bodyB64: base64.encode(response.bodyBytes),
             ),
           );
 
@@ -382,6 +396,28 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
     final evalXhrSendNative = this.evaluate("""
     var xhrRequests = {};
     var idRequest = -1;
+    // base64 → ArrayBuffer（纯 JS 实现，不依赖 atob）。
+    globalThis.__b64ToArrayBuffer = function (b64) {
+      var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+      var lookup = {};
+      for (var i = 0; i < chars.length; i++) lookup[chars.charAt(i)] = i;
+      var clean = String(b64).replace(/[^A-Za-z0-9+/]/g, '');
+      var len = clean.length;
+      var buffer = new ArrayBuffer((len * 3) >> 2);
+      var bytes = new Uint8Array(buffer);
+      var p = 0, bits = 0, val = 0;
+      for (var j = 0; j < len; j++) {
+        val = (val << 6) | lookup[clean.charAt(j)];
+        bits += 6;
+        if (bits >= 8) {
+          bits -= 8;
+          bytes[p++] = (val >> bits) & 0xff;
+          // 清除已消费的高位，避免长时间累积溢出 32 位。
+          val &= (1 << bits) - 1;
+        }
+      }
+      return buffer;
+    };
     function XMLHttpRequestExtension_send_native() {
       idRequest += 1;
       var cb = arguments[4];
@@ -449,9 +485,13 @@ class XhtmlHttpResponseInfo {
   final String? statusText;
   final List<List<String>> responseHeaders = [];
 
+  /// 响应原始字节的 base64 编码（供 responseType=arraybuffer 使用）。
+  String? bodyB64;
+
   XhtmlHttpResponseInfo({
     this.statusCode,
     this.statusText,
+    this.bodyB64,
   });
 
   void addResponseHeaders(String name, String value) {
@@ -462,21 +502,29 @@ class XhtmlHttpResponseInfo {
     return {
       "statusCode": statusCode,
       "statusText": statusText,
-      "responseHeaders": jsonEncode(responseHeaders)
+      "responseHeaders": jsonEncode(responseHeaders),
+      "bodyB64": bodyB64,
     };
   }
 }
 
 class XmlHttpRequestResponse {
   final String? responseText;
+  final String? bodyB64;
   final String? error; // should be timeout in case of timeout
   final XhtmlHttpResponseInfo? responseInfo;
 
-  XmlHttpRequestResponse({this.responseText, this.responseInfo, this.error});
+  XmlHttpRequestResponse({
+    this.responseText,
+    this.bodyB64,
+    this.responseInfo,
+    this.error,
+  });
 
   Map<String, Object?> toJson() {
     return {
       'responseText': responseText,
+      'bodyB64': bodyB64,
       'responseInfo': responseInfo!.toJson(),
       'error': error
     };
