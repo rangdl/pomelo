@@ -65,6 +65,7 @@ function XMLHttpRequest() {
   this.onload = null;
   this.onloadend = null;
   this.ontimeout = null;
+  this.timeout = 0;
   this.readyState = 0;
   this.status = 0;
   this.statusText = "";
@@ -99,10 +100,16 @@ XMLHttpRequest.prototype.send = function(data) {
   var that = this;
   this._send_native(this._httpMethod, this._url, this._requestHeaders, data || null, function(responseInfo, responseText, error) {
     that._send_native_callback(responseInfo, responseText, error);
-  }, this);
+  }, this, this.timeout || 0);
 };
 XMLHttpRequest.prototype.abort = function() {
   this.readyState = XMLHttpRequest.UNSENT;
+  // 通知 Dart 侧尽快取消/丢弃该请求（无法中断底层 socket 时至少不再回灌结果）。
+  try {
+    if (typeof this._idRequest === "number" && typeof globalThis.__xhrAbortNative === "function") {
+      globalThis.__xhrAbortNative(this._idRequest);
+    }
+  } catch (e) {}
   // Note: this.onreadystatechange() is not supposed to be called according to the XHR specs
 }
 // responseInfo: {statusCode, statusText, responseHeaders}
@@ -238,16 +245,27 @@ class XhrPendingCall {
   Map<String, String> headers;
   String? body;
 
+  /// 单次请求超时（毫秒）；0/空表示用默认超时。
+  int? timeoutMs;
+
+  /// multipart/form-data 字段列表（每项：{name, value|base64, filename?, contentType?}）。
+  List<dynamic>? formData;
+
   XhrPendingCall({
     required this.idRequest,
     required this.method,
     required this.url,
     required this.headers,
     required this.body,
+    this.timeoutMs,
+    this.formData,
   });
 }
 
 const XHR_PENDING_CALLS_KEY = "xhrPendingCalls";
+
+/// 已被 abort 的请求 id 集合：请求完成时若命中则丢弃结果，不再回灌 JS。
+const XHR_ABORTED_IDS_KEY = "xhrAbortedIds";
 
 /// 单次 XHR 请求的超时上限：避免网络异常（DNS/连接挂起）时请求永久悬挂。
 const Duration _xhrRequestTimeout = Duration(seconds: 30);
@@ -256,6 +274,71 @@ http.Client? httpClient;
 
 xhrSetHttpClient(http.Client client) {
   httpClient = client;
+}
+
+/// 该请求是否已被 JS 侧 abort()。
+bool _isAborted(JavascriptRuntime rt, int? id) {
+  if (id == null) return false;
+  final set = rt.dartContext[XHR_ABORTED_IDS_KEY];
+  return set is Set && set.contains(id);
+}
+
+/// 执行一次 XHR 请求（含 multipart/form-data 支持），返回 http.Response。
+Future<http.Response> _executeXhrRequest(XhrPendingCall call) async {
+  final uri = Uri.parse(call.url!);
+  final method = (call.method ?? 'get').toLowerCase();
+  final formData = call.formData;
+
+  // multipart/form-data：用 MultipartRequest 组装。
+  if (formData != null && formData.isNotEmpty) {
+    final req = http.MultipartRequest(method.toUpperCase(), uri);
+    req.headers.addAll(call.headers);
+    for (final item in formData) {
+      if (item is! Map) continue;
+      final name = '${item['name'] ?? ''}';
+      final b64 = item['base64'];
+      final filename = item['filename'];
+      final contentType = item['contentType'];
+      final hasFile = filename != null && '$filename'.isNotEmpty;
+      if (b64 is String && b64.isNotEmpty) {
+        final bytes = base64Decode(b64);
+        if (hasFile) {
+          req.files.add(http.MultipartFile.fromBytes(
+            name,
+            bytes,
+            filename: '$filename',
+            contentType: contentType == null
+                ? null
+                : http.MediaType.parse('$contentType'),
+          ));
+        } else {
+          req.fields[name] = utf8.decode(bytes, allowMalformed: true);
+        }
+      } else {
+        req.fields[name] = '${item['value'] ?? ''}';
+      }
+    }
+    final streamed = await httpClient!.send(req);
+    return http.Response.fromStream(streamed);
+  }
+
+  final body = call.body;
+  switch (method) {
+    case 'head':
+      return httpClient!.head(uri, headers: call.headers);
+    case 'get':
+      return httpClient!.get(uri, headers: call.headers);
+    case 'post':
+      return httpClient!.post(uri, headers: call.headers, body: body);
+    case 'put':
+      return httpClient!.put(uri, headers: call.headers, body: body);
+    case 'patch':
+      return httpClient!.patch(uri, headers: call.headers, body: body);
+    case 'delete':
+      return httpClient!.delete(uri, headers: call.headers, body: body);
+    default:
+      return httpClient!.get(uri, headers: call.headers);
+  }
 }
 
 extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
@@ -271,6 +354,21 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
   JavascriptRuntime enableXhr() {
     httpClient = httpClient ?? http.Client();
     dartContext[XHR_PENDING_CALLS_KEY] = [];
+    dartContext[XHR_ABORTED_IDS_KEY] = <int>{};
+
+    // 接收 JS 侧 abort 通知：记录 id，请求完成时据此丢弃结果。
+    this.onMessage('XhrAbortNative', (arguments) {
+      try {
+        final id = arguments is List && arguments.isNotEmpty
+            ? arguments.first
+            : arguments;
+        final idInt = id is num ? id.toInt() : int.tryParse('$id');
+        if (idInt != null) {
+          (dartContext[XHR_ABORTED_IDS_KEY] as Set<int>).add(idInt);
+        }
+      } catch (_) {}
+      return '';
+    });
 
     Timer.periodic(Duration(milliseconds: 40), (timer) {
       // exits if there is no pending call to remote
@@ -285,69 +383,16 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
       pendingCalls.forEach((element) async {
         final XhrPendingCall pendingCall = element as XhrPendingCall;
         try {
-          HttpMethod eMethod = HttpMethod.values.firstWhere((e) =>
-              e.toString().toLowerCase() ==
-              ("HttpMethod.${pendingCall.method}".toLowerCase()));
-          late http.Response response;
-          switch (eMethod) {
-            case HttpMethod.head:
-              response = await httpClient!
-                  .head(
-                    Uri.parse(pendingCall.url!),
-                    headers: pendingCall.headers,
-                  )
-                  .timeout(_xhrRequestTimeout);
-              break;
-            case HttpMethod.get:
-              response = await httpClient!
-                  .get(
-                    Uri.parse(pendingCall.url!),
-                    headers: pendingCall.headers,
-                  )
-                  .timeout(_xhrRequestTimeout);
-              break;
-            case HttpMethod.post:
-              response = await httpClient!
-                  .post(
-                    Uri.parse(pendingCall.url!),
-                    body: (pendingCall.body is String)
-                        ? pendingCall.body
-                        : jsonEncode(pendingCall.body),
-                    headers: pendingCall.headers,
-                  )
-                  .timeout(_xhrRequestTimeout);
-              break;
-            case HttpMethod.put:
-              response = await httpClient!
-                  .put(
-                    Uri.parse(pendingCall.url!),
-                    body: (pendingCall.body is String)
-                        ? pendingCall.body
-                        : jsonEncode(pendingCall.body),
-                    headers: pendingCall.headers,
-                  )
-                  .timeout(_xhrRequestTimeout);
-              break;
-            case HttpMethod.patch:
-              response = await httpClient!
-                  .patch(
-                    Uri.parse(pendingCall.url!),
-                    body: (pendingCall.body is String)
-                        ? pendingCall.body
-                        : jsonEncode(pendingCall.body),
-                    headers: pendingCall.headers,
-                  )
-                  .timeout(_xhrRequestTimeout);
-              break;
-            case HttpMethod.delete:
-              response = await httpClient!
-                  .delete(
-                    Uri.parse(pendingCall.url!),
-                    headers: pendingCall.headers,
-                  )
-                  .timeout(_xhrRequestTimeout);
-              break;
-          }
+          // 已被 abort 的请求直接跳过。
+          if (_isAborted(this, pendingCall.idRequest)) return;
+          final Duration callTimeout = (pendingCall.timeoutMs != null &&
+                  pendingCall.timeoutMs! > 0)
+              ? Duration(milliseconds: pendingCall.timeoutMs!)
+              : _xhrRequestTimeout;
+          final response = await _executeXhrRequest(pendingCall)
+              .timeout(callTimeout);
+          // 请求完成时若在期间被 abort，丢弃结果，不回灌。
+          if (_isAborted(this, pendingCall.idRequest)) return;
           // 二进制响应（如图片/加密音频）不能强解成 UTF-8，allowMalformed 防崩溃。
           String responseText = utf8.decode(response.bodyBytes, allowMalformed: true);
           try {
@@ -422,6 +467,9 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
       idRequest += 1;
       var cb = arguments[4];
       var context = arguments[5];
+      var timeoutMs = arguments[6] || 0;
+      // 记到实例上，供 abort() 通知 Dart 侧取消。
+      if (context) { try { context._idRequest = idRequest; } catch (e) {} }
       xhrRequests[idRequest] = {
         callback: function(responseInfo, responseText, error) {
           cb(responseInfo, responseText, error);
@@ -433,8 +481,13 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
       args[2] = arguments[2];
       args[3] = arguments[3];
       args[4] = idRequest;
+      args[5] = timeoutMs;
       sendMessage('SendNative', JSON.stringify(args));
     }
+    // abort() 通知 Dart 侧取消指定请求。
+    globalThis.__xhrAbortNative = function (id) {
+      try { sendMessage('XhrAbortNative', JSON.stringify(id)); } catch (e) {}
+    };
     """);
 
     final evalXhrResult = this.evaluate(xhrJsCode);
@@ -447,8 +500,20 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
         String? method = arguments[0];
         String? url = arguments[1];
         dynamic headersList = arguments[2];
-        String? body = arguments[3];
+        dynamic bodyArg = arguments[3];
         int? idRequest = arguments[4];
+        int? timeoutMs = (arguments.length > 5 && arguments[5] is num)
+            ? (arguments[5] as num).toInt()
+            : null;
+
+        // body 为数组时视为 multipart/form-data 字段列表。
+        String? body;
+        List<dynamic>? formData;
+        if (bodyArg is List) {
+          formData = bodyArg;
+        } else if (bodyArg != null) {
+          body = '$bodyArg';
+        }
 
         Map<String, String> headers = {};
         headersList.forEach((header) {
@@ -468,6 +533,8 @@ extension JavascriptRuntimeXhrExtension on JavascriptRuntime {
             url: url,
             headers: headers,
             body: body,
+            timeoutMs: timeoutMs,
+            formData: formData,
           ),
         );
       } on Error catch (e) {
