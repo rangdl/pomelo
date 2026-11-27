@@ -208,6 +208,29 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
             _FavoriteButton(item: item),
             IconButton(
+              tooltip: '刷新播放链接',
+              // 取链进行中禁用，避免重复触发。
+              onPressed: stage == PlaybackStage.resolving ||
+                      stage == PlaybackStage.fallback
+                  ? null
+                  : () => ref.read(playerActionsProvider).refreshCurrent(),
+              icon: stage == PlaybackStage.resolving ||
+                      stage == PlaybackStage.fallback
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white70,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.refresh_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+            ),
+            IconButton(
               tooltip: '播放队列',
               onPressed: () => _showQueue(queue, queueIndex),
               icon: const Icon(

@@ -667,6 +667,61 @@ class PlayerActions {
     }
   }
 
+  /// 手动刷新当前曲目的播放链接：丢弃缓存，强制重新向音源取链。
+  ///
+  /// 适用场景：链接过期 / 卡顿 / 换音源后想重新解析。会保留队列与当前曲目，
+  /// 从当前进度继续（取链成功后 seek 回原位置；失败则回到开头）。
+  /// 返回 true 表示刷新成功。
+  Future<bool> refreshCurrent() async {
+    final item = _ref.read(nowPlayingProvider);
+    if (item == null) return false;
+
+    final player = _ref.read(audioPlayerProvider);
+    final position = player.position;
+    final cacheKey = _mediaKey(item);
+    // 先淘汰可能已失效的缓存链接，确保 _resolveUrl 真正重新请求音源。
+    MediaLinkCache.instance?.remove(cacheKey);
+
+    final repo = await _ref.read(pluginRepositoryProvider.future);
+    final generation = ++_playGeneration;
+    _ref.read(playbackStageProvider.notifier).set(PlaybackStage.resolving);
+
+    void reportStage(PlaybackStage stage) {
+      if (generation != _playGeneration) return;
+      _ref.read(playbackStageProvider.notifier).set(stage);
+    }
+
+    ResolvedSource source;
+    try {
+      source = await _resolveUrl(repo, item, forceRefresh: true, onStage: reportStage);
+    } catch (e) {
+      if (generation != _playGeneration) return false;
+      _markPlaybackFailed();
+      _toast('刷新播放链接失败: ${item['title'] ?? ''}（$e）');
+      return false;
+    }
+    if (generation != _playGeneration) return false;
+
+    try {
+      await _openSource(item, source);
+      if (generation != _playGeneration) return false;
+      // 尽量回到刷新前的位置；接近结尾则从头开始。
+      final total = _durationOf(item);
+      if (position > Duration.zero &&
+          total != null &&
+          position < total - const Duration(seconds: 2)) {
+        await player.seek(position);
+      }
+      _ref.read(playbackStageProvider.notifier).reset();
+      _toast('已刷新播放链接');
+      return true;
+    } catch (e) {
+      if (generation != _playGeneration) return false;
+      _reportPlayFailure(item, '$e');
+      return false;
+    }
+  }
+
   void _toast(String message) {
     final messenger = globalScaffoldMessengerKey.currentState;
     messenger?.showSnackBar(
