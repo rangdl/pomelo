@@ -43,7 +43,9 @@ function fetch(url, options) {
 			resolve(response());
 		};
 
-		request.onerror = reject;
+		request.onerror = (e) => reject(e instanceof Error ? e : new Error('Network request failed'));
+
+		request.ontimeout = () => reject(new Error('Network request timed out'));
 
 		request.withCredentials = options.credentials=='include';
 

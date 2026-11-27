@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:pomelo/features/plugins/runtime/pomelo_plugin_runtime.dart';
 import 'package:quickjs_engine/extensions/xhr.dart';
 
-/// 端到端验证 `scripts/musicfree-plugins/` 下的**改造后** MusicFree 插件：
+/// 端到端验证 `scripts/musicfree-plugins/` 下的**上游原样** MusicFree 插件：
 /// 逐个加载 -> 反射元信息 -> 真实搜索 -> 对首条调用 getMediaSource。
 ///
 /// 真实外网 + 真实 JS 运行时，网络不可达时应跳过而非误报失败。

@@ -26,8 +26,8 @@ module.exports = {
   // 宿主用它做跨插件兜底匹配：不填时会按 platform 名推断（如"风誰·酷狗"→kg）。
   sourceKeys: ['kw'],
 
-  // 声明本插件支持的音质，宿主会按 standard/higher/highest 传入。
-  supportedQualitys: ['standard', 'higher', 'highest'],
+  // 声明本插件支持的音质，宿主会按 low/standard/high/super 传入。
+  supportedQualitys: ['low', 'standard', 'high', 'super'],
 
   // ---- 搜索 ----------------------------------------------------------------
   // type: 'music' | 'sheet' | 'artist' | 'album'
@@ -130,7 +130,7 @@ module.exports = {
   },
 
   // ---- 音源（可选）----------------------------------------------------------
-  // quality: 'standard' | 'higher' | 'highest'
+  // quality: 'low' | 'standard' | 'high' | 'super'
   // 返回 { url, headers? }；拿不到时返回 null，宿主会按音源 key 尝试其它插件兜底。
   //
   // 注意：宿主会在调用时额外传第三个参数 sourceKey（本插件的主音源 key），
@@ -154,7 +154,7 @@ module.exports = {
  * 包装成等价的 `getMediaSource(musicItem, quality, sourceKey)`：
  *
  *   - `inited` 里声明的每个源（kw/kg/tx/wy/mg/qs…）都会成为本插件的音源 key；
- *   - 宿主请求 higher 时，脚本若只声明 128k/320k，会自动降档；
+ *   - 宿主请求 high 时，脚本若只声明 128k/320k，会自动降档；
  *   - 脚本声明了 `lyric` action 时，宿主会额外暴露歌词能力；
  *   - `lx.send('updateAlert', { log, updateUrl })` 会被识别为更新提示，
  *     `updateUrl` 会作为更新地址。

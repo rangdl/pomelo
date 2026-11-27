@@ -143,9 +143,16 @@ class LxCompat {
   }) =>
       '''
 var __pluginModule = { exports: {} };
-function __noRequire(requireName) {
+// MusicFree 插件的 CommonJS 模块表：由 MusicfreeCompat.bootstrap 注册（axios/he 等），
+// 插件源码保持上游原样，require 由运行时提供。
+var __pluginModules = {};
+function __pluginRequire(requireName) {
+  if (Object.prototype.hasOwnProperty.call(__pluginModules, requireName)) {
+    return __pluginModules[requireName];
+  }
   throw new Error('require("' + requireName + '") is not available in this runtime. ' +
-    'Only fetch() and standard JS builtins are provided.');
+    'Provided modules: ' + Object.keys(__pluginModules).join(', ') +
+    '. Only fetch() and standard JS builtins are available otherwise.');
 }
 var __pluginConsole = {
   log: function() { sendMessage('pluginLog', JSON.stringify(Array.prototype.slice.call(arguments).map(String))); },
@@ -174,6 +181,25 @@ var __lx_console = {
   warn: function() { __lx_send_log('warn', arguments); },
   error: function() { __lx_send_log('error', arguments); }
 };
+
+// 原生 LX 沙箱提供 setInterval/clearInterval；引擎只内置 setTimeout/clearTimeout，
+// 这里基于它们补一个可取消的 setInterval。
+var __lx_intervalSeq = 0;
+var __lx_intervalActive = {};
+function setInterval(fn, delay) {
+  var id = ++__lx_intervalSeq;
+  __lx_intervalActive[id] = true;
+  function tick() {
+    if (!__lx_intervalActive[id]) return;
+    try { fn(); } catch (e) { __lx_send_log('error', [e && e.stack ? e.stack : e]); }
+    if (__lx_intervalActive[id]) setTimeout(tick, delay || 0);
+  }
+  setTimeout(tick, delay || 0);
+  return id;
+}
+function clearInterval(id) {
+  if (id !== undefined && id !== null) delete __lx_intervalActive[id];
+}
 
 var __lx_requestHandler = null;
 
@@ -209,8 +235,7 @@ var __lx = {
     return Promise.reject(new Error('The event is not supported: ' + eventName));
   },
   request: function(url, options, callback) {
-    __lx_do_request(url, options || {}, callback);
-    return function() {};
+    return __lx_do_request(url, options || {}, callback);
   },
   utils: null
 };
@@ -247,6 +272,25 @@ function __lx_to_bytes(input, encoding) {
     return bytes;
   }
   return input instanceof Uint8Array ? input : new Uint8Array(input);
+}
+
+function __lx_zlib_call(op, input) {
+  var res;
+  try {
+    res = sendMessage('LxZlib', JSON.stringify({
+      op: op,
+      data: __lx_bytes_to_b64(__lx_to_bytes(input))
+    }));
+  } catch (e) {
+    return Promise.reject(new Error(e && e.message ? e.message : String(e)));
+  }
+  var parsed = null;
+  try { parsed = JSON.parse(res); } catch (e) {}
+  if (!parsed || parsed.error) {
+    return Promise.reject(new Error(
+      (parsed && parsed.error) || ('zlib ' + op + ' failed')));
+  }
+  return Promise.resolve(__lx_b64_to_bytes(parsed.data));
 }
 
 __lx.utils = {
@@ -306,10 +350,44 @@ __lx.utils = {
       for (var k = 0; k < bytes.length; k++) out += String.fromCharCode(bytes[k]);
       try { return decodeURIComponent(escape(out)); } catch (e) { return out; }
     }
+  },
+  zlib: {
+    inflate: function(input) { return __lx_zlib_call('inflate', input); },
+    deflate: function(input) { return __lx_zlib_call('deflate', input); }
   }
 };
 
+// LX 请求走宿主专用桥：支持真实字节、formData、timeout 和可取消。
+var __lxHttpPending = {};
+var __lxHttpSeq = 0;
+
+globalThis.__lxHttpSettle = function(id, payload) {
+  var pending = __lxHttpPending[id];
+  if (!pending || pending.settled) return;
+  pending.settled = true;
+  delete __lxHttpPending[id];
+  if (payload && payload.error) {
+    pending.callback(new Error(payload.error), null, null);
+    return;
+  }
+  var resp = (payload && payload.resp) || {};
+  var raw = __lx_b64_to_bytes(resp.rawBase64 || '');
+  var text = payload && payload.text != null ? payload.text : '';
+  // 原生 LX 会对响应体尝试 JSON.parse（失败则保留字符串）。
+  var parsed = text;
+  try { parsed = JSON.parse(text); } catch (e) {}
+  pending.callback(null, {
+    statusCode: resp.statusCode,
+    statusMessage: resp.statusMessage,
+    headers: resp.headers || {},
+    bytes: raw.length,
+    raw: raw,
+    body: parsed
+  }, parsed);
+};
+
 function __lx_do_request(url, options, callback) {
+  options = options || {};
   var headers = {};
   var passed = options.headers || {};
   for (var k in passed) headers[k] = passed[k];
@@ -328,48 +406,79 @@ function __lx_do_request(url, options, callback) {
       + 'Chrome/69.0.3497.100 Safari/537.36';
   }
 
-  var body = options.body;
-  if (body == null && options.form && typeof options.form === 'object') {
-    // 原生 LX 会把 form 对象编码为 x-www-form-urlencoded。
-    var pairs = [];
-    for (var f in options.form) {
-      pairs.push(encodeURIComponent(f) + '=' + encodeURIComponent(options.form[f]));
-    }
-    body = pairs.join('&');
-    if (!hasCt) {
-      headers['Content-Type'] = 'application/x-www-form-urlencoded';
-      hasCt = true;
-    }
-  } else if (body != null && typeof body === 'object' && !(body instanceof Uint8Array)) {
-    // 原生 LX 用 needle 的 json 选项序列化对象请求体。
-    body = JSON.stringify(body);
-    if (!hasCt) {
-      headers['Content-Type'] = 'application/json';
-      hasCt = true;
+  var formData = null;
+  if (options.formData && typeof options.formData === 'object') {
+    formData = [];
+    for (var fdKey in options.formData) {
+      var values = Array.isArray(options.formData[fdKey])
+        ? options.formData[fdKey] : [options.formData[fdKey]];
+      for (var vi = 0; vi < values.length; vi++) {
+        var val = values[vi];
+        if (val instanceof Uint8Array) {
+          formData.push({ name: fdKey, base64: __lx_bytes_to_b64(val) });
+        } else if (val && val.buffer instanceof Uint8Array) {
+          formData.push({
+            name: fdKey,
+            base64: __lx_bytes_to_b64(val.buffer),
+            filename: val.filename || null,
+            contentType: val.contentType || null
+          });
+        } else {
+          formData.push({ name: fdKey, value: String(val) });
+        }
+      }
     }
   }
 
-  fetch(url, {
-    method: (options.method || 'get').toUpperCase(),
-    headers: headers,
-    body: body == null ? undefined : body
-  }).then(function(resp) {
-    return resp.text().then(function(text) {
-      var outHeaders = {};
-      if (resp.headers && resp.headers.entries) {
-        resp.headers.entries().forEach(function(e) { outHeaders[e[0]] = e[1]; });
+  var body = options.body;
+  var bodyBase64 = null;
+  if (!formData) {
+    if (body == null && options.form && typeof options.form === 'object') {
+      // 原生 LX 会把 form 对象编码为 x-www-form-urlencoded。
+      var pairs = [];
+      for (var f in options.form) {
+        pairs.push(encodeURIComponent(f) + '=' + encodeURIComponent(options.form[f]));
       }
-      // 原生 LX 会对响应体尝试 JSON.parse（失败则保留字符串）。
-      var parsed = text;
-      try { parsed = JSON.parse(text); } catch (e) {}
-      var raw = new Uint8Array(text.length);
-      for (var i = 0; i < text.length; i++) raw[i] = text.charCodeAt(i) & 0xff;
-      callback(null, {
-        statusCode: resp.status, statusMessage: resp.statusText,
-        headers: outHeaders, bytes: raw.length, raw: raw, body: parsed
-      }, parsed);
-    });
-  }).catch(function(err) { callback(err, null, null); });
+      body = pairs.join('&');
+      if (!hasCt) {
+        headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      }
+    } else if (body instanceof Uint8Array) {
+      bodyBase64 = __lx_bytes_to_b64(body);
+      body = null;
+    } else if (body != null && typeof body === 'object') {
+      // 原生 LX 用 needle 的 json 选项序列化对象请求体。
+      body = JSON.stringify(body);
+      if (!hasCt) headers['Content-Type'] = 'application/json';
+    }
+  }
+
+  var id = ++__lxHttpSeq;
+  __lxHttpPending[id] = { callback: callback, settled: false };
+  try {
+    sendMessage('LxHttp', JSON.stringify({
+      id: id,
+      url: url,
+      method: (options.method || 'get').toUpperCase(),
+      headers: headers,
+      body: body == null ? null : body,
+      bodyBase64: bodyBase64,
+      formData: formData,
+      timeout: options.timeout
+    }));
+  } catch (e) {
+    delete __lxHttpPending[id];
+    callback(new Error(e && e.message ? e.message : String(e)), null, null);
+    return function() {};
+  }
+
+  return function() {
+    var pending = __lxHttpPending[id];
+    if (!pending || pending.settled) return;
+    pending.settled = true;
+    delete __lxHttpPending[id];
+    try { sendMessage('LxHttpCancel', JSON.stringify(id)); } catch (e) {}
+  };
 }
 
 // ---- 音源声明与音质降级 -------------------------------------------------
@@ -387,13 +496,16 @@ function __lx_qualitys_of(key) {
   return [];
 }
 
-// 宿主统一用 standard/higher/highest；不可用时按 flac > 320k > 128k 逐级降档。
+// 宿主音质档位 low/standard/high/super 对应 128k/320k/flac/flac24bit；
+// 同时兼容旧值 higher/highest 以及脚本直接传入的音质名。
 function __lx_quality_chain(requested) {
-  var target = (requested === 'highest' || requested === 'flac') ? 'flac'
-    : (requested === 'higher' || requested === '320k') ? '320k'
-    : (requested === 'standard' || requested === '128k') ? '128k'
+  var target = (requested === 'lossless' || requested === 'super'
+      || requested === 'highest' || requested === 'flac24bit') ? 'flac24bit'
+    : (requested === 'high' || requested === 'higher' || requested === 'flac') ? 'flac'
+    : (requested === 'standard' || requested === '320k') ? '320k'
+    : (requested === 'low' || requested === '128k') ? '128k'
     : requested;
-  var order = ['flac', '320k', '128k'];
+  var order = ['flac24bit', 'flac', '320k', '128k'];
   var idx = order.indexOf(target);
   if (idx < 0) return [target];
   return order.slice(idx);

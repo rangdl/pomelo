@@ -55,6 +55,33 @@ void main() {
       expect(decrypted, plain);
     });
 
+    test('ECB + PKCS7 使用 ECB 且可还原', () {
+      const plain = '0123456789abcdef0123456789abcdef'; // 两个块
+      final ecb = encrypt(plain, 'aes-128-ecb', iv: 'abcdefghijklmnop');
+      // 修复前 ECB 分支实际走 CBC（全零 IV），与下面的结果相同。
+      final zeroCbc = encrypt(plain, 'aes-128-cbc', iv: '0000000000000000');
+      expect(ecb, isNot(zeroCbc));
+
+      final cipher =
+          PaddedBlockCipherImpl(PKCS7Padding(), ECBBlockCipher(AESEngine()))
+            ..init(
+              false,
+              PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
+                KeyParameter(Uint8List.fromList(utf8.encode(key))),
+                null,
+              ),
+            );
+      expect(utf8.decode(cipher.process(base64.decode(ecb))), plain);
+
+      final decrypted = LxCrypto.aesDecryptBase64(
+        dataB64: ecb,
+        mode: 'aes-128-ecb',
+        keyB64: keyB64,
+        ivB64: base64.encode(utf8.encode('abcdefghijklmnop')),
+      );
+      expect(utf8.decode(base64.decode(decrypted)), plain);
+    });
+
     test('ECB + NoPadding 长度与输入一致', () {
       const plain = '0123456789abcdef'; // 恰好一个块
       final out = encrypt(plain, 'aes-128-ecb-nopadding');

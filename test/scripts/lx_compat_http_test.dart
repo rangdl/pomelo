@@ -82,7 +82,7 @@ send('inited', {
 
     final source = await rt.getMediaSource(
       {'id': 'abc', 'title': '歌名', 'artist': '歌手', '_pluginId': 'p'},
-      'higher',
+      'high',
       sourceKey: 'kw',
     );
     expect(source?['url'], 'https://example.test/ok');

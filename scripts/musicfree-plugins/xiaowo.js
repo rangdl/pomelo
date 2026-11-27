@@ -1,99 +1,5 @@
-// 小蜗音乐 —— 改造自 qwerwhr/musicfree-plugins/小蜗音乐.js
-// pomelo 适配：页面顶部注入 fetch 版 axios + he 兼容层，移除 require('axios')/require('he')。协议：search/getMediaSource/getTopLists/getLyric。
-// ==== pomelo 运行时兼容层：fetch 版 axios 最小实现 + he 解码 ====
-// 本项目 quickjs 运行时只提供 fetch 与 JS 内建对象，没有 require/axios/he。
-function __pmQs(obj) {
-  if (!obj) return '';
-  return Object.keys(obj)
-    .filter(function (k) { return obj[k] !== undefined && obj[k] !== null; })
-    .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(obj[k]); })
-    .join('&');
-}
-function __pmUrl(url, params) {
-  var q = __pmQs(params);
-  if (!q) return url;
-  return url + (url.indexOf('?') === -1 ? '?' : '&') + q;
-}
-async function __pmAxiosRequest(config) {
-  config = config || {};
-  var method = String(config.method || 'get').toUpperCase();
-  var url = __pmUrl(config.url || config.uri || '', config.params);
-  var headers = {};
-  var src = config.headers || {};
-  Object.keys(src).forEach(function (k) { headers[k] = src[k]; });
-  var body;
-  if (config.data !== undefined && config.data !== null) {
-    if (typeof config.data === 'string') {
-      body = config.data;
-    } else {
-      body = JSON.stringify(config.data);
-      if (!headers['Content-Type'] && !headers['content-type']) {
-        headers['Content-Type'] = 'application/json';
-      }
-    }
-  }
-  var resp = await fetch(url, { method: method, headers: headers, body: body });
-  var txt = await resp.text();
-  var data;
-  try { data = JSON.parse(txt); } catch (e) { data = txt; }
-  return { data: data, status: resp.status, headers: resp.headers, config: config };
-}
-var _axios = function (config) {
-  if (typeof config === 'string') config = { url: config };
-  return __pmAxiosRequest(config);
-};
-_axios.get = function (url, config) {
-  config = config || {};
-  config.url = url;
-  config.method = 'get';
-  return __pmAxiosRequest(config);
-};
-_axios.post = function (url, data, config) {
-  config = config || {};
-  config.url = url;
-  config.method = 'post';
-  config.data = data;
-  return __pmAxiosRequest(config);
-};
-_axios.request = _axios;
-_axios.default = _axios;
-
-// he 兼容：只实现插件常用的 decode（HTML 实体解码）与 encode。
-var _he = {
-  decode: function (s) {
-    if (s === undefined || s === null) return '';
-    s = String(s);
-    var named = {
-      'amp': '&', 'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'", 'nbsp': ' ',
-      'hellip': '…', 'mdash': '—', 'ndash': '–', 'lsquo': '‘', 'rsquo': '’',
-      'ldquo': '“', 'rdquo': '”', 'middot': '·', 'copy': '©',
-      'reg': '®', 'trade': '™', 'times': '×', 'divide': '÷'
-    };
-    return s.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g, function (m, g) {
-      if (g.charAt(0) === '#') {
-        var code = g.charAt(1).toLowerCase() === 'x'
-          ? parseInt(g.slice(2), 16)
-          : parseInt(g.slice(1), 10);
-        if (!isNaN(code)) { try { return String.fromCodePoint(code); } catch (e) { return m; } }
-        return m;
-      }
-      var v = named[g];
-      return v === undefined ? m : v;
-    });
-  },
-  encode: function (s) {
-    return String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
-  },
-  decodeStrict: function (s) { return _he.decode(s); },
-  encodeStrict: function (s) { return _he.encode(s); }
-};
-_he.default = _he;
-// ==== 兼容层结束 ====
-
-var $M8GQN$axios = _axios;
-var $M8GQN$he = _he;
+var $M8GQN$axios = require("axios");
+var $M8GQN$he = require("he");
 
 function $parcel$interopDefault(a) {
   return a && a.__esModule ? a.default : a;
@@ -627,9 +533,16 @@ const $4e63e094b4590b2b$var$pluginInstance = {
     getRecommendSheetsByTag: $4e63e094b4590b2b$var$getRecommendSheetsByTag,
     getMusicSheetInfo: $4e63e094b4590b2b$var$getMusicSheetInfo
 };
+$4e63e094b4590b2b$var$search("童话镇", 1, "music").then((res)=>{
+    console.log(res);
+    $4e63e094b4590b2b$var$getMediaSource(res.data[0], "standard").then((res)=>{
+        console.log(res);
+    });
+    $4e63e094b4590b2b$var$getLyric(res.data[0]).then((res)=>{
+        console.log(res);
+    });
+});
 var $4e63e094b4590b2b$export$2e2bcd8739ae039 = $4e63e094b4590b2b$var$pluginInstance;
-// pomelo: 把插件实例直接挂到 module.exports（宿主读 module.exports.platform 等）
-Object.keys($4e63e094b4590b2b$var$pluginInstance).forEach(function(k){ module.exports[k] = $4e63e094b4590b2b$var$pluginInstance[k]; });
 
 
 //# sourceMappingURL=xiaowo.js.map

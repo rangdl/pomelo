@@ -78,15 +78,16 @@ class LxCrypto {
       return base64.encode(out);
     }
 
-    final cipher =
-        PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
-          ..init(
-            true,
-            PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
-              params,
-              null,
-            ),
-          );
+    final cipherParams =
+        PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
+      // ECB 不接受 IV，只传 key。
+      isCbc ? params : KeyParameter(key),
+      null,
+    );
+    final cipher = PaddedBlockCipherImpl(
+      PKCS7Padding(),
+      isCbc ? CBCBlockCipher(AESEngine()) : ECBBlockCipher(AESEngine()),
+    )..init(true, cipherParams);
     return base64.encode(cipher.process(data));
   }
 
@@ -134,15 +135,16 @@ class LxCrypto {
       return base64.encode(out);
     }
 
-    final cipher =
-        PaddedBlockCipherImpl(PKCS7Padding(), CBCBlockCipher(AESEngine()))
-          ..init(
-            false,
-            PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
-              params,
-              null,
-            ),
-          );
+    final cipherParams =
+        PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
+      // ECB 不接受 IV，只传 key。
+      isCbc ? params : KeyParameter(key),
+      null,
+    );
+    final cipher = PaddedBlockCipherImpl(
+      PKCS7Padding(),
+      isCbc ? CBCBlockCipher(AESEngine()) : ECBBlockCipher(AESEngine()),
+    )..init(false, cipherParams);
     return base64.encode(cipher.process(data));
   }
 

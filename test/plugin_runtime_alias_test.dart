@@ -38,7 +38,7 @@ void main() {
         '_pluginId': 'other',
         '_sourceKey': 'kw',
       },
-      'higher',
+      'high',
       sourceKey: 'kw',
     );
 

@@ -133,9 +133,15 @@ abstract class JavascriptRuntime {
           // console.log(typeof(sendMessage));
           // console.log('BLA');
           sendMessage('SetTimeout', JSON.stringify({ timeoutIndex, timeout}));
-            
+          return timeoutIndex;
         } catch (e) {
           console.error('ERROR HERE',e.message);
+        }
+      };
+      function clearTimeout(timeoutIndex) {
+        // 不直接删除：Dart 侧定时器仍会触发，删除后 evaluate 会取到 undefined。
+        if (__NATIVE_FLUTTER_JS__setTimeoutCallbacks[timeoutIndex]) {
+          __NATIVE_FLUTTER_JS__setTimeoutCallbacks[timeoutIndex] = function () {};
         }
       };
       1

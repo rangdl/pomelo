@@ -128,3 +128,10 @@ StatefulShellRoute.indexedStack        # 一级导航壳(3 个入口)
 - 插件实例闲置 10 分钟自动回收(`plugin_providers.dart`),避免用过的插件常驻一份引擎。
 - 插件内 `sendMessage('pluginLog' / 'lxLog')` 走独立日志通道,不占用调用结果。
 - LX 脚本由兼容层(`lx_compat.dart`)包装成与自有格式同形的 `getMediaSource` 导出,宿主不区分插件出身。
+
+### 6.1 插件平台兼容文档
+
+两类插件平台的兼容实现分别维护在独立文档中,新增平台时在 `docs/compat/` 下增加对应文件:
+
+- MusicFree 插件:[docs/compat/musicfree.md](docs/compat/musicfree.md)
+- LX 音源脚本:[docs/compat/lx.md](docs/compat/lx.md)

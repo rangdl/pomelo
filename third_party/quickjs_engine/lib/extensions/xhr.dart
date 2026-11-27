@@ -171,14 +171,14 @@ XMLHttpRequest.prototype._send_native_callback = function(responseInfo, response
     console.warn("Got XHR timeout");
     if (typeof this.ontimeout === "function") {
       //console.log("Calling ontimeout()...");
-      this.ontimeout();
+      this.ontimeout(new Error("XHR timeout"));
     }
   } else if (error) {
     // Error
     console.warn("Got XHR error:", error);
     if (typeof this.onerror === "function") {
       //console.log("Calling onerror()...");
-      this.onerror();
+      this.onerror(new Error("XHR error: " + error));
     }
   } else {
     // Success

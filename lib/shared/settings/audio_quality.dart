@@ -1,8 +1,9 @@
 /// 播放音质偏好。
 ///
-/// 不同插件对不同档位的命名各异，这里给出统一的抽象档位，并提供到
-/// MusicFree 与 LX 各脚本实际使用值的映射。
+/// 档位与 MusicFree 官方的 low/standard/high/super 对齐；到 LX 的
+/// `musicUrl` 音质名则映射为 128k/320k/flac/flac24bit。
 enum AudioQuality {
+  low('低品'),
   standard('标准'),
   high('高品'),
   lossless('无损');
@@ -12,21 +13,19 @@ enum AudioQuality {
   final String label;
 
   /// 传给 MusicFree 插件 `getMediaSource(item, quality)` 的值。
-  ///
-  /// 星海 qs 等脚本内部 QUALITY_MAP 用 low/standard/high/super 这组键，
-  /// 通用 MusicFree 插件通常用 standard/higher/highest（酷狗/网易系）。
-  /// 这里取 maxim「通用 MusicFree 约定」的一组，兼容多数插件。
   String get musicFreeValue => switch (this) {
+    AudioQuality.low => 'low',
     AudioQuality.standard => 'standard',
-    AudioQuality.high => 'higher',
-    AudioQuality.lossless => 'highest',
+    AudioQuality.high => 'high',
+    AudioQuality.lossless => 'super',
   };
 
   /// 传给 LX 脚本 `musicUrl` action 的 type 值（各脚本按此映射平台音质）。
   String get lxValue => switch (this) {
-    AudioQuality.standard => '128k',
-    AudioQuality.high => '320k',
-    AudioQuality.lossless => 'flac',
+    AudioQuality.low => '128k',
+    AudioQuality.standard => '320k',
+    AudioQuality.high => 'flac',
+    AudioQuality.lossless => 'flac24bit',
   };
 
   static AudioQuality fromName(String? name) => AudioQuality.values.firstWhere(

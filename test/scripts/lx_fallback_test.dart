@@ -121,7 +121,7 @@ void main() {
               'name': '${first['title'] ?? ''}',
               'singer': '${first['artist'] ?? ''}',
             },
-            'higher',
+            'high',
             sourceKey: lxSource,
           );
           final url = src?['url'];

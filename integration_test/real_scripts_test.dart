@@ -91,7 +91,7 @@ void main() {
           'albumName': '周杰伦新歌',
           'interval': '03:27',
         },
-        'higher',
+        'high',
         sourceKey: 'qs',
       );
       expect(src, isNotNull);

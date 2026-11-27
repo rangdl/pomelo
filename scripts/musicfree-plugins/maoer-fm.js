@@ -1,68 +1,6 @@
-// 猫耳FM (missevan.com) —— 改造自 qwerwhr/musicfree-plugins/猫耳FM.js
-// pomelo 适配：页面顶部注入 fetch 版 axios 兼容层，移除 require('axios')。协议：search/getMediaSource/getAlbumInfo。
-// ==== pomelo 运行时兼容层：用全局 fetch 实现 axios 的最小子集 ====
-// 本项目的 quickjs 运行时只提供 fetch 与 JS 内建对象，没有 require/axios。
-// 本层把插件对 axios.get/post/request 的调用翻译成 fetch。
-function __pmQs(obj) {
-  if (!obj) return '';
-  return Object.keys(obj)
-    .filter(function (k) { return obj[k] !== undefined && obj[k] !== null; })
-    .map(function (k) { return encodeURIComponent(k) + '=' + encodeURIComponent(obj[k]); })
-    .join('&');
-}
-function __pmUrl(url, params) {
-  var q = __pmQs(params);
-  if (!q) return url;
-  return url + (url.indexOf('?') === -1 ? '?' : '&') + q;
-}
-async function __pmAxiosRequest(config) {
-  config = config || {};
-  var method = String(config.method || 'get').toUpperCase();
-  var url = __pmUrl(config.url || config.uri || '', config.params);
-  var headers = {};
-  var src = config.headers || {};
-  Object.keys(src).forEach(function (k) { headers[k] = src[k]; });
-  var body;
-  if (config.data !== undefined && config.data !== null) {
-    if (typeof config.data === 'string') {
-      body = config.data;
-    } else {
-      body = JSON.stringify(config.data);
-      if (!headers['Content-Type'] && !headers['content-type']) {
-        headers['Content-Type'] = 'application/json';
-      }
-    }
-  }
-  var resp = await fetch(url, { method: method, headers: headers, body: body });
-  var txt = await resp.text();
-  var data;
-  try { data = JSON.parse(txt); } catch (e) { data = txt; }
-  return { data: data, status: resp.status, headers: resp.headers, config: config };
-}
-var _axios = function (config) {
-  if (typeof config === 'string') config = { url: config };
-  return __pmAxiosRequest(config);
-};
-_axios.get = function (url, config) {
-  config = config || {};
-  config.url = url;
-  config.method = 'get';
-  return __pmAxiosRequest(config);
-};
-_axios.post = function (url, data, config) {
-  config = config || {};
-  config.url = url;
-  config.method = 'post';
-  config.data = data;
-  return __pmAxiosRequest(config);
-};
-_axios.request = _axios;
-_axios.default = _axios;
-// ==== 兼容层结束 ====
-
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const axios_1 = _axios; const __axios_default = _axios;
+const axios_1 = require("axios");
 const pageSize = 30;
 function validMusicFilter(_) {
     return `${_.pay_type}` === "0";

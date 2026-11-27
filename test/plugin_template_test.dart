@@ -41,7 +41,7 @@ void main() {
     expect(await rt.getSearchSuggestions('测试'), isNotEmpty);
     expect((await rt.getRecommendSheetTags()).first['id'], 'tag-1');
 
-    final source = await rt.getMediaSource({'id': '1'}, 'higher');
+    final source = await rt.getMediaSource({'id': '1'}, 'high');
     expect(source, isNotNull);
     expect(source!['url'], startsWith('https://'));
   });
