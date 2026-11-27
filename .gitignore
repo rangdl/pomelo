@@ -48,5 +48,5 @@ app.*.map.json
 .widget_preview/
 
 # vendored quickjs_engine 构建缓存
-third_party/quickjs_engine/android/.cxx/
-third_party/quickjs_engine/native/build/
+modules/quickjs_engine/android/.cxx/
+modules/quickjs_engine/native/build/

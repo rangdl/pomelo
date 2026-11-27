@@ -28,8 +28,8 @@ flutter run
 插件 JS 运行在**独立 Isolate** 中的 QuickJS 引擎里，原生桥接库需先编译一次：
 
 ```bash
-cmake -S third_party/quickjs_engine/native -B third_party/quickjs_engine/native/build
-cmake --build third_party/quickjs_engine/native/build --config Release
+cmake -S modules/quickjs_engine/native -B modules/quickjs_engine/native/build
+cmake --build modules/quickjs_engine/native/build --config Release
 ```
 
 `flutter test` 里的插件脚本测试需要该原生库，可通过环境变量
@@ -68,7 +68,7 @@ debug 模式下 `flutter run` 支持热重载：终端按 `r` 热重载、`R` �
 lib/                        # Dart 源码（app / shared / features 分层）
 android/                    # Android 原生工程（包名 com.pomelo.pomelo）
 windows/                    # Windows 桌面工程
-third_party/quickjs_engine/ # 内置 QuickJS JS 引擎（含原生桥接源码）
+modules/quickjs_engine/ # 内置 QuickJS JS 引擎（含原生桥接源码）
 scripts/                    # 真实插件脚本（测试与真机集成测试用）
 test/                       # 单元测试
 integration_test/           # 真机集成测试

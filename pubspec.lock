@@ -631,7 +631,7 @@ packages:
   quickjs_engine:
     dependency: "direct main"
     description:
-      path: "third_party/quickjs_engine"
+      path: "modules/quickjs_engine"
       relative: true
     source: path
     version: "0.1.7"

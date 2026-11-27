@@ -24,7 +24,7 @@ dependencies:
   path_provider: ^2.1.6
   pointycastle: ^4.0.0
   quickjs_engine:
-    path: third_party/quickjs_engine
+    path: modules/quickjs_engine
   url_launcher: ^6.3.3
   window_manager: ^0.5.1
 

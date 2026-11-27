@@ -44,9 +44,9 @@
 
 ```bash
 source ./env.sh
-export LIBQUICKJSC_TEST_PATH="$PWD/third_party/quickjs_engine/native/build/libquickjs_c_bridge_plugin.so"
-# Windows: $env:LIBQUICKJSC_TEST_PATH = "$PWD\third_party\quickjs_engine\native\build\Release\quickjs_c_bridge_plugin.dll"
-# 首次需构建原生库：cd third_party/quickjs_engine && sh tool/build_native.sh
+export LIBQUICKJSC_TEST_PATH="$PWD/modules/quickjs_engine/native/build/libquickjs_c_bridge_plugin.so"
+# Windows: $env:LIBQUICKJSC_TEST_PATH = "$PWD\modules\quickjs_engine\native\build\Release\quickjs_c_bridge_plugin.dll"
+# 首次需构建原生库：cd modules/quickjs_engine && sh tool/build_native.sh
 flutter test test/scripts/musicfree_plugins_test.dart
 ```
 

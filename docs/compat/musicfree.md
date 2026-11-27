@@ -96,7 +96,7 @@
 ## 测试与排查
 
 ```powershell
-$env:LIBQUICKJSC_TEST_PATH="<项目>/third_party/quickjs_engine/native/build/Release/quickjs_c_bridge_plugin.dll"
+$env:LIBQUICKJSC_TEST_PATH="<项目>/modules/quickjs_engine/native/build/Release/quickjs_c_bridge_plugin.dll"
 flutter test test/scripts
 ```
 

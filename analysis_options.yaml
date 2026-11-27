@@ -5,5 +5,5 @@ analyzer:
     - build/**
     - android/**
     - windows/**
-    # vendored 的第三个包副本（打补丁版 quickjs_engine），不参与本项目 lint。
-    - third_party/**
+    # 本地 vendored 的模块副本（打补丁版 quickjs_engine 等），不参与本项目 lint。
+    - modules/**
