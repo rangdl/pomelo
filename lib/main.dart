@@ -15,6 +15,8 @@ import 'features/playback/data/audio_player_service.dart';
 import 'features/playback/data/media_proxy_server.dart';
 import 'features/playback/data/playback_store.dart';
 import 'features/playback/presentation/playback_providers.dart';
+import 'features/plugins/data/builtin_plugins.dart';
+import 'features/plugins/data/plugin_repository.dart';
 import 'features/plugins/presentation/plugin_providers.dart';
 import 'shared/logging/app_logger.dart';
 import 'shared/settings/app_font.dart';
@@ -57,6 +59,14 @@ Future<void> main() async {
       // 自定义字体在这里完成注册，首帧就用用户选中的字体。
       final initialFont = await loadAppFontSelection(settingsStore);
       final playbackSnapshot = await loadPlaybackSnapshot();
+
+      // 首次启动预装内置音源插件（幂等；失败不阻断启动）。
+      try {
+        final pluginRepo = await PluginRepository.open();
+        await seedBuiltinPlugins(pluginRepo, settingsStore);
+      } catch (e, s) {
+        AppLogger.instance.error('main', '内置插件预装流程异常', e, s);
+      }
 
       // 本地媒体服务：播放器与封面统一走 127.0.0.1，由服务端取流/取图并落盘缓存。
       MediaLinkCache.instance = await MediaLinkCache.open();
