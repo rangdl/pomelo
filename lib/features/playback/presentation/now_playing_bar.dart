@@ -5,6 +5,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../application/player_actions.dart';
+import '../data/lrc_parser.dart';
 import 'playback_providers.dart';
 import 'player_sheet.dart';
 
@@ -109,15 +110,13 @@ class NowPlayingBar extends ConsumerWidget {
                                 fontSize: AppText.rowTitle,
                               ),
                             ),
-                            // 原歌手位置：展示取链/兜底进度，空闲时留空。
-                            Text(
-                              stage.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: AppText.rowSubtitle,
-                                color: scheme.onSurfaceVariant,
-                              ),
+                            // 原歌手位置：取链/兜底进行中显示进度；
+                            // 播放中且有歌词时，单行向上滑动展示当前歌词。
+                            _MiniSubtitleLine(
+                              stage: stage,
+                              positionStream: player.positionStream,
+                              playingStream: player.playingStream,
+                              color: scheme.onSurfaceVariant,
                             ),
                           ],
                         ),
@@ -203,3 +202,96 @@ class _MiniProgressBar extends StatelessWidget {
     );
   }
 }
+
+/// 迷你胶囊的副标题行：取链/兜底进行中显示进度文案；播放中且有歌词时，
+/// 单行展示当前歌词，切换行时像播放页那样向上滑动过渡。
+class _MiniSubtitleLine extends ConsumerWidget {
+  const _MiniSubtitleLine({
+    required this.stage,
+    required this.positionStream,
+    required this.playingStream,
+    required this.color,
+  });
+
+  final PlaybackStage stage;
+  final Stream<Duration> positionStream;
+  final Stream<bool> playingStream;
+  final Color color;
+
+  static const TextStyle _style = TextStyle(fontSize: AppText.rowSubtitle);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final busy = stage == PlaybackStage.resolving ||
+        stage == PlaybackStage.fallback;
+    // 取链/兜底进行中：优先显示进度文案。
+    if (busy) {
+      return Text(
+        stage.label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: _style.copyWith(color: color),
+      );
+    }
+    final lines = ref.watch(lyricLinesProvider).value ?? const <LyricLine>[];
+    if (lines.isEmpty) {
+      // 无歌词：非播放态时保持空行（与原占位一致）。
+      return Text(
+        stage.label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: _style.copyWith(color: color),
+      );
+    }
+    return StreamBuilder<bool>(
+      stream: playingStream,
+      initialData: true,
+      builder: (context, playSnap) {
+        final playing = playSnap.data ?? false;
+        return StreamBuilder<Duration>(
+          stream: positionStream,
+          builder: (context, posSnap) {
+            final pos = posSnap.data ?? Duration.zero;
+            final active = LrcParser.activeIndex(lines, pos);
+            final text = active >= 0 && active < lines.length
+                ? lines[active].text.trim()
+                : '';
+            // 暂停时淡出歌词（只留歌名），播放时淡入。
+            return ClipRect(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                transitionBuilder: (child, animation) {
+                  // 向上滑入 / 向上滑出，与播放页歌词方向一致。
+                  final offset = Tween<Offset>(
+                    begin: const Offset(0, 0.6),
+                    end: Offset.zero,
+                  ).animate(animation);
+                  return FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(position: offset, child: child),
+                  );
+                },
+                child: playing
+                    ? Text(
+                        text,
+                        key: ValueKey<int>(active),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: _style.copyWith(color: color),
+                      )
+                    : const SizedBox(
+                        key: ValueKey('paused'),
+                        width: double.infinity,
+                        height: 14,
+                      ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+

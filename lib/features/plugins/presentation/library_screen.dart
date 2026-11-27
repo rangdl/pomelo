@@ -8,6 +8,7 @@ import '../../playback/application/player_actions.dart';
 import '../../playback/presentation/player_sheet.dart';
 import 'library_providers.dart';
 import 'track_more.dart';
+import '../../../shared/settings/open_player_on_play.dart';
 
 /// 我的：收藏与播放历史。
 ///
@@ -172,7 +173,10 @@ class _SongList extends ConsumerWidget {
                           await ref
                               .read(playerActionsProvider)
                               .playFromList(items, i);
-                          if (context.mounted) showPlayerSheet(context);
+                          if (context.mounted &&
+                              ref.read(openPlayerOnPlayProvider)) {
+                            showPlayerSheet(context);
+                          }
                         } catch (e) {
                           if (context.mounted) {
                             ScaffoldMessenger.of(

@@ -164,11 +164,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 歌名-歌手（一行，超长滚动） + 收藏/队列。
+        // 歌名（一行，超长滚动） + 收藏/刷新/队列，按钮与歌名行垂直居中对齐。
         Row(
           children: [
             Expanded(
-              // 切歌时歌名/歌手交叉淡入淡出。
+              // 切歌时歌名交叉淡入淡出。
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
                 // 默认 Stack 居中对齐会把整块文字推到中间,这里改为左对齐。
@@ -179,29 +179,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
                 child: SizedBox(
                   key: ValueKey(label),
                   width: double.infinity,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      MarqueeText(
-                        label,
-                        style: const TextStyle(
-                          fontSize: AppText.displayTitle,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      // 原歌手位置：展示取链/兜底进度，空闲时留空。
-                      Text(
-                        stage.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: AppText.rowTitle,
-                          color: Colors.white70,
-                        ),
-                      ),
-                    ],
+                  child: MarqueeText(
+                    label,
+                    style: const TextStyle(
+                      fontSize: AppText.displayTitle,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -240,6 +224,19 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
               ),
             ),
           ],
+        ),
+        // 副标题行：展示取链/兜底进度，空闲时留空。
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            stage.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: AppText.rowTitle,
+              color: Colors.white70,
+            ),
+          ),
         ),
         const SizedBox(height: 2),
         // 进度条。

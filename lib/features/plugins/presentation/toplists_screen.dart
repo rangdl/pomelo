@@ -11,6 +11,7 @@ import '../domain/track_origin.dart';
 import 'plugin_providers.dart';
 import 'track_more.dart';
 import 'toplists_providers.dart';
+import '../../../shared/settings/open_player_on_play.dart';
 
 /// 榜单页：按榜单分组展示，点榜单看歌曲，点歌播放。
 ///
@@ -216,7 +217,9 @@ class _TopListsScreenState extends ConsumerState<TopListsScreen> {
   Future<void> _play(List<Map<String, dynamic>> songs, int index) async {
     try {
       await ref.read(playerActionsProvider).playFromList(songs, index);
-      if (mounted) showPlayerSheet(context);
+      if (mounted && ref.read(openPlayerOnPlayProvider)) {
+        showPlayerSheet(context);
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)

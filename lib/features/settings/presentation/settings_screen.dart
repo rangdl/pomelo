@@ -11,6 +11,7 @@ import '../../../shared/layout/window_class.dart';
 import '../../../shared/settings/app_font.dart';
 import '../../../shared/settings/audio_quality.dart';
 import '../../../shared/settings/cache_limit.dart';
+import '../../../shared/settings/open_player_on_play.dart';
 import '../../../shared/settings/settings_store.dart';
 import '../../../shared/settings/theme_color.dart';
 import '../../../shared/settings/theme_mode.dart';
@@ -52,6 +53,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final cacheLimit = ref.watch(cacheLimitProvider);
     final cacheUsage = ref.watch(cacheUsageProvider);
     final sleepAt = ref.watch(sleepTimerProvider);
+    final openPlayerOnPlay = ref.watch(openPlayerOnPlayProvider);
     final scheme = Theme.of(context).colorScheme;
 
     // 超宽窗口限行宽,避免列表被拉满整屏。
@@ -93,12 +95,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 onTap: () => _pickThemeColor(themeColor),
               ),
               SettingsItem(
-                icon: Icons.graphic_eq_rounded,
-                title: '默认音质',
-                subtitle: quality.label,
-                onTap: () => _pickQuality(quality),
-              ),
-              SettingsItem(
                 icon: Icons.font_download_rounded,
                 title: '字体',
                 subtitle: font.label,
@@ -110,6 +106,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           const SectionHeader('播放'),
           GroupCard(
             children: [
+              SettingsItem(
+                icon: Icons.graphic_eq_rounded,
+                title: '默认音质',
+                subtitle: quality.label,
+                onTap: () => _pickQuality(quality),
+              ),
               SettingsItem(
                 icon: Icons.volume_up_rounded,
                 title: '音量',
@@ -127,6 +129,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: '睡眠定时器',
                 subtitle: _sleepLabel(sleepAt),
                 onTap: _pickSleep,
+              ),
+              SettingsItem(
+                icon: Icons.open_in_full_rounded,
+                title: '点击歌曲进入播放页',
+                subtitle: openPlayerOnPlay ? '开启' : '关闭',
+                showChevron: false,
+                trailing: Switch(
+                  value: openPlayerOnPlay,
+                  onChanged: (v) =>
+                      ref.read(openPlayerOnPlayProvider.notifier).set(v),
+                ),
+                onTap: () => ref
+                    .read(openPlayerOnPlayProvider.notifier)
+                    .set(!openPlayerOnPlay),
               ),
             ],
           ),
@@ -162,6 +178,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: '缓存上限',
                 subtitle: cacheLimit.label,
                 onTap: () => _pickCacheLimit(cacheLimit),
+              ),
+              SettingsItem(
+                icon: Icons.folder_open_rounded,
+                title: '数据目录',
+                subtitle: '查看配置与缓存所在位置',
+                onTap: _showDataDir,
               ),
             ],
           ),
@@ -209,12 +231,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: Icons.info_outline_rounded,
                 title: '柚子音乐',
                 subtitle: '本地优先的 Flutter 音乐播放器',
-              ),
-              SettingsItem(
-                icon: Icons.folder_open_rounded,
-                title: '数据目录',
-                subtitle: '查看配置与缓存所在位置',
-                onTap: _showDataDir,
               ),
               SettingsItem(
                 icon: Icons.article_rounded,

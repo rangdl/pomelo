@@ -130,10 +130,10 @@ jobs:
         run: |
           set -e
           mkdir -p dist
-          # 重命名为更直观的发布文件名。
-          cp artifacts/android-apk/app-release.apk "dist/pomelo-${GITHUB_REF_NAME}-android.apk"
-          cp artifacts/ios-unsigned-ipa/unsigned.ipa "dist/pomelo-${GITHUB_REF_NAME}-ios-unsigned.ipa"
-          cp artifacts/windows-release/windows-release.zip "dist/pomelo-${GITHUB_REF_NAME}-windows.zip"
+          # 固定文件名（不带版本号），方便下载链接稳定引用。
+          cp artifacts/android-apk/app-release.apk "dist/pomelo-android.apk"
+          cp artifacts/ios-unsigned-ipa/unsigned.ipa "dist/pomelo-ios-unsigned.ipa"
+          cp artifacts/windows-release/windows-release.zip "dist/pomelo-windows.zip"
           ls -lh dist
 
       - name: Create GitHub Release

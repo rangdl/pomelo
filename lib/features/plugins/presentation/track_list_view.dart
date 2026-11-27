@@ -8,6 +8,7 @@ import '../../playback/application/player_actions.dart';
 import '../../playback/presentation/playback_providers.dart';
 import '../../playback/presentation/player_sheet.dart';
 import 'track_more.dart';
+import '../../../shared/settings/open_player_on_play.dart';
 
 /// 一页歌曲的加载器：返回本页数据与是否到底。
 typedef TrackPageLoader =
@@ -131,7 +132,10 @@ class _TrackListViewState extends ConsumerState<TrackListView> {
                         await ref
                             .read(playerActionsProvider)
                             .playFromList(_items, i);
-                        if (context.mounted) showPlayerSheet(context);
+                        if (context.mounted &&
+                            ref.read(openPlayerOnPlayProvider)) {
+                          showPlayerSheet(context);
+                        }
                       } catch (e) {
                         if (context.mounted) {
                           ScaffoldMessenger.of(
