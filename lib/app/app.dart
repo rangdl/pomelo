@@ -17,6 +17,8 @@ class PomeloApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // 挂上播放状态持久化监听（队列/索引/当前曲/播放模式变化即写盘）。
     ref.watch(playbackPersistenceProvider);
+    // iOS 控制中心 / 锁屏歌词联动。
+    ref.watch(lockScreenLyricSyncProvider);
     // 主题色变化时整体重建 ThemeData,全应用即时生效。
     final seedColor = ref.watch(themeColorProvider).color;
     // 字体切换同样重建 ThemeData,所有文字立即换用新字体。

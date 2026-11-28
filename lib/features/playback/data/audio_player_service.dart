@@ -5,6 +5,8 @@ import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:media_kit/media_kit.dart';
 
+import '../../../shared/settings/lock_screen_lyric.dart';
+
 /// 基于 media_kit + audio_service 的播放器封装。
 ///
 /// 同时承担两个角色：
@@ -181,6 +183,9 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
     MediaMeta? meta,
   }) async {
     if (meta != null) {
+      // 记住原始元信息：控制中心歌词联动时需要还原「歌名 - 歌手」文本。
+      _baseMeta = meta;
+      _lockScreenLyric = null;
       mediaItem.add(
         MediaItem(
           id: meta.id,
@@ -225,6 +230,59 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   void updateQueueIndex(int index) {
     _queueIndex = index;
     _broadcastState();
+  }
+
+  /// 当前曲目的原始元信息（控制中心歌词联动时用于还原文本）。
+  MediaMeta? _baseMeta;
+
+  /// 最近一次写入控制中心的歌词行（用于去重，避免重复 add 造成抖动）。
+  String? _lockScreenLyric;
+
+  /// 控制中心 / 锁屏媒体卡的歌词联动。
+  ///
+  /// [mode] 为 off 时恢复原始「歌名 / 歌手」；[title] 把歌词放歌名位置、
+  /// 歌手位置显示「歌名 - 歌手」；[artist] 反之。歌词行未变化时不更新。
+  /// 仅 iOS 有实际效果（Android 通知栏布局由系统决定）。
+  void applyLockScreenLyric(LockScreenLyricMode mode, String? lyric) {
+    final base = _baseMeta;
+    if (base == null) return;
+    final artistLabel = base.artist.isEmpty
+        ? base.title
+        : '${base.title} - ${base.artist}';
+
+    final String title;
+    final String artist;
+    final String? newLyric;
+    switch (mode) {
+      case LockScreenLyricMode.off:
+        title = base.title;
+        artist = base.artist;
+        newLyric = null;
+      case LockScreenLyricMode.title:
+        title = (lyric == null || lyric.trim().isEmpty)
+            ? base.title
+            : lyric.trim();
+        artist = artistLabel;
+        newLyric = title;
+      case LockScreenLyricMode.artist:
+        title = artistLabel;
+        artist = (lyric == null || lyric.trim().isEmpty)
+            ? base.artist
+            : lyric.trim();
+        newLyric = artist;
+    }
+    // 歌词与模式都没变化时跳过，避免高频位置回调反复重建 MediaItem。
+    if (newLyric == _lockScreenLyric &&
+        mediaItem.value?.title == title &&
+        mediaItem.value?.artist == artist) {
+      return;
+    }
+    _lockScreenLyric = newLyric;
+    final current = mediaItem.value;
+    if (current == null) return;
+    mediaItem.add(
+      current.copyWith(title: title, artist: artist, album: base.album),
+    );
   }
 
   @override

@@ -54,6 +54,22 @@ debug 模式下 `flutter run` 支持热重载：终端按 `r` 热重载、`R` �
 桌面端全局快捷键：空格播放/暂停、`←`/`→` 快退/快进 5 秒、`Ctrl+←`/`Ctrl+→`
 上一首/下一首、`M` 静音、`Ctrl+F` 搜索、`Esc` 返回。
 
+## CI 与发布
+
+`.github/workflows/build.yml` 负责三平台构建：
+
+- **Android**：release APK（debug 签名，可直接安装）
+- **iOS**：`flutter build ios --no-codesign` 后打包成未签名 IPA
+- **Windows**：release 目录压缩包
+
+打 `v*` tag 时额外创建 GitHub Release，产物为固定文件名
+（`pomelo-android.apk` / `pomelo-ios-unsigned.ipa` / `pomelo-windows.zip`），
+发布后自动通知巨魔源（`rangdl/trollstore-source`）刷新。
+
+通知巨魔源需要仓库 secret `TROLLSTORE_DISPATCH_TOKEN`：一个对
+`rangdl/trollstore-source` 具备 `contents:write`（或 `actions:write`）权限的
+fine-grained PAT。未配置时该步骤自动跳过，不影响构建与发布。
+
 ## 网络说明
 
 当前网络无法直连 `dl.google.com` / `maven.google.com` / `services.gradle.org`，因此：

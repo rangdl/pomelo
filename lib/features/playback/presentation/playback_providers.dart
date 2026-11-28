@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/settings/lock_screen_lyric.dart';
 import '../application/player_actions.dart';
 import '../data/audio_player_service.dart';
 import '../data/lrc_parser.dart';
@@ -271,6 +273,72 @@ class _PlaybackLifecycleObserver with WidgetsBindingObserver {
     }
   }
 }
+
+/// 控制中心 / 锁屏歌词联动：按设置把当前歌词行写入媒体卡的标题或歌手位。
+///
+/// 仅 iOS 有实际效果；其它平台即使开启也不调用底层，避免无谓开销。
+final lockScreenLyricSyncProvider = Provider<void>((ref) {
+  if (!Platform.isIOS) return;
+
+  final player = ref.read(audioPlayerProvider);
+  List<LyricLine> lines = const [];
+  int lastActive = -1;
+  StreamSubscription<Duration>? sub;
+
+  void push(Duration pos) {
+    final mode = ref.read(lockScreenLyricModeProvider);
+    if (mode == LockScreenLyricMode.off) {
+      player.applyLockScreenLyric(mode, null);
+      return;
+    }
+    if (lines.isEmpty) {
+      player.applyLockScreenLyric(mode, null);
+      return;
+    }
+    final active = LrcParser.activeIndex(lines, pos);
+    if (active == lastActive) return;
+    lastActive = active;
+    final text = active >= 0 && active < lines.length
+        ? lines[active].text
+        : null;
+    player.applyLockScreenLyric(mode, text);
+  }
+
+  void resubscribe() {
+    sub?.cancel();
+    lastActive = -1;
+    sub = player.positionStream.listen(push);
+  }
+
+  // 模式变化或切歌：重新评估歌词来源。
+  ref.listen(lockScreenLyricModeProvider, (_, _) {
+    // 关闭时立即还原原始文本。
+    if (ref.read(lockScreenLyricModeProvider) == LockScreenLyricMode.off) {
+      player.applyLockScreenLyric(LockScreenLyricMode.off, null);
+    }
+    push(player.position);
+  });
+
+  ref.listen(lyricLinesProvider, (_, next) {
+    lines = next.value ?? const [];
+    lastActive = -1;
+    push(player.position);
+  });
+
+  ref.listen(nowPlayingProvider, (_, _) {
+    lines = ref.read(lyricLinesProvider).value ?? const [];
+    lastActive = -1;
+    resubscribe();
+    push(Duration.zero);
+  });
+
+  lines = ref.read(lyricLinesProvider).value ?? const [];
+  resubscribe();
+
+  ref.onDispose(() {
+    sub?.cancel();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // 歌词

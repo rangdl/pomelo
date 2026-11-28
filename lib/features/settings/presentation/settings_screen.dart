@@ -11,6 +11,7 @@ import '../../../shared/layout/window_class.dart';
 import '../../../shared/settings/app_font.dart';
 import '../../../shared/settings/audio_quality.dart';
 import '../../../shared/settings/cache_limit.dart';
+import '../../../shared/settings/lock_screen_lyric.dart';
 import '../../../shared/settings/open_player_on_play.dart';
 import '../../../shared/settings/settings_store.dart';
 import '../../../shared/settings/theme_color.dart';
@@ -54,6 +55,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final cacheUsage = ref.watch(cacheUsageProvider);
     final sleepAt = ref.watch(sleepTimerProvider);
     final openPlayerOnPlay = ref.watch(openPlayerOnPlayProvider);
+    final lockLyricMode = ref.watch(lockScreenLyricModeProvider);
     final scheme = Theme.of(context).colorScheme;
 
     // 超宽窗口限行宽,避免列表被拉满整屏。
@@ -144,6 +146,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     .read(openPlayerOnPlayProvider.notifier)
                     .set(!openPlayerOnPlay),
               ),
+              // 仅 iOS：控制中心 / 锁屏媒体卡是否显示歌词及所在位置。
+              if (Platform.isIOS)
+                SettingsItem(
+                  icon: Icons.lyrics_rounded,
+                  title: '控制中心显示歌词',
+                  subtitle: lockLyricMode.label,
+                  onTap: () => _pickLockLyricMode(lockLyricMode),
+                ),
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -585,6 +595,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
     if (picked != null) {
       await ref.read(themeColorProvider.notifier).set(picked);
+    }
+  }
+
+  Future<void> _pickLockLyricMode(LockScreenLyricMode current) async {
+    final picked = await showSelectionSheet<LockScreenLyricMode>(
+      context: context,
+      title: '控制中心显示歌词',
+      current: current,
+      options: [
+        for (final m in LockScreenLyricMode.values)
+          SelectionOption(value: m, label: m.label),
+      ],
+    );
+    if (picked != null) {
+      await ref.read(lockScreenLyricModeProvider.notifier).set(picked);
     }
   }
 

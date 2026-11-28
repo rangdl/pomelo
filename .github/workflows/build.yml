@@ -1,11 +1,13 @@
 name: build
 
-# 三平台构建；打 v* tag 时额外创建 GitHub Release 并附上产物。
-# 全程不需要任何用户 secrets：
+# 三平台构建；打 v* tag 时额外创建 GitHub Release 并附上产物，随后通知巨魔源刷新。
+# 构建本身不需要 secrets：
 # - Android release 使用 debug 签名（android/app/build.gradle.kts 已配置）
 # - iOS 构建未签名（--no-codesign），再手工打包成 unsigned ipa
 # - Windows 直接构建 release 目录
-# - Release 用仓库内置 GITHUB_TOKEN（仅需 workflow 的 contents: write 权限）
+# - Release 用仓库内置 GITHUB_TOKEN（contents: write）
+# 可选 secret：TROLLSTORE_DISPATCH_TOKEN（对 rangdl/trollstore-source 有 actions:write
+#   的 PAT），用于发版后触发巨魔源刷新；未配置则跳过该步骤。
 on:
   push:
     branches: [main, 'feat/**']
@@ -151,3 +153,19 @@ jobs:
           - Android：debug 签名 APK（可直接安装）
           - iOS：未签名 IPA（需自行签名后安装）
           - Windows：release 目录压缩包"
+
+      # 通知 TrollStore 源刷新（跨仓库，需要 PAT）。
+      # 未配置 secret 时跳过，不影响发布本身。
+      - name: Trigger TrollStore source refresh
+        env:
+          TROLLSTORE_PAT: ${{ secrets.TROLLSTORE_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$TROLLSTORE_PAT" ]; then
+            echo "未配置 TROLLSTORE_DISPATCH_TOKEN，跳过巨魔源刷新"; exit 0
+          fi
+          curl -sf -X POST \
+            -H "Authorization: Bearer $TROLLSTORE_PAT" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/rangdl/trollstore-source/dispatches \
+            -d '{"event_type":"app-release","client_payload":{"app":"pomelo"}}' \
+            && echo "已通知 trollstore-source 刷新"
