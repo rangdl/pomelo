@@ -23,7 +23,6 @@ class NavBarCapsule extends ConsumerStatefulWidget {
     this.style,
     this.color,
     this.animate = true,
-    this.replayToken,
   });
 
   final List<(IconData, String)> destinations;
@@ -41,9 +40,6 @@ class NavBarCapsule extends ConsumerStatefulWidget {
 
   /// 预览时传 false，避免玻璃 shader 反复初始化。
   final bool animate;
-
-  /// 递增该值可重放一次完整动画（预览里「再看一遍」用）。
-  final int? replayToken;
 
   @override
   ConsumerState<NavBarCapsule> createState() => _NavBarCapsuleState();
@@ -71,15 +67,6 @@ class _NavBarCapsuleState extends ConsumerState<NavBarCapsule>
   @override
   void didUpdateWidget(NavBarCapsule oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 预览里重放：从另一个标签滑到当前项，能看到完整过渡。
-    if (widget.replayToken != null &&
-        widget.replayToken != oldWidget.replayToken) {
-      _from = widget.currentIndex == 0 ? 1 : 0;
-      _controller
-        ..duration = _durationFor(widget.style ?? NavAnimationStyle.slide)
-        ..forward(from: 0);
-      return;
-    }
     if (widget.currentIndex == oldWidget.currentIndex) return;
     _from = oldWidget.currentIndex;
     _controller
@@ -99,10 +86,7 @@ class _NavBarCapsuleState extends ConsumerState<NavBarCapsule>
     final NavBarMetrics metrics =
         widget.metrics ?? ref.watch(navBarMetricsProvider);
     final NavAnimationStyle style =
-        widget.style ??
-        (widget.onTap != null
-            ? ref.watch(navAnimationProvider)
-            : NavAnimationStyle.slide);
+        widget.style ?? ref.watch(navAnimationProvider);
     final accent = widget.color ?? scheme.primary;
 
     // 预览改风格时要立刻用新时长。
@@ -131,7 +115,8 @@ class _NavBarCapsuleState extends ConsumerState<NavBarCapsule>
                     painter: _IndicatorPainter(
                       tween: tween,
                       cellWidth: metrics.itemWidth,
-                      size: metrics.indicatorSize,
+                      cellHeight: metrics.height - metrics.inset * 2,
+                      inset: metrics.inset,
                       color: accent.withValues(alpha: 0.16),
                     ),
                   ),
@@ -154,7 +139,6 @@ class _NavBarCapsuleState extends ConsumerState<NavBarCapsule>
                           metrics: metrics,
                           color: accent,
                           idleColor: scheme.onSurfaceVariant,
-                          // 预览不响应点击，避免误触切换真实分支。
                           onTap: widget.onTap == null
                               ? null
                               : () => widget.onTap!(i),
@@ -171,28 +155,35 @@ class _NavBarCapsuleState extends ConsumerState<NavBarCapsule>
   }
 }
 
-/// 绘制圆形/椭圆形指示器。
+/// 绘制选中指示器：与导航项等宽等高的圆角矩形。
+///
+/// 不再画圆——选中范围就是整个标签格，靠圆角与内缩区分边界。
 class _IndicatorPainter extends CustomPainter {
   _IndicatorPainter({
     required this.tween,
     required this.cellWidth,
-    required this.size,
+    required this.cellHeight,
+    required this.inset,
     required this.color,
   });
 
   final NavIndicatorTween tween;
   final double cellWidth;
-  final double size;
+  final double cellHeight;
+  final double inset;
   final Color color;
 
   @override
   void paint(Canvas canvas, Size canvasSize) {
     final centerX = (tween.index + 0.5) * cellWidth;
+    // 基础尺寸 = 格子宽高各内缩 inset，与相邻格、与胶囊外框都留出同样的缝。
+    final baseW = cellWidth - inset * 2;
+    final baseH = cellHeight - inset * 2;
     final paint = Paint()
       ..color = color.withValues(alpha: color.a * tween.opacity);
-    // 椭圆宽度不得超过格子宽度，避免压到相邻标签。
-    final w = (size * tween.stretchX * tween.scale).clamp(0.0, cellWidth - 4);
-    final h = size * tween.scale;
+    // 果冻拉伸只在横向，且最多吃掉与相邻格之间的一半缝隙。
+    final w = (baseW * tween.stretchX).clamp(0.0, cellWidth - inset);
+    final h = baseH * tween.scale;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(
@@ -200,7 +191,8 @@ class _IndicatorPainter extends CustomPainter {
           width: w,
           height: h,
         ),
-        Radius.circular(h / 2),
+        // 圆角取卡片圆角，和设置页的分组卡语言一致。
+        Radius.circular(AppRadius.card),
       ),
       paint,
     );

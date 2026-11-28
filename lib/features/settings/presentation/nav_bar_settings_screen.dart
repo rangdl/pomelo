@@ -22,19 +22,9 @@ class NavBarSettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _NavBarSettingsScreenState extends ConsumerState<NavBarSettingsScreen> {
-  /// 预览当前高亮的标签（与真实导航分支无关）。
+  /// 预览自己维护的高亮项：点击预览里的标签会真实切换并播放动画，
+  /// 但不会改变真实导航所在的分支。
   int _previewIndex = 0;
-
-  /// 递增后让预览重放一次动画。
-  int _replayToken = 0;
-
-  void _replay() {
-    setState(() {
-      // 交替在两个标签之间切换，方便看清过渡。
-      _previewIndex = _previewIndex == 0 ? 1 : 0;
-      _replayToken++;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,48 +52,6 @@ class _NavBarSettingsScreenState extends ConsumerState<NavBarSettingsScreen> {
             AppSpacing.floatingPlayerInset,
           ),
           children: [
-            // 预览放在最上面：改下面的滑杆能立刻看到效果。
-            GroupCard(
-              dividerIndent: 0,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: 110,
-                        child: Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: NavBarCapsule(
-                              destinations: appNavDestinations,
-                              currentIndex: _previewIndex,
-                              metrics: metrics,
-                              style: style,
-                              replayToken: _replayToken,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TextButton.icon(
-                            onPressed: _replay,
-                            icon: const Icon(
-                              Icons.play_arrow_rounded,
-                              size: 18,
-                            ),
-                            label: const Text('重放动画'),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
             const SectionHeader('导航切换动画'),
             GroupCard(
               children: [
@@ -112,6 +60,45 @@ class _NavBarSettingsScreenState extends ConsumerState<NavBarSettingsScreen> {
                   title: '动画风格',
                   subtitle: style.label,
                   onTap: () => _pickStyle(style),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            const SectionHeader('预览'),
+            GroupCard(
+              dividerIndent: 0,
+              children: [
+                SizedBox(
+                  height: 120,
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: NavBarCapsule(
+                        destinations: appNavDestinations,
+                        currentIndex: _previewIndex,
+                        // 真实可点：点击即切换预览选中项并播放动画。
+                        onTap: (i) => setState(() => _previewIndex = i),
+                        metrics: metrics,
+                        style: style,
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                  ),
+                  child: Text(
+                    '点预览里的标签可直接切换，效果与真实导航一致。',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: AppText.rowSubtitle,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
               ],
             ),
