@@ -60,25 +60,14 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
   }
 
   Future<void> _clear() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirm(
       context: context,
-      useRootNavigator: true,
-      builder: (ctx) => AlertDialog(
-        title: const Text('清空日志'),
-        content: const Text('清空后无法恢复，建议先导出需要保留的内容。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('清空'),
-          ),
-        ],
-      ),
+      title: '清空日志',
+      message: '清空后无法恢复，建议先导出需要保留的内容。',
+      confirmLabel: '清空',
+      danger: true,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     await AppLogger.instance.clear();
     if (!mounted) return;
     ref.invalidate(_logsProvider);

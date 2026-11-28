@@ -139,12 +139,8 @@ class PlayerActions {
       await _openAndVerify(
         item,
         source,
-        refetch: () => _resolveUrl(
-          repo,
-          item,
-          forceRefresh: true,
-          onStage: reportStage,
-        ),
+        refetch: () =>
+            _resolveUrl(repo, item, forceRefresh: true, onStage: reportStage),
       );
       if (generation != _playGeneration) return;
       _ref.read(playbackStageProvider.notifier).reset();
@@ -623,7 +619,8 @@ class PlayerActions {
     // 「已加载」还要确认引擎里确有可播媒体：iOS 重启后首次 open 可能
     // 返回成功但没解析出时长（duration 恒为 0），此时直接 play() 会空转，
     // 表现为「没有时长且反复点也没用」。这种情况按未加载处理，重新解析。
-    final engineReady = player.hasLoaded(currentId) &&
+    final engineReady =
+        player.hasLoaded(currentId) &&
         (player.playing || player.duration > Duration.zero);
     if (engineReady) {
       await player.play();
@@ -746,7 +743,12 @@ class PlayerActions {
 
     ResolvedSource source;
     try {
-      source = await _resolveUrl(repo, item, forceRefresh: true, onStage: reportStage);
+      source = await _resolveUrl(
+        repo,
+        item,
+        forceRefresh: true,
+        onStage: reportStage,
+      );
     } catch (e) {
       if (generation != _playGeneration) return false;
       _markPlaybackFailed();

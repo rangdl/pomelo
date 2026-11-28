@@ -7,10 +7,7 @@ import '../data/plugin_repository.dart';
 
 /// 一个随包内置的插件：assets 路径 + 稳定标识（用于区分来源与记录版本）。
 class BuiltinPlugin {
-  const BuiltinPlugin({
-    required this.assetPath,
-    required this.fallbackName,
-  });
+  const BuiltinPlugin({required this.assetPath, required this.fallbackName});
 
   /// 打包进 assets 的源码路径。
   final String assetPath;
@@ -91,9 +88,14 @@ Future<void> seedBuiltinPlugins(
         AppLogger.instance.warn('plugin.seed', '内置插件为空: ${plugin.assetPath}');
         continue;
       }
-      final record = await repo.install(source, fallbackName: plugin.fallbackName);
+      final record = await repo.install(
+        source,
+        fallbackName: plugin.fallbackName,
+      );
       installed++;
-      debugPrint('[pomelo] seed 已预装: ${record.platform} <- ${plugin.assetPath}');
+      debugPrint(
+        '[pomelo] seed 已预装: ${record.platform} <- ${plugin.assetPath}',
+      );
       AppLogger.instance.info(
         'plugin.seed',
         '已预装内置插件: ${record.platform}（来自 ${plugin.assetPath}）',

@@ -161,6 +161,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final stage = ref.watch(playbackStageProvider);
     // 点击后立即按用户意图显示，等播放器真实状态追上再交还。
     final intent = ref.watch(playbackIntentProvider);
+    // 信息区与进度/控制行统一用 12 间距，避免歌名行与进度条之间比
+    // 进度条与按钮之间更松散而显得割裂。
+    const gap = SizedBox(height: AppSpacing.md);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -194,11 +197,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             IconButton(
               tooltip: '刷新播放链接',
               // 取链进行中禁用，避免重复触发。
-              onPressed: stage == PlaybackStage.resolving ||
+              onPressed:
+                  stage == PlaybackStage.resolving ||
                       stage == PlaybackStage.fallback
                   ? null
                   : () => ref.read(playerActionsProvider).refreshCurrent(),
-              icon: stage == PlaybackStage.resolving ||
+              icon:
+                  stage == PlaybackStage.resolving ||
                       stage == PlaybackStage.fallback
                   ? const SizedBox(
                       width: 18,
@@ -225,20 +230,28 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
             ),
           ],
         ),
-        // 副标题行：展示取链/兜底进度，空闲时留空。
-        Align(
+        // 副标题行：只在取链/兜底时出现（高度动画过渡），空闲时不占位，
+        // 保证歌名行与进度条的间距在常态下同样紧凑。
+        AnimatedSize(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
           alignment: Alignment.centerLeft,
-          child: Text(
-            stage.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: AppText.rowTitle,
-              color: Colors.white70,
-            ),
-          ),
+          child: stage == PlaybackStage.idle
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xs),
+                  child: Text(
+                    stage.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: AppText.rowTitle,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ),
         ),
-        const SizedBox(height: 2),
+        gap,
         // 进度条。
         _ProgressBar(
           playerPosition: player.positionStream,
@@ -249,7 +262,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           onDrag: (v) => setState(() => _dragValue = v),
           centerText: '原文件 · $quality',
         ),
-        const SizedBox(height: 2),
+        gap,
         // 传输控制行。
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -313,199 +326,167 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
-  /// 音量底部弹层。
+  /// 音量弹层。
   void _showVolume(Stream<double> volumeStream, AudioPlayerService player) {
     // 弹层背景走主题(跟随亮/暗模式),不写死深色。
-    showModalBottomSheet<void>(
+    showAppModal<void>(
       context: context,
-      useRootNavigator: true,
-      showDragHandle: true,
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            0,
-            AppSpacing.lg,
-            AppSpacing.xl,
-          ),
-          child: Row(
-            children: [
-              // 点击喇叭图标静音 / 取消静音。
-              StreamBuilder<double>(
-                stream: volumeStream,
-                initialData: player.volume,
-                builder: (context, snap) {
-                  final vol = (snap.data ?? 100.0).clamp(0.0, 100.0);
-                  return IconButton(
-                    tooltip: vol <= 0 ? '取消静音' : '静音',
-                    onPressed: player.toggleMute,
-                    icon: Icon(
-                      vol <= 0
-                          ? Icons.volume_off_rounded
-                          : vol < 50
-                          ? Icons.volume_down_rounded
-                          : Icons.volume_up_rounded,
-                    ),
-                  );
-                },
-              ),
-              Expanded(
-                child: StreamBuilder<double>(
-                  stream: volumeStream,
-                  initialData: player.volume,
-                  builder: (context, snap) {
-                    final vol = (snap.data ?? 100.0)
-                        .clamp(0.0, 100.0)
-                        .toDouble();
-                    return Slider(
-                      value: vol,
-                      max: 100,
-                      onChanged: (v) => player.setVolume(v),
-                    );
-                  },
+      title: '音量',
+      body: (ctx) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 点击喇叭图标静音 / 取消静音。
+          StreamBuilder<double>(
+            stream: volumeStream,
+            initialData: player.volume,
+            builder: (context, snap) {
+              final vol = (snap.data ?? 100.0).clamp(0.0, 100.0);
+              return IconButton(
+                tooltip: vol <= 0 ? '取消静音' : '静音',
+                onPressed: player.toggleMute,
+                icon: Icon(
+                  vol <= 0
+                      ? Icons.volume_off_rounded
+                      : vol < 50
+                      ? Icons.volume_down_rounded
+                      : Icons.volume_up_rounded,
                 ),
-              ),
-              const Icon(Icons.volume_up_rounded),
-            ],
+              );
+            },
           ),
-        ),
+          Flexible(
+            child: StreamBuilder<double>(
+              stream: volumeStream,
+              initialData: player.volume,
+              builder: (context, snap) {
+                final vol = (snap.data ?? 100.0).clamp(0.0, 100.0).toDouble();
+                return Slider(
+                  value: vol,
+                  max: 100,
+                  onChanged: (v) => player.setVolume(v),
+                );
+              },
+            ),
+          ),
+          const Icon(Icons.volume_up_rounded),
+        ],
       ),
     );
   }
 
   void _showQueue(List<Map<String, dynamic>> queue, int currentIndex) {
-    showModalBottomSheet<void>(
+    showAppModal<void>(
       context: context,
-      useRootNavigator: true,
-      showDragHandle: true,
-      builder: (ctx) => LayoutBuilder(
-        builder: (ctx, constraints) => Consumer(
+      title: '播放队列',
+      isScrollControlled: true,
+      body: (ctx) => SizedBox(
+        height: 460,
+        child: Consumer(
           builder: (ctx, ref, _) {
             final items = ref.watch(playQueueProvider);
             final index = ref.read(playQueueProvider.notifier).index;
-            return SizedBox(
-              height: math.min(560.0, constraints.maxHeight),
-              child: items.isEmpty
-                  ? const Center(child: Text('队列为空'))
-                  : Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AppSpacing.xl,
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                '共 ${items.length} 首',
-                                style: Theme.of(ctx).textTheme.bodySmall,
-                              ),
-                              const Spacer(),
-                              TextButton.icon(
-                                onPressed: () {
-                                  ref.read(playQueueProvider.notifier).clear();
-                                  ref.read(audioPlayerProvider).stop();
-                                  Navigator.pop(ctx);
-                                },
-                                icon: const Icon(
-                                  Icons.delete_sweep_rounded,
-                                  size: 18,
-                                ),
-                                label: const Text('清空'),
-                              ),
-                            ],
-                          ),
+            if (items.isEmpty) return const Center(child: Text('队列为空'));
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '共 ${items.length} 首',
+                      style: Theme.of(ctx).textTheme.bodySmall,
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () {
+                        ref.read(playQueueProvider.notifier).clear();
+                        ref.read(audioPlayerProvider).stop();
+                        Navigator.pop(ctx);
+                      },
+                      icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+                      label: const Text('清空'),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: ReorderableListView.builder(
+                    itemCount: items.length,
+                    // 列表头的 to 已是「移除后」的位置。
+                    onReorderItem: (from, to) {
+                      final queue = ref.read(playQueueProvider.notifier);
+                      queue.move(from, to);
+                      ref
+                          .read(audioPlayerProvider)
+                          .updateQueueIndex(queue.index);
+                    },
+                    itemBuilder: (ctx, i) {
+                      final it = items[i];
+                      final current = i == index;
+                      return ListTile(
+                        key: ValueKey(
+                          '${it['_pluginId'] ?? ''}'
+                          ':${it['id'] ?? it['title'] ?? ''}:$i',
                         ),
-                        Expanded(
-                          child: ReorderableListView.builder(
-                            itemCount: items.length,
-                            // 列表头的 to 已是「移除后」的位置。
-                            onReorderItem: (from, to) {
-                              final queue = ref.read(
-                                playQueueProvider.notifier,
-                              );
-                              queue.move(from, to);
-                              ref
-                                  .read(audioPlayerProvider)
-                                  .updateQueueIndex(queue.index);
-                            },
-                            itemBuilder: (ctx, i) {
-                              final it = items[i];
-                              final current = i == index;
-                              return ListTile(
-                                key: ValueKey(
-                                  '${it['_pluginId'] ?? ''}'
-                                  ':${it['id'] ?? it['title'] ?? ''}:$i',
-                                ),
-                                selected: current,
-                                leading: current
-                                    ? const Icon(Icons.volume_up_rounded)
-                                    : Text('${i + 1}'),
-                                title: Text(
-                                  '${it['title'] ?? '未知'}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                subtitle: Text(
-                                  '${it['artist'] ?? ''}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                onTap: () {
+                        selected: current,
+                        leading: current
+                            ? const Icon(Icons.volume_up_rounded)
+                            : Text('${i + 1}'),
+                        title: Text(
+                          '${it['title'] ?? '未知'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          '${it['artist'] ?? ''}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          ref.read(playQueueProvider.notifier).jumpTo(i);
+                          ref.read(playerActionsProvider).safePlay(it);
+                        },
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: '从队列移除',
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              onPressed: () {
+                                final wasCurrent = i == index;
+                                final newIndex = ref
+                                    .read(playQueueProvider.notifier)
+                                    .removeAt(i);
+                                final updated = ref.read(playQueueProvider);
+                                if (updated.isEmpty) {
+                                  Navigator.pop(ctx);
+                                  ref.read(audioPlayerProvider).stop();
+                                  return;
+                                }
+                                if (wasCurrent) {
                                   Navigator.pop(ctx);
                                   ref
-                                      .read(playQueueProvider.notifier)
-                                      .jumpTo(i);
-                                  ref.read(playerActionsProvider).safePlay(it);
-                                },
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      tooltip: '从队列移除',
-                                      icon: const Icon(
-                                        Icons.close_rounded,
-                                        size: 20,
-                                      ),
-                                      onPressed: () {
-                                        final wasCurrent = i == index;
-                                        final newIndex = ref
-                                            .read(playQueueProvider.notifier)
-                                            .removeAt(i);
-                                        final updated = ref.read(
-                                          playQueueProvider,
-                                        );
-                                        if (updated.isEmpty) {
-                                          Navigator.pop(ctx);
-                                          ref.read(audioPlayerProvider).stop();
-                                          return;
-                                        }
-                                        if (wasCurrent) {
-                                          Navigator.pop(ctx);
-                                          ref
-                                              .read(playerActionsProvider)
-                                              .safePlay(updated[newIndex]);
-                                        }
-                                      },
-                                    ),
-                                    // 桌面端用鼠标也能直接拖动排序。
-                                    ReorderableDragStartListener(
-                                      index: i,
-                                      child: const Padding(
-                                        padding: EdgeInsets.only(left: 8),
-                                        child: Icon(
-                                          Icons.drag_handle_rounded,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                      .read(playerActionsProvider)
+                                      .safePlay(updated[newIndex]);
+                                }
+                              },
+                            ),
+                            // 桌面端用鼠标也能直接拖动排序。
+                            ReorderableDragStartListener(
+                              index: i,
+                              child: const Padding(
+                                padding: EdgeInsets.only(left: 8),
+                                child: Icon(
+                                  Icons.drag_handle_rounded,
+                                  size: 20,
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             );
           },
         ),
@@ -843,6 +824,9 @@ class _ProgressBar extends StatelessWidget {
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
+                    // 只留滑块本身必需的高度，去掉默认上下各 24 的触控留白，
+                    // 让进度条与相邻行的间距和歌名行保持一致。
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     thumbShape: const RoundSliderThumbShape(
                       enabledThumbRadius: 6,
                     ),

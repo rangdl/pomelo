@@ -1,6 +1,7 @@
 /// 共享 UI 组件统一出口:`import 'shared/widgets/widgets.dart'`。
 library;
 
+export 'adaptive_dialog.dart';
 export 'cover_image.dart';
 export 'empty_state.dart';
 export 'group_card.dart';

@@ -72,29 +72,23 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
   /// 导入插件分享链接（歌单/单曲）。
   Future<void> _importShared() async {
     final controller = TextEditingController();
-    final url = await showDialog<String>(
+    final url = await showAppModal<String>(
       context: context,
-      useRootNavigator: true,
-      builder: (context) => AlertDialog(
-        title: const Text('导入分享链接'),
-        content: SizedBox(
-          width: 420,
-          child: TextField(
-            controller: controller,
-            decoration: const InputDecoration(hintText: '粘贴插件分享的歌单/单曲链接或口令'),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('导入'),
-          ),
-        ],
+      title: '导入分享链接',
+      body: (ctx) => TextField(
+        controller: controller,
+        decoration: const InputDecoration(hintText: '粘贴插件分享的歌单/单曲链接或口令'),
       ),
+      actions: (ctx) => [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, controller.text),
+          child: const Text('导入'),
+        ),
+      ],
     );
     // 对话框关闭后输入框已销毁，及时释放 controller。
     controller.dispose();
@@ -118,62 +112,45 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
       _toast('没有插件能导入该链接');
       return;
     }
-    await showModalBottomSheet<void>(
+    await showAppModal<void>(
       context: context,
-      useRootNavigator: true,
+      title: '已导入 ${tracks.length} 首',
       isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => FractionallySizedBox(
-        heightFactor: 0.7,
+      body: (ctx) => SizedBox(
+        height: 420,
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.sm,
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '已导入 ${tracks.length} 首',
-                      style: const TextStyle(
-                        fontSize: AppText.heading,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () async {
-                      final added = await ref
-                          .read(favoritesProvider.notifier)
-                          .addAll(tracks);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              added > 0 ? '已收藏 $added 首' : '这些歌曲已在收藏中',
-                            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () async {
+                    final added = await ref
+                        .read(favoritesProvider.notifier)
+                        .addAll(tracks);
+                    if (ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            added > 0 ? '已收藏 $added 首' : '这些歌曲已在收藏中',
                           ),
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.favorite_rounded, size: 18),
-                    label: const Text('全部收藏'),
-                  ),
-                ],
-              ),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.favorite_rounded, size: 18),
+                  label: const Text('全部收藏'),
+                ),
+              ],
             ),
             Expanded(
               child: ListView.builder(
                 itemCount: tracks.length,
-                itemBuilder: (context, index) => TrackTile(
+                itemBuilder: (ctx, index) => TrackTile(
                   item: tracks[index],
                   onTap: () {
                     ref.read(playerActionsProvider).playFromList(tracks, index);
-                    Navigator.pop(context);
+                    Navigator.pop(ctx);
                   },
                 ),
               ),
@@ -213,33 +190,27 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
   /// 从网络地址导入插件脚本。
   Future<void> _installFromUrl() async {
     final controller = TextEditingController();
-    final url = await showDialog<String>(
+    final url = await showAppModal<String>(
       context: context,
-      useRootNavigator: true,
-      builder: (context) => AlertDialog(
-        title: const Text('从网络导入'),
-        content: SizedBox(
-          width: 420,
-          child: TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: const InputDecoration(
-              hintText: 'https://example.com/plugin.js',
-              helperText: '支持自有格式插件与 LX 音源脚本直链',
-            ),
-          ),
+      title: '从网络导入',
+      body: (ctx) => TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: const InputDecoration(
+          hintText: 'https://example.com/plugin.js',
+          helperText: '支持自有格式插件与 LX 音源脚本直链',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('导入'),
-          ),
-        ],
       ),
+      actions: (ctx) => [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, controller.text),
+          child: const Text('导入'),
+        ),
+      ],
     );
     controller.dispose();
     if (url == null || url.trim().isEmpty) return;
@@ -290,32 +261,29 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
     }
 
     final srcUrl = plugin.srcUrl?.trim();
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppModal<bool>(
       context: context,
-      useRootNavigator: true,
-      builder: (context) => AlertDialog(
-        title: Text('发现新版本 ${update!.version}'),
-        content: Text(update.log ?? '是否更新 ${plugin.platform}？'),
-        actions: [
-          // 更新地址未必是 JS 直链，也允许直接到浏览器里查看发布页。
-          if (srcUrl != null && srcUrl.isNotEmpty)
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context, false);
-                _openInBrowser(srcUrl);
-              },
-              child: const Text('浏览器打开'),
-            ),
+      title: '发现新版本 ${update.version}',
+      body: (ctx) => Text(update!.log ?? '是否更新 ${plugin.platform}？'),
+      actions: (ctx) => [
+        // 更新地址未必是 JS 直链，也允许直接到浏览器里查看发布页。
+        if (srcUrl != null && srcUrl.isNotEmpty)
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('稍后'),
+            onPressed: () {
+              Navigator.pop(ctx, false);
+              _openInBrowser(srcUrl);
+            },
+            child: const Text('浏览器打开'),
           ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('更新'),
-          ),
-        ],
-      ),
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('稍后'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('更新'),
+        ),
+      ],
     );
     if (confirmed != true) return;
     await _run(() async {
@@ -348,25 +316,14 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
 
   /// 删除插件：先二次确认，避免误点导致脚本丢失。
   Future<void> _remove(PluginRecord p) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppConfirm(
       context: context,
-      useRootNavigator: true,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除插件'),
-        content: Text('确定删除「${p.platform}」吗？删除后其配置与音源信息将一并移除。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('删除'),
-          ),
-        ],
-      ),
+      title: '删除插件',
+      message: '确定删除「${p.platform}」吗？删除后其配置与音源信息将一并移除。',
+      confirmLabel: '删除',
+      danger: true,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     await _runQuiet(() async {
       final repo = await ref.read(pluginRepositoryProvider.future);
       await repo.remove(p.id);

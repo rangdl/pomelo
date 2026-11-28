@@ -17,11 +17,9 @@ enum LockScreenLyricMode {
 
   final String label;
 
-  static LockScreenLyricMode fromName(String? name) =>
-      LockScreenLyricMode.values.firstWhere(
-        (m) => m.name == name,
-        orElse: () => LockScreenLyricMode.off,
-      );
+  static LockScreenLyricMode fromName(String? name) => LockScreenLyricMode
+      .values
+      .firstWhere((m) => m.name == name, orElse: () => LockScreenLyricMode.off);
 }
 
 final lockScreenLyricModeProvider =

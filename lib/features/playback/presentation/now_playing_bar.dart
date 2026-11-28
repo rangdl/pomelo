@@ -14,24 +14,45 @@ import 'player_sheet.dart';
 /// 与底部导航栏一致：玻璃材质、按内容宽度自适应（超宽窗口限宽并居中），
 /// 直接叠在页面内容上层，不占布局高度。没有正在播放的曲目时不显示。
 class FloatingNowPlaying extends ConsumerWidget {
-  const FloatingNowPlaying({super.key});
+  const FloatingNowPlaying({super.key, this.aboveNavigation = false});
+
+  /// 是否与底部导航胶囊叠放在一起。为 false 时（没有底部导航的页面，
+  /// 如详情页）自己负责底部安全区与 6 的留白，与导航胶囊的底部边距一致。
+  final bool aboveNavigation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (ref.watch(nowPlayingProvider) == null) {
       return const SizedBox.shrink();
     }
-    // 作为底部浮层的一部分（叠在底部导航之上），底部安全区由导航栏负责，
-    // 这里只留与导航之间的小间距。
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 8),
-      // heightFactor: 1 —— 只占胶囊自身高度，不铺满下层导致挡住内容点击。
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        heightFactor: 1,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
-          child: const NowPlayingBar(),
+    if (aboveNavigation) {
+      // 作为底部浮层的一部分（叠在底部导航之上），底部安全区由导航栏负责，
+      // 这里只留与导航之间的小间距。
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 8),
+        // heightFactor: 1 —— 只占胶囊自身高度，不铺满下层导致挡住内容点击。
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: const NowPlayingBar(),
+          ),
+        ),
+      );
+    }
+    // 独立浮层：底部边距与底部导航胶囊一致（安全区 + 6）。
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 6),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: const NowPlayingBar(),
+          ),
         ),
       ),
     );
@@ -228,8 +249,8 @@ class _MiniSubtitleLine extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final busy = stage == PlaybackStage.resolving ||
-        stage == PlaybackStage.fallback;
+    final busy =
+        stage == PlaybackStage.resolving || stage == PlaybackStage.fallback;
     // 取链/兜底进行中：优先显示进度文案。
     if (busy) {
       return Text(
@@ -259,40 +280,12 @@ class _MiniSubtitleLine extends ConsumerWidget {
           builder: (context, posSnap) {
             final pos = posSnap.data ?? Duration.zero;
             final active = LrcParser.activeIndex(lines, pos);
-            final text = active >= 0 && active < lines.length
+            final text = playing && active >= 0 && active < lines.length
                 ? lines[active].text.trim()
                 : '';
-            // 暂停时淡出歌词（只留歌名），播放时淡入。
-            return ClipRect(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, animation) {
-                  // 向上滑入 / 向上滑出，与播放页歌词方向一致。
-                  final offset = Tween<Offset>(
-                    begin: const Offset(0, 0.6),
-                    end: Offset.zero,
-                  ).animate(animation);
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(position: offset, child: child),
-                  );
-                },
-                child: playing
-                    ? Text(
-                        text,
-                        key: ValueKey<int>(active),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: _style.copyWith(color: color),
-                      )
-                    : const SizedBox(
-                        key: ValueKey('paused'),
-                        width: double.infinity,
-                        height: 14,
-                      ),
-              ),
+            return _RollingLyricLine(
+              text: text,
+              style: _style.copyWith(color: color),
             );
           },
         );
@@ -301,3 +294,115 @@ class _MiniSubtitleLine extends ConsumerWidget {
   }
 }
 
+/// 单行歌词的「向上滚动」过渡：新行自下而上滑入，旧行继续向上滑出，
+/// 与播放页歌词区整首歌上移的方向一致。
+class _RollingLyricLine extends StatefulWidget {
+  const _RollingLyricLine({required this.text, required this.style});
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_RollingLyricLine> createState() => _RollingLyricLineState();
+}
+
+class _RollingLyricLineState extends State<_RollingLyricLine>
+    with SingleTickerProviderStateMixin {
+  static const double _height = 16;
+  static const Duration _duration = Duration(milliseconds: 300);
+
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _duration,
+  );
+  late final CurvedAnimation _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  String _previous = '';
+  late String _current = widget.text;
+
+  @override
+  void initState() {
+    super.initState();
+    // 首次出现即为静止文本，不做入场滑动。
+    if (_current.isNotEmpty) _controller.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(_RollingLyricLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.text == _current) return;
+    // 暂停/恢复对应空文本，此时只做淡出/淡入（旧行为），
+    // 真正换行时才是「旧行上滑出、新行下侧滑入」。
+    _previous = _current;
+    _current = widget.text;
+    _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _curve.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _line(String text, Key key) {
+    return Text(
+      text,
+      key: key,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: widget.style,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _height,
+      width: double.infinity,
+      child: ClipRect(
+        child: AnimatedBuilder(
+          animation: _curve,
+          builder: (context, _) {
+            final t = _curve.value;
+            final hasOld = _previous.isNotEmpty && t < 1;
+            return Stack(
+              clipBehavior: Clip.hardEdge,
+              children: [
+                // 旧行：从原位继续向上滑出。
+                if (hasOld)
+                  Positioned.fill(
+                    child: FractionalTranslation(
+                      translation: Offset(0, -t),
+                      child: FadeTransition(
+                        // 旧行淡出（同一 Curve 反向使用即可）。
+                        opacity: Tween<double>(
+                          begin: 1,
+                          end: 0,
+                        ).animate(_curve),
+                        child: _line(_previous, const ValueKey('prev')),
+                      ),
+                    ),
+                  ),
+                // 新行：从下方滑入到原位。
+                if (_current.isNotEmpty)
+                  Positioned.fill(
+                    child: FractionalTranslation(
+                      translation: Offset(0, 1 - t),
+                      child: FadeTransition(
+                        opacity: _curve,
+                        child: _line(_current, const ValueKey('cur')),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}

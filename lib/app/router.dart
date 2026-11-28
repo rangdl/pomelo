@@ -8,8 +8,11 @@ import '../features/plugins/presentation/plugin_manager_screen.dart';
 import '../features/plugins/presentation/sheets_browse_screen.dart';
 import '../features/plugins/presentation/toplists_screen.dart';
 import '../features/search/presentation/search_screen.dart';
+import '../features/settings/presentation/appearance_settings_screen.dart';
 import '../features/settings/presentation/logs_screen.dart';
+import '../features/settings/presentation/playback_settings_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/settings/presentation/storage_settings_screen.dart';
 import '../shared/layout/adaptive_app_shell.dart';
 import '../shared/layout/detail_scaffold.dart';
 
@@ -57,6 +60,21 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             const ShellDetailScaffold(child: SearchScreen()),
       ),
       // 设置页内的二级页：宽屏沿用左侧导航，详情内容显示在右栏（不再整页覆盖）。
+      GoRoute(
+        path: '/settings/appearance',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: AppearanceSettingsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/playback',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: PlaybackSettingsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/storage',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: StorageSettingsScreen()),
+      ),
       GoRoute(
         path: '/plugins',
         builder: (context, state) =>

@@ -80,10 +80,10 @@ class LxCrypto {
 
     final cipherParams =
         PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
-      // ECB 不接受 IV，只传 key。
-      isCbc ? params : KeyParameter(key),
-      null,
-    );
+          // ECB 不接受 IV，只传 key。
+          isCbc ? params : KeyParameter(key),
+          null,
+        );
     final cipher = PaddedBlockCipherImpl(
       PKCS7Padding(),
       isCbc ? CBCBlockCipher(AESEngine()) : ECBBlockCipher(AESEngine()),
@@ -137,10 +137,10 @@ class LxCrypto {
 
     final cipherParams =
         PaddedBlockCipherParameters<CipherParameters, CipherParameters>(
-      // ECB 不接受 IV，只传 key。
-      isCbc ? params : KeyParameter(key),
-      null,
-    );
+          // ECB 不接受 IV，只传 key。
+          isCbc ? params : KeyParameter(key),
+          null,
+        );
     final cipher = PaddedBlockCipherImpl(
       PKCS7Padding(),
       isCbc ? CBCBlockCipher(AESEngine()) : ECBBlockCipher(AESEngine()),

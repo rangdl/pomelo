@@ -50,29 +50,16 @@ class LibraryScreen extends ConsumerWidget {
                         icon: const Icon(Icons.more_horiz_rounded),
                         position: PopupMenuPosition.under,
                         onSelected: (_) async {
-                          final confirmed = await showDialog<bool>(
+                          final confirmed = await showAppConfirm(
                             context: context,
-                            useRootNavigator: true,
-                            builder: (ctx) => AlertDialog(
-                              title: Text(onHistory ? '清空播放历史' : '清空收藏'),
-                              content: Text(
-                                onHistory
-                                    ? '将移除全部播放记录，此操作无法撤销。'
-                                    : '将移除全部收藏，此操作无法撤销。',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text('取消'),
-                                ),
-                                FilledButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('清空'),
-                                ),
-                              ],
-                            ),
+                            title: onHistory ? '清空播放历史' : '清空收藏',
+                            message: onHistory
+                                ? '将移除全部播放记录，此操作无法撤销。'
+                                : '将移除全部收藏，此操作无法撤销。',
+                            confirmLabel: '清空',
+                            danger: true,
                           );
-                          if (confirmed != true) return;
+                          if (!confirmed) return;
                           if (onHistory) {
                             await ref.read(historyProvider.notifier).clear();
                           } else {

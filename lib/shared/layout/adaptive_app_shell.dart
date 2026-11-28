@@ -121,7 +121,7 @@ class AdaptiveAppShell extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const FloatingNowPlaying(),
+                    const FloatingNowPlaying(aboveNavigation: true),
                     _GlassBottomNavigation(
                       destinations: appNavDestinations,
                       currentIndex: index,

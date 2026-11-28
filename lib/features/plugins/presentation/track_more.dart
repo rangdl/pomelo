@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/adaptive_dialog.dart';
 import '../../../shared/widgets/cover_image.dart';
 import '../../../shared/widgets/track_tile.dart';
 import '../../playback/application/player_actions.dart';
@@ -53,12 +54,11 @@ Future<void> showTrackInfoSheet(
   WidgetRef ref,
   Map<String, dynamic> item,
 ) {
-  return showModalBottomSheet<void>(
+  return showAppModal<void>(
     context: context,
-    useRootNavigator: true,
+    title: '歌曲详情',
     isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => _TrackInfoSheet(item: item),
+    body: (ctx) => _TrackInfoSheet(item: item),
   );
 }
 
@@ -126,7 +126,12 @@ class _TrackInfoSheetState extends ConsumerState<_TrackInfoSheet> {
 
     return SafeArea(
       child: Padding(
-        padding: AppSpacing.pagePadding,
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          0,
+          AppSpacing.lg,
+          AppSpacing.lg,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -250,15 +255,11 @@ Future<void> showTrackCommentsSheet(
   WidgetRef ref,
   Map<String, dynamic> item,
 ) {
-  return showModalBottomSheet<void>(
+  return showAppModal<void>(
     context: context,
-    useRootNavigator: true,
+    title: '评论',
     isScrollControlled: true,
-    showDragHandle: true,
-    builder: (context) => FractionallySizedBox(
-      heightFactor: 0.7,
-      child: _CommentsSheet(item: item),
-    ),
+    body: (ctx) => SizedBox(height: 480, child: _CommentsSheet(item: item)),
   );
 }
 
@@ -318,22 +319,11 @@ class _CommentsSheetState extends ConsumerState<_CommentsSheet> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.sm,
-          ),
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: Row(
             children: [
               Text(
-                '评论',
-                style: const TextStyle(
-                  fontSize: AppText.heading,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text(
-                '${_comments.length}',
+                '${_comments.length} 条',
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
