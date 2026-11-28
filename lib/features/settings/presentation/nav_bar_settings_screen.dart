@@ -169,7 +169,7 @@ class _NavBarSettingsScreenState extends ConsumerState<NavBarSettingsScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
               child: Text(
-                '高度不足时图标与文字会被裁切，可适当调大「整体高度」或减小上下边距。',
+                '高度不足时图标与文字会被裁切，可适当调大「整体高度」或减小图标上边距。',
                 style: TextStyle(
                   fontSize: AppText.rowSubtitle,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,

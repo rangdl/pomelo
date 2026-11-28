@@ -8,7 +8,7 @@ import 'settings_store.dart';
 class NavBarMetrics {
   const NavBarMetrics({
     this.height = 48,
-    this.itemWidth = 66,
+    this.itemWidth = 58,
     this.inset = 2,
     this.iconSize = 20,
     this.fontSize = 12,
