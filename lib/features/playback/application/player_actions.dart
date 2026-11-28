@@ -136,7 +136,16 @@ class PlayerActions {
     if (generation != _playGeneration) return;
 
     try {
-      await _openSource(item, source);
+      await _openAndVerify(
+        item,
+        source,
+        refetch: () => _resolveUrl(
+          repo,
+          item,
+          forceRefresh: true,
+          onStage: reportStage,
+        ),
+      );
       if (generation != _playGeneration) return;
       _ref.read(playbackStageProvider.notifier).reset();
       _recordHistory(item);
@@ -171,6 +180,45 @@ class PlayerActions {
         _reportPlayFailure(item, '$e2');
       }
     }
+  }
+
+  /// 打开媒体并确认引擎真的拿到了它（时长已解析）。
+  ///
+  /// iOS 重启后首次 open 偶发「返回成功但 duration 恒为 0」，之后无论怎么
+  /// 点播放都没声音也没时长。这里在 open 后短暂等待时长；拿不到就用强制
+  /// 刷新重新取链再 open 一次，避免卡在坏状态。
+  Future<void> _openAndVerify(
+    Map<String, dynamic> item,
+    ResolvedSource source, {
+    Future<ResolvedSource> Function()? refetch,
+  }) async {
+    final player = _ref.read(audioPlayerProvider);
+    await _openSource(item, source);
+    // 引擎解析出时长即认为加载完成。
+    if (await _waitForDuration(player, const Duration(milliseconds: 2500))) {
+      return;
+    }
+    // 已经出声在播、只是容器时长没解析出来：不重开（会打断播放），
+    // 交给 UI 侧用元信息时长兜底显示。
+    if (player.playing) return;
+    if (refetch == null) return;
+    // 没时长且没在播：重新取链再 open 一次（部分网络流首次 open 偶发解析失败）。
+    final retry = await refetch();
+    await _openSource(item, retry);
+    await _waitForDuration(player, const Duration(milliseconds: 1500));
+  }
+
+  /// 轮询等待引擎解析出时长（或被用户暂停），最多 [timeout]。
+  Future<bool> _waitForDuration(
+    AudioPlayerService player,
+    Duration timeout,
+  ) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (player.duration > Duration.zero) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+    return player.duration > Duration.zero;
   }
 
   /// 用已解析出的地址打开播放器（含本地代理登记与封面地址改写）。
@@ -572,7 +620,12 @@ class PlayerActions {
 
     // 播放：图标立即切到暂停，取链在后台继续（失败会回滚并提示）。
     _ref.read(playbackIntentProvider.notifier).setOptimistic(true);
-    if (player.hasLoaded(currentId)) {
+    // 「已加载」还要确认引擎里确有可播媒体：iOS 重启后首次 open 可能
+    // 返回成功但没解析出时长（duration 恒为 0），此时直接 play() 会空转，
+    // 表现为「没有时长且反复点也没用」。这种情况按未加载处理，重新解析。
+    final engineReady = player.hasLoaded(currentId) &&
+        (player.playing || player.duration > Duration.zero);
+    if (engineReady) {
       await player.play();
       return;
     }

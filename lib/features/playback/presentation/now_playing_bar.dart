@@ -72,7 +72,8 @@ class NowPlayingBar extends ConsumerWidget {
                 // 顶部细进度条：只做进度提示，不改变胶囊的圆角与内边距。
                 _MiniProgressBar(
                   positionStream: player.positionStream,
-                  durationStream: player.durationStream,
+                  durationStream: player.effectiveDurationStream,
+                  fallbackDuration: player.effectiveDuration,
                   color: scheme.primary,
                   backgroundColor: scheme.onSurface.withValues(alpha: 0.10),
                 ),
@@ -171,12 +172,16 @@ class _MiniProgressBar extends StatelessWidget {
     required this.durationStream,
     required this.color,
     required this.backgroundColor,
+    this.fallbackDuration = Duration.zero,
   });
 
   final Stream<Duration> positionStream;
   final Stream<Duration> durationStream;
   final Color color;
   final Color backgroundColor;
+
+  /// 流尚未发射时的兜底时长（来自媒体元信息）。
+  final Duration fallbackDuration;
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +191,9 @@ class _MiniProgressBar extends StatelessWidget {
         return StreamBuilder<Duration>(
           stream: durationStream,
           builder: (context, durSnap) {
-            final total = (durSnap.data ?? Duration.zero).inMilliseconds;
+            var duration = durSnap.data ?? Duration.zero;
+            if (duration <= Duration.zero) duration = fallbackDuration;
+            final total = duration.inMilliseconds;
             final current = (posSnap.data ?? Duration.zero).inMilliseconds;
             final value = total <= 0 ? 0.0 : (current / total).clamp(0.0, 1.0);
             return LinearProgressIndicator(

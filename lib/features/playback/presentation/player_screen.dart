@@ -242,7 +242,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         // 进度条。
         _ProgressBar(
           playerPosition: player.positionStream,
-          playerDuration: player.durationStream,
+          playerDuration: player.effectiveDurationStream,
+          fallbackDuration: player.effectiveDuration,
           onSeek: (d) => player.seek(d),
           dragValue: _dragValue,
           onDrag: (v) => setState(() => _dragValue = v),
@@ -805,6 +806,7 @@ class _ProgressBar extends StatelessWidget {
     required this.dragValue,
     required this.onDrag,
     this.centerText,
+    this.fallbackDuration = Duration.zero,
   });
 
   final Stream<Duration> playerPosition;
@@ -813,6 +815,9 @@ class _ProgressBar extends StatelessWidget {
   final double? dragValue;
   final void Function(double?) onDrag;
   final String? centerText;
+
+  /// 流尚未发射时的兜底时长（来自媒体元信息），避免总时长一直显示 0。
+  final Duration fallbackDuration;
 
   @override
   Widget build(BuildContext context) {
@@ -823,7 +828,8 @@ class _ProgressBar extends StatelessWidget {
           stream: playerDuration,
           builder: (context, durSnap) {
             final position = posSnap.data ?? Duration.zero;
-            final duration = durSnap.data ?? Duration.zero;
+            var duration = durSnap.data ?? Duration.zero;
+            if (duration <= Duration.zero) duration = fallbackDuration;
             final total = duration.inMilliseconds.toDouble();
             final max = total <= 0 ? 1.0 : total;
             final value =

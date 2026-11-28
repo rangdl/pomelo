@@ -94,6 +94,24 @@ class AudioPlayerService extends BaseAudioHandler with SeekHandler {
   Stream<String> get errorStream => _player.stream.error;
   Stream<double> get volumeStream => _player.stream.volume;
 
+  /// 有效时长：优先用引擎（mpv）解析出的真实时长；拿不到时（部分网络流
+  /// 解析不出容器时长，会一直是 0）退回媒体元信息里带的时长，保证进度条
+  /// 可拖动、总时长有显示。
+  ///
+  /// 注意：部分流 mpv 不再发射 duration 事件，UI 侧应把 [effectiveDuration]
+  /// 作为 StreamBuilder 的 initialData，否则兜底值不会被渲染。
+  Stream<Duration> get effectiveDurationStream {
+    return _player.stream.duration.map(
+      (d) => d > Duration.zero ? d : (mediaItem.value?.duration ?? d),
+    );
+  }
+
+  Duration get effectiveDuration {
+    final d = _player.state.duration;
+    if (d > Duration.zero) return d;
+    return mediaItem.value?.duration ?? Duration.zero;
+  }
+
   Duration get position => _player.state.position;
   Duration get duration => _player.state.duration;
   bool get playing => _player.state.playing;
