@@ -22,10 +22,24 @@ import '../presentation/playback_providers.dart';
 
 /// 一次「解析结果」：可播放地址 + 底层需要的请求头（防盗链 Referer/UA 等）。
 class ResolvedSource {
-  const ResolvedSource(this.url, [this.headers]);
+  const ResolvedSource(this.url, [this.headers, this.userAgent, this.quality]);
 
   final String url;
   final Map<String, String>? headers;
+
+  /// 插件显式指定的 UA（优先于 headers 里的 user-agent）。
+  final String? userAgent;
+
+  /// 插件回填的实际音质；未声明时为 null。
+  final String? quality;
+}
+
+/// 一次歌词结果：原文 + 可选翻译（两者都是带时间戳的 LRC）。
+class LyricResult {
+  const LyricResult(this.raw, {this.translation});
+
+  final String raw;
+  final String? translation;
 }
 
 class PlayerActions {
@@ -271,14 +285,14 @@ class PlayerActions {
     return Duration(seconds: secs);
   }
 
-  /// 歌词缓存（曲目 id → LRC 文本，null 表示「确认无歌词」避免重复拉取）。
-  final Map<String, String?> _lyricCache = {};
+  /// 歌词缓存（曲目 id → 歌词，null 表示「确认无歌词」避免重复拉取）。
+  final Map<String, LyricResult?> _lyricCache = {};
 
-  /// 获取歌词原文（LRC 文本）。
+  /// 获取歌词（原文 + 翻译）。
   ///
   /// 先问来源插件，再按音源 key 找其它声明了 `getLyric` 的插件兜底。
   /// 拿不到返回 null。
-  Future<String?> fetchLyric(Map<String, dynamic> item) async {
+  Future<LyricResult?> fetchLyric(Map<String, dynamic> item) async {
     final cacheKey =
         '${item['_pluginId'] ?? ''}:${item['id'] ?? item['title'] ?? ''}';
     if (_lyricCache.containsKey(cacheKey)) return _lyricCache[cacheKey];
@@ -307,12 +321,13 @@ class PlayerActions {
     for (final plugin in candidates) {
       try {
         final rt = await _ref.read(pluginRuntimeProvider(plugin.id).future);
-        final raw = await rt.invoke('getLyric', [
+        final raw = await rt.getLyric(
           payload,
-          sourceKey,
-        ], timeout: const Duration(seconds: 30));
+          sourceKey: sourceKey,
+          timeout: const Duration(seconds: 30),
+        );
         final lyric = _extractLyric(raw);
-        if (lyric != null && lyric.isNotEmpty) {
+        if (lyric != null && lyric.raw.isNotEmpty) {
           _lyricCache[cacheKey] = lyric;
           return lyric;
         }
@@ -490,18 +505,34 @@ class PlayerActions {
     return repo.plugins.where((p) => p.id == ownerId).firstOrNull;
   }
 
-  /// 从脚本返回值里提取 LRC 文本。兼容字符串 / {lyric|rawLrc} / {lyric:{lyric|rawLrc}}。
-  String? _extractLyric(dynamic raw) {
+  /// 从脚本返回值里提取歌词原文与翻译。
+  ///
+  /// 兼容字符串 / `{lyric|rawLrc|lrc}` / `{translation|trans}` 等形态，
+  /// 以及 MusicFree 的 `{rawLrc, translation}`（两者都是带时间戳的 LRC）。
+  LyricResult? _extractLyric(dynamic raw) {
     if (raw == null) return null;
-    if (raw is String) return raw;
+    if (raw is String) {
+      return raw.trim().isEmpty ? null : LyricResult(raw);
+    }
     if (raw is Map) {
-      for (final key in const ['lyric', 'rawLrc', 'lrc', 'content']) {
-        final v = raw[key];
-        if (v is String && v.isNotEmpty) return v;
-        if (v is Map) {
-          final inner = _extractLyric(v);
-          if (inner != null && inner.isNotEmpty) return inner;
-        }
+      final main = _firstString(raw, const ['lyric', 'rawLrc', 'lrc', 'content']);
+      final trans = _firstString(raw, const ['translation', 'trans']);
+      if (main == null && trans == null) return null;
+      // 没有原文但有翻译时，把翻译当原文（与 MusicFree 一致）。
+      if (main == null) return LyricResult(trans!);
+      return LyricResult(main, translation: trans);
+    }
+    return null;
+  }
+
+  /// 取第一个非空字符串字段，支持嵌套一层 Map。
+  String? _firstString(Map raw, List<String> keys) {
+    for (final key in keys) {
+      final v = raw[key];
+      if (v is String && v.trim().isNotEmpty) return v;
+      if (v is Map) {
+        final inner = _firstString(v, keys);
+        if (inner != null) return inner;
       }
     }
     return null;
@@ -971,7 +1002,31 @@ class PlayerActions {
     final headers = (source['headers'] as Map?)
         ?.map((k, v) => MapEntry('$k', '$v'))
         .cast<String, String>();
-    return ResolvedSource(url, headers);
+    // UA 优先级：插件返回的 userAgent → headers 里的 user-agent（大小写不敏感）。
+    final rawUa = source['userAgent'];
+    final ua = (rawUa is String && rawUa.trim().isNotEmpty)
+        ? rawUa.trim()
+        : _headerValue(headers, 'user-agent');
+    // 把最终 UA 规范化写回 headers，代理与缓存链路无需再分支处理。
+    if (ua != null && ua.isNotEmpty) {
+      headers?['User-Agent'] = ua;
+    }
+    final rawQuality = source['quality'];
+    final qualityName = rawQuality is String && rawQuality.trim().isNotEmpty
+        ? rawQuality.trim()
+        : null;
+    return ResolvedSource(url, headers, ua?.isNotEmpty == true ? ua : null, qualityName);
+  }
+
+  /// 大小写不敏感地取请求头值。
+  String? _headerValue(Map<String, String>? headers, String name) {
+    if (headers == null) return null;
+    for (final entry in headers.entries) {
+      if (entry.key.toLowerCase() == name) {
+        return entry.value.trim().isEmpty ? null : entry.value.trim();
+      }
+    }
+    return null;
   }
 }
 

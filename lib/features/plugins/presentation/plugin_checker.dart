@@ -14,7 +14,6 @@ const Map<String, (String, String)> kPluginAbilityLabels = {
   'getMusicInfo': ('歌曲详情', '补全单曲元信息'),
   'getMusicComments': ('歌曲评论', '拉取评论列表'),
   'getArtistWorks': ('歌手作品', '按歌手查歌曲/专辑'),
-  'getArtistInfo': ('歌手信息', '歌手简介与头像'),
   'getMusicSheetInfo': ('歌单详情', '展开歌单曲目'),
   'importMusicSheet': ('导入歌单', '从分享链接导入'),
 };
@@ -145,18 +144,19 @@ class PluginChecker {
     if (probeTrack != null) {
       if (plugin.supportedMethods.contains('getLyric')) {
         try {
-          final raw = await rt.invoke('getLyric', [
+          final raw = await rt.getLyric(
             probeTrack,
-            probeTrack['_sourceKey'],
-          ], timeout: const Duration(seconds: 30));
-          final lyric = raw is String
-              ? raw
-              : (raw is Map ? '${raw['lyric'] ?? ''}' : '');
+            sourceKey: probeTrack['_sourceKey'] as String?,
+            timeout: const Duration(seconds: 30),
+          );
+          final lyric = _lyricSummary(raw);
           results.add(
             AbilityCheck(
               ability: 'getLyric',
-              ok: lyric.trim().isNotEmpty,
-              detail: lyric.trim().isEmpty ? '无歌词' : '正常',
+              ok: lyric.main.isNotEmpty,
+              detail: lyric.main.isEmpty
+                  ? '无歌词'
+                  : (lyric.hasTranslation ? '正常（含翻译）' : '正常'),
             ),
           );
         } catch (e) {
@@ -210,11 +210,20 @@ class PluginChecker {
           sourceKey: key,
         );
         final url = '${source?['url'] ?? ''}';
+        final notes = <String>[
+          if ('${source?['userAgent'] ?? ''}'.isNotEmpty) 'UA',
+          if ('${source?['quality'] ?? ''}'.isNotEmpty)
+            '音质 ${source?['quality']}',
+        ];
         results.add(
           AbilityCheck(
             ability: 'getMediaSource',
             ok: url.isNotEmpty,
-            detail: url.isEmpty ? '未返回地址' : '${sw.elapsedMilliseconds}ms',
+            detail: url.isEmpty
+                ? '未返回地址'
+                : notes.isEmpty
+                ? '${sw.elapsedMilliseconds}ms'
+                : '${sw.elapsedMilliseconds}ms · ${notes.join(' · ')}',
           ),
         );
       } catch (e) {
@@ -235,3 +244,27 @@ class PluginChecker {
 }
 
 final pluginCheckerProvider = Provider<PluginChecker>(PluginChecker.new);
+
+/// 从歌词返回值里取主歌词与是否有翻译（与 PlayerActions 的解析保持一致）。
+({String main, bool hasTranslation}) _lyricSummary(dynamic raw) {
+  if (raw is String) return (main: raw.trim(), hasTranslation: false);
+  if (raw is Map) {
+    String pick(List<String> keys) {
+      for (final k in keys) {
+        final v = raw[k];
+        if (v is String && v.trim().isNotEmpty) return v;
+        if (v is Map) {
+          final inner = pick(keys);
+          if (inner.isNotEmpty) return inner;
+        }
+      }
+      return '';
+    }
+
+    return (
+      main: pick(const ['lyric', 'rawLrc', 'lrc', 'content']),
+      hasTranslation: pick(const ['translation', 'trans']).isNotEmpty,
+    );
+  }
+  return (main: '', hasTranslation: false);
+}

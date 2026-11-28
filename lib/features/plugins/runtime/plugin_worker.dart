@@ -344,7 +344,9 @@ $source
     version: m.version || '',
     author: m.author || '',
     description: m.description || '',
-    srcUrl: m.srcUrl || ''
+    srcUrl: m.srcUrl || '',
+    supportedSearchTypes: Array.isArray(m.supportedSearchType) ? m.supportedSearchType : [],
+    defaultSearchType: typeof m.defaultSearchType === 'string' ? m.defaultSearchType : ''
   };
 })()
 ''') as Map<String, dynamic>? ??
@@ -377,6 +379,10 @@ $source
         'sourceKeys': declaredKeys.isEmpty ? [platform] : declaredKeys,
         'qualitys': const <String, List<String>>{},
         'updateAlert': null,
+        'supportedSearchTypes':
+            (reflect['supportedSearchTypes'] as List?)?.map((e) => '$e').toList() ??
+            const <String>[],
+        'defaultSearchType': _pickString(reflect['defaultSearchType']) ?? '',
         'initialized': initialized,
         'initError': initError,
       };

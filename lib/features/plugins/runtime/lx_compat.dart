@@ -597,7 +597,7 @@ function __lx_create_virtual_exports(platform, version, author, description) {
     return key;
   }
 
-  // 只保留插件原始字段，剔除宿主内部标记。
+  // 只保留插件原始字段，剔除宿主内部标记（sourceKey 是公开契约字段，保留）。
   function cleanItem(musicItem) {
     var src = musicItem || {};
     var info = {};
@@ -613,6 +613,8 @@ function __lx_create_virtual_exports(platform, version, author, description) {
   // 这里按 LX 生态的通用字段补齐别名，原始字段保持不变。
   function normalizeItem(musicItem) {
     var info = cleanItem(musicItem);
+    // sourceKey 只用于宿主选源，不进入 LX 脚本的 musicInfo。
+    delete info.sourceKey;
     if (info.songmid == null || info.songmid === '') {
       if (info.id != null) info.songmid = info.id;
     }
@@ -635,11 +637,11 @@ function __lx_create_virtual_exports(platform, version, author, description) {
     return info;
   }
 
-  function getMediaSource(musicItem, quality, sourceKey) {
+  function getMediaSource(musicItem, quality) {
     return new Promise(function(resolve, reject) {
       var key, q;
       try {
-        key = resolveKey(sourceKey);
+        key = resolveKey(musicItem && musicItem.sourceKey);
         q = __lx_pick_quality(key, quality);
         if (!q) throw new Error('音源 "' + key + '" 不支持任何可用音质');
       } catch (e) {
@@ -670,11 +672,11 @@ function __lx_create_virtual_exports(platform, version, author, description) {
     });
   }
 
-  function getLyric(musicItem, sourceKey) {
+  function getLyric(musicItem) {
     return new Promise(function(resolve, reject) {
       var key;
       try {
-        key = resolveKey(sourceKey);
+        key = resolveKey(musicItem && musicItem.sourceKey);
       } catch (e) {
         reject(e);
         return;

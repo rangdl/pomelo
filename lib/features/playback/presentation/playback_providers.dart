@@ -298,9 +298,14 @@ final lockScreenLyricSyncProvider = Provider<void>((ref) {
     final active = LrcParser.activeIndex(lines, pos);
     if (active == lastActive) return;
     lastActive = active;
-    final text = active >= 0 && active < lines.length
-        ? lines[active].text
-        : null;
+    final line = active >= 0 && active < lines.length ? lines[active] : null;
+    final trans = line?.translation;
+    // 有翻译时与 MusicFree 一致：原文与翻译分两行推给锁屏。
+    final text = line == null
+        ? null
+        : (trans != null && trans.isNotEmpty
+              ? '${line.text}\n$trans'
+              : line.text);
     player.applyLockScreenLyric(mode, text);
   }
 
@@ -348,7 +353,7 @@ final lockScreenLyricSyncProvider = Provider<void>((ref) {
 final lyricLinesProvider = FutureProvider<List<LyricLine>>((ref) async {
   final item = ref.watch(nowPlayingProvider);
   if (item == null) return const [];
-  final raw = await ref.read(playerActionsProvider).fetchLyric(item);
-  if (raw == null || raw.trim().isEmpty) return const [];
-  return LrcParser.parse(raw);
+  final result = await ref.read(playerActionsProvider).fetchLyric(item);
+  if (result == null || result.raw.trim().isEmpty) return const [];
+  return LrcParser.parse(result.raw, translation: result.translation);
 });

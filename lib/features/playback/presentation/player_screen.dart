@@ -610,7 +610,12 @@ class _LyricScrollView extends ConsumerStatefulWidget {
 }
 
 class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
+  /// 单行歌词高度；带翻译时改为两行高度。
   static const double _lineHeight = 34;
+  static const double _translatedLineHeight = 48;
+
+  /// 当前列表实际使用的行高（有翻译时更高）。
+  double _rowHeight = _lineHeight;
 
   final ScrollController _controller = ScrollController();
   int _lastActive = -1;
@@ -644,7 +649,7 @@ class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
     // 等本次布局完成后再滚动，否则拿不到正确的滚动范围。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_controller.hasClients) return;
-      final target = (active * _lineHeight).clamp(
+      final target = (active * _rowHeight).clamp(
         0.0,
         _controller.position.maxScrollExtent,
       );
@@ -679,6 +684,10 @@ class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
             child: Text('暂无歌词', style: TextStyle(color: Colors.white38)),
           );
         }
+        final hasTranslation = lines.any(
+          (l) => l.translation != null && l.translation!.isNotEmpty,
+        );
+        _rowHeight = hasTranslation ? _translatedLineHeight : _lineHeight;
         return StreamBuilder<Duration>(
           stream: widget.positionStream,
           builder: (context, snap) {
@@ -689,7 +698,7 @@ class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
               builder: (context, constraints) {
                 final pad = math.max(
                   0.0,
-                  (constraints.maxHeight - _lineHeight) / 2,
+                  (constraints.maxHeight - _rowHeight) / 2,
                 );
                 return NotificationListener<ScrollNotification>(
                   onNotification: _onScroll,
@@ -698,10 +707,14 @@ class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
                     // 允许手动回看;用户拖动后 4 秒内不自动回中。
                     physics: const ClampingScrollPhysics(),
                     padding: EdgeInsets.symmetric(vertical: pad),
-                    itemExtent: _lineHeight,
+                    itemExtent: _rowHeight,
                     itemCount: lines.length,
                     itemBuilder: (context, i) {
                       final isActive = i == active;
+                      final line = lines[i];
+                      final translation = line.translation;
+                      final hasTrans =
+                          translation != null && translation.isNotEmpty;
                       return Center(
                         child: AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 220),
@@ -715,18 +728,37 @@ class _LyricScrollViewState extends ConsumerState<_LyricScrollView> {
                           ),
                           child: InkWell(
                             // 点击歌词跳转到对应时间。
-                            onTap: () => widget.onSeek(lines[i].time),
+                            onTap: () => widget.onSeek(line.time),
                             borderRadius: BorderRadius.circular(6),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
                                 vertical: 2,
                               ),
-                              child: Text(
-                                lines[i].text.isEmpty ? '♪' : lines[i].text,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    line.text.isEmpty ? '♪' : line.text,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  if (hasTrans)
+                                    Text(
+                                      translation,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w400,
+                                        color: isActive
+                                            ? Colors.white70
+                                            : Colors.white38,
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ),

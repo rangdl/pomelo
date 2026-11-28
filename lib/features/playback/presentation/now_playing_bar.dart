@@ -280,11 +280,12 @@ class _MiniSubtitleLine extends ConsumerWidget {
           builder: (context, posSnap) {
             final pos = posSnap.data ?? Duration.zero;
             final active = LrcParser.activeIndex(lines, pos);
-            final text = playing && active >= 0 && active < lines.length
-                ? lines[active].text.trim()
-                : '';
+            final line = playing && active >= 0 && active < lines.length
+                ? lines[active]
+                : null;
             return _RollingLyricLine(
-              text: text,
+              text: line?.text.trim() ?? '',
+              translation: line?.translation,
               style: _style.copyWith(color: color),
             );
           },
@@ -297,10 +298,17 @@ class _MiniSubtitleLine extends ConsumerWidget {
 /// 单行歌词的「向上滚动」过渡：新行自下而上滑入，旧行继续向上滑出，
 /// 与播放页歌词区整首歌上移的方向一致。
 class _RollingLyricLine extends StatefulWidget {
-  const _RollingLyricLine({required this.text, required this.style});
+  const _RollingLyricLine({
+    required this.text,
+    required this.style,
+    this.translation,
+  });
 
   final String text;
   final TextStyle style;
+
+  /// 有翻译时与主行一起换行，保持两行同步滚动。
+  final String? translation;
 
   @override
   State<_RollingLyricLine> createState() => _RollingLyricLineState();
@@ -308,7 +316,7 @@ class _RollingLyricLine extends StatefulWidget {
 
 class _RollingLyricLineState extends State<_RollingLyricLine>
     with SingleTickerProviderStateMixin {
-  static const double _height = 16;
+  static const double _height = 28;
   static const Duration _duration = Duration(milliseconds: 300);
 
   late final AnimationController _controller = AnimationController(
@@ -321,7 +329,9 @@ class _RollingLyricLineState extends State<_RollingLyricLine>
   );
 
   String _previous = '';
+  String? _previousTrans;
   late String _current = widget.text;
+  late String? _currentTrans = widget.translation;
 
   @override
   void initState() {
@@ -333,11 +343,13 @@ class _RollingLyricLineState extends State<_RollingLyricLine>
   @override
   void didUpdateWidget(_RollingLyricLine oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.text == _current) return;
+    if (widget.text == _current && widget.translation == _currentTrans) return;
     // 暂停/恢复对应空文本，此时只做淡出/淡入（旧行为），
     // 真正换行时才是「旧行上滑出、新行下侧滑入」。
     _previous = _current;
+    _previousTrans = _currentTrans;
     _current = widget.text;
+    _currentTrans = widget.translation;
     _controller.forward(from: 0);
   }
 
@@ -348,13 +360,38 @@ class _RollingLyricLineState extends State<_RollingLyricLine>
     super.dispose();
   }
 
-  Widget _line(String text, Key key) {
-    return Text(
-      text,
+  Widget _line(String text, String? translation, Key key) {
+    if (translation == null || translation.isEmpty) {
+      return Text(
+        text,
+        key: key,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: widget.style,
+      );
+    }
+    // 迷你条高度有限：主行与翻译各占一行，字号缩小一档。
+    return Column(
       key: key,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: widget.style,
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: widget.style,
+        ),
+        Text(
+          translation,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: widget.style.copyWith(
+            fontSize: (widget.style.fontSize ?? 12) * 0.85,
+            color: widget.style.color?.withValues(alpha: 0.65),
+          ),
+        ),
+      ],
     );
   }
 
@@ -383,7 +420,7 @@ class _RollingLyricLineState extends State<_RollingLyricLine>
                           begin: 1,
                           end: 0,
                         ).animate(_curve),
-                        child: _line(_previous, const ValueKey('prev')),
+                        child: _line(_previous, _previousTrans, const ValueKey('prev')),
                       ),
                     ),
                   ),
@@ -394,7 +431,7 @@ class _RollingLyricLineState extends State<_RollingLyricLine>
                       translation: Offset(0, 1 - t),
                       child: FadeTransition(
                         opacity: _curve,
-                        child: _line(_current, const ValueKey('cur')),
+                        child: _line(_current, _currentTrans, const ValueKey('cur')),
                       ),
                     ),
                   ),

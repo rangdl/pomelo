@@ -1,3 +1,6 @@
+/// 插件未声明 `supportedSearchType` 时，UI 默认展示的搜索类型。
+const List<String> kDefaultSearchTypes = ['music', 'sheet', 'artist', 'album'];
+
 /// 插件的出身：决定它在列表里怎么归类、能否被筛出来。
 enum PluginOrigin {
   /// 随包内置/官方维护的音源。
@@ -42,6 +45,8 @@ class PluginRecord {
     this.disableResolve = false,
     this.origin,
     this.userSourceKeys,
+    this.supportedSearchTypes = const [],
+    this.defaultSearchType = '',
   });
 
   /// 稳定 id：自有格式用 platform，LX 用 `lx:<脚本名>`。重名时替换而不是新增。
@@ -89,6 +94,18 @@ class PluginRecord {
   /// 用户手动指定的音源 key；非空时覆盖自动推断，插件更新不冲掉。
   List<String>? userSourceKeys;
 
+  /// 插件支持的搜索类型（music/sheet/artist/album/lyric）。
+  ///
+  /// 空列表表示「不限制」——与 MusicFree 一致：未声明即全部支持。
+  List<String> supportedSearchTypes;
+
+  /// 默认搜索类型；为空时回退 music。
+  String defaultSearchType;
+
+  /// 实际可用于 UI 的搜索类型：有声明按声明，没声明给出四种常规类型。
+  List<String> get searchableTypes =>
+      supportedSearchTypes.isEmpty ? kDefaultSearchTypes : supportedSearchTypes;
+
   /// 展示用的出身：老数据按 id 前缀就近归类。
   PluginOrigin get displayOrigin {
     if (origin != null) return origin!;
@@ -125,6 +142,8 @@ class PluginRecord {
     'disableResolve': disableResolve,
     'origin': origin?.name,
     'userSourceKeys': userSourceKeys,
+    'supportedSearchTypes': supportedSearchTypes,
+    'defaultSearchType': defaultSearchType,
   };
 
   static PluginRecord fromJson(Map<String, dynamic> json) {
@@ -155,6 +174,9 @@ class PluginRecord {
           ? PluginOrigin.fromName(json['origin'] as String)
           : null,
       userSourceKeys: (json['userSourceKeys'] as List?)?.cast<String>(),
+      supportedSearchTypes:
+          (json['supportedSearchTypes'] as List?)?.cast<String>() ?? const [],
+      defaultSearchType: json['defaultSearchType'] as String? ?? '',
     );
   }
 }

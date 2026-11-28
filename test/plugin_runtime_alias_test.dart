@@ -71,4 +71,55 @@ void main() {
     final legacy = PluginRecord.fromJson({'id': 'old'});
     expect(legacy.disableResolve, isFalse);
   });
+
+  test('sourceKey 通过 musicItem 传入，不再作为额外实参', () async {
+    final rt = await PomeloPluginRuntime.create();
+    addTearDown(rt.dispose);
+    await rt.loadPlugin(_argEchoScript, name: 'args');
+
+    final source = await rt.getMediaSource(
+      {'id': 'abc', '_pluginId': 'x'},
+      'high',
+      sourceKey: 'kw',
+    );
+    // 脚本把 arguments.length 与 musicItem.sourceKey 一起回显。
+    expect(source!['url'], 'https://example.test/2|kw');
+  });
+
+  test('支持的搜索类型从 supportedSearchType 反射，缺省不限制', () async {
+    final rt = await PomeloPluginRuntime.create();
+    addTearDown(rt.dispose);
+    final loaded = await rt.loadPlugin(_searchScript, name: 'search');
+
+    expect(loaded.supportedSearchTypes, ['music']);
+    // 声明外的类型被裁剪成空，且不打网络。
+    expect((await rt.search('x', type: 'sheet'))['data'], isEmpty);
+    expect((await rt.search('x', type: 'music'))['data'], isNotEmpty);
+    // isEnd 缺省视为已到末页。
+    expect((await rt.search('x', type: 'music'))['isEnd'], isTrue);
+  });
 }
+
+/// 回显实参个数与 musicItem.sourceKey。
+const _argEchoScript = r'''
+module.exports = {
+  platform: '参数回显',
+  version: '1.0.0',
+  async search() { return { isEnd: true, data: [] }; },
+  async getMediaSource(musicItem, quality) {
+    return { url: 'https://example.test/' + arguments.length + '|' + (musicItem.sourceKey || '') };
+  },
+};
+''';
+
+/// 只声明 music 类型、且 search 不返回 isEnd。
+const _searchScript = r'''
+module.exports = {
+  platform: '搜索类型',
+  version: '1.0.0',
+  supportedSearchType: ['music'],
+  async search(query, page, type) {
+    return { data: [{ id: '1', title: 't', artist: 'a' }] };
+  },
+};
+''';

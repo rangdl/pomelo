@@ -132,6 +132,8 @@ class PluginRepository {
       updateLog: (alertLog is String && alertLog.trim().isNotEmpty)
           ? alertLog.trim()
           : null,
+      supportedSearchTypes: loaded.supportedSearchTypes,
+      defaultSearchType: loaded.defaultSearchType,
     );
 
     if (existingIndex >= 0) {

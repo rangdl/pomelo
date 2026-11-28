@@ -92,8 +92,8 @@
 初始化完成后，`LxCompat` 生成与自有格式同形的导出：
 
 - 公共字段：`platform`、`version`、`author`、`description`、`sourceKeys`、`compat: 'lx'`。
-- `getMediaSource(musicItem, quality, sourceKey)`：按 `sourceKey` 选择音源，调用脚本的 `musicUrl` action；脚本返回字符串或 `{ url }` 均可。
-- `getLyric(musicItem, sourceKey)`：仅当至少一个音源声明了 `lyric` action 时暴露（目标外保留）。
+- `getMediaSource(musicItem, quality)`：从 `musicItem.sourceKey` 选择音源（宿主在调用前写入该公开字段），调用脚本的 `musicUrl` action；脚本返回字符串或 `{ url }` 均可。
+- `getLyric(musicItem)`：同样从 `musicItem.sourceKey` 选源，仅当至少一个音源声明了 `lyric` action 时暴露（目标外保留）。
 - 音质降级：宿主 `low/standard/high/lossless` 映射为 `128k/320k/flac/flac24bit`，按 `flac24bit > flac > 320k > 128k` 逐级降档；声明了非常规音质名时退回脚本声明的第一项。
 - 曲目字段归一：`cleanItem` 剔除宿主内部标记，`normalizeItem` 补齐 `songmid`/`hash`/`name`/`singer`/`albumName`/`interval` 别名，兼容跨插件兜底传入的曲目。
 - 若脚本上报了 `updateAlert`，`updateUrl` 会作为 `srcUrl` 返回。

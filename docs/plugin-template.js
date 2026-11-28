@@ -26,12 +26,20 @@ module.exports = {
   // 宿主用它做跨插件兜底匹配：不填时会按 platform 名推断（如"风誰·酷狗"→kg）。
   sourceKeys: ['kw'],
 
+  // 声明本插件支持的搜索类型（music/sheet/artist/album/lyric）。
+  // 不填 = 不限制（与 MusicFree 语义一致）；宿主搜索页只展示声明过的类型。
+  supportedSearchType: ['music', 'sheet', 'artist', 'album'],
+
+  // 默认搜索类型；不填时宿主回退 music。
+  defaultSearchType: 'music',
+
   // 声明本插件支持的音质，宿主会按 low/standard/high/super 传入。
   supportedQualitys: ['low', 'standard', 'high', 'super'],
 
   // ---- 搜索 ----------------------------------------------------------------
-  // type: 'music' | 'sheet' | 'artist' | 'album'
-  // 返回 { isEnd: boolean, data: [...] }
+  // type: 'music' | 'sheet' | 'artist' | 'album' | 'lyric'
+  // 返回 { isEnd?: boolean, data: [...] }；isEnd 不填视为已到末页
+  // （与 MusicFree 一致，只有显式 false 宿主才会继续请求下一页）。
   async search(query, page, type) {
     return {
       isEnd: true,
@@ -46,11 +54,6 @@ module.exports = {
         },
       ],
     };
-  },
-
-  // 搜索建议（可选）：返回字符串数组
-  async getSearchSuggestions(query) {
-    return ['建议关键词'];
   },
 
   // ---- 榜单 ----------------------------------------------------------------
@@ -122,10 +125,13 @@ module.exports = {
   },
 
   // ---- 歌词 ----------------------------------------------------------------
-  // 返回 LRC 文本，或 { lyric: '...' } / { rawLrc: '...' }
+  // 返回 LRC 文本，或 { lyric: '...' } / { rawLrc: '...' }；
+  // 若平台有翻译歌词，用 translation 一并返回（也是带时间戳的 LRC 文本），
+  // 宿主会按时间戳对齐后与原文一起显示。
   async getLyric(musicItem) {
     return {
       lyric: '[00:00.00] 歌词内容',
+      translation: '[00:00.00] 歌词译文',
     };
   },
 
@@ -135,6 +141,15 @@ module.exports = {
   //
   // 注意：宿主会在调用时额外传第三个参数 sourceKey（本插件的主音源 key），
   // 自有格式插件可以忽略它。
+  // ---- 音源 -------------------------------------------------------------
+  // quality: 'low' | 'standard' | 'high' | 'super'
+  // 返回 { url, headers?, userAgent?, quality? }；拿不到时返回 null，宿主会按音源
+  // key 尝试其它插件兜底。
+  //
+  // sourceKey：宿主会把当前条目的音源 key 写进 musicItem.sourceKey，需要按源
+  // 选路的插件读它即可；方法签名与 MusicFree 一致，只有两个参数。
+  // userAgent：等价于 headers['User-Agent']，两者都给时以 userAgent 为准。
+  // quality：返回实际提供的档位，宿主会据此显示「降档」提示。
   async getMediaSource(musicItem, quality) {
     return {
       url: 'https://example.com/audio.mp3',
@@ -142,6 +157,7 @@ module.exports = {
         Referer: 'https://example.com/',
         'User-Agent': 'Mozilla/5.0',
       },
+      quality: quality,
     };
   },
 };
@@ -151,7 +167,7 @@ module.exports = {
  * =============================================================================
  * 无需改写为上面的格式：把原生 LX 脚本直接粘贴导入即可。宿主会自动识别
  * （脚本内的 `lx.on('request', ...)` + `lx.send('inited', ...)`），并在兼容层里
- * 包装成等价的 `getMediaSource(musicItem, quality, sourceKey)`：
+ * 包装成等价的 `getMediaSource(musicItem, quality)`：
  *
  *   - `inited` 里声明的每个源（kw/kg/tx/wy/mg/qs…）都会成为本插件的音源 key；
  *   - 宿主请求 high 时，脚本若只声明 128k/320k，会自动降档；

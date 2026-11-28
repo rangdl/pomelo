@@ -21,6 +21,15 @@
 
 对应 LX 音源的 `128k/320k/flac/flac24bit` 映射见 [lx.md](lx.md)。
 
+## 音源 key 的传递
+
+`getMediaSource` / `getLyric` 的签名与 MusicFree 完全一致（只有 `musicItem`、`quality`），
+**不传第三个参数**。宿主需要指定音源时，把 key 写进条目的公开字段 `musicItem.sourceKey`：
+
+- 自有格式插件读 `musicItem.sourceKey` 即可按源选路，不需要也可以忽略；
+- LX 包装插件用它 `resolveKey`，且不会把它透传给 LX 脚本的 `musicInfo`；
+- 宿主内部标记 `_pluginId` / `_sourceKey` 仍会剥离，不会下发。
+
 ## 兼容进度
 
 状态说明：✅ 已兼容　⚠️ 部分可用　❌ 未兼容　— 目标外。完成一项就更新本表。
@@ -29,17 +38,22 @@
 |---|---|---|
 | 加载（CommonJS / parcel default） | ✅ | 运行时包装 + 导出归一化 |
 | 基础元信息 | ✅ | platform / version / author / description / srcUrl |
-| 14 个 API 方法 | ✅ | 宿主均有封装，见 `pomelo_plugin_runtime.dart` |
+| API 方法 | ✅ | 对齐 MusicFree 官方 13 个方法（d.ts 12 个 + `getMusicComments`）；不提供 `getSearchSuggestions` / `getArtistInfo`（Pomelo 曾自扩，已移除） |
 | 音质档位 low / standard / high / super | ✅ | 宿主四档按 low/standard/high/super 传给插件 |
 | `require("axios")` / `require("he")` | ✅ | 见「已提供模块」 |
-| cheerio / crypto-js / dayjs / big-integer / qs / webdav | ❌ | 暂缓，用到再补 |
+| `require("crypto-js")` | ⚠️ | 仅 MD5（`CryptoJS.MD5(x).toString()` 场景） |
+| `require("cheerio")` | ⚠️ | 空桩：插件可加载，DOM 查询恒为空 |
+| dayjs / big-integer / qs / webdav | ❌ | 暂缓，用到再补 |
 | 全局 fetch / btoa / atob / console / setTimeout / setInterval | ✅ | setInterval 由兼容层补齐 |
-| 全局 URL / URLSearchParams / Buffer / TextEncoder / TextDecoder / AbortController | ❌ | 缺失，相关插件会 ReferenceError |
-| env（getUserVariables / os / appVersion） | ✅ | — |
+| 全局 URL / URLSearchParams / Buffer / TextEncoder / TextDecoder / AbortController | ⚠️ | TextEncoder / TextDecoder 已垫；其余 ❌，相关插件会 ReferenceError |
+| env（getUserVariables / os / appVersion） | ✅ | `os`/`appVersion` 为固定值 |
 | env.lang | ❌ | 缺失 |
-| 歌词 translation | ❌ | 只取 rawLrc / lrc |
-| 搜索类型 album / artist / sheet / lyric | ⚠️ | runtime 透传 type，UI 主要用 music |
-| 可选元数据 primaryKey / hints / cacheControl / supportedSearchType | ❌ | 未消费 |
+| 歌词 translation | ✅ | 返回 `{rawLrc/lrc, translation}`，宿主按时间戳对齐后同步显示 |
+| `supportedSearchType` | ✅ | 反射后裁剪搜索类型，UI 只展示插件支持的类型；未声明 = 不限制 |
+| `defaultSearchType` | ✅ | 未指定类型时优先使用 |
+| `cacheControl` | ❌ | 未消费，宿主统一 10 分钟链接缓存 |
+| `hints` / `primaryKey` | ❌ | 未消费 |
+| 取链返回 `userAgent` / `quality` | ✅ | UA 写回 headers 并带进缓存；quality 回填用于展示 |
 | 单次调用超时 | ✅ | 宿主超时保护 |
 
 ## 装载流程

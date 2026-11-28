@@ -9,6 +9,7 @@ import '../../../shared/ui/tokens.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
 import '../../playback/presentation/playback_providers.dart';
+import '../../plugins/domain/plugin_record.dart';
 import '../../plugins/presentation/plugin_providers.dart';
 import '../../plugins/presentation/track_more.dart';
 import 'search_providers.dart';
@@ -33,15 +34,37 @@ class _SearchViewState extends ConsumerState<SearchView> {
   /// 输入防抖：停止输入 450ms 后再真正发起搜索。
   Timer? _debounce;
 
-  static const _types = <(String, String)>[
+  static const _allTypes = <(String, String)>[
     ('music', '单曲'),
     ('sheet', '歌单'),
     ('artist', '歌手'),
     ('album', '专辑'),
+    ('lyric', '歌词'),
   ];
 
+  /// 当前选中插件支持的搜索类型标签（未声明 supportedSearchType 时展示常规类型）。
+  List<(String, String)> _typesFor(PluginRecord plugin) {
+    final allowed = plugin.supportedSearchTypes;
+    if (allowed.isEmpty) {
+      return _allTypes.where((t) => t.$1 != 'lyric').toList();
+    }
+    return _allTypes.where((t) => allowed.contains(t.$1)).toList();
+  }
+
+  /// 换插件后，把当前类型纠正为插件支持的类型。
+  void _ensureTypeSupported(PluginRecord plugin) {
+    final types = _typesFor(plugin);
+    if (types.isEmpty || types.any((t) => t.$1 == _type)) return;
+    final preferred = types.first.$1;
+    if (_type == preferred) return;
+    _type = preferred;
+    ref
+        .read(searchResultsProvider.notifier)
+        .set(const AsyncValue.data(<Map<String, dynamic>>[]));
+  }
+
   String get _typeLabel =>
-      _types.firstWhere((t) => t.$1 == _type, orElse: () => _types.first).$2;
+      _allTypes.firstWhere((t) => t.$1 == _type, orElse: () => _allTypes.first).$2;
 
   @override
   void dispose() {
@@ -147,6 +170,9 @@ class _SearchViewState extends ConsumerState<SearchView> {
       (p) => p.id == selectedId,
       orElse: () => plugins.first,
     );
+    // 插件切换后可能不再支持当前类型：在 build 前纠正，避免请求注定为空。
+    _ensureTypeSupported(current);
+    final types = _typesFor(current);
 
     return CenteredMaxWidth(
       child: Column(
@@ -204,7 +230,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
             ),
             child: Row(
               children: [
-                for (final (value, label) in _types)
+                for (final (value, label) in types)
                   Padding(
                     padding: const EdgeInsets.only(right: AppSpacing.lg),
                     child: _TypeTab(

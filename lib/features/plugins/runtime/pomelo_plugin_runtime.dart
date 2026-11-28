@@ -18,6 +18,8 @@ class PluginLoadResult {
     this.sourceKeys = const [],
     this.qualitys = const {},
     this.updateAlert,
+    this.supportedSearchTypes = const [],
+    this.defaultSearchType = '',
   });
 
   /// 是否由 LX 兼容层包装而来。
@@ -44,6 +46,14 @@ class PluginLoadResult {
   /// LX 脚本上报的更新提示（`{log, updateUrl}`），非空即"有更新"。
   final Map<String, dynamic>? updateAlert;
 
+  /// 插件支持的搜索类型（`music`/`sheet`/`artist`/`album`/`lyric`）。
+  ///
+  /// 空列表表示「不限制」——与 MusicFree 的语义一致（未声明即全部支持）。
+  final List<String> supportedSearchTypes;
+
+  /// 默认搜索类型；为空时回退 `music`。
+  final String defaultSearchType;
+
   bool get hasUpdateAlert => updateAlert != null && updateAlert!.isNotEmpty;
 }
 
@@ -65,6 +75,9 @@ class PomeloPluginRuntime {
 
   /// 源 → 音质列表。
   Map<String, List<String>> qualitys = const {};
+
+  /// 插件支持的搜索类型（空 = 不限制）。
+  List<String> supportedSearchTypes = const [];
 
   /// LX 上报的更新提示。
   Map<String, dynamic>? updateAlert;
@@ -122,6 +135,9 @@ class PomeloPluginRuntime {
     updateAlert = map['updateAlert'] is Map
         ? Map<String, dynamic>.from(map['updateAlert'] as Map)
         : null;
+    supportedSearchTypes =
+        (map['supportedSearchTypes'] as List?)?.map((e) => '$e').toList() ??
+        const [];
     initialized = map['initialized'] == true;
     initError = map['initError'] is String ? map['initError'] as String : null;
     _notifyActivity();
@@ -140,6 +156,8 @@ class PomeloPluginRuntime {
           (map['sourceKeys'] as List?)?.map((e) => '$e').toList() ?? const [],
       qualitys: qualitys,
       updateAlert: updateAlert,
+      supportedSearchTypes: supportedSearchTypes,
+      defaultSearchType: '${map['defaultSearchType'] ?? ''}',
     );
   }
 
@@ -176,28 +194,35 @@ class PomeloPluginRuntime {
     int page = 1,
     String type = 'music',
   }) async {
+    // 插件声明了 supportedSearchType 且不含该类型时，直接返回空，不打网络。
+    if (supportedSearchTypes.isNotEmpty && !supportedSearchTypes.contains(type)) {
+      return {'isEnd': true, 'data': const []};
+    }
     final result = await invoke('search', [query, page, type]);
     if (result is Map<String, dynamic>) {
       final data = result['data'];
       return {
-        'isEnd': result['isEnd'] ?? true,
+        // 与 MusicFree 同构：缺省视为已到末页，只有显式 false 才继续翻页。
+        'isEnd': result['isEnd'] != false,
         'data': data is List ? data : const [],
       };
     }
     return {'isEnd': true, 'data': const []};
   }
 
-  /// 获取播放地址，返回 `{url, headers?}`；取不到返回 null。
+  /// 获取播放地址，返回 `{url, headers?, userAgent?, quality?}`；取不到返回 null。
   ///
-  /// [sourceKey] 供 LX 包装插件选择具体音源；自有格式插件会忽略这个多余实参。
+  /// [sourceKey] 不是额外实参：worker 会把它写进 musicItem 的 `sourceKey` 字段，
+  /// 插件侧签名与 MusicFree 一致（只有 `(musicItem, quality)`）。
   Future<Map<String, dynamic>?> getMediaSource(
     Map<String, dynamic> musicItem,
     String quality, {
     String? sourceKey,
   }) async {
-    final args = <dynamic>[musicItem, quality];
-    if (sourceKey != null && sourceKey.isNotEmpty) args.add(sourceKey);
-    final result = await invoke('getMediaSource', args);
+    final item = sourceKey == null || sourceKey.isEmpty
+        ? musicItem
+        : Map<String, dynamic>.from(musicItem)..['sourceKey'] = sourceKey;
+    final result = await invoke('getMediaSource', [item, quality]);
     if (result is Map<String, dynamic>) {
       final url = result['url'];
       if (url is String && url.isNotEmpty) return result;
@@ -242,16 +267,18 @@ class PomeloPluginRuntime {
     return const [];
   }
 
-  /// 歌手详情。
-  Future<Map<String, dynamic>?> getArtistInfo(
-    Map<String, dynamic> artistItem,
-  ) async {
-    final result = await invoke('getArtistInfo', [artistItem]);
-    if (result is Map<String, dynamic>) return result;
-    if (result is Map && result['data'] is Map) {
-      return (result['data'] as Map).cast<String, dynamic>();
-    }
-    return null;
+  /// 获取歌词，返回原始结果（字符串或 `{rawLrc, translation, ...}`）。
+  ///
+  /// [sourceKey] 同样写进 musicItem 的 `sourceKey` 字段，LX 包装插件据此选源。
+  Future<dynamic> getLyric(
+    Map<String, dynamic> musicItem, {
+    String? sourceKey,
+    Duration timeout = const Duration(seconds: 30),
+  }) {
+    final item = sourceKey == null || sourceKey.isEmpty
+        ? musicItem
+        : Map<String, dynamic>.from(musicItem)..['sourceKey'] = sourceKey;
+    return invoke('getLyric', [item], timeout: timeout);
   }
 
   /// 导入分享的歌单，返回曲目列表。
@@ -383,24 +410,6 @@ class PomeloPluginRuntime {
     return _pageResult(result, dataKey: 'musicList', altKeys: const ['data']);
   }
 
-  /// 搜索建议（部分插件实现）。
-  Future<List<String>> getSearchSuggestions(String query) async {
-    try {
-      final result = await invoke('getSearchSuggestions', [
-        query,
-      ], timeout: const Duration(seconds: 15));
-      if (result is List) {
-        return result
-            .map((e) => '$e'.trim())
-            .where((e) => e.isNotEmpty)
-            .toList();
-      }
-    } catch (_) {
-      // 未实现：静默返回空。
-    }
-    return const [];
-  }
-
   List<Map<String, dynamic>> _maps(List list) =>
       list.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
 
@@ -420,9 +429,10 @@ class PomeloPluginRuntime {
         list = result[key];
       }
       final isEnd = result['isEnd'];
+      // 与 MusicFree 同构：只有显式 false 才算「还有下一页」。
       return (
         data: list is List ? _maps(list) : const <Map<String, dynamic>>[],
-        isEnd: isEnd == null ? true : isEnd == true,
+        isEnd: isEnd != false,
       );
     }
     return (data: const <Map<String, dynamic>>[], isEnd: true);
