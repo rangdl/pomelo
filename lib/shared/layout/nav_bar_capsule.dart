@@ -240,10 +240,7 @@ class _NavItem extends StatelessWidget {
       // 预览时 onTap 为 null，不拦截点击。
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.only(
-          top: metrics.iconTopPadding,
-          bottom: metrics.textBottomPadding,
-        ),
+        padding: EdgeInsets.only(top: metrics.iconTopPadding),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,

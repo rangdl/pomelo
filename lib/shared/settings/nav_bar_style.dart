@@ -9,12 +9,11 @@ class NavBarMetrics {
   const NavBarMetrics({
     this.height = 48,
     this.itemWidth = 66,
-    this.inset = 3,
+    this.inset = 2,
     this.iconSize = 20,
     this.fontSize = 12,
     this.iconTextGap = 1,
-    this.iconTopPadding = 6,
-    this.textBottomPadding = 6,
+    this.iconTopPadding = 4,
   });
 
   /// 胶囊整体高度（含内边距）。
@@ -35,9 +34,6 @@ class NavBarMetrics {
   /// 图标上方的留白。
   final double iconTopPadding;
 
-  /// 文字下方的留白。
-  final double textBottomPadding;
-
   /// 选中圆的直径：受高度与格子宽度共同约束，保证不会压到相邻格。
   double get indicatorSize {
     final byHeight = height - inset * 2;
@@ -53,7 +49,6 @@ class NavBarMetrics {
     double? fontSize,
     double? iconTextGap,
     double? iconTopPadding,
-    double? textBottomPadding,
   }) {
     return NavBarMetrics(
       height: height ?? this.height,
@@ -63,7 +58,6 @@ class NavBarMetrics {
       fontSize: fontSize ?? this.fontSize,
       iconTextGap: iconTextGap ?? this.iconTextGap,
       iconTopPadding: iconTopPadding ?? this.iconTopPadding,
-      textBottomPadding: textBottomPadding ?? this.textBottomPadding,
     );
   }
 
@@ -76,7 +70,6 @@ class NavBarMetrics {
     'fontSize': 'navFontSize',
     'iconTextGap': 'navIconTextGap',
     'iconTopPadding': 'navIconTopPadding',
-    'textBottomPadding': 'navTextBottomPadding',
   };
 
   /// 只写出与默认值不同的字段，避免 settings.json 里堆冗余。
@@ -94,7 +87,6 @@ class NavBarMetrics {
     put('fontSize', fontSize, base.fontSize);
     put('iconTextGap', iconTextGap, base.iconTextGap);
     put('iconTopPadding', iconTopPadding, base.iconTopPadding);
-    put('textBottomPadding', textBottomPadding, base.textBottomPadding);
     return map;
   }
 
@@ -125,12 +117,6 @@ class NavBarMetrics {
         min: 0,
         max: 24,
       ),
-      textBottomPadding: read(
-        'textBottomPadding',
-        base.textBottomPadding,
-        min: 0,
-        max: 24,
-      ),
     );
   }
 }
@@ -158,7 +144,6 @@ class NavBarMetricsNotifier extends Notifier<NavBarMetrics> {
     double? fontSize,
     double? iconTextGap,
     double? iconTopPadding,
-    double? textBottomPadding,
   }) {
     return set(
       state.copyWith(
@@ -169,7 +154,6 @@ class NavBarMetricsNotifier extends Notifier<NavBarMetrics> {
         fontSize: fontSize,
         iconTextGap: iconTextGap,
         iconTopPadding: iconTopPadding,
-        textBottomPadding: textBottomPadding,
       ),
     );
   }

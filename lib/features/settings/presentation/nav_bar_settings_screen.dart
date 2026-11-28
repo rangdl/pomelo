@@ -163,14 +163,6 @@ class _NavBarSettingsScreenState extends ConsumerState<NavBarSettingsScreen> {
                   unit: 'px',
                   onChanged: (v) => notifier.patch(iconTopPadding: v),
                 ),
-                _SliderItem(
-                  label: '文字下边距',
-                  value: metrics.textBottomPadding,
-                  min: 0,
-                  max: 24,
-                  unit: 'px',
-                  onChanged: (v) => notifier.patch(textBottomPadding: v),
-                ),
               ],
             ),
             const SizedBox(height: AppSpacing.md),
@@ -259,11 +251,12 @@ class _SliderItem extends StatelessWidget {
           ),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
-              trackHeight: 2,
-              // 去掉默认上下各 24 的触控留白，让滑杆行更紧凑。
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              trackHeight: 6,
+              // 加大滑块与触控热区，方便手指点按/拖动。
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 11),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
+              // 保留上下各 8 的留白，整体热区高度约 46。
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             ),
             child: Slider(
               value: value.clamp(min, max),
