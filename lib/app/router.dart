@@ -10,6 +10,7 @@ import '../features/plugins/presentation/toplists_screen.dart';
 import '../features/search/presentation/search_screen.dart';
 import '../features/settings/presentation/appearance_settings_screen.dart';
 import '../features/settings/presentation/logs_screen.dart';
+import '../features/settings/presentation/nav_bar_settings_screen.dart';
 import '../features/settings/presentation/playback_settings_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/settings/presentation/storage_settings_screen.dart';
@@ -64,6 +65,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/settings/appearance',
         builder: (context, state) =>
             const ShellDetailScaffold(child: AppearanceSettingsScreen()),
+      ),
+      GoRoute(
+        path: '/settings/navbar',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: NavBarSettingsScreen()),
       ),
       GoRoute(
         path: '/settings/playback',
