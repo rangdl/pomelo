@@ -367,7 +367,8 @@ class _SideNavItem extends StatelessWidget {
 /// 移动端底部玻璃导航栏。
 ///
 /// 参照 iOS 26 浮动胶囊:整条是一个玻璃胶囊,宽度按内容自适应(不撑满屏),
-/// 每个标签「图标在上、文字在下」,选中项在胶囊内用高亮圆角块点亮并整块动画。
+/// 每个标签「图标在上、文字在下」。选中态是一个**在标签间滑动的胶囊指示器**
+/// （而不是每个标签各自淡入背景），切换时选中框整体平移、带回弹感。
 class _GlassBottomNavigation extends StatelessWidget {
   const _GlassBottomNavigation({
     required this.destinations,
@@ -379,8 +380,16 @@ class _GlassBottomNavigation extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
 
+  /// 单个标签的固定宽度：等宽才能让指示器按格平移。
+  static const double _cellWidth = 78;
+
+  /// 指示器相对标签格的内缩：越小，选中框离外层玻璃边越近。
+  static const double _cellInset = 2;
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     // SafeArea:全面屏手势机型上玻璃条不能压到手势区。
     return SafeArea(
       top: false,
@@ -394,17 +403,43 @@ class _GlassBottomNavigation extends StatelessWidget {
               shape: const LiquidRoundedSuperellipse(
                 borderRadius: AppRadius.glass,
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              // 内边距收到 4，让选中框更贴近外层玻璃边。
+              padding: const EdgeInsets.all(4),
+              child: Stack(
                 children: [
-                  for (final (i, (icon, label)) in destinations.indexed)
-                    _NavItem(
-                      icon: icon,
-                      label: label,
-                      selected: i == currentIndex,
-                      onTap: () => onTap(i),
+                  // 滑动指示器：宽度正好一格，按索引平移到对应标签下。
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 420),
+                    // easeOutBack 带轻微回弹，滑动收尾更自然。
+                    curve: Curves.easeOutBack,
+                    left: currentIndex * _cellWidth + _cellInset,
+                    top: _cellInset,
+                    bottom: _cellInset,
+                    width: _cellWidth - _cellInset * 2,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(
+                          AppRadius.glass - 6,
+                        ),
+                      ),
                     ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final (i, (icon, label)) in destinations.indexed)
+                        SizedBox(
+                          width: _cellWidth,
+                          child: _NavItem(
+                            icon: icon,
+                            label: label,
+                            selected: i == currentIndex,
+                            onTap: () => onTap(i),
+                          ),
+                        ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -415,7 +450,10 @@ class _GlassBottomNavigation extends StatelessWidget {
   }
 }
 
-/// 单个导航项:图标在上、文字在下;选中时整块淡主题色圆角背景 + 平滑过渡。
+/// 单个导航项:图标在上、文字在下。
+///
+/// 背景由父级滑动的指示器负责，这里只做图标/文字的选中过渡
+/// （图标轻微放大 + 文字变主题色加粗）。
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.icon,
@@ -433,43 +471,37 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final fg = selected ? scheme.primary : scheme.onSurfaceVariant;
-    final bg = selected
-        ? scheme.primary.withValues(alpha: 0.14)
-        : Colors.transparent;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppRadius.glass),
+        borderRadius: BorderRadius.circular(AppRadius.glass - 4),
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(AppRadius.glass),
-          ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedScale(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOut,
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
                 scale: selected ? 1.0 : 0.92,
                 child: Icon(icon, size: 20, color: fg),
               ),
               const SizedBox(height: 1),
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeOut,
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
                 style: TextStyle(
                   fontSize: AppText.compact,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                   color: fg,
                 ),
-                child: Text(label, maxLines: 1),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
