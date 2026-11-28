@@ -1,7 +1,7 @@
 name: pomelo
 description: "Pomelo - 基于可插拔音源插件的跨平台音乐播放器。"
 publish_to: 'none'
-version: 0.1.1+2
+version: 0.1.2+3
 
 environment:
   sdk: ^3.13.7
