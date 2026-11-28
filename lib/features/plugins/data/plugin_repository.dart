@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../shared/storage/json_file_store.dart';
 import '../domain/plugin_record.dart';
+import '../domain/source_keys.dart';
 import '../runtime/pomelo_plugin_runtime.dart';
 
 /// 检查更新的结果。
@@ -61,6 +62,13 @@ class PluginRepository {
       }
       // 先完整解析再替换，避免单条记录损坏时留下半截列表。
       final parsed = entries.map(PluginRecord.fromJson).toList();
+      // 老数据没有 origin：洛雪按 id 前缀识别，其余先按 MusicFree 归类，
+      // 是否官方由 seed 阶段按内置清单补写（见 markOfficial）。
+      for (final p in parsed) {
+        p.origin ??= p.id.startsWith('lx:')
+            ? PluginOrigin.lx
+            : PluginOrigin.musicfree;
+      }
       _plugins
         ..clear()
         ..addAll(parsed);
@@ -76,7 +84,11 @@ class PluginRepository {
   /// 安装插件（自有格式与 LX 脚本统一入口，格式自动识别）。
   ///
   /// 同 id 视为更新：替换源码与元信息，保留用户的启用状态与兜底开关。
-  Future<PluginRecord> install(String source, {String? fallbackName}) async {
+  Future<PluginRecord> install(
+    String source, {
+    String? fallbackName,
+    bool official = false,
+  }) async {
     final loaded = await probe(source, name: fallbackName ?? 'plugin');
 
     var platform = loaded.platform.trim();
@@ -90,6 +102,9 @@ class PluginRepository {
     final existing = existingIndex >= 0 ? _plugins[existingIndex] : null;
 
     final alertLog = loaded.updateAlert?['log'];
+    final origin = official
+        ? PluginOrigin.official
+        : (loaded.isLxCompat ? PluginOrigin.lx : PluginOrigin.musicfree);
     final record = PluginRecord(
       id: id,
       name: platform,
@@ -100,9 +115,18 @@ class PluginRepository {
       enabled: existing?.enabled ?? true,
       allowFallback: existing?.allowFallback ?? true,
       disableResolve: existing?.disableResolve ?? false,
+      // 用户手动指定过的音源 key 必须跨更新保留。
+      userSourceKeys: existing?.userSourceKeys,
+      origin: origin,
       source: source,
       supportedMethods: loaded.supportedMethods,
-      sourceKeys: loaded.sourceKeys,
+      // MusicFree 的 sourceKeys 是 platform 显示名，落库前统一规范化成
+      // kg/kw/... 这类标准 key，否则它永远不会成为别人的兜底候选。
+      sourceKeys: normalizeSourceKeys(
+        declared: loaded.sourceKeys,
+        platform: platform,
+        isLxCompat: loaded.isLxCompat,
+      ),
       qualitys: loaded.qualitys,
       srcUrl: loaded.srcUrl,
       updateLog: (alertLog is String && alertLog.trim().isNotEmpty)
@@ -274,9 +298,17 @@ class PluginRepository {
   List<PluginRecord> get enabledPlugins =>
       _plugins.where((p) => p.enabled).toList();
 
-  /// 可为指定音源 key 提供播放链接的兜底插件（按安装顺序）。
-  List<PluginRecord> fallbackCandidates(String sourceKey, {String? excludeId}) {
-    return _plugins
+  /// 可为指定音源 key 提供播放链接的兜底插件。
+  ///
+  /// 匹配用 [effectiveSourceKeys] 而非原始 `sourceKeys`：老数据里存的是
+  /// platform 显示名（如「风誰·酷狗」），规范化后才能命中 `kg`。
+  /// 结果按 [orderedIds] 给出的顺序排列，其余按安装顺序跟在后面。
+  List<PluginRecord> fallbackCandidates(
+    String sourceKey, {
+    String? excludeId,
+    List<String> orderedIds = const [],
+  }) {
+    final matched = _plugins
         .where(
           (p) =>
               p.enabled &&
@@ -284,8 +316,41 @@ class PluginRepository {
               p.canProvideMediaSource &&
               !p.disableResolve &&
               p.id != excludeId &&
-              p.sourceKeys.contains(sourceKey),
+              effectiveSourceKeys(p).contains(sourceKey),
         )
         .toList();
+    if (orderedIds.isEmpty) return matched;
+
+    // 兜底链里明确排过序的排在前面，未列出的保持安装顺序接在后面。
+    final rank = {for (final (i, id) in orderedIds.indexed) id: i};
+    final inChain = matched.where((p) => rank.containsKey(p.id)).toList()
+      ..sort((a, b) => rank[a.id]!.compareTo(rank[b.id]!));
+    final rest = matched.where((p) => !rank.containsKey(p.id));
+    return [...inChain, ...rest];
+  }
+
+  /// 按源码内容把内置插件标记为官方。
+  ///
+  /// 用内容比对而非 id/名字：老用户的记录里没有出身字段，而内置脚本的
+  /// 源码就是最可靠的指纹。内置脚本升级后老记录匹配不上，seed 重装时会
+  /// 重新打标，不影响正确性。
+  Future<void> markOfficialBySource(Set<String> sources) async {
+    if (sources.isEmpty) return;
+    var changed = false;
+    for (final p in _plugins) {
+      if (p.origin == PluginOrigin.official) continue;
+      if (sources.contains(p.source.trim())) {
+        p.origin = PluginOrigin.official;
+        changed = true;
+      }
+    }
+    if (changed) await _save();
+  }
+
+  /// 更新用户手动指定的音源 key（传 null/空 表示恢复自动推断）。
+  Future<void> setUserSourceKeys(String id, List<String>? keys) async {
+    final p = _plugins.firstWhere((e) => e.id == id);
+    p.userSourceKeys = (keys == null || keys.isEmpty) ? null : keys;
+    await _save();
   }
 }

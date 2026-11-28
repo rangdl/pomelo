@@ -1,3 +1,24 @@
+/// 插件的出身：决定它在列表里怎么归类、能否被筛出来。
+enum PluginOrigin {
+  /// 随包内置/官方维护的音源。
+  official('官方'),
+
+  /// MusicFree 格式插件（module.exports）。
+  musicfree('MusicFree'),
+
+  /// 洛雪音乐助手脚本（经 LX 兼容层运行）。
+  lx('洛雪');
+
+  const PluginOrigin(this.label);
+
+  final String label;
+
+  static PluginOrigin fromName(String? name) => values.firstWhere(
+    (o) => o.name == name,
+    orElse: () => PluginOrigin.musicfree,
+  );
+}
+
 /// 一个已安装的插件（元信息 + 源码 + 启用状态）。
 ///
 /// 宿主不区分插件出身：自有格式插件与经 LX 兼容层包装的脚本都落在同一个模型里，
@@ -19,6 +40,8 @@ class PluginRecord {
     this.updateLog,
     this.allowFallback = true,
     this.disableResolve = false,
+    this.origin,
+    this.userSourceKeys,
   });
 
   /// 稳定 id：自有格式用 platform，LX 用 `lx:<脚本名>`。重名时替换而不是新增。
@@ -58,6 +81,26 @@ class PluginRecord {
   /// 禁用本插件取链：播放时跳过它的 getMediaSource，直接走同音源兜底。
   bool disableResolve;
 
+  /// 插件出身（官方 / MusicFree / 洛雪）。
+  ///
+  /// 为空表示老数据：按 id 前缀 `lx:` 识别洛雪，其余视为 MusicFree。
+  PluginOrigin? origin;
+
+  /// 用户手动指定的音源 key；非空时覆盖自动推断，插件更新不冲掉。
+  List<String>? userSourceKeys;
+
+  /// 展示用的出身：老数据按 id 前缀就近归类。
+  PluginOrigin get displayOrigin {
+    if (origin != null) return origin!;
+    if (id.startsWith('lx:')) return PluginOrigin.lx;
+    return PluginOrigin.musicfree;
+  }
+
+  /// 是否为 LX 兼容脚本。
+  bool get isLxCompat =>
+      (origin ?? PluginOrigin.musicfree) == PluginOrigin.lx ||
+      id.startsWith('lx:');
+
   /// 本插件能否提供播放链接。
   bool get canProvideMediaSource => supportedMethods.contains('getMediaSource');
 
@@ -80,6 +123,8 @@ class PluginRecord {
     'updateLog': updateLog,
     'allowFallback': allowFallback,
     'disableResolve': disableResolve,
+    'origin': origin?.name,
+    'userSourceKeys': userSourceKeys,
   };
 
   static PluginRecord fromJson(Map<String, dynamic> json) {
@@ -106,6 +151,10 @@ class PluginRecord {
       updateLog: json['updateLog'] as String?,
       allowFallback: json['allowFallback'] as bool? ?? true,
       disableResolve: json['disableResolve'] as bool? ?? false,
+      origin: json['origin'] is String
+          ? PluginOrigin.fromName(json['origin'] as String)
+          : null,
+      userSourceKeys: (json['userSourceKeys'] as List?)?.cast<String>(),
     );
   }
 }

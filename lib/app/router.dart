@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/plugins/presentation/collection_screens.dart';
 import '../features/plugins/presentation/library_screen.dart';
+import '../features/plugins/presentation/fallback_chain_screen.dart';
+import '../features/plugins/presentation/plugin_detail_screen.dart';
 import '../features/plugins/presentation/plugin_manager_screen.dart';
 import '../features/plugins/presentation/sheets_browse_screen.dart';
 import '../features/plugins/presentation/toplists_screen.dart';
@@ -87,6 +89,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             const ShellDetailScaffold(child: PluginManagerScreen()),
       ),
       // 运行日志：查看/复制/导出/清空，方便反馈问题时附上现场。
+      GoRoute(
+        path: '/plugin-detail',
+        builder: (context, state) => ShellDetailScaffold(
+          child: PluginDetailScreen(pluginId: '${state.extra ?? ''}'),
+        ),
+      ),
+      GoRoute(
+        path: '/fallback-chain',
+        builder: (context, state) =>
+            const ShellDetailScaffold(child: FallbackChainScreen()),
+      ),
       GoRoute(
         path: '/logs',
         builder: (context, state) =>

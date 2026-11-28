@@ -7,6 +7,7 @@ import '../../../shared/layout/window_class.dart';
 import '../../../shared/settings/audio_quality.dart';
 import '../../../shared/settings/lock_screen_lyric.dart';
 import '../../../shared/settings/open_player_on_play.dart';
+import '../../../shared/settings/playback_resilience.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../../shared/settings/settings_store.dart';
 import '../../../shared/ui/tokens.dart';
@@ -42,6 +43,7 @@ class _PlaybackSettingsScreenState
     final sleepAt = ref.watch(sleepTimerProvider);
     final openPlayerOnPlay = ref.watch(openPlayerOnPlayProvider);
     final lockLyricMode = ref.watch(lockScreenLyricModeProvider);
+    final failureLimit = ref.watch(consecutiveFailureLimitProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('播放设置')),
@@ -94,6 +96,14 @@ class _PlaybackSettingsScreenState
                   onTap: () => ref
                       .read(openPlayerOnPlayProvider.notifier)
                       .set(!openPlayerOnPlay),
+                ),
+                SettingsItem(
+                  icon: Icons.skip_next_rounded,
+                  title: '连续失败停止',
+                  subtitle: failureLimit.value == 0
+                      ? '取链失败即暂停，不跳下一首'
+                      : '顺序播放连续 ${failureLimit.value} 首取链失败后停止',
+                  onTap: () => _pickFailureLimit(failureLimit.value),
                 ),
                 // 仅 iOS：控制中心 / 锁屏媒体卡是否显示歌词及所在位置。
                 if (Platform.isIOS)
@@ -195,6 +205,23 @@ class _PlaybackSettingsScreenState
       notifier.cancel();
     } else {
       notifier.start(Duration(minutes: minutes));
+    }
+  }
+
+  /// 顺序播放连续取链失败多少首后停止（0 = 不跳下一首）。
+  Future<void> _pickFailureLimit(int current) async {
+    final picked = await showSelectionSheet<int>(
+      context: context,
+      title: '连续失败停止',
+      current: current,
+      description: '只在顺序播放自动切歌时计数，手动点播不受影响。',
+      options: [
+        for (var i = 0; i <= 10; i++)
+          SelectionOption(value: i, label: i == 0 ? '0 首（失败即暂停）' : '$i 首'),
+      ],
+    );
+    if (picked != null) {
+      await ref.read(consecutiveFailureLimitProvider.notifier).set(picked);
     }
   }
 

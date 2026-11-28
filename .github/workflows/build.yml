@@ -18,6 +18,11 @@ on:
 permissions:
   contents: write
 
+# 同一分支连续推送时取消旧运行，避免排队；tag 构建不取消。
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   android:
     name: Android APK
@@ -35,6 +40,16 @@ jobs:
           channel: stable
           flutter-version: '3.47.9'
           cache: true
+
+      # Gradle 缓存：Android 构建的大头是 Gradle 冷启动与 NDK 编译。
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
       - name: Pub get
         run: flutter pub get

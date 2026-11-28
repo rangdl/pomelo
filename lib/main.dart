@@ -17,12 +17,14 @@ import 'features/playback/data/playback_store.dart';
 import 'features/playback/presentation/playback_providers.dart';
 import 'features/plugins/data/builtin_plugins.dart';
 import 'features/plugins/data/plugin_repository.dart';
+import 'features/plugins/domain/fallback_chain.dart';
 import 'features/plugins/presentation/plugin_providers.dart';
 import 'shared/logging/app_logger.dart';
 import 'shared/settings/app_font.dart';
 import 'shared/settings/cache_limit.dart';
 import 'shared/settings/nav_animation.dart';
 import 'shared/settings/nav_bar_style.dart';
+import 'shared/settings/playback_resilience.dart';
 import 'shared/settings/settings_store.dart';
 import 'shared/settings/theme_color.dart';
 import 'shared/settings/theme_mode.dart';
@@ -60,6 +62,11 @@ Future<void> main() async {
       final initialCacheLimit = cacheLimitFromStore(settingsStore);
       final initialNavAnimation = navAnimationFromStore(settingsStore);
       final initialNavMetrics = NavBarMetrics.fromStore(settingsStore);
+      final initialBreaker = CircuitBreakerConfig.fromStore(settingsStore);
+      final initialFailureLimit = ConsecutiveFailureLimit.fromStore(
+        settingsStore,
+      );
+      final initialChains = FallbackChains.fromStore(settingsStore);
       // 自定义字体在这里完成注册，首帧就用用户选中的字体。
       final initialFont = await loadAppFontSelection(settingsStore);
       final playbackSnapshot = await loadPlaybackSnapshot();
@@ -118,6 +125,11 @@ Future<void> main() async {
             navBarMetricsInitializerProvider.overrideWithValue(
               initialNavMetrics,
             ),
+            circuitBreakerInitializerProvider.overrideWithValue(initialBreaker),
+            consecutiveFailureLimitInitializerProvider.overrideWithValue(
+              initialFailureLimit,
+            ),
+            fallbackChainsInitializerProvider.overrideWithValue(initialChains),
             appFontInitializerProvider.overrideWithValue(initialFont),
             selectedSearchPluginInitializerProvider.overrideWithValue(
               settingsStore.read<String>('selectedSearchPluginId'),

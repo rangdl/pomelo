@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/app_keys.dart';
 import '../../../shared/settings/audio_quality.dart';
+import '../../../shared/settings/playback_resilience.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../plugins/data/plugin_repository.dart';
+import '../../plugins/domain/fallback_chain.dart';
 import '../../plugins/domain/plugin_record.dart';
 import '../../plugins/domain/source_keys.dart';
 import '../../plugins/domain/track_origin.dart';
@@ -91,7 +93,10 @@ class PlayerActions {
   int _playGeneration = 0;
 
   /// 解析并播放一首歌（不改变队列）。
-  Future<void> playItem(Map<String, dynamic> item) async {
+  ///
+  /// [auto] 为 true 表示这是「顺序播放自动切下一首」触发的：只有这种场景
+  /// 才会累计连续失败数并在达到上限时停止，用户手动点播不受影响。
+  Future<void> playItem(Map<String, dynamic> item, {bool auto = false}) async {
     // 同步自增，保证「后点的歌」代次更高（不能放在 await 之后）。
     final generation = ++_playGeneration;
     // 点击即切换图标：取链还没开始就把 UI 先置为「播放中」，避免不跟手。
@@ -130,6 +135,7 @@ class PlayerActions {
         // 不进入 3 秒探测 + 自动跳下一首的流程，否则一首失败会连环跳完整队列。
         _markPlaybackFailed();
         _toast('播放失败: ${item['title'] ?? ''}（$e2）');
+        if (auto) _onAutoPlayResolveFailed();
         return;
       }
     }
@@ -145,6 +151,8 @@ class PlayerActions {
       if (generation != _playGeneration) return;
       _ref.read(playbackStageProvider.notifier).reset();
       _recordHistory(item);
+      // 真正播起来了：连续失败计数清零。
+      _consecutiveResolveFailures = 0;
       // 预取下一首的音源，切歌时无需再等取链。
       unawaited(prefetchNext());
       final art = '${item['artwork'] ?? ''}';
@@ -654,7 +662,7 @@ class PlayerActions {
     if (nextIndex < 0) nextIndex = items.length - 1;
 
     queue.jumpTo(nextIndex);
-    await safePlay(items[nextIndex]);
+    await safePlay(items[nextIndex], auto: auto);
   }
 
   Future<void> _playNextOnComplete() => skip(next: true, auto: true);
@@ -662,6 +670,31 @@ class PlayerActions {
   Timer? _errorProbeTimer;
   String? _errorProbeItemId;
   Duration _errorProbePosition = Duration.zero;
+
+  /// 顺序播放中连续几首取链失败就停止（用户手动点播不计入）。
+  int _consecutiveResolveFailures = 0;
+
+  /// 自动连播时取链失败：累计计数，达到上限停止并暂停，不再往后跳。
+  void _onAutoPlayResolveFailed() {
+    final limit = _ref.read(consecutiveFailureLimitProvider).value;
+    _consecutiveResolveFailures++;
+
+    // 0 表示不自动跳下一首：停在这一首即可（playItem 已经报告失败）。
+    if (limit == 0) {
+      debugPrint('[pomelo] 连续失败上限为 0，停止自动切歌');
+      return;
+    }
+    if (_consecutiveResolveFailures >= limit) {
+      _consecutiveResolveFailures = 0;
+      final player = _ref.read(audioPlayerProvider);
+      player.pause();
+      _toast('连续 $limit 首取链失败，已停止播放');
+      debugPrint('[pomelo] 连续取链失败达到上限 $limit，停止播放');
+      return;
+    }
+    // 还没到上限：顺延到下一首，避免队列卡死在放不了的歌上。
+    unawaited(skip(next: true, auto: true));
+  }
 
   /// 播放失败（解码/网络错误）处理。
   ///
@@ -709,9 +742,9 @@ class PlayerActions {
     _ref.read(playbackStageProvider.notifier).set(PlaybackStage.failed);
   }
 
-  Future<void> safePlay(Map<String, dynamic> item) async {
+  Future<void> safePlay(Map<String, dynamic> item, {bool auto = false}) async {
     try {
-      await playItem(item);
+      await playItem(item, auto: auto);
     } catch (_) {
       // 失败提示已在 playItem 内给出，这里只负责不让异常继续外抛。
     }
@@ -809,6 +842,8 @@ class PlayerActions {
 
     onStage?.call(PlaybackStage.resolving);
     Object? primaryError;
+    // 音源 key 提前算好：主插件失败时也要按 (插件, key) 记熔断。
+    final sourceKeyForBreaker = _sourceKeyOf(repo, item);
 
     // 1) 来源插件自带取链（用户可对该插件勾选「禁用取链」直接走兜底）。
     final owner = repo.plugins.where((p) => p.id == ownerId).firstOrNull;
@@ -818,6 +853,11 @@ class PlayerActions {
       } else {
         try {
           final source = await _resolveWith(owner, payload, quality);
+          if (sourceKeyForBreaker != null) {
+            _ref
+                .read(circuitBreakerProvider)
+                .recordSuccess(BreakerKey(owner.id, sourceKeyForBreaker));
+          }
           debugPrint(
             '[pomelo] 插件解析成功 quality=${quality.musicFreeValue} url=${source.url}',
           );
@@ -825,38 +865,53 @@ class PlayerActions {
           return source;
         } catch (e) {
           primaryError = e;
+          if (sourceKeyForBreaker != null) {
+            _ref
+                .read(circuitBreakerProvider)
+                .recordFailure(BreakerKey(owner.id, sourceKeyForBreaker));
+          }
           debugPrint('[pomelo] 插件解析失败，尝试兜底: $e');
         }
       }
     }
 
-    // 2) 跨插件兜底：同音源 key 的其它插件。
-    final sourceKey = _sourceKeyOf(repo, item);
-    final candidates = sourceKey == null
-        ? const <PluginRecord>[]
-        : repo
-              .fallbackCandidates(sourceKey, excludeId: ownerId)
-              .toList(growable: false);
-    if (candidates.isNotEmpty) {
-      // 主插件已失败（或被禁用），接下来换插件兜底：同步进度文案。
-      onStage?.call(PlaybackStage.fallback);
-      for (final candidate in candidates) {
-        try {
-          final source = await _resolveWith(
-            candidate,
-            payload,
-            quality,
-            sourceKey: sourceKey,
-          );
-          debugPrint(
-            '[pomelo] 兜底成功 plugin=${candidate.platform} '
-            'source=$sourceKey url=${source.url}',
-          );
-          _remember(cacheKey, source);
-          return source;
-        } catch (e) {
-          primaryError ??= e;
-          debugPrint('[pomelo] 兜底失败(${candidate.platform}): $e');
+    // 2) 跨插件兜底：同音源 key 的其它插件，按用户配置的兜底链排序。
+    final key = sourceKeyForBreaker;
+    if (key != null) {
+      final breaker = _ref.read(circuitBreakerProvider);
+      final chains = _ref.read(fallbackChainsProvider);
+      final candidates = repo
+          .fallbackCandidates(
+            key,
+            excludeId: ownerId,
+            orderedIds: chains.chainFor(key),
+          )
+          // 熔断中的插件直接跳过，不浪费一次网络请求。
+          .where((p) => !breaker.shouldSkip(BreakerKey(p.id, key)))
+          .toList(growable: false);
+      if (candidates.isNotEmpty) {
+        // 主插件已失败（或被禁用），接下来换插件兜底：同步进度文案。
+        onStage?.call(PlaybackStage.fallback);
+        for (final candidate in candidates) {
+          try {
+            final source = await _resolveWith(
+              candidate,
+              payload,
+              quality,
+              sourceKey: key,
+            );
+            breaker.recordSuccess(BreakerKey(candidate.id, key));
+            debugPrint(
+              '[pomelo] 兜底成功 plugin=${candidate.platform} '
+              'source=$key url=${source.url}',
+            );
+            _remember(cacheKey, source);
+            return source;
+          } catch (e) {
+            breaker.recordFailure(BreakerKey(candidate.id, key));
+            primaryError ??= e;
+            debugPrint('[pomelo] 兜底失败(${candidate.platform}): $e');
+          }
         }
       }
     }

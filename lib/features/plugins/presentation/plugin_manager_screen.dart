@@ -1,6 +1,7 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../shared/layout/window_class.dart';
@@ -26,6 +27,9 @@ class PluginManagerScreen extends ConsumerStatefulWidget {
 
 class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
   bool _busy = false;
+
+  /// 出身筛选；null 表示全部。
+  PluginOrigin? _originFilter;
 
   Future<void> _run(Future<void> Function() action) async {
     setState(() => _busy = true);
@@ -356,7 +360,10 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
   @override
   Widget build(BuildContext context) {
     final listAsync = ref.watch(pluginListProvider);
-    final list = listAsync.value ?? const <PluginRecord>[];
+    final allPlugins = listAsync.value ?? const <PluginRecord>[];
+    final list = _originFilter == null
+        ? allPlugins
+        : allPlugins.where((p) => p.displayOrigin == _originFilter).toList();
     final clearedLegacy =
         ref.watch(pluginRepositoryProvider).value?.clearedLegacy ?? false;
     final scheme = Theme.of(context).colorScheme;
@@ -366,6 +373,11 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
       appBar: AppBar(
         title: const Text('插件管理'),
         actions: [
+          IconButton(
+            tooltip: '兜底链',
+            icon: const Icon(Icons.account_tree_rounded),
+            onPressed: () => context.push('/fallback-chain'),
+          ),
           PopupMenuButton<String>(
             tooltip: '添加插件',
             position: PopupMenuPosition.under,
@@ -392,9 +404,9 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
         ],
       ),
       // 安装/更新期间保留列表可见,只在标题栏下方显示进度,避免整页闪一下。
-      body: listAsync.isLoading && list.isEmpty
+      body: listAsync.isLoading && allPlugins.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : list.isEmpty
+          : allPlugins.isEmpty
           ? EmptyState(
               icon: Icons.extension_rounded,
               title: clearedLegacy ? '插件体系已升级' : '暂无插件',
@@ -418,68 +430,86 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
               child: Column(
                 children: [
                   if (_busy) const LinearProgressIndicator(minHeight: 2),
-                  const _ReorderHint(),
+                  _OriginFilterBar(
+                    selected: _originFilter,
+                    counts: {
+                      for (final o in PluginOrigin.values)
+                        o: allPlugins.where((p) => p.displayOrigin == o).length,
+                    },
+                    onSelect: (o) => setState(() => _originFilter = o),
+                  ),
+                  if (list.isNotEmpty) const _ReorderHint(),
+                  if (list.isEmpty)
+                    const Expanded(child: Center(child: Text('该分类下没有插件')))
                   // 整个可排序列表共用一张卡片,与设置页的分组卡语言一致。
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.page,
-                        AppSpacing.xs,
-                        AppSpacing.page,
-                        0,
-                      ),
-                      child: Material(
-                        color: cardColor,
-                        borderRadius: AppRadius.cardBorder,
-                        clipBehavior: Clip.antiAlias,
-                        child: ReorderableListView.builder(
-                          // 列表延伸到播放胶囊下方,底部留出胶囊高度,
-                          // 保证最后一项也能滚动到胶囊上方。
-                          padding: const EdgeInsets.only(
-                            bottom: AppSpacing.floatingPlayerInset,
-                          ),
-                          buildDefaultDragHandles: false,
-                          itemCount: list.length,
-                          onReorderItem: _reorder,
-                          proxyDecorator: (child, index, animation) => Material(
-                            color: cardColor,
-                            elevation: 6,
-                            borderRadius: AppRadius.cardBorder,
-                            child: child,
-                          ),
-                          itemBuilder: (context, index) {
-                            final p = list[index];
-                            return Column(
-                              key: ValueKey(p.id),
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _PluginCard(
-                                  plugin: p,
-                                  index: index,
-                                  busy: _busy,
-                                  onToggleEnabled: (v) => _toggleEnabled(p, v),
-                                  onToggleFallback: (v) =>
-                                      _toggleFallback(p, v),
-                                  onToggleResolve: (v) => _toggleResolve(p, v),
-                                  onCheckUpdate: () => _checkUpdateById(p),
-                                  onOpenUpdateUrl: () =>
-                                      _openInBrowser(p.srcUrl!.trim()),
-                                  onIgnoreUpdate: () => _ignoreUpdate(p),
-                                  onRemove: () => _remove(p),
+                  else
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.page,
+                          AppSpacing.xs,
+                          AppSpacing.page,
+                          0,
+                        ),
+                        child: Material(
+                          color: cardColor,
+                          borderRadius: AppRadius.cardBorder,
+                          clipBehavior: Clip.antiAlias,
+                          child: ReorderableListView.builder(
+                            // 列表延伸到播放胶囊下方,底部留出胶囊高度,
+                            // 保证最后一项也能滚动到胶囊上方。
+                            padding: const EdgeInsets.only(
+                              bottom: AppSpacing.floatingPlayerInset,
+                            ),
+                            buildDefaultDragHandles: false,
+                            itemCount: list.length,
+                            onReorderItem: _reorder,
+                            proxyDecorator: (child, index, animation) =>
+                                Material(
+                                  color: cardColor,
+                                  elevation: 6,
+                                  borderRadius: AppRadius.cardBorder,
+                                  child: child,
                                 ),
-                                if (index != list.length - 1)
-                                  Divider(
-                                    height: 1,
-                                    indent: AppSpacing.dividerIndentSettings,
-                                    endIndent: AppSpacing.sm,
+                            itemBuilder: (context, index) {
+                              final p = list[index];
+                              return Column(
+                                key: ValueKey(p.id),
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  _PluginCard(
+                                    plugin: p,
+                                    index: index,
+                                    busy: _busy,
+                                    onToggleEnabled: (v) =>
+                                        _toggleEnabled(p, v),
+                                    onToggleFallback: (v) =>
+                                        _toggleFallback(p, v),
+                                    onToggleResolve: (v) =>
+                                        _toggleResolve(p, v),
+                                    onCheckUpdate: () => _checkUpdateById(p),
+                                    onOpenUpdateUrl: () =>
+                                        _openInBrowser(p.srcUrl!.trim()),
+                                    onIgnoreUpdate: () => _ignoreUpdate(p),
+                                    onRemove: () => _remove(p),
+                                    onOpenDetail: () => context.push(
+                                      '/plugin-detail',
+                                      extra: p.id,
+                                    ),
                                   ),
-                              ],
-                            );
-                          },
+                                  if (index != list.length - 1)
+                                    Divider(
+                                      height: 1,
+                                      indent: AppSpacing.dividerIndentSettings,
+                                      endIndent: AppSpacing.sm,
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -537,6 +567,7 @@ class _PluginCard extends StatelessWidget {
     required this.onOpenUpdateUrl,
     required this.onIgnoreUpdate,
     required this.onRemove,
+    required this.onOpenDetail,
   });
 
   final PluginRecord plugin;
@@ -549,6 +580,13 @@ class _PluginCard extends StatelessWidget {
   final VoidCallback onOpenUpdateUrl;
   final VoidCallback onIgnoreUpdate;
   final VoidCallback onRemove;
+  final VoidCallback onOpenDetail;
+
+  /// 版本号文本：插件有时自带 `v` 前缀，避免显示成 `vv3.2.20`。
+  static String _versionText(String version) =>
+      version.startsWith('v') || version.startsWith('V')
+      ? version
+      : 'v$version';
 
   @override
   Widget build(BuildContext context) {
@@ -591,6 +629,7 @@ class _PluginCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 名字独占首行：chip 全部下移，避免窄屏时把名称挤下去。
                     Row(
                       children: [
                         Flexible(
@@ -604,8 +643,6 @@ class _PluginCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.sm),
-                        _MetaChip('v$version'),
                         if (plugin.hasUpdate) ...[
                           const SizedBox(width: AppSpacing.xs),
                           Icon(
@@ -616,15 +653,25 @@ class _PluginCard extends StatelessWidget {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      sources,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: AppText.rowSubtitle,
-                        color: muted,
-                      ),
+                    const SizedBox(height: 3),
+                    Wrap(
+                      spacing: AppSpacing.xs,
+                      runSpacing: 2,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _OriginChip(origin: plugin.displayOrigin),
+                        _MetaChip(_versionText(version)),
+                        // Wrap 不支持 flex 子项，音源文字用宽松高度包一层。
+                        Text(
+                          sources,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: AppText.rowSubtitle,
+                            color: muted,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -741,6 +788,18 @@ class _PluginCard extends StatelessWidget {
                 style: TextStyle(fontSize: AppText.compact, color: muted),
               ),
             ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: onOpenDetail,
+              icon: const Icon(Icons.tune_rounded, size: 16),
+              label: const Text('能力与设置'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -826,6 +885,84 @@ class _MetaChip extends StatelessWidget {
           fontSize: AppText.compact,
           color: scheme.onSurfaceVariant,
         ),
+      ),
+    );
+  }
+}
+
+/// 按出身筛选的 chips 行。
+class _OriginFilterBar extends StatelessWidget {
+  const _OriginFilterBar({
+    required this.selected,
+    required this.counts,
+    required this.onSelect,
+  });
+
+  final PluginOrigin? selected;
+  final Map<PluginOrigin, int> counts;
+  final ValueChanged<PluginOrigin?> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = counts.values.fold<int>(0, (a, b) => a + b);
+    Widget chip(String label, bool on, VoidCallback onTap) => Padding(
+      padding: const EdgeInsets.only(right: AppSpacing.sm),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: on,
+        onSelected: (_) => onTap(),
+        visualDensity: VisualDensity.compact,
+      ),
+    );
+
+    return SizedBox(
+      height: 52,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.page,
+          vertical: AppSpacing.sm,
+        ),
+        children: [
+          chip('全部 ($total)', selected == null, () => onSelect(null)),
+          for (final origin in PluginOrigin.values)
+            chip(
+              '${origin.label} (${counts[origin] ?? 0})',
+              selected == origin,
+              () => onSelect(origin),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 插件出身标签。
+class _OriginChip extends StatelessWidget {
+  const _OriginChip({required this.origin});
+
+  final PluginOrigin origin;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final color = switch (origin) {
+      PluginOrigin.official => scheme.primary,
+      PluginOrigin.musicfree => scheme.tertiary,
+      PluginOrigin.lx => scheme.secondary,
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: 1,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: AppRadius.badgeBorder,
+      ),
+      child: Text(
+        origin.label,
+        style: TextStyle(fontSize: AppText.compact, color: color),
       ),
     );
   }
