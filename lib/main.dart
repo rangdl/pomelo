@@ -21,6 +21,7 @@ import 'features/plugins/presentation/plugin_providers.dart';
 import 'shared/logging/app_logger.dart';
 import 'shared/settings/app_font.dart';
 import 'shared/settings/cache_limit.dart';
+import 'shared/settings/nav_animation.dart';
 import 'shared/settings/settings_store.dart';
 import 'shared/settings/theme_color.dart';
 import 'shared/settings/theme_mode.dart';
@@ -56,6 +57,7 @@ Future<void> main() async {
       final initialThemeColor = await loadThemeColor(settingsStore);
       final initialAudioQuality = await loadAudioQuality(settingsStore);
       final initialCacheLimit = cacheLimitFromStore(settingsStore);
+      final initialNavAnimation = navAnimationFromStore(settingsStore);
       // 自定义字体在这里完成注册，首帧就用用户选中的字体。
       final initialFont = await loadAppFontSelection(settingsStore);
       final playbackSnapshot = await loadPlaybackSnapshot();
@@ -108,6 +110,9 @@ Future<void> main() async {
               initialAudioQuality,
             ),
             cacheLimitInitializerProvider.overrideWithValue(initialCacheLimit),
+            navAnimationInitializerProvider.overrideWithValue(
+              initialNavAnimation,
+            ),
             appFontInitializerProvider.overrideWithValue(initialFont),
             selectedSearchPluginInitializerProvider.overrideWithValue(
               settingsStore.read<String>('selectedSearchPluginId'),

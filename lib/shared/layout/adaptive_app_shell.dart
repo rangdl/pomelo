@@ -5,6 +5,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../features/playback/presentation/now_playing_bar.dart';
 import '../../features/plugins/presentation/plugin_picker_button.dart';
+import '../settings/nav_animation.dart';
 import '../ui/tokens.dart';
 import 'window_class.dart';
 
@@ -369,7 +370,7 @@ class _SideNavItem extends StatelessWidget {
 /// 参照 iOS 26 浮动胶囊:整条是一个玻璃胶囊,宽度按内容自适应(不撑满屏),
 /// 每个标签「图标在上、文字在下」。选中态是一个**在标签间滑动的胶囊指示器**
 /// （而不是每个标签各自淡入背景），切换时选中框整体平移、带回弹感。
-class _GlassBottomNavigation extends StatelessWidget {
+class _GlassBottomNavigation extends ConsumerWidget {
   const _GlassBottomNavigation({
     required this.destinations,
     required this.currentIndex,
@@ -387,8 +388,9 @@ class _GlassBottomNavigation extends StatelessWidget {
   static const double _cellInset = 2;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
+    final navStyle = ref.watch(navAnimationProvider);
 
     // SafeArea:全面屏手势机型上玻璃条不能压到手势区。
     return SafeArea(
@@ -407,22 +409,16 @@ class _GlassBottomNavigation extends StatelessWidget {
               padding: const EdgeInsets.all(4),
               child: Stack(
                 children: [
-                  // 滑动指示器：宽度正好一格，按索引平移到对应标签下。
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 420),
-                    // easeOutBack 带轻微回弹，滑动收尾更自然。
-                    curve: Curves.easeOutBack,
-                    left: currentIndex * _cellWidth + _cellInset,
-                    top: _cellInset,
-                    bottom: _cellInset,
-                    width: _cellWidth - _cellInset * 2,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(
-                          AppRadius.glass - 6,
-                        ),
-                      ),
+                  // 选中指示器：风格与时长由设置决定（见 NavAnimationStyle）。
+                  Positioned.fill(
+                    child: NavIndicatorAnimator(
+                      index: currentIndex,
+                      count: destinations.length,
+                      cellWidth: _cellWidth,
+                      inset: _cellInset,
+                      style: navStyle,
+                      color: scheme.primary.withValues(alpha: 0.16),
+                      radius: AppRadius.glass - 6,
                     ),
                   ),
                   Row(

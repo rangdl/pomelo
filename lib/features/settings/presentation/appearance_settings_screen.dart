@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/settings/app_font.dart';
+import '../../../shared/settings/nav_animation.dart';
 import '../../../shared/settings/theme_color.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../../shared/ui/tokens.dart';
@@ -20,6 +21,7 @@ class AppearanceSettingsScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeModeOptionProvider);
     final themeColor = ref.watch(themeColorProvider);
     final font = ref.watch(appFontProvider);
+    final navAnimation = ref.watch(navAnimationProvider);
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
@@ -72,12 +74,38 @@ class AppearanceSettingsScreen extends ConsumerWidget {
                   subtitle: font.label,
                   onTap: () => _pickFont(context, ref, font),
                 ),
+                SettingsItem(
+                  icon: Icons.animation_rounded,
+                  title: '导航切换动画',
+                  subtitle: navAnimation.label,
+                  onTap: () => _pickNavAnimation(context, ref, navAnimation),
+                ),
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _pickNavAnimation(
+    BuildContext context,
+    WidgetRef ref,
+    NavAnimationStyle current,
+  ) async {
+    final picked = await showSelectionSheet<NavAnimationStyle>(
+      context: context,
+      title: '导航切换动画',
+      current: current,
+      description: '底部导航选中框切换时的过渡效果，选完可立即切几个标签看效果。',
+      options: [
+        for (final style in NavAnimationStyle.values)
+          SelectionOption(value: style, label: style.label),
+      ],
+    );
+    if (picked != null) {
+      await ref.read(navAnimationProvider.notifier).set(picked);
+    }
   }
 
   Future<void> _pickThemeMode(
