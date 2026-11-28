@@ -55,7 +55,7 @@ class PluginRecord {
     this.qualitys = const {},
     this.srcUrl,
     this.updateLog,
-    this.allowFallback = true,
+    this.allowFallback = false,
     this.disableResolve = false,
     this.origin,
     this.userSourceKeys,
@@ -182,7 +182,7 @@ class PluginRecord {
           : const {},
       srcUrl: json['srcUrl'] as String?,
       updateLog: json['updateLog'] as String?,
-      allowFallback: json['allowFallback'] as bool? ?? true,
+      allowFallback: json['allowFallback'] as bool? ?? false,
       disableResolve: json['disableResolve'] as bool? ?? false,
       origin: json['origin'] is String
           ? _originFromStored(

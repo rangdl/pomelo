@@ -69,20 +69,14 @@ class AdaptiveAppShell extends ConsumerWidget {
         final collapsed = windowClass == WindowClass.medium;
 
         // 首页标题栏:左侧插件切换,右侧搜索入口。
+        // 首页标题栏自管三段布局（含右侧搜索入口），因此 title 占满整条
+        // AppBar、不再留 actions 槽位，中间标题才是屏幕正中。
         final appBar = AppBar(
           centerTitle: !isHome,
-          titleSpacing: AppSpacing.sm,
-          title: isHome ? _HomeTitleBar(showBrand: !wide) : title,
-          actions: isHome
-              ? [
-                  IconButton(
-                    tooltip: '搜索',
-                    icon: const Icon(Icons.search_rounded),
-                    onPressed: () => context.push('/search'),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                ]
-              : null,
+          titleSpacing: isHome ? 0 : AppSpacing.sm,
+          title: isHome
+              ? _HomeTitleBar(onSearch: () => context.push('/search'))
+              : title,
         );
 
         if (wide) {
@@ -138,28 +132,40 @@ class AdaptiveAppShell extends ConsumerWidget {
   }
 }
 
-/// 首页标题栏左侧:插件切换(宽屏品牌在侧栏,不再重复)。
+/// 首页标题栏：左侧插件切换，右侧搜索入口。
+///
+/// 首页不开居中标题，标题栏只用满宽的三段式：左侧插件、右侧搜索，
+/// 中间留空，不显示「柚子音乐」文字。
 class _HomeTitleBar extends StatelessWidget {
-  const _HomeTitleBar({required this.showBrand});
+  const _HomeTitleBar({required this.onSearch});
 
-  final bool showBrand;
+  final VoidCallback onSearch;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        if (showBrand) ...[
-          Text(
-            '柚子音乐',
-            style: TextStyle(
-              fontSize: AppText.detailTitle,
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.onSurface,
+        // 左侧：插件切换；宽屏时品牌在侧栏，这里依然保留切换入口。
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: AppSpacing.sm),
+              child: PluginPickerButton(),
             ),
           ),
-          const SizedBox(width: AppSpacing.md),
-        ],
-        const Expanded(child: PluginPickerButton()),
+        ),
+        // 右侧放搜索入口，与左段等宽，中段才能真正居中。
+        Expanded(
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: IconButton(
+              tooltip: '搜索',
+              icon: const Icon(Icons.search_rounded),
+              onPressed: onSearch,
+            ),
+          ),
+        ),
       ],
     );
   }

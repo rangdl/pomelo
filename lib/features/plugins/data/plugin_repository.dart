@@ -108,7 +108,8 @@ class PluginRepository {
       description: loaded.description,
       author: loaded.author,
       enabled: existing?.enabled ?? true,
-      allowFallback: existing?.allowFallback ?? true,
+      // 新装插件默认不参与兜底：用户按需在插件设置或兜底链里显式开启。
+      allowFallback: existing?.allowFallback ?? false,
       disableResolve: existing?.disableResolve ?? false,
       // 用户手动指定过的音源 key 必须跨更新保留。
       userSourceKeys: existing?.userSourceKeys,

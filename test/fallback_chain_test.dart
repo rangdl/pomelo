@@ -59,6 +59,20 @@ void main() {
     expect(restored.chainFor('kg'), ['b', 'c']);
   });
 
+  test('新插件默认不参与兜底取链', () {
+    final fresh = PluginRecord(
+      id: 'fresh',
+      name: 'fresh',
+      platform: 'fresh',
+      version: '1.0.0',
+      source: '',
+    );
+    expect(fresh.allowFallback, isFalse);
+    // 老数据缺字段时同样按关闭处理。
+    final legacy = PluginRecord.fromJson({'id': 'old'});
+    expect(legacy.allowFallback, isFalse);
+  });
+
   test('类型只剩 musicfree 与 lx，旧的 official 按 id 归类', () {
     expect(PluginOrigin.values.map((o) => o.label), ['MusicFree', 'LX']);
     final legacy = PluginRecord.fromJson({
