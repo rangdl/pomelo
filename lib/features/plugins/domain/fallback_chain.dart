@@ -9,11 +9,22 @@ import '../../../shared/settings/settings_store.dart';
 /// 未配置的 key 回落到 [defaultKey] 那条链；再没有就按插件安装顺序兜底。
 const String kDefaultChainKey = 'default';
 
-/// 兜底链配置：音源 key → 有序插件 id 列表。
+/// 兜底链配置：音源 key（或任意自定义名）→ 有序插件 id 列表。
+///
+/// 「默认」链是兜底：某个 key 没有专属链时回落到它。
 class FallbackChains {
   const FallbackChains(this.chains);
 
   final Map<String, List<String>> chains;
+
+  /// 已配置的 key（含「默认」），保持「默认」在最前，其余按名称排序。
+  List<String> get keys {
+    final rest = chains.keys.where((k) => k != kDefaultChainKey).toList()
+      ..sort();
+    return [kDefaultChainKey, ...rest];
+  }
+
+  bool hasKey(String key) => chains.containsKey(key);
 
   List<String> chainFor(String sourceKey) =>
       chains[sourceKey] ?? chains[kDefaultChainKey] ?? const [];
@@ -21,11 +32,38 @@ class FallbackChains {
   FallbackChains withChain(String key, List<String> ids) {
     final next = Map<String, List<String>>.from(chains);
     if (ids.isEmpty) {
-      next.remove(key);
+      // 「默认」链必须存在，清空时保留空列表而不是删掉 key。
+      if (key == kDefaultChainKey) {
+        next[key] = const [];
+      } else {
+        next.remove(key);
+      }
     } else {
       next[key] = ids;
     }
     return FallbackChains(next);
+  }
+
+  /// 新增一条空链；已存在则原样返回。
+  FallbackChains addKey(String key) => chains.containsKey(key)
+      ? this
+      : FallbackChains({...chains, key: const []});
+
+  /// 删除一条链；「默认」不可删除。
+  FallbackChains removeKey(String key) {
+    if (key == kDefaultChainKey) return this;
+    return FallbackChains({...chains}..remove(key));
+  }
+
+  /// 从某条链里移除一个插件。
+  FallbackChains removePlugin(String key, String pluginId) =>
+      withChain(key, [...chainFor(key)]..removeWhere((id) => id == pluginId));
+
+  /// 把插件追加到某条链末尾（已存在则不重复添加）。
+  FallbackChains addPlugin(String key, String pluginId) {
+    final current = [...chainFor(key)];
+    if (current.contains(pluginId)) return this;
+    return withChain(key, [...current, pluginId]);
   }
 
   static FallbackChains fromStore(SettingsStore store) {
@@ -54,6 +92,20 @@ class FallbackChainsNotifier extends Notifier<FallbackChains> {
 
   Future<void> setChain(String key, List<String> ids) async {
     state = state.withChain(key, ids);
+    await ref.read(settingsStoreProvider).patch({
+      'fallbackChains': state.toJson(),
+    });
+  }
+
+  Future<void> addChain(String key) async {
+    state = state.addKey(key);
+    await ref.read(settingsStoreProvider).patch({
+      'fallbackChains': state.toJson(),
+    });
+  }
+
+  Future<void> removeChain(String key) async {
+    state = state.removeKey(key);
     await ref.read(settingsStoreProvider).patch({
       'fallbackChains': state.toJson(),
     });

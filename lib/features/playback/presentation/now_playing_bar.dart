@@ -420,7 +420,11 @@ class _RollingLyricLineState extends State<_RollingLyricLine>
                           begin: 1,
                           end: 0,
                         ).animate(_curve),
-                        child: _line(_previous, _previousTrans, const ValueKey('prev')),
+                        child: _line(
+                          _previous,
+                          _previousTrans,
+                          const ValueKey('prev'),
+                        ),
                       ),
                     ),
                   ),
@@ -431,7 +435,11 @@ class _RollingLyricLineState extends State<_RollingLyricLine>
                       translation: Offset(0, 1 - t),
                       child: FadeTransition(
                         opacity: _curve,
-                        child: _line(_current, _currentTrans, const ValueKey('cur')),
+                        child: _line(
+                          _current,
+                          _currentTrans,
+                          const ValueKey('cur'),
+                        ),
                       ),
                     ),
                   ),

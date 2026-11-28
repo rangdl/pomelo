@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/logging/app_logger.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 
 /// 最近日志（打开页面时读取一次）。
@@ -25,10 +26,7 @@ class LogsScreen extends ConsumerStatefulWidget {
 class _LogsScreenState extends ConsumerState<LogsScreen> {
   bool _busy = false;
 
-  void _toast(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _toast(String message) => TopToast.show(message);
 
   Future<void> _copyAll(List<String> lines) async {
     if (lines.isEmpty) {

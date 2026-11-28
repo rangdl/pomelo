@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
 import '../../playback/presentation/playback_providers.dart';
@@ -63,8 +64,9 @@ class _SearchViewState extends ConsumerState<SearchView> {
         .set(const AsyncValue.data(<Map<String, dynamic>>[]));
   }
 
-  String get _typeLabel =>
-      _allTypes.firstWhere((t) => t.$1 == _type, orElse: () => _allTypes.first).$2;
+  String get _typeLabel => _allTypes
+      .firstWhere((t) => t.$1 == _type, orElse: () => _allTypes.first)
+      .$2;
 
   @override
   void dispose() {
@@ -458,11 +460,7 @@ class _SearchViewState extends ConsumerState<SearchView> {
     }
   }
 
-  void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
-    );
-  }
+  void _toast(String message) => TopToast.show(message);
 }
 
 /// 纯文字筛选标签。

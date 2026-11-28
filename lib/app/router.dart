@@ -5,6 +5,7 @@ import '../features/home/presentation/home_screen.dart';
 import '../features/plugins/presentation/collection_screens.dart';
 import '../features/plugins/presentation/library_screen.dart';
 import '../features/plugins/presentation/fallback_chain_screen.dart';
+import '../features/plugins/presentation/plugin_abilities_screen.dart';
 import '../features/plugins/presentation/plugin_detail_screen.dart';
 import '../features/plugins/presentation/plugin_manager_screen.dart';
 import '../features/plugins/presentation/sheets_browse_screen.dart';
@@ -93,6 +94,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/plugin-detail',
         builder: (context, state) => ShellDetailScaffold(
           child: PluginDetailScreen(pluginId: '${state.extra ?? ''}'),
+        ),
+      ),
+      GoRoute(
+        path: '/plugin-abilities',
+        builder: (context, state) => ShellDetailScaffold(
+          child: PluginAbilitiesScreen(pluginId: '${state.extra ?? ''}'),
         ),
       ),
       GoRoute(

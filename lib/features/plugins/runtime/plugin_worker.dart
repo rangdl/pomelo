@@ -380,7 +380,9 @@ $source
         'qualitys': const <String, List<String>>{},
         'updateAlert': null,
         'supportedSearchTypes':
-            (reflect['supportedSearchTypes'] as List?)?.map((e) => '$e').toList() ??
+            (reflect['supportedSearchTypes'] as List?)
+                ?.map((e) => '$e')
+                .toList() ??
             const <String>[],
         'defaultSearchType': _pickString(reflect['defaultSearchType']) ?? '',
         'initialized': initialized,

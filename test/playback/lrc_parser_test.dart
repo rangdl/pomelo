@@ -39,8 +39,10 @@ void main() {
   test('没有翻译时原样返回', () {
     final lines = LrcParser.parse('[00:01.00]独白');
     expect(lines.single.translation, isNull);
-    expect(LrcParser.parse('[00:01.00]独白', translation: '  ').single.translation,
-        isNull);
+    expect(
+      LrcParser.parse('[00:01.00]独白', translation: '  ').single.translation,
+      isNull,
+    );
   });
 
   test('activeIndex 定位当前行', () {

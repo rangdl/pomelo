@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
 import '../../playback/presentation/playback_providers.dart';
@@ -138,9 +139,7 @@ class _TrackListViewState extends ConsumerState<TrackListView> {
                         }
                       } catch (e) {
                         if (context.mounted) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text('播放失败: $e')));
+                          TopToast.error('播放失败: $e');
                         }
                       }
                     },

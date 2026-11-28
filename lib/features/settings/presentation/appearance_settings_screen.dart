@@ -10,6 +10,7 @@ import '../../../shared/settings/app_font.dart';
 import '../../../shared/settings/theme_color.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 
 /// 外观设置：主题模式 / 主题色 / 字体。
@@ -237,10 +238,7 @@ class AppearanceSettingsScreen extends ConsumerWidget {
     _toast(context, ok ? '已应用字体：${file.name}' : '字体加载失败，请确认文件是有效的字体');
   }
 
-  void _toast(BuildContext context, String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _toast(BuildContext context, String message) => TopToast.show(message);
 }
 
 /// 主题色色板圆:44 直径,选中时中心打勾。

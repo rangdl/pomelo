@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../shared/app_keys.dart';
 import '../../../shared/settings/audio_quality.dart';
 import '../../../shared/settings/playback_resilience.dart';
 import '../../../shared/settings/theme_mode.dart';
@@ -19,6 +18,7 @@ import '../data/audio_player_service.dart';
 import '../data/media_proxy_server.dart';
 import '../domain/play_mode.dart';
 import '../presentation/playback_providers.dart';
+import '../../../shared/widgets/top_toast.dart';
 
 /// 一次「解析结果」：可播放地址 + 底层需要的请求头（防盗链 Referer/UA 等）。
 class ResolvedSource {
@@ -515,7 +515,12 @@ class PlayerActions {
       return raw.trim().isEmpty ? null : LyricResult(raw);
     }
     if (raw is Map) {
-      final main = _firstString(raw, const ['lyric', 'rawLrc', 'lrc', 'content']);
+      final main = _firstString(raw, const [
+        'lyric',
+        'rawLrc',
+        'lrc',
+        'content',
+      ]);
       final trans = _firstString(raw, const ['translation', 'trans']);
       if (main == null && trans == null) return null;
       // 没有原文但有翻译时，把翻译当原文（与 MusicFree 一致）。
@@ -842,10 +847,8 @@ class PlayerActions {
   }
 
   void _toast(String message) {
-    final messenger = globalScaffoldMessengerKey.currentState;
-    messenger?.showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-    );
+    // 底部有播放胶囊，提示统一走顶部浮层。
+    TopToast.show(message);
   }
 
   /// 解析播放地址：**先来源插件自带取链 → 失败再按音源 key 找其它插件兜底**。
@@ -1015,7 +1018,12 @@ class PlayerActions {
     final qualityName = rawQuality is String && rawQuality.trim().isNotEmpty
         ? rawQuality.trim()
         : null;
-    return ResolvedSource(url, headers, ua?.isNotEmpty == true ? ua : null, qualityName);
+    return ResolvedSource(
+      url,
+      headers,
+      ua?.isNotEmpty == true ? ua : null,
+      qualityName,
+    );
   }
 
   /// 大小写不敏感地取请求头值。

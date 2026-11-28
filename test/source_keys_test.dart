@@ -75,7 +75,10 @@ void main() {
   });
 
   group('effectiveSourceKeys', () {
-    PluginRecord make({List<String>? user, List<String> keys = const ['风誰·酷狗']}) {
+    PluginRecord make({
+      List<String>? user,
+      List<String> keys = const ['风誰·酷狗'],
+    }) {
       return PluginRecord(
         id: 'fengsui-kg',
         name: '风誰·酷狗',
@@ -99,7 +102,9 @@ void main() {
       final r = make(user: const ['kg', 'mg']);
       final restored = PluginRecord.fromJson(r.toJson());
       expect(restored.userSourceKeys, ['kg', 'mg']);
-      expect(restored.origin, PluginOrigin.musicfree);
+      // 构造时未设置 origin：JSON 往返后仍为空，由加载阶段按实际路线上报。
+      expect(restored.origin, isNull);
+      expect(restored.displayOrigin, PluginOrigin.musicfree);
     });
   });
 }

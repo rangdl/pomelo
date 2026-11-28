@@ -1,16 +1,17 @@
 /// 插件未声明 `supportedSearchType` 时，UI 默认展示的搜索类型。
 const List<String> kDefaultSearchTypes = ['music', 'sheet', 'artist', 'album'];
 
-/// 插件的出身：决定它在列表里怎么归类、能否被筛出来。
+/// 插件的类型：由脚本初始化时实际走的那条兼容路线决定。
+///
+/// 有导出方法 → 按 MusicFree 插件运行；没有导出方法但注册了 LX 处理器 /
+/// 上报过 inited → 按洛雪音源脚本运行。两者都不算“官方”，官方只是内置预装
+/// 的来源，与类型无关。
 enum PluginOrigin {
-  /// 随包内置/官方维护的音源。
-  official('官方'),
-
   /// MusicFree 格式插件（module.exports）。
   musicfree('MusicFree'),
 
   /// 洛雪音乐助手脚本（经 LX 兼容层运行）。
-  lx('洛雪');
+  lx('LX');
 
   const PluginOrigin(this.label);
 
@@ -20,6 +21,19 @@ enum PluginOrigin {
     (o) => o.name == name,
     orElse: () => PluginOrigin.musicfree,
   );
+}
+
+/// 解析落库的类型字段。
+///
+/// 旧版本曾把内置插件存成 `official`，该值已废弃：按 id 前缀（`lx:`）重新
+/// 归类，其余视为 MusicFree，下次加载插件时会按实际兼容路线上报覆盖。
+PluginOrigin? _originFromStored(String name, {required String? id}) {
+  if (name == 'official') {
+    return (id ?? '').startsWith('lx:')
+        ? PluginOrigin.lx
+        : PluginOrigin.musicfree;
+  }
+  return PluginOrigin.fromName(name);
 }
 
 /// 一个已安装的插件（元信息 + 源码 + 启用状态）。
@@ -106,7 +120,7 @@ class PluginRecord {
   List<String> get searchableTypes =>
       supportedSearchTypes.isEmpty ? kDefaultSearchTypes : supportedSearchTypes;
 
-  /// 展示用的出身：老数据按 id 前缀就近归类。
+  /// 展示用的类型：老数据（含已废弃的“官方”）按 id 前缀就近归类。
   PluginOrigin get displayOrigin {
     if (origin != null) return origin!;
     if (id.startsWith('lx:')) return PluginOrigin.lx;
@@ -171,7 +185,10 @@ class PluginRecord {
       allowFallback: json['allowFallback'] as bool? ?? true,
       disableResolve: json['disableResolve'] as bool? ?? false,
       origin: json['origin'] is String
-          ? PluginOrigin.fromName(json['origin'] as String)
+          ? _originFromStored(
+              json['origin'] as String,
+              id: json['id'] as String?,
+            )
           : null,
       userSourceKeys: (json['userSourceKeys'] as List?)?.cast<String>(),
       supportedSearchTypes:

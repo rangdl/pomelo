@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../shared/app_keys.dart';
+import '../../shared/widgets/top_toast.dart';
 import '../../shared/layout/player_shortcuts.dart';
 import '../../shared/settings/app_font.dart';
 import '../../shared/settings/theme_color.dart';
@@ -39,7 +40,9 @@ class PomeloApp extends ConsumerWidget {
       builder: (context, child) => MediaQuery.withClampedTextScaling(
         minScaleFactor: 1.0,
         maxScaleFactor: 1.3,
-        child: PlayerShortcuts(child: child ?? const SizedBox.shrink()),
+        child: TopToastHost(
+          child: PlayerShortcuts(child: child ?? const SizedBox.shrink()),
+        ),
       ),
     );
   }

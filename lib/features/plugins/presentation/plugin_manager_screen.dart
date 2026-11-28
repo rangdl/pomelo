@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
 import '../data/plugin_repository.dart';
@@ -53,10 +54,7 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
     }
   }
 
-  void _toast(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
-  }
+  void _toast(String message) => TopToast.show(message);
 
   /// 更新地址未必是 JS 直链（可能是发布页/仓库/主页），统一支持浏览器打开。
   Future<void> _openInBrowser(String url) async {
@@ -133,13 +131,7 @@ class _PluginManagerScreenState extends ConsumerState<PluginManagerScreen> {
                         .read(favoritesProvider.notifier)
                         .addAll(tracks);
                     if (ctx.mounted) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            added > 0 ? '已收藏 $added 首' : '这些歌曲已在收藏中',
-                          ),
-                        ),
-                      );
+                      TopToast.show(added > 0 ? '已收藏 $added 首' : '这些歌曲已在收藏中');
                     }
                   },
                   icon: const Icon(Icons.favorite_rounded, size: 18),
@@ -611,69 +603,81 @@ class _PluginCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: AppIconBadge.background(scheme),
-                  borderRadius: AppRadius.badgeBorder,
-                ),
-                child: Icon(
-                  Icons.extension_rounded,
-                  size: 20,
-                  color: AppIconBadge.foreground(scheme),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
+              // 点插件主体进入设置子页；开关与更多菜单各自拦截手势，互不影响。
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 名字独占首行：chip 全部下移，避免窄屏时把名称挤下去。
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            plugin.platform,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: AppText.rowTitle,
-                              fontWeight: FontWeight.w700,
+                child: InkWell(
+                  borderRadius: AppRadius.badgeBorder,
+                  onTap: onOpenDetail,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: AppIconBadge.background(scheme),
+                          borderRadius: AppRadius.badgeBorder,
+                        ),
+                        child: Icon(
+                          Icons.extension_rounded,
+                          size: 20,
+                          color: AppIconBadge.foreground(scheme),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // 名字独占首行：chip 全部下移，避免窄屏时把名称挤下去。
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    plugin.platform,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: AppText.rowTitle,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (plugin.hasUpdate) ...[
+                                  const SizedBox(width: AppSpacing.xs),
+                                  Icon(
+                                    Icons.new_releases_rounded,
+                                    size: 14,
+                                    color: scheme.primary,
+                                  ),
+                                ],
+                              ],
                             ),
-                          ),
+                            const SizedBox(height: 3),
+                            Wrap(
+                              spacing: AppSpacing.xs,
+                              runSpacing: 2,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                _OriginChip(origin: plugin.displayOrigin),
+                                _MetaChip(_versionText(version)),
+                                // Wrap 不支持 flex 子项，音源文字用宽松高度包一层。
+                                Text(
+                                  sources,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: AppText.rowSubtitle,
+                                    color: muted,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        if (plugin.hasUpdate) ...[
-                          const SizedBox(width: AppSpacing.xs),
-                          Icon(
-                            Icons.new_releases_rounded,
-                            size: 14,
-                            color: scheme.primary,
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Wrap(
-                      spacing: AppSpacing.xs,
-                      runSpacing: 2,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _OriginChip(origin: plugin.displayOrigin),
-                        _MetaChip(_versionText(version)),
-                        // Wrap 不支持 flex 子项，音源文字用宽松高度包一层。
-                        Text(
-                          sources,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: AppText.rowSubtitle,
-                            color: muted,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               // 右侧三个操作统一放进 40 高的槽位并居中，避免高度不一致看着错位。
@@ -788,18 +792,6 @@ class _PluginCard extends StatelessWidget {
                 style: TextStyle(fontSize: AppText.compact, color: muted),
               ),
             ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: onOpenDetail,
-              icon: const Icon(Icons.tune_rounded, size: 16),
-              label: const Text('能力与设置'),
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -947,7 +939,6 @@ class _OriginChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final color = switch (origin) {
-      PluginOrigin.official => scheme.primary,
       PluginOrigin.musicfree => scheme.tertiary,
       PluginOrigin.lx => scheme.secondary,
     };

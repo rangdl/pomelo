@@ -195,7 +195,8 @@ class PomeloPluginRuntime {
     String type = 'music',
   }) async {
     // 插件声明了 supportedSearchType 且不含该类型时，直接返回空，不打网络。
-    if (supportedSearchTypes.isNotEmpty && !supportedSearchTypes.contains(type)) {
+    if (supportedSearchTypes.isNotEmpty &&
+        !supportedSearchTypes.contains(type)) {
       return {'isEnd': true, 'data': const []};
     }
     final result = await invoke('search', [query, page, type]);
@@ -219,9 +220,11 @@ class PomeloPluginRuntime {
     String quality, {
     String? sourceKey,
   }) async {
-    final item = sourceKey == null || sourceKey.isEmpty
-        ? musicItem
-        : Map<String, dynamic>.from(musicItem)..['sourceKey'] = sourceKey;
+    final item =
+        sourceKey == null || sourceKey.isEmpty
+              ? musicItem
+              : Map<String, dynamic>.from(musicItem)
+          ..['sourceKey'] = sourceKey;
     final result = await invoke('getMediaSource', [item, quality]);
     if (result is Map<String, dynamic>) {
       final url = result['url'];
@@ -275,9 +278,11 @@ class PomeloPluginRuntime {
     String? sourceKey,
     Duration timeout = const Duration(seconds: 30),
   }) {
-    final item = sourceKey == null || sourceKey.isEmpty
-        ? musicItem
-        : Map<String, dynamic>.from(musicItem)..['sourceKey'] = sourceKey;
+    final item =
+        sourceKey == null || sourceKey.isEmpty
+              ? musicItem
+              : Map<String, dynamic>.from(musicItem)
+          ..['sourceKey'] = sourceKey;
     return invoke('getLyric', [item], timeout: timeout);
   }
 

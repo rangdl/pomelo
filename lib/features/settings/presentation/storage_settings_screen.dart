@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/settings/cache_limit.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/data/media_proxy_server.dart';
 
@@ -217,14 +218,12 @@ class _StorageSettingsScreenState extends ConsumerState<StorageSettingsScreen> {
       await action();
       ref.invalidate(cacheUsageProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('已清除$label')));
+        TopToast.show('已清除$label');
       }
     } catch (e) {
       // 清理是破坏性操作：失败要明确告知，而不是静默失败。
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('清除$label 失败: $e')));
+        TopToast.error('清除$label 失败: $e');
       }
     } finally {
       if (mounted) setState(() => _clearing.remove(key));

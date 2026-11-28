@@ -76,18 +76,9 @@ Future<void> seedBuiltinPlugins(
   PluginRepository repo,
   SettingsStore settings,
 ) async {
-  // 不管是否已是最新清单版本，都先按源码内容补标「官方」：
-  // 老数据没有出身字段，这一步只做内存/落盘标记，不会重装插件。
-  final builtinSources = <String>{};
-  for (final plugin in builtinPlugins) {
-    try {
-      final src = await rootBundle.loadString(plugin.assetPath);
-      if (src.trim().isNotEmpty) builtinSources.add(src.trim());
-    } catch (_) {
-      // 单个 asset 读取失败不影响整体。
-    }
-  }
-  await repo.markOfficialBySource(builtinSources);
+  // 老数据可能残留已废弃的「官方」类型：统一按实际来源归类。
+  // 这一步只做内存/落盘标记，不会重装插件。
+  await repo.normalizeOrigins();
 
   if ((settings.read<int>(_seedVersionKey) ?? 0) >= _builtinSeedVersion) {
     return;
@@ -104,7 +95,6 @@ Future<void> seedBuiltinPlugins(
       final record = await repo.install(
         source,
         fallbackName: plugin.fallbackName,
-        official: true,
       );
       installed++;
       debugPrint(

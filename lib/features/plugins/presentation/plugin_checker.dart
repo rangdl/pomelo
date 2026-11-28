@@ -4,18 +4,30 @@ import '../../../shared/logging/app_logger.dart';
 import '../domain/plugin_record.dart';
 import 'plugin_providers.dart';
 
-/// 插件能力的中文名与说明。
-const Map<String, (String, String)> kPluginAbilityLabels = {
-  'search': ('搜索歌曲', '按关键字搜索'),
-  'getMediaSource': ('获取播放链接', '解析可直接播放的地址'),
-  'getLyric': ('获取歌词', '返回 LRC 歌词文本'),
-  'getTopLists': ('榜单列表', '提供各平台排行榜入口'),
-  'getTopListDetail': ('榜单详情', '展开某个榜单的歌曲'),
-  'getMusicInfo': ('歌曲详情', '补全单曲元信息'),
-  'getMusicComments': ('歌曲评论', '拉取评论列表'),
-  'getArtistWorks': ('歌手作品', '按歌手查歌曲/专辑'),
-  'getMusicSheetInfo': ('歌单详情', '展开歌单曲目'),
-  'importMusicSheet': ('导入歌单', '从分享链接导入'),
+/// 插件能力的完整清单（顺序即能力页的展示顺序）。
+///
+/// 与 MusicFree 官方方法集对齐，并包含宿主扩展；`method` 是插件里实际导出
+/// 的函数名，能力页据此判断「支持 / 不支持」。
+const List<({String method, String label, String desc})> kPluginAbilities = [
+  (method: 'search', label: '搜索歌曲', desc: '按关键字搜索单曲 / 歌单 / 歌手 / 专辑'),
+  (method: 'getMediaSource', label: '获取播放链接', desc: '解析可直接播放的地址（含请求头）'),
+  (method: 'getLyric', label: '获取歌词', desc: '返回 LRC 歌词，可带翻译'),
+  (method: 'getTopLists', label: '榜单列表', desc: '提供各平台排行榜入口'),
+  (method: 'getTopListDetail', label: '榜单详情', desc: '展开某个榜单的歌曲'),
+  (method: 'getRecommendSheetTags', label: '歌单标签', desc: '提供推荐歌单的分类标签'),
+  (method: 'getRecommendSheetsByTag', label: '推荐歌单', desc: '按标签分页拉取推荐歌单'),
+  (method: 'getMusicSheetInfo', label: '歌单详情', desc: '展开歌单曲目'),
+  (method: 'importMusicSheet', label: '导入歌单', desc: '从分享链接导入歌单'),
+  (method: 'importMusicItem', label: '导入单曲', desc: '从分享链接导入单曲'),
+  (method: 'getArtistWorks', label: '歌手作品', desc: '按歌手查歌曲 / 专辑'),
+  (method: 'getAlbumInfo', label: '专辑详情', desc: '展开专辑曲目'),
+  (method: 'getMusicInfo', label: '歌曲详情', desc: '补全单曲元信息'),
+  (method: 'getMusicComments', label: '歌曲评论', desc: '分页拉取评论列表'),
+];
+
+/// 方法名 → 中文能力名（详情页等按需查表）。
+final Map<String, String> kPluginAbilityNames = {
+  for (final a in kPluginAbilities) a.method: a.label,
 };
 
 /// 单条能力的探测结果。

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../data/plugin_repository.dart';
 import '../domain/fallback_chain.dart';
 import '../domain/plugin_record.dart';
 import '../domain/source_keys.dart';
-import 'plugin_checker.dart';
 import 'plugin_providers.dart';
 
-/// 插件详情页：出身、音源标识、能力清单与检查、兜底相关开关。
+/// 插件设置页：类型、音源标识、兜底相关开关与熔断状态。
+///
+/// 能力清单已拆到独立子页（`/plugin-abilities`）。
 class PluginDetailScreen extends ConsumerStatefulWidget {
   const PluginDetailScreen({super.key, required this.pluginId});
 
@@ -24,12 +27,6 @@ class PluginDetailScreen extends ConsumerStatefulWidget {
 class _PluginDetailScreenState extends ConsumerState<PluginDetailScreen> {
   bool _busy = false;
 
-  /// 本页最近一次检查结果（本地持有，保证刷新可靠）。
-  PluginCheckReport? _localReport;
-
-  /// 本页检查是否在进行中（不依赖外部 provider，刷新最可靠）。
-  bool _checking = false;
-
   PluginRecord? _find(List<PluginRecord> list) =>
       list.where((p) => p.id == widget.pluginId).firstOrNull;
 
@@ -40,45 +37,9 @@ class _PluginDetailScreenState extends ConsumerState<PluginDetailScreen> {
       await action(repo);
       ref.invalidate(pluginListProvider);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('操作失败: $e')));
-      }
+      if (mounted) TopToast.error('操作失败: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _check(PluginRecord plugin, {bool includeMedia = false}) async {
-    final results = ref.read(pluginCheckResultsProvider.notifier);
-    if (mounted) setState(() => _checking = true);
-    try {
-      final report = await ref
-          .read(pluginCheckerProvider)
-          .run(plugin, includeMedia: includeMedia)
-          .timeout(const Duration(seconds: 60));
-      results.put(report);
-      if (mounted) setState(() => _localReport = report);
-      debugPrint(
-        '[pomelo] 检查完成 ${plugin.platform}: '
-        '${report.passed}/${report.total} '
-        '${report.results.map((r) => '${r.ability}=${r.ok}').join(', ')}',
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${plugin.platform}：${report.passed}/${report.total} 项可用',
-          ),
-        ),
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('检查失败: $e')));
-      }
-    } finally {
-      if (mounted) setState(() => _checking = false);
     }
   }
 
@@ -154,11 +115,9 @@ class _PluginDetailScreenState extends ConsumerState<PluginDetailScreen> {
   Widget build(BuildContext context) {
     final list = ref.watch(pluginListProvider).value ?? const <PluginRecord>[];
     final plugin = _find(list);
-    final scheme = Theme.of(context).colorScheme;
-
     if (plugin == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('插件详情')),
+        appBar: AppBar(title: const Text('插件设置')),
         body: const EmptyState(
           icon: Icons.extension_off_rounded,
           title: '插件不存在',
@@ -167,34 +126,11 @@ class _PluginDetailScreenState extends ConsumerState<PluginDetailScreen> {
       );
     }
 
-    final checking = _checking;
-    final report =
-        _localReport ?? ref.watch(pluginCheckResultsProvider)[plugin.id];
     final breaker = ref.watch(circuitBreakerProvider);
     final effective = effectiveSourceKeys(plugin);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(plugin.platform),
-        actions: [
-          if (checking)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            IconButton(
-              tooltip: '检查能力',
-              icon: const Icon(Icons.fact_check_rounded),
-              onPressed: () => _check(plugin),
-            ),
-          const SizedBox(width: AppSpacing.xs),
-        ],
-      ),
+      appBar: AppBar(title: Text(plugin.platform)),
       body: CenteredMaxWidth(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
@@ -209,7 +145,7 @@ class _PluginDetailScreenState extends ConsumerState<PluginDetailScreen> {
               children: [
                 SettingsItem(
                   icon: Icons.badge_rounded,
-                  title: '出身',
+                  title: '类型',
                   subtitle: plugin.displayOrigin.label,
                   showChevron: false,
                 ),
@@ -238,54 +174,17 @@ class _PluginDetailScreenState extends ConsumerState<PluginDetailScreen> {
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
-            const SectionHeader('能力'),
+            SectionHeader('能力与检查'),
             GroupCard(
               children: [
-                for (final method in plugin.supportedMethods)
-                  _AbilityRow(
-                    method: method,
-                    result: report?.results
-                        .where((r) => r.ability == method)
-                        .firstOrNull,
-                  ),
-                if (plugin.supportedMethods.isEmpty)
-                  const SettingsItem(
-                    icon: Icons.block_rounded,
-                    title: '未声明任何能力',
-                    showChevron: false,
-                  ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              child: Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: checking ? null : () => _check(plugin),
-                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: const Text('检查能力'),
-                  ),
-                  TextButton.icon(
-                    onPressed: checking
-                        ? null
-                        : () => _check(plugin, includeMedia: true),
-                    icon: const Icon(Icons.link_rounded, size: 18),
-                    label: const Text('测试取链'),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
-              child: Text(
-                '「测试取链」会真实请求音乐平台接口，可能较慢。',
-                style: TextStyle(
-                  fontSize: AppText.rowSubtitle,
-                  color: scheme.onSurfaceVariant,
+                SettingsItem(
+                  icon: Icons.fact_check_rounded,
+                  title: '查看能力清单',
+                  subtitle: '按方法级列出该插件支持的能力，可运行检查',
+                  onTap: () =>
+                      context.push('/plugin-abilities', extra: plugin.id),
                 ),
-              ),
+              ],
             ),
             if (plugin.canProvideMediaSource) ...[
               const SizedBox(height: AppSpacing.xl),
@@ -324,39 +223,6 @@ class _PluginDetailScreenState extends ConsumerState<PluginDetailScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// 能力行：显示中文名、说明与上次检查结果。
-class _AbilityRow extends StatelessWidget {
-  const _AbilityRow({required this.method, this.result});
-
-  final String method;
-  final AbilityCheck? result;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final (label, desc) = kPluginAbilityLabels[method] ?? (method, '插件自定义能力');
-    final r = result;
-    return SettingsItem(
-      icon: switch (r?.ok) {
-        true => Icons.check_circle_rounded,
-        false => Icons.cancel_rounded,
-        null => Icons.help_outline_rounded,
-      },
-      title: label,
-      subtitle: r == null
-          ? desc
-          : (r.ok ? (r.detail ?? '可用') : (r.detail ?? '不可用')),
-      showChevron: false,
-      trailing: r == null
-          ? null
-          : Icon(
-              r.ok ? Icons.check_rounded : Icons.close_rounded,
-              color: r.ok ? scheme.primary : scheme.error,
-            ),
     );
   }
 }

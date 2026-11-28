@@ -62,8 +62,8 @@ class PluginRepository {
       }
       // 先完整解析再替换，避免单条记录损坏时留下半截列表。
       final parsed = entries.map(PluginRecord.fromJson).toList();
-      // 老数据没有 origin：洛雪按 id 前缀识别，其余先按 MusicFree 归类，
-      // 是否官方由 seed 阶段按内置清单补写（见 markOfficial）。
+      // 老数据没有 origin（或旧的 official）：按 id 前缀就近归类，
+      // 插件下次加载时再按实际兼容路线上报覆盖。
       for (final p in parsed) {
         p.origin ??= p.id.startsWith('lx:')
             ? PluginOrigin.lx
@@ -84,11 +84,7 @@ class PluginRepository {
   /// 安装插件（自有格式与 LX 脚本统一入口，格式自动识别）。
   ///
   /// 同 id 视为更新：替换源码与元信息，保留用户的启用状态与兜底开关。
-  Future<PluginRecord> install(
-    String source, {
-    String? fallbackName,
-    bool official = false,
-  }) async {
+  Future<PluginRecord> install(String source, {String? fallbackName}) async {
     final loaded = await probe(source, name: fallbackName ?? 'plugin');
 
     var platform = loaded.platform.trim();
@@ -102,9 +98,8 @@ class PluginRepository {
     final existing = existingIndex >= 0 ? _plugins[existingIndex] : null;
 
     final alertLog = loaded.updateAlert?['log'];
-    final origin = official
-        ? PluginOrigin.official
-        : (loaded.isLxCompat ? PluginOrigin.lx : PluginOrigin.musicfree);
+    // 类型只看实际走的兼容路线，与是否内置预装无关。
+    final origin = loaded.isLxCompat ? PluginOrigin.lx : PluginOrigin.musicfree;
     final record = PluginRecord(
       id: id,
       name: platform,
@@ -331,18 +326,16 @@ class PluginRepository {
     return [...inChain, ...rest];
   }
 
-  /// 按源码内容把内置插件标记为官方。
-  ///
-  /// 用内容比对而非 id/名字：老用户的记录里没有出身字段，而内置脚本的
-  /// 源码就是最可靠的指纹。内置脚本升级后老记录匹配不上，seed 重装时会
-  /// 重新打标，不影响正确性。
-  Future<void> markOfficialBySource(Set<String> sources) async {
-    if (sources.isEmpty) return;
+  /// 老记录没有 origin 或曾被打成已废弃的 `official` 时，按 id 前缀就近归类；
+  /// 真正的类型会在下次加载插件时按实际兼容路线上报覆盖。
+  Future<void> normalizeOrigins() async {
     var changed = false;
     for (final p in _plugins) {
-      if (p.origin == PluginOrigin.official) continue;
-      if (sources.contains(p.source.trim())) {
-        p.origin = PluginOrigin.official;
+      final expected = p.id.startsWith('lx:')
+          ? PluginOrigin.lx
+          : PluginOrigin.musicfree;
+      if (p.origin != expected) {
+        p.origin = expected;
         changed = true;
       }
     }

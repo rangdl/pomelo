@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/settings/theme_mode.dart';
 import '../../../shared/ui/duration_fmt.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../plugins/presentation/library_providers.dart';
 import '../application/player_actions.dart';
@@ -798,12 +799,7 @@ class _FavoriteButton extends ConsumerWidget {
       onPressed: () async {
         final nowFav = await ref.read(favoritesProvider.notifier).toggle(item);
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(nowFav ? '已收藏' : '已取消收藏'),
-              duration: const Duration(seconds: 1),
-            ),
-          );
+          TopToast.show(nowFav ? '已收藏' : '已取消收藏');
         }
       },
     );

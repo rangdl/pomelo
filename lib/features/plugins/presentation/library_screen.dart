@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../shared/layout/window_class.dart';
 import '../../../shared/ui/tokens.dart';
+import '../../../shared/widgets/top_toast.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../playback/application/player_actions.dart';
 import '../../playback/presentation/player_sheet.dart';
@@ -66,11 +67,7 @@ class LibraryScreen extends ConsumerWidget {
                             await ref.read(favoritesProvider.notifier).clear();
                           }
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(onHistory ? '已清空播放历史' : '已清空收藏'),
-                              ),
-                            );
+                            TopToast.show(onHistory ? '已清空播放历史' : '已清空收藏');
                           }
                         },
                         itemBuilder: (context) => [
@@ -166,9 +163,7 @@ class _SongList extends ConsumerWidget {
                           }
                         } catch (e) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(
-                              context,
-                            ).showSnackBar(SnackBar(content: Text('播放失败: $e')));
+                            TopToast.error('播放失败: $e');
                           }
                         }
                       },
