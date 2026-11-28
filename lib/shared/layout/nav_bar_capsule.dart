@@ -184,6 +184,8 @@ class _IndicatorPainter extends CustomPainter {
     // 果冻拉伸只在横向，且最多吃掉与相邻格之间的一半缝隙。
     final w = (baseW * tween.stretchX).clamp(0.0, cellWidth - inset);
     final h = baseH * tween.scale;
+    // 圆角随高度自适应：取高的一半即胶囊形，不会因为高度调大而显方。
+    final radius = h / 2;
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromCenter(
@@ -191,8 +193,7 @@ class _IndicatorPainter extends CustomPainter {
           width: w,
           height: h,
         ),
-        // 圆角取卡片圆角，和设置页的分组卡语言一致。
-        Radius.circular(AppRadius.card),
+        Radius.circular(radius),
       ),
       paint,
     );
