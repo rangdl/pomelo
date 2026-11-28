@@ -21,18 +21,17 @@ class FloatingNowPlaying extends ConsumerWidget {
     if (ref.watch(nowPlayingProvider) == null) {
       return const SizedBox.shrink();
     }
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 10),
-        // heightFactor: 1 —— 只占胶囊自身高度，不铺满下层导致挡住内容点击。
-        child: Align(
-          alignment: Alignment.bottomCenter,
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
-            child: const NowPlayingBar(),
-          ),
+    // 作为底部浮层的一部分（叠在底部导航之上），底部安全区由导航栏负责，
+    // 这里只留与导航之间的小间距。
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, 8),
+      // heightFactor: 1 —— 只占胶囊自身高度，不铺满下层导致挡住内容点击。
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: const NowPlayingBar(),
         ),
       ),
     );

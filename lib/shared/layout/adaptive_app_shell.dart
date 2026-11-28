@@ -107,13 +107,30 @@ class AdaptiveAppShell extends ConsumerWidget {
             ),
           );
         }
+        // 移动端：底部导航与迷你播放胶囊一起作为浮层叠在内容之上，
+        // 内容可延伸到它们下方（沉浸感），而不是被导航条顶开。
         return Scaffold(
           appBar: appBar,
-          body: _ShellBody(child: navigationShell),
-          bottomNavigationBar: _GlassBottomNavigation(
-            destinations: appNavDestinations,
-            currentIndex: index,
-            onTap: (i) => _goBranch(ref, i),
+          body: Stack(
+            children: [
+              Positioned.fill(child: navigationShell),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const FloatingNowPlaying(),
+                    _GlassBottomNavigation(
+                      destinations: appNavDestinations,
+                      currentIndex: index,
+                      onTap: (i) => _goBranch(ref, i),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },

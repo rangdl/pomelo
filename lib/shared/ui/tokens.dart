@@ -20,10 +20,11 @@ abstract final class AppSpacing {
   static const double dividerIndentSettings = 46; // 8 + 28 徽章 + 10
   static const double dividerIndentTrack = 58; // 8 + 40 封面 + 10
 
-  /// 浮动迷你播放胶囊占用的高度：列表底部留出这么多，避免最后一行被胶囊遮住。
-  static const double floatingPlayerInset = 88;
+  /// 底部浮层占用高度：迷你播放胶囊 + 底部导航胶囊 + 间距，
+  /// 列表底部留出这么多，避免最后一行被浮层遮住。
+  static const double floatingPlayerInset = 150;
 
-  /// 分组列表页整体 padding(底部预留浮动播放胶囊空间)。
+  /// 分组列表页整体 padding(底部预留底部浮层空间)。
   static const EdgeInsets pagePadding = EdgeInsets.fromLTRB(
     page,
     sm,
